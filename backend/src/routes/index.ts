@@ -7,7 +7,6 @@ const router = Router()
 
 router.get('/ping', healthController.ping)
 
-// Documents
 router.post('/documents/upload', documentsController.uploadDocument)
 
 

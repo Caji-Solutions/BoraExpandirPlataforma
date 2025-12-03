@@ -15,3 +15,11 @@ export type Parceiro = {
   criadoEm: Date
   atualizadoEm: Date
 }
+
+export interface ClienteDTO {
+  nome: string
+  email: string
+  whatsapp: string
+  parceiro_id: string
+  status?: 'cadastrado' | 'em_conversa' | 'proposta_enviada' | 'fechado_pago'
+}
