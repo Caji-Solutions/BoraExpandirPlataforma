@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type SidebarItem = {
@@ -17,11 +18,18 @@ export type SidebarGroup = {
 
 type SidebarProps = {
   groups: SidebarGroup[]
+  sidebarOpen?: boolean
+  setSidebarOpen?: (open: boolean) => void
 }
 
-export function Sidebar({ groups }: SidebarProps) {
+export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen }: SidebarProps) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const [localSidebarOpen, setLocalSidebarOpen] = useState(false)
+
+  // Use props if provided, otherwise use local state
+  const isOpen = sidebarOpen !== undefined ? sidebarOpen : localSidebarOpen
+  const setOpen = setSidebarOpen || setLocalSidebarOpen
 
   const userName = (typeof window !== 'undefined' && localStorage.getItem('userName')) || 'Usuário'
 
@@ -34,17 +42,37 @@ export function Sidebar({ groups }: SidebarProps) {
   }
 
   return (
-    <aside className={cn('fixed left-0 top-0 h-screen w-64 shrink-0 border-r bg-sidebar background border-sidebar-border text-sidebar-foreground flex flex-col')}
-      style={{} as React.CSSProperties}
-    >
-      {/* Header padrão */}
+    <>
+      {isOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-20 bg-black/50"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
+      <aside
+        data-sidebar-toggle="true"
+        className={cn(
+          'fixed left-0 top-0 h-screen w-64 shrink-0 border-r bg-sidebar background border-sidebar-border text-sidebar-foreground flex flex-col',
+          'transition-transform duration-300 ease-in-out',
+          'md:translate-x-0',
+          isOpen ? 'translate-x-0 z-30' : '-translate-x-full md:translate-x-0'
+        )}
+        style={{} as React.CSSProperties}
+      >
       <div className="px-3 py-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center justify-between gap-2 mb-2">
           <img
             src="/assets/bora-logo.png"
             alt="BoraExpandir"
             className="h-14 w-auto max-w-full"
           />
+          <button
+            onClick={() => setOpen(false)}
+            className="md:hidden p-1 rounded hover:bg-sidebar-accent transition"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
         <div className="text-xs text-muted-foreground truncate">{userName}</div>
       </div>
@@ -100,6 +128,7 @@ export function Sidebar({ groups }: SidebarProps) {
         </button>
       </div>
     </aside>
+    </>
   )
 }
 

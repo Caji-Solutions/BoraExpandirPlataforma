@@ -22,11 +22,17 @@ export default function LeadCapturePage({ partnerName, partnerId, partnerAvatarU
 		.map((s) => s[0]?.toUpperCase())
 		.join("");
 
+	const isMobileDevice = () => {
+		const userAgent = navigator.userAgent.toLowerCase();
+		return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(userAgent);
+	};
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!nome.trim() || !email.trim() || !whats.trim()) return;
 		setLoading(true);
 		try {
+			/*
 			// Salvar lead no backend
 			const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/cliente/register`, {
 				method: 'POST',
@@ -40,13 +46,22 @@ export default function LeadCapturePage({ partnerName, partnerId, partnerAvatarU
 			});
 			if (!res.ok) {
 				console.error('Erro ao salvar lead:', await res.text());
-			}
+			}*/
 			// Redirecionar para WhatsApp
 			const digits = whats.replace(/\D/g, "");
 			const msg = encodeURIComponent(`Olá, sou ${nome}, vim indicado por ${partnerName}.`);
-			//verificar dispositivo e redirecionar par o app ou web
-			const waUrl = `https://wa.me/552997892095?text=${msg}`;
-			window.location.href = waUrl;
+			
+			// Detectar dispositivo e redirecionar apropriadamente
+			const isMobile = isMobileDevice();
+			const waUrl = isMobile 
+				? `whatsapp://send?phone=552997892095&text=${msg}`
+				: `https://web.whatsapp.com/send?phone=552997892095&text=${msg}`;
+					
+			console.log('User Agent:', navigator.userAgent);
+			console.log('Is Mobile:', isMobile);
+			console.log('WhatsApp URL:', waUrl);
+			 // Abrir em nova aba
+            window.open(waUrl, '_blank');
 		} finally {
 			setLoading(false);
 		}

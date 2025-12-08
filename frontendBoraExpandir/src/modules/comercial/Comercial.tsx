@@ -394,6 +394,7 @@ export default function Comercial() {
   const [showGeracaoLinkPagamento, setShowGeracaoLinkPagamento] = useState(false)
   const [showRequerimento, setShowRequerimento] = useState(false)
   const [contratoParaAssinar, setContratoParaAssinar] = useState<Contrato | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Mock data (substituir por chamadas ao backend)
   const [clientes, setClientes] = useState<Cliente[]>([])
@@ -480,9 +481,21 @@ export default function Comercial() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Sidebar groups={sidebarGroups} />
+      <Sidebar groups={sidebarGroups} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-      <main className="ml-64 p-8">
+      {/* Hamburger toggle button - fixed in header for mobile */}
+      {!sidebarOpen && (
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="md:hidden fixed top-4 left-4 z-40 p-2 rounded-lg bg-white border border-gray-200 text-gray-900 hover:bg-gray-50 transition"
+        >
+          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      )}
+
+      <main className="md:ml-64 p-4 md:p-8 pt-16 md:pt-8">
         <Routes>
           <Route 
             path="/" 
