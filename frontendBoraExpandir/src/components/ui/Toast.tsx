@@ -26,7 +26,7 @@ export function Toast({ message, type = 'info', duration = 4000, onClose }: Toas
 
   if (!isVisible) return null
 
-  const baseStyles = 'fixed bottom-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border animate-in fade-in slide-in-from-bottom-4 duration-300'
+  const baseStyles = 'flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-xs sm:max-w-sm md:max-w-md'
 
   const variants = {
     success: 'bg-emerald-50 border-emerald-200 text-emerald-900',
@@ -45,13 +45,14 @@ export function Toast({ message, type = 'info', duration = 4000, onClose }: Toas
   return (
     <div className={cn(baseStyles, variants[type])}>
       {icons[type]}
-      <span className="text-sm font-medium flex-1">{message}</span>
+      <span className="text-sm font-medium flex-1 break-words">{message}</span>
       <button
         onClick={() => {
           setIsVisible(false)
           onClose?.()
         }}
-        className="p-1 hover:bg-white/20 rounded transition-colors"
+        className="p-1 hover:bg-white/20 rounded transition-colors flex-shrink-0"
+        aria-label="Fechar notificação"
       >
         <X className="h-4 w-4" />
       </button>
@@ -69,10 +70,16 @@ export function useToast() {
       duration?: number
     }>
   >([])
+  console.log('useToast initialized')
 
   const showToast = (message: string, type: ToastType = 'info', duration = 4000) => {
     const id = Math.random().toString(36).substring(7)
-    setToasts((prev) => [...prev, { id, message, type, duration }])
+    console.log(`🔔 Toast ${type} adicionado:`, message, '| ID:', id)
+    setToasts((prev) => {
+      const novosToasts = [...prev, { id, message, type, duration }]
+      console.log('Toasts atualizados:', novosToasts)
+      return novosToasts
+    })
   }
 
   const removeToast = (id: string) => {
@@ -97,16 +104,18 @@ export function useToast() {
 
 // Componente para renderizar múltiplos Toasts
 export function ToastContainer({ toasts, onRemove }: { toasts: Array<{ id: string; message: string; type: ToastType; duration?: number }>; onRemove: (id: string) => void }) {
+  console.log('🎨 ToastContainer renderizado com toasts:', toasts)
   return (
-    <div className="fixed bottom-4 right-4 z-50 space-y-2">
+    <div className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col gap-2 pointer-events-none">
       {toasts.map((toast) => (
-        <Toast
-          key={toast.id}
-          message={toast.message}
-          type={toast.type}
-          duration={toast.duration}
-          onClose={() => onRemove(toast.id)}
-        />
+        <div key={toast.id} className="pointer-events-auto">
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            duration={toast.duration}
+            onClose={() => onRemove(toast.id)}
+          />
+        </div>
       ))}
     </div>
   )

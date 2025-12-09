@@ -20,6 +20,7 @@ import type {
   Requerimento,
   RequerimentoFormData
 } from '../../types/comercial'
+import Toast, { useToast, ToastContainer } from '../../components/ui/Toast'
 
 // Componentes de página
 function DashboardPage({ 
@@ -535,6 +536,15 @@ export default function Comercial() {
     },
   ]
 
+  const toast = useToast()
+
+  const handleShowGeracaoContrato = () => {
+    console.log('Iniciando criação de contrato...')
+    console.log(toast.info('hahahah',10))
+    toast.info('Iniciando criação de contrato...', 10)
+    setShowGeracaoContrato(true)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar groups={sidebarGroups} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
@@ -559,7 +569,7 @@ export default function Comercial() {
               <DashboardVendas 
                 contratos={contratos}
                 clientes={clientes}
-                onShowGeracaoContrato={() => setShowGeracaoContrato(true)}
+                onShowGeracaoContrato={handleShowGeracaoContrato}
                 onSetContratoParaAssinar={setContratoParaAssinar}
               />
             } 
@@ -607,7 +617,6 @@ export default function Comercial() {
           />
           <Route path="*" element={<Navigate to="/comercial" replace />} />
         </Routes>
-
       </main>
 
       {/* Modals */}
@@ -648,6 +657,8 @@ export default function Comercial() {
           onAssinar={handleAssinarContrato}
         />
       )}
+
+      <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
     </div>
   )
 }
