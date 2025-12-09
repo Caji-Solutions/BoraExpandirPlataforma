@@ -1,5 +1,9 @@
 import React, { useState, useMemo } from 'react'
 import { Calendar, Clock, ShoppingCart, Check, ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
+// import { useToast } from '../../components/Toast'
+// Update the import path below if Toast is located elsewhere:
+import { useToast } from '../../components/ui/Toast' // <-- Ensure this file exists or update the path
+import { SUCESSO, ERRO, AVISO } from '../../components/MockFrases'
 
 interface Cliente {
   id: string
@@ -90,6 +94,7 @@ const HORARIOS_DISPONIVEIS = [
 ]
 
 export default function Comercial1() {
+  const { success, error } = useToast()
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([])
   const [mesAtual, setMesAtual] = useState(new Date())
   const [diasSelecionados, setDiasSelecionados] = useState<Set<number>>(new Set())
@@ -263,22 +268,22 @@ export default function Comercial1() {
 
       if (response.status === 409) {
         const body = await response.json().catch(() => ({}))
-        const msg = body?.message || 'Horário indisponível'
-        alert(msg)
+        const msg = body?.message || ERRO.HORARIO_INDISPONIVEL
+        error(msg)
         return
       }
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({}))
         console.error('Erro ao salvar agendamento:', body)
-        alert(body?.message || 'Erro ao salvar agendamento')
+        error(body?.message || ERRO.AGENDAMENTO_FALHOU)
         return
       }
 
       console.log('Agendamento salvo no backend:', payload)
-    } catch (error) {
-      console.error('Erro ao salvar agendamento:', error)
-      alert('Erro ao salvar agendamento')
+    } catch (err) {
+      console.error('Erro ao salvar agendamento:', err)
+      error(ERRO.AGENDAMENTO_FALHOU)
       return
     }
 
