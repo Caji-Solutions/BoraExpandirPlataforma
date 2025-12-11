@@ -91,3 +91,21 @@ export interface AssinaturaDigital {
   data_assinatura: string
   hash_documento: string
 }
+
+export interface Lead {
+  id: string
+  nome: string
+  email: string
+  telefone: string
+  empresa?: string
+  status: 'pendente' | 'contatado' | 'qualificado' | 'convertido' | 'perdido'
+  created_at: string
+  updated_at: string
+}
+
+export interface LeadFormData {
+  nome: string
+  email: string
+  telefone: string
+  empresa?: string
+}

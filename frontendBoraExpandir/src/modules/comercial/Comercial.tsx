@@ -9,6 +9,7 @@ import GeracaoLinkPagamento from './GeracaoLinkPagamento'
 import RequerimentoSuperadmin from './RequerimentoSuperadmin'
 import AssinaturaDigital from './AssinaturaDigital'
 import Comercial1 from './Comercial1'
+import LeadsPage from './Leads'
 import { Config } from '../../components/ui/Config'
 import { Plus, Home, Users, FileText, CreditCard, AlertCircle, PenTool, CheckCircle, Calendar, Settings } from 'lucide-react'
 import type { 
@@ -19,7 +20,9 @@ import type {
   LinkPagamento,
   LinkPagamentoFormData,
   Requerimento,
-  RequerimentoFormData
+  RequerimentoFormData,
+  Lead,
+  LeadFormData
 } from '../../types/comercial'
 import Toast, { useToast, ToastContainer } from '../../components/ui/Toast'
 
@@ -459,6 +462,7 @@ export default function Comercial() {
   const [contratos, setContratos] = useState<Contrato[]>([])
   const [linksPagamento, setLinksPagamento] = useState<LinkPagamento[]>([])
   const [requerimentos, setRequerimentos] = useState<Requerimento[]>([])
+  const [leads, setLeads] = useState<Lead[]>([])
 
   // Handlers
   const handleSaveCliente = async (clienteData: ClienteFormData) => {
@@ -529,7 +533,9 @@ export default function Comercial() {
       items: [
         { label: 'Dashboard', to: '/comercial', icon: Home },
         { label: 'Agendamento', to: '/comercial/agendamento', icon: Calendar },
+        { label: 'Meus Agendamentos', to: '/comercial/meus-agendamentos', icon: Calendar },
         { label: 'Clientes', to: '/comercial/clientes', icon: Users },
+        { label: 'Leads', to: '/comercial/leads', icon: Users },
         { label: 'Contratos', to: '/comercial/contratos', icon: FileText },
         { label: 'Pagamentos', to: '/comercial/pagamentos', icon: CreditCard },
         { label: 'Requerimentos', to: '/comercial/requerimentos', icon: AlertCircle },
@@ -580,6 +586,7 @@ export default function Comercial() {
             path="/agendamento" 
             element={<Comercial1 />}
           />
+          
           <Route 
             path="/clientes" 
             element={
@@ -588,6 +595,10 @@ export default function Comercial() {
                 onShowCadastroCliente={() => setShowCadastroCliente(true)}
               />
             } 
+          />
+          <Route 
+            path="/leads" 
+            element={<LeadsPage />}
           />
           <Route 
             path="/contratos" 
