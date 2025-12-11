@@ -326,22 +326,74 @@ export default function Comercial1() {
     setPasso('calendario')
   }
 
-  const handleCadastrarNovoCliente = () => {
+  const handleCadastrarNovoCliente = async () => {
     if (!novoCliente.nome || !novoCliente.email || !novoCliente.telefone) {
       error('Preencha nome, e-mail e telefone.')
       return
     }
-    const cliente: Cliente = {
-      ...novoCliente,
-      id: Date.now().toString(),
+
+    const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || ''
+    
+    // Se não houver backend, cria localmente
+    if (!backendUrl) {
+      console.warn('VITE_BACKEND_URL não configurado; criando lead localmente')
+      const cliente: Cliente = {
+        ...novoCliente,
+        id: Date.now().toString(),
+      }
+      setClientes((prev) => [...prev, cliente])
+      setClienteSelecionado(cliente)
+      setShowNovoCliente(false)
+      setMostrarListaClientes(false)
+      setNovoCliente({ id: '', nome: '', email: '', telefone: '' })
+      success('Lead cadastrado e selecionado.')
+      setPasso('calendario')
+      return
     }
-    setClientes((prev) => [...prev, cliente])
-    setClienteSelecionado(cliente)
-    setShowNovoCliente(false)
-    setMostrarListaClientes(false)
-    setNovoCliente({ id: '', nome: '', email: '', telefone: '' })
-    success('Cliente cadastrado e selecionado.')
-    setPasso('calendario')
+
+    try {
+      // POST para registrar o lead no backend
+      const leadPayload = {
+        nome: novoCliente.nome,
+        email: novoCliente.email,
+        telefone: novoCliente.telefone,
+      }
+      //Criar endpoint de cadastro de lead
+      const response = await fetch(`${backendUrl}/leads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(leadPayload),
+      })
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}))
+        console.error('Erro ao registrar lead no backend:', errorBody)
+        error(errorBody?.message || 'Erro ao registrar lead')
+        return
+      }
+
+      const leadData = await response.json()
+      console.log('Lead registrado no backend:', leadData)
+
+      // Cria o cliente localmente com ID retornado do backend
+      const cliente: Cliente = {
+        id: leadData.id || novoCliente.id || Date.now().toString(),
+        nome: novoCliente.nome,
+        email: novoCliente.email,
+        telefone: novoCliente.telefone,
+      }
+
+      setClientes((prev) => [...prev, cliente])
+      setClienteSelecionado(cliente)
+      setShowNovoCliente(false)
+      setMostrarListaClientes(false)
+      setNovoCliente({ id: '', nome: '', email: '', telefone: '' })
+      success('Lead cadastrado e selecionado.')
+      setPasso('calendario')
+    } catch (err) {
+      console.error('Erro ao registrar lead:', err)
+      error('Erro ao registrar lead. Tente novamente.')
+    }
   }
 
   const mostrarFluxo = clienteSelecionado && ((passo === 'calendario') || (passo === 'horario' && dataSelecionada) || passo === 'produto')

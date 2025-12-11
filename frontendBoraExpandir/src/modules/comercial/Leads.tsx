@@ -123,8 +123,7 @@ export default function LeadsPage() {
   const filteredLeads = leads.filter(
     lead =>
       lead.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.empresa?.toLowerCase().includes(searchTerm.toLowerCase())
+      lead.email.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   const handleDeleteLead = (id: string) => {
@@ -177,9 +176,6 @@ export default function LeadsPage() {
                     Contato
                   </th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">
-                    Empresa
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">
@@ -220,18 +216,6 @@ export default function LeadsPage() {
                           </a>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {lead.empresa ? (
-                          <span className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4" />
-                            {lead.empresa}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400 dark:text-gray-500">-</span>
-                        )}
-                      </p>
                     </td>
                     <td className="px-6 py-4">
                       <span

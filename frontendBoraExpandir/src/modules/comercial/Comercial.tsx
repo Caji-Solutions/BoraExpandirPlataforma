@@ -10,6 +10,9 @@ import RequerimentoSuperadmin from './RequerimentoSuperadmin'
 import AssinaturaDigital from './AssinaturaDigital'
 import Comercial1 from './Comercial1'
 import LeadsPage from './Leads'
+import AgendamentosPage from './Agendamentos'
+import ProximosAgendamentosCard from './components/ProximosAgendamentosCard'
+import CadastroRapidoLeadCard from './components/CadastroRapidoLeadCard'
 import { Config } from '../../components/ui/Config'
 import { Plus, Home, Users, FileText, CreditCard, AlertCircle, PenTool, CheckCircle, Calendar, Settings } from 'lucide-react'
 import type { 
@@ -22,7 +25,10 @@ import type {
   Requerimento,
   RequerimentoFormData,
   Lead,
-  LeadFormData
+  LeadFormData,
+  Agendamento,
+  AgendamentoFormData
+
 } from '../../types/comercial'
 import Toast, { useToast, ToastContainer } from '../../components/ui/Toast'
 
@@ -32,17 +38,19 @@ function DashboardPage({
   contratos, 
   linksPagamento, 
   requerimentos,
+  agendamentos,
   onShowCadastroCliente,
-  onShowGeracaoContrato,
-  onShowGeracaoLinkPagamento
+  onSaveLead,
+  leads
 }: {
   clientes: Cliente[]
   contratos: Contrato[]
   linksPagamento: LinkPagamento[]
   requerimentos: Requerimento[]
+  agendamentos: Agendamento[]
   onShowCadastroCliente: () => void
-  onShowGeracaoContrato: () => void
-  onShowGeracaoLinkPagamento: () => void
+  onSaveLead: (leadData: LeadFormData) => void
+  leads: Lead[]
 }) {
   return (
     <div>
@@ -95,33 +103,9 @@ function DashboardPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <button
-          onClick={onShowCadastroCliente}
-          className="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-sm border-2 border-dashed border-gray-300 dark:border-neutral-600 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all text-left"
-        >
-          <Plus className="h-8 w-8 text-emerald-600 dark:text-emerald-400 mb-2" />
-          <h3 className="font-semibold text-gray-900 dark:text-white">Cadastrar Cliente</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Adicionar novo cliente ao sistema</p>
-        </button>
-
-        <button
-          onClick={onShowGeracaoContrato}
-          className="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-sm border-2 border-dashed border-gray-300 dark:border-neutral-600 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all text-left"
-        >
-          <FileText className="h-8 w-8 text-blue-600 dark:text-blue-400 mb-2" />
-          <h3 className="font-semibold text-gray-900 dark:text-white">Gerar Contrato</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Criar novo contrato para cliente</p>
-        </button>
-
-        <button
-          onClick={onShowGeracaoLinkPagamento}
-          className="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-sm border-2 border-dashed border-gray-300 dark:border-neutral-600 hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-all text-left"
-        >
-          <CreditCard className="h-8 w-8 text-purple-600 dark:text-purple-400 mb-2" />
-          <h3 className="font-semibold text-gray-900 dark:text-white">Gerar Link de Pagamento</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Criar link para recebimento</p>
-        </button>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ProximosAgendamentosCard agendamentos={agendamentos} />
+        <CadastroRapidoLeadCard onSaveLead={onSaveLead} />
       </div>
     </div>
   )
@@ -463,6 +447,111 @@ export default function Comercial() {
   const [linksPagamento, setLinksPagamento] = useState<LinkPagamento[]>([])
   const [requerimentos, setRequerimentos] = useState<Requerimento[]>([])
   const [leads, setLeads] = useState<Lead[]>([])
+  
+  // Mock agendamentos
+  const [agendamentos, setAgendamentos] = useState<Agendamento[]>([
+    {
+      id: '1',
+      cliente_id: '1',
+      cliente: {
+        id: '1',
+        nome: 'João Silva',
+        email: 'joao.silva@example.com',
+        telefone: '(11) 98765-4321',
+        documento: '123.456.789-00',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      data: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      hora: '14:00',
+      duracao_minutos: 60,
+      produto: 'Consultoria Jurídica - Contrato Comercial',
+      status: 'agendado',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: '2',
+      cliente_id: '2',
+      cliente: {
+        id: '2',
+        nome: 'Maria Santos',
+        email: 'maria.santos@example.com',
+        telefone: '(21) 99876-5432',
+        documento: '987.654.321-00',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      data: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      hora: '10:30',
+      duracao_minutos: 45,
+      produto: 'Parecer Jurídico - Propriedade Intelectual',
+      status: 'agendado',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: '3',
+      cliente_id: '3',
+      cliente: {
+        id: '3',
+        nome: 'Carlos Oliveira',
+        email: 'carlos.oliveira@example.com',
+        telefone: '(31) 97654-3210',
+        documento: '456.789.123-00',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      data: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      hora: '15:00',
+      duracao_minutos: 90,
+      produto: 'Assessoria Contratual - M&A',
+      status: 'agendado',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: '4',
+      cliente_id: '4',
+      cliente: {
+        id: '4',
+        nome: 'Ana Costa',
+        email: 'ana.costa@example.com',
+        telefone: '(41) 96543-2109',
+        documento: '789.123.456-00',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      data: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      hora: '09:00',
+      duracao_minutos: 60,
+      produto: 'Consultoria - Direito Trabalhista',
+      status: 'agendado',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: '5',
+      cliente_id: '5',
+      cliente: {
+        id: '5',
+        nome: 'Pedro Almeida',
+        email: 'pedro.almeida@example.com',
+        telefone: '(51) 95432-1098',
+        documento: '321.654.987-00',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      data: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      hora: '13:30',
+      duracao_minutos: 45,
+      produto: 'Análise de Conformidade - LGPD',
+      status: 'agendado',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  ])
+
 
   // Handlers
   const handleSaveCliente = async (clienteData: ClienteFormData) => {
@@ -526,6 +615,19 @@ export default function Comercial() {
     ))
   }
 
+  const handleSaveLead = async (leadData: LeadFormData) => {
+    // TODO: Integrar com backend
+    const novoLead: Lead = {
+      id: Math.random().toString(36).substring(7),
+      ...leadData,
+      status: 'pendente',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    setLeads(prev => [...prev, novoLead])
+    toast.success('Lead cadastrado com sucesso!', 3)
+  }
+
   // Configuração da sidebar
   const sidebarGroups: SidebarGroup[] = [
     {
@@ -574,17 +676,25 @@ export default function Comercial() {
           <Route 
             path="/" 
             element={
-              <DashboardVendas 
-                contratos={contratos}
+              <DashboardPage 
                 clientes={clientes}
-                onShowGeracaoContrato={handleShowGeracaoContrato}
-                onSetContratoParaAssinar={setContratoParaAssinar}
+                contratos={contratos}
+                linksPagamento={linksPagamento}
+                requerimentos={requerimentos}
+                agendamentos={agendamentos}
+                onShowCadastroCliente={() => setShowCadastroCliente(true)}
+                onSaveLead={handleSaveLead}
+                leads={leads}
               />
             } 
           />
           <Route 
             path="/agendamento" 
             element={<Comercial1 />}
+          />
+          <Route 
+            path="/meus-agendamentos" 
+            element={<AgendamentosPage agendamentos={agendamentos} />}
           />
           
           <Route 

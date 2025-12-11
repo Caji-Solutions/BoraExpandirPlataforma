@@ -109,3 +109,26 @@ export interface LeadFormData {
   telefone: string
   empresa?: string
 }
+
+export interface Agendamento {
+  id: string
+  cliente_id: string
+  cliente?: Cliente
+  data: string
+  hora: string
+  duracao_minutos: number
+  produto: string
+  status: 'agendado' | 'realizado' | 'cancelado'
+  observacoes?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface AgendamentoFormData {
+  cliente_id: string
+  data: string
+  hora: string
+  duracao_minutos: number
+  produto: string
+  observacoes?: string
+}
