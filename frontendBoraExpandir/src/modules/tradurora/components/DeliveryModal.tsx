@@ -1,0 +1,188 @@
+import React, { useState } from 'react'
+import { X, Download, Upload, AlertTriangle } from 'lucide-react'
+import type { TraducaoItem } from '../types'
+
+interface DeliveryModalProps {
+  traducao: TraducaoItem | null
+  onClose: () => void
+  onSubmit: (traducaoId: string, arquivo: File) => void
+}
+
+export default function DeliveryModal({ traducao, onClose, onSubmit }: DeliveryModalProps) {
+  const [arquivo, setArquivo] = useState<File | null>(null)
+  const [revisada, setRevisada] = useState(false)
+  const [uploading, setUploading] = useState(false)
+
+  if (!traducao) return null
+
+  const agora = new Date()
+  const prazo = new Date(traducao.prazoSLA)
+  const diffHours = (prazo.getTime() - agora.getTime()) / (1000 * 60 * 60)
+  const isUrgent = diffHours < 4
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const files = e.dataTransfer.files
+    if (files.length > 0) {
+      setArquivo(files[0])
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setArquivo(e.target.files[0])
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (!arquivo || !revisada) return
+    setUploading(true)
+    try {
+      onSubmit(traducao.id, arquivo)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 bg-white dark:bg-neutral-800 border-b border-gray-200 dark:border-neutral-700 p-6 flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            {traducao.documentoNome} ({traducao.parIdiomas.origem} → {traducao.parIdiomas.destino})
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg transition-colors"
+          >
+            <X className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          {/* Alert Banner */}
+          {isUrgent && (
+            <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg flex gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-red-900 dark:text-red-200">
+                  ⚠️ Atenção: Documento urgente
+                </p>
+                <p className="text-sm text-red-800 dark:text-red-300 mt-1">
+                  Este documento vence em menos de 4 horas. Entrega imediata é crítica.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Prazo Info */}
+          <div className="bg-gray-50 dark:bg-neutral-700/50 p-4 rounded-lg">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Prazo de Entrega</p>
+            <p className="text-lg font-semibold text-gray-900 dark:text-white">
+              {prazo.toLocaleString('pt-BR')}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Cliente: {traducao.clienteNome}
+            </p>
+          </div>
+
+          {/* Download Original */}
+          <div>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Documento Original</p>
+            <button className="flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-500/30 transition-colors">
+              <Download className="h-4 w-4" />
+              Baixar Original (.pdf)
+            </button>
+          </div>
+
+          {/* Upload Area */}
+          <div>
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Enviar Tradução</p>
+            
+            {!arquivo ? (
+              <div
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                className="relative border-2 border-dashed border-gray-300 dark:border-neutral-600 rounded-lg p-8 text-center hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer bg-gray-50 dark:bg-neutral-700/50"
+              >
+                <input
+                  type="file"
+                  onChange={handleFileChange}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  accept=".pdf,.docx,.doc,.txt"
+                />
+                <Upload className="h-8 w-8 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+                <p className="font-medium text-gray-700 dark:text-gray-300">
+                  Arraste ou clique para enviar
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Formatos suportados: PDF, DOCX, DOC, TXT
+                </p>
+              </div>
+            ) : (
+              <div className="bg-gray-50 dark:bg-neutral-700/50 border border-gray-200 dark:border-neutral-600 rounded-lg p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 dark:text-white truncate">
+                      {arquivo.name}
+                    </p>
+                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-600 dark:text-gray-400">
+                      <span>Tamanho: {(arquivo.size / 1024).toFixed(2)} KB</span>
+                      <span>•</span>
+                      <span>Tipo: {arquivo.type || 'Desconhecido'}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setArquivo(null)}
+                    className="p-1.5 hover:bg-gray-200 dark:hover:bg-neutral-600 rounded-lg transition-colors"
+                    title="Remover arquivo"
+                  >
+                    <X className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Checkbox */}
+          <label className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-neutral-700/50 rounded-lg cursor-pointer">
+            <input
+              type="checkbox"
+              checked={revisada}
+              onChange={e => setRevisada(e.target.checked)}
+              className="w-4 h-4 mt-1 rounded border-gray-300 dark:border-neutral-600 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              ✓ Confirmo que a tradução foi revisada e está completa
+            </span>
+          </label>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-neutral-700">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-2 bg-gray-100 dark:bg-neutral-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-neutral-600 transition-colors font-medium"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={!arquivo || !revisada || uploading}
+              className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+            >
+              {uploading ? 'Enviando...' : 'Enviar Tradução'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

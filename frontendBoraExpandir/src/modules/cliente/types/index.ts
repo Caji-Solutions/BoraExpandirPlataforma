@@ -57,3 +57,50 @@ export interface RequiredDocument {
   required: boolean;
   examples?: string[];
 }
+
+export interface ApprovedDocument {
+  id: string;
+  clientId: string;
+  name: string;
+  originalLanguage: string;
+  targetLanguages: string[];
+  approvalDate: Date;
+  fileUrl?: string;
+}
+
+export interface TranslatedDocument {
+  id: string;
+  clientId: string;
+  approvedDocumentId: string;
+  documentName: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  fileName: string;
+  fileSize: number;
+  uploadDate: Date;
+  fileUrl?: string;
+}
+
+export interface QuoteRequest {
+  id: string;
+  clientId: string;
+  approvedDocumentIds: string[];
+  targetLanguages: string[];
+  status: 'pendente' | 'respondido' | 'aceito' | 'recusado';
+  createdAt: Date;
+  responseDate?: Date;
+}
+
+export interface TranslationOrcamento {
+  id: string;
+  clientId: string;
+  documentName: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  value?: number;
+  deliveryDate?: Date;
+  notes?: string;
+  status: 'pendente' | 'respondido' | 'aceito' | 'recusado';
+  createdAt: Date;
+  updatedAt: Date;
+}

@@ -8,15 +8,18 @@ import { DocumentStatus } from './components/DocumentStatus'
 import { ProcessTimeline } from './components/ProcessTimeline'
 import { Notifications } from './components/Notifications'
 import { DocumentModal } from './components/DocumentModal'
+import { Traducao } from './components/Traducao'
 import { 
   mockClient, 
   mockDocuments, 
   mockProcess, 
   mockNotifications, 
-  mockRequiredDocuments 
+  mockRequiredDocuments,
+  mockApprovedDocuments,
+  mockTranslatedDocuments,
 } from './lib/mock-data'
-import { Document, Notification } from './types'
-import { Home, FileText, Upload, GitBranch, Bell } from 'lucide-react'
+import { Document, Notification, ApprovedDocument, TranslatedDocument } from './types'
+import { Home, FileText, Upload, GitBranch, Bell, Languages } from 'lucide-react'
 
 export function ClienteApp() {
   const location = useLocation()
@@ -25,6 +28,8 @@ export function ClienteApp() {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
   const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [approvedDocuments, setApprovedDocuments] = useState<ApprovedDocument[]>(mockApprovedDocuments)
+  const [translatedDocuments, setTranslatedDocuments] = useState<TranslatedDocument[]>(mockTranslatedDocuments)
   
   const unreadNotifications = notifications.filter(n => !n.read).length
 
@@ -87,6 +92,53 @@ export function ClienteApp() {
     )
   }
 
+  const handleUploadTranslation = (file: File, approvedDocumentId: string, targetLanguage: string) => {
+    const newTranslation: TranslatedDocument = {
+      id: Date.now().toString(),
+      clientId: mockClient.id,
+      approvedDocumentId,
+      documentName: approvedDocuments.find(d => d.id === approvedDocumentId)?.name || 'Documento',
+      sourceLanguage: approvedDocuments.find(d => d.id === approvedDocumentId)?.originalLanguage || 'PT',
+      targetLanguage,
+      fileName: file.name,
+      fileSize: file.size,
+      uploadDate: new Date(),
+    }
+
+    setTranslatedDocuments(prev => [...prev, newTranslation])
+
+    const newNotification: Notification = {
+      id: Date.now().toString(),
+      clientId: mockClient.id,
+      type: 'success',
+      title: 'Tradução Enviada',
+      message: `Sua tradução "${file.name}" foi enviada com sucesso.`,
+      read: false,
+      createdAt: new Date(),
+    }
+
+    setNotifications(prev => [newNotification, ...prev])
+  }
+
+  const handleRequestQuote = (documentIds: string[], targetLanguages: string[]) => {
+    // Send to backend: POST /quotes with documentIds and targetLanguages
+    const selectedDocs = approvedDocuments.filter(d => documentIds.includes(d.id))
+    const docNames = selectedDocs.map(d => d.name).join(', ')
+
+    const newNotification: Notification = {
+      id: Date.now().toString(),
+      clientId: mockClient.id,
+      type: 'info',
+      title: 'Solicitação de Orçamento Enviada',
+      message: `Sua solicitação de orçamento para "${docNames}" foi enviada. Você receberá uma resposta em até 24 horas.`,
+      read: false,
+      createdAt: new Date(),
+    }
+
+    setNotifications(prev => [newNotification, ...prev])
+    console.log('Quote request:', { documentIds, targetLanguages })
+  }
+
   const handleViewDocument = (document: Document) => {
     setSelectedDocument(document)
     setIsDocumentModalOpen(true)
@@ -120,6 +172,7 @@ export function ClienteApp() {
         { label: 'Meu Processo', to: '/cliente/processo', icon: GitBranch },
         { label: 'Status Documentos', to: '/cliente/documentos', icon: FileText },
         { label: 'Enviar Documentos', to: '/cliente/upload', icon: Upload },
+        { label: 'Tradução', to: '/cliente/traducao', icon: Languages },
         { 
           label: 'Notificações', 
           to: '/cliente/notificacoes', 
@@ -161,8 +214,7 @@ export function ClienteApp() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar groups={sidebarGroups} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-      
-      {/* Hamburger button - only visible on mobile */}
+
       {!sidebarOpen && (
         <button
           onClick={() => setSidebarOpen(true)}
@@ -209,6 +261,17 @@ export function ClienteApp() {
                 requiredDocuments={mockRequiredDocuments}
                 onUpload={handleUpload}
                 onDelete={handleDeleteDocument}
+              />
+            } 
+          />
+          <Route 
+            path="traducao" 
+            element={
+              <Traducao
+                approvedDocuments={approvedDocuments}
+                translatedDocuments={translatedDocuments}
+                onUploadTranslation={handleUploadTranslation}
+                onRequestQuote={handleRequestQuote}
               />
             } 
           />

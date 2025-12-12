@@ -1,4 +1,4 @@
-import { Client, Document, Process, Notification, RequiredDocument } from '../types'
+import { Client, Document, Process, Notification, RequiredDocument, ApprovedDocument, TranslatedDocument } from '../types'
 
 // Mock data for development
 export const mockClient: Client = {
@@ -89,6 +89,47 @@ export const mockProcess: Process = {
   createdAt: new Date('2024-01-15'),
   updatedAt: new Date('2024-01-26'),
 }
+
+export const mockApprovedDocuments: ApprovedDocument[] = [
+  {
+    id: '1',
+    clientId: mockClient.id,
+    name: 'Certidão de Casamento',
+    originalLanguage: 'PT',
+    targetLanguages: ['EN', 'ES', 'IT'],
+    approvalDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: '2',
+    clientId: mockClient.id,
+    name: 'Diploma Universitário',
+    originalLanguage: 'PT',
+    targetLanguages: ['EN', 'FR'],
+    approvalDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: '3',
+    clientId: mockClient.id,
+    name: 'Histórico Escolar',
+    originalLanguage: 'PT',
+    targetLanguages: ['EN', 'ES'],
+    approvalDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+  },
+]
+
+export const mockTranslatedDocuments: TranslatedDocument[] = [
+  {
+    id: '1',
+    clientId: mockClient.id,
+    approvedDocumentId: '1',
+    documentName: 'Certidão de Casamento',
+    sourceLanguage: 'PT',
+    targetLanguage: 'EN',
+    fileName: 'certidao-casamento-en.pdf',
+    fileSize: 245000,
+    uploadDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+  },
+]
 
 export const mockNotifications: Notification[] = [
   {
