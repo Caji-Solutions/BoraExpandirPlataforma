@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from 'react-router-dom'
 import { Sidebar } from '../../components/ui/Sidebar'
 import type { SidebarGroup } from '../../components/ui/Sidebar'
 import { Dashboard } from './components/Dashboard'
+import PartnerDashboard from './components/PartnerDashboard'
 import { DocumentUpload } from './components/DocumentUpload'
 import { DocumentStatus } from './components/DocumentStatus'
 import { ProcessTimeline } from './components/ProcessTimeline'
@@ -33,6 +34,12 @@ export function ClienteApp() {
   const [translatedDocuments, setTranslatedDocuments] = useState<TranslatedDocument[]>(mockTranslatedDocuments)
   
   const unreadNotifications = notifications.filter(n => !n.read).length
+  const isPartnerOnly = !!mockClient.isPartner && mockClient.isClient === false
+
+  const handleBecomeClient = () => {
+    // Placeholder action: redirect to a sales/checkout page or open a modal
+    window.location.href = '/contato?origem=parceiro-cta'
+  }
 
   const handleUpload = (file: File, documentType: string) => {
     // Simulate file upload
@@ -165,29 +172,65 @@ export function ClienteApp() {
   }, [location.pathname])
 
   // Configuração da sidebar seguindo o padrão do projeto
-  const sidebarGroups: SidebarGroup[] = [
-    {
-      label: 'Menu Principal',
-      items: [
-        { label: 'Dashboard', to: '/cliente', icon: Home },
-        { label: 'Meu Processo', to: '/cliente/processo', icon: GitBranch },
-        { label: 'Status Documentos', to: '/cliente/documentos', icon: FileText },
-        { label: 'Enviar Documentos', to: '/cliente/upload', icon: Upload },
-        { label: 'Tradução', to: '/cliente/traducao', icon: Languages },
-        { label: 'Parceiro', to: '/cliente/parceiro', icon: Users },
-        { 
-          label: 'Notificações', 
-          to: '/cliente/notificacoes', 
-          icon: Bell,
-          badge: unreadNotifications > 0 ? (
-            <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-red-500 text-white">
-              {unreadNotifications}
-            </span>
-          ) : undefined
+  const sidebarGroups: SidebarGroup[] = isPartnerOnly
+    ? [
+        {
+          label: 'Menu Principal',
+          items: [
+            { label: 'Dashboard', to: '/cliente', icon: Home },
+            { label: 'Parceiro', to: '/cliente/parceiro', icon: Users },
+          ],
         },
-      ],
-    },
-  ]
+      ]
+    : [
+        {
+          label: 'Menu Principal',
+          items: [
+            { label: 'Dashboard', to: '/cliente', icon: Home },
+            { label: 'Meu Processo', to: '/cliente/processo', icon: GitBranch },
+            { label: 'Status Documentos', to: '/cliente/documentos', icon: FileText },
+            { label: 'Enviar Documentos', to: '/cliente/upload', icon: Upload },
+            { label: 'Tradução', to: '/cliente/traducao', icon: Languages },
+            { label: 'Parceiro', to: '/cliente/parceiro', icon: Users },
+            { 
+              label: 'Notificações', 
+              to: '/cliente/notificacoes', 
+              icon: Bell,
+              badge: unreadNotifications > 0 ? (
+                <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-red-500 text-white">
+                  {unreadNotifications}
+                </span>
+              ) : undefined
+            },
+          ],
+        },
+      ]
+
+  // Modo parceiro (não cliente)
+  if (isPartnerOnly) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <Sidebar groups={sidebarGroups} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        {!sidebarOpen && (
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="md:hidden fixed top-4 left-4 z-40 p-2 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg transition"
+            aria-label="Abrir menu"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        )}
+        <main className="md:ml-64 p-4 md:p-8 pt-16 md:pt-8">
+          <Routes>
+            <Route index element={<PartnerDashboard client={mockClient} onBecomeClient={handleBecomeClient} />} />
+            <Route path="parceiro" element={<Parceiro />} />
+          </Routes>
+        </main>
+      </div>
+    )
+  }
 
   // Check if client has access
   if (!mockClient.accessGranted) {

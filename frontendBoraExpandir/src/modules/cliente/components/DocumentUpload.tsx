@@ -61,8 +61,8 @@ export function DocumentUpload({ documents, requiredDocuments, onUpload, onDelet
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-black mb-2">Upload de Documentos</h2>
-        <p className="text-gray-600">Envie os documentos necessários para o seu processo.</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Upload de Documentos</h2>
+        <p className="text-gray-600 dark:text-gray-400">Envie os documentos necessários para o seu processo.</p>
       </div>
 
       <div className="grid gap-6">
@@ -85,8 +85,8 @@ export function DocumentUpload({ documents, requiredDocuments, onUpload, onDelet
                       <StatusIcon className="h-5 w-5" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg text-gray-900">{reqDoc.name}</CardTitle>
-                      <CardDescription>{reqDoc.description}</CardDescription>
+                      <CardTitle className="text-lg text-gray-900 dark:text-white">{reqDoc.name}</CardTitle>
+                      <CardDescription className="dark:text-gray-400">{reqDoc.description}</CardDescription>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -105,12 +105,12 @@ export function DocumentUpload({ documents, requiredDocuments, onUpload, onDelet
               <CardContent>
                 {uploadedDoc ? (
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                       <div className="flex items-center space-x-3">
-                        <FileText className="h-5 w-5 text-gray-500" />
+                        <FileText className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                         <div>
-                          <p className="font-medium text-gray-900">{uploadedDoc.fileName}</p>
-                          <p className="text-sm text-gray-500">
+                          <p className="font-medium text-gray-900 dark:text-white">{uploadedDoc.fileName}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
                             Enviado em {formatDate(uploadedDoc.uploadDate)}
                             {uploadedDoc.fileSize && ` • ${formatFileSize(uploadedDoc.fileSize)}`}
                           </p>
@@ -120,18 +120,17 @@ export function DocumentUpload({ documents, requiredDocuments, onUpload, onDelet
                         variant="outline"
                         size="sm"
                         onClick={() => onDelete(uploadedDoc.id)}
-                        className='text-black'
                       >
                         Remover
                       </Button>
                     </div>
 
                     {uploadedDoc.status === 'rejected' && uploadedDoc.rejectionReason && (
-                      <div className="flex items-start space-x-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-                        <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+                      <div className="flex items-start space-x-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                        <AlertCircle className="h-5 w-5 text-red-500 dark:text-red-400 mt-0.5" />
                         <div>
-                          <p className="text-red-800 font-medium">Documento rejeitado</p>
-                          <p className="text-red-700 text-sm mt-1">{uploadedDoc.rejectionReason}</p>
+                          <p className="text-red-800 dark:text-red-200 font-medium">Documento rejeitado</p>
+                          <p className="text-red-700 dark:text-red-300 text-sm mt-1">{uploadedDoc.rejectionReason}</p>
                         </div>
                       </div>
                     )}
@@ -147,7 +146,7 @@ export function DocumentUpload({ documents, requiredDocuments, onUpload, onDelet
                         />
                         <Button
                           variant="outline"
-                          className="w-full text-black"
+                          className="w-full"
                           onClick={() => document.getElementById(`file-${reqDoc.type}-replace`)?.click()}
                         >
                           Substituir Documento
@@ -161,8 +160,8 @@ export function DocumentUpload({ documents, requiredDocuments, onUpload, onDelet
                       className={cn(
                         "border-2 border-dashed rounded-lg p-8 text-center transition-colors",
                         dragOver === reqDoc.type
-                          ? "border-primary-500 bg-primary-50"
-                          : "border-gray-300 hover:border-gray-400"
+                          ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20"
+                          : "border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600"
                       )}
                       onDrop={(e) => handleDrop(e, reqDoc.type)}
                       onDragOver={(e) => {
@@ -171,11 +170,11 @@ export function DocumentUpload({ documents, requiredDocuments, onUpload, onDelet
                       }}
                       onDragLeave={() => setDragOver(null)}
                     >
-                      <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-lg font-medium text-gray-900 mb-2">
+                      <Upload className="h-12 w-12 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+                      <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                         Arraste o arquivo aqui ou clique para enviar
                       </p>
-                      <p className="text-gray-500 mb-4">
+                      <p className="text-gray-500 dark:text-gray-400 mb-4">
                         Formatos aceitos: PDF, JPG, PNG, DOC, DOCX
                       </p>
                       
@@ -194,9 +193,9 @@ export function DocumentUpload({ documents, requiredDocuments, onUpload, onDelet
                     </div>
 
                     {reqDoc.examples && reqDoc.examples.length > 0 && (
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-blue-900 mb-2">Exemplos aceitos:</h4>
-                        <ul className="text-sm text-blue-800 space-y-1">
+                      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                        <h4 className="font-medium text-blue-900 dark:text-blue-200 mb-2">Exemplos aceitos:</h4>
+                        <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
                           {reqDoc.examples.map((example, index) => (
                             <li key={index} className="flex items-center space-x-2">
                               <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>

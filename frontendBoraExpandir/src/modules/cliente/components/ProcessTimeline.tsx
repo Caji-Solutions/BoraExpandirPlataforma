@@ -57,10 +57,10 @@ export function ProcessTimeline({ process }: ProcessTimelineProps) {
         <CardContent>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Progresso Geral
               </span>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-500 dark:text-gray-400">
                 {completedSteps} de {totalSteps} etapas concluídas
               </span>
             </div>
@@ -79,13 +79,13 @@ export function ProcessTimeline({ process }: ProcessTimelineProps) {
             <div key={step.id} className="relative">
               {/* Connection line */}
               {!isLast && (
-                <div className="absolute left-6 top-12 w-0.5 h-16 bg-gray-200" />
+                <div className="absolute left-6 top-12 w-0.5 h-16 bg-gray-200 dark:bg-gray-700" />
               )}
 
               <Card className={cn(
                 "relative transition-all duration-200",
-                isActive && "ring-2 ring-blue-500 ring-offset-2",
-                step.status === 'completed' && "bg-green-50 border-green-200"
+                isActive && "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900",
+                step.status === 'completed' && "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
               )}>
                 <CardContent className="p-6">
                   <div className="flex items-start space-x-4">
@@ -98,7 +98,7 @@ export function ProcessTimeline({ process }: ProcessTimelineProps) {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                           {step.name}
                         </h3>
                         <div className="flex items-center space-x-2">
@@ -121,11 +121,11 @@ export function ProcessTimeline({ process }: ProcessTimelineProps) {
                       </div>
 
                       {step.description && (
-                        <p className="text-gray-600 mt-2">{step.description}</p>
+                        <p className="text-gray-600 dark:text-gray-400 mt-2">{step.description}</p>
                       )}
 
                       {step.completedAt && (
-                        <p className="text-sm text-gray-500 mt-2">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                           Concluído em {formatDate(step.completedAt)}
                         </p>
                       )}
@@ -149,15 +149,15 @@ export function ProcessTimeline({ process }: ProcessTimelineProps) {
         })}
       </div>
 
-      <Card className="bg-blue-50 border-blue-200">
+      <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
         <CardContent className="p-6">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <FileText className="h-5 w-5 text-blue-600" />
+            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+              <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h3 className="font-semibold text-blue-900">Próximos Passos</h3>
-              <p className="text-blue-700 text-sm">
+              <h3 className="font-semibold text-blue-900 dark:text-blue-200">Próximos Passos</h3>
+              <p className="text-blue-700 dark:text-blue-300 text-sm">
                 {process.currentStep < totalSteps 
                   ? `Aguarde enquanto trabalhamos na etapa "${process.steps[process.currentStep - 1]?.name}".` 
                   : 'Seu processo foi concluído com sucesso!'

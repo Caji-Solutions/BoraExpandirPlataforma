@@ -9,9 +9,12 @@ const statusColors = {
   concluido: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-200', label: 'Concluído' },
 };
 
+
+
+
 export default function Parceiro() {
-  const isPartner = mockClient.isPartner ?? false;
   const metrics = useMemo(() => mockPartnerMetrics, []);
+
   const [copied, setCopied] = useState(false);
 
   const handleCopyLink = () => {
@@ -20,35 +23,7 @@ export default function Parceiro() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
-  };
-
-  if (!isPartner) {
-    return (
-      <div className="p-6">
-        <div className="max-w-3xl mx-auto bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg shadow-sm">
-          <div className="p-6">
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Torne-se Parceiro</h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
-              Ganhe comissões indicando clientes e acompanhe suas métricas em tempo real.
-            </p>
-            <ul className="mt-4 list-disc list-inside text-gray-700 dark:text-gray-300">
-              <li>Comissões competitivas por conversão</li>
-              <li>Painel com métricas e desempenho</li>
-              <li>Materiais de divulgação prontos</li>
-            </ul>
-            <div className="mt-6 flex gap-3">
-              <button className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition">
-                Quero ser parceiro
-              </button>
-              <button className="px-4 py-2 rounded-md border border-gray-300 dark:border-neutral-600 text-gray-800 dark:text-white hover:bg-gray-50 dark:hover:bg-neutral-700 transition">
-                Ver benefícios
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  }; 
 
   return (
     <div className="p-6 space-y-6">

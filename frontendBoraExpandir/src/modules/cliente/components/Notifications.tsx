@@ -65,7 +65,7 @@ export function Notifications({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center space-x-2">
             <Bell className="h-6 w-6" />
             <span>Notificações</span>
             {unreadCount > 0 && (
@@ -74,16 +74,16 @@ export function Notifications({
               </Badge>
             )}
           </h2>
-          <p className="text-gray-600">Fique por dentro das atualizações do seu processo.</p>
+          <p className="text-gray-600 dark:text-gray-400">Fique por dentro das atualizações do seu processo.</p>
         </div>
         
         <div className="flex items-center space-x-2">
-          <div className="flex bg-gray-100 rounded-lg p-1">
+          <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
             <Button
               variant={filter === 'all' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setFilter('all')}
-              className="text-xs text-gray-900"
+              className="text-xs"
             >
               Todas ({notifications.length})
             </Button>
@@ -91,7 +91,7 @@ export function Notifications({
               variant={filter === 'unread' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setFilter('unread')}
-              className="text-xs text-gray-900"
+              className="text-xs"
             >
               Não Lidas ({unreadCount})
             </Button>
@@ -109,8 +109,8 @@ export function Notifications({
         {sortedNotifications.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
-              <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">
+              <Bell className="h-12 w-12 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+              <p className="text-gray-500 dark:text-gray-400">
                 {filter === 'unread' 
                   ? 'Você não tem notificações não lidas.' 
                   : 'Você não tem notificações.'
@@ -128,7 +128,7 @@ export function Notifications({
                 key={notification.id} 
                 className={cn(
                   "transition-all hover:shadow-md relative",
-                  !notification.read && "bg-blue-50 border-l-4 border-l-blue-500",
+                  !notification.read && "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500",
                   notification.read && "opacity-75"
                 )}
               >
@@ -141,7 +141,7 @@ export function Notifications({
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-1">
-                          <h3 className="text-lg font-semibold text-gray-900">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                             {notification.title}
                           </h3>
                           <Badge variant={config.badge} className="text-xs">
@@ -155,10 +155,10 @@ export function Notifications({
                           )}
                         </div>
                         
-                        <p className="text-gray-700 mb-3">{notification.message}</p>
+                        <p className="text-gray-700 dark:text-gray-300 mb-3">{notification.message}</p>
                         
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-500">
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
                             {formatDate(notification.createdAt)}
                           </span>
                           
@@ -168,7 +168,7 @@ export function Notifications({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => onMarkAsRead(notification.id)}
-                                className="text-xs text-black"
+                                className="text-xs"
                               >
                                 Marcar como Lida
                               </Button>
@@ -195,15 +195,15 @@ export function Notifications({
 
       {/* Quick Actions for Rejected Documents */}
       {notifications.some(n => n.type === 'error' && !n.read) && (
-        <Card className="bg-red-50 border-red-200">
+        <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
           <CardHeader>
-            <CardTitle className="text-red-800 flex items-center space-x-2">
+            <CardTitle className="text-red-800 dark:text-red-200 flex items-center space-x-2">
               <AlertCircle className="h-5 w-5" />
               <span>Ação Necessária</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-red-700 mb-4">
+            <p className="text-red-700 dark:text-red-300 mb-4">
               Você tem documentos rejeitados que precisam ser reenviados. 
               Acesse a área de upload de documentos para enviar as versões corrigidas.
             </p>

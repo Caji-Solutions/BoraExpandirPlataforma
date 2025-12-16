@@ -7,6 +7,7 @@ export interface Client {
   paymentStatus: 'pending' | 'confirmed' | 'failed';
   accessGranted: boolean;
   isPartner?: boolean;
+  isClient?: boolean;
   createdAt: Date;
 }
 

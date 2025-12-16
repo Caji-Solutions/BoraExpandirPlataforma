@@ -101,8 +101,8 @@ export function DocumentStatus({ documents, onUpload, onView }: DocumentStatusPr
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Status dos Documentos</h2>
-        <p className="text-gray-600">Acompanhe o status de cada documento enviado.</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Status dos Documentos</h2>
+        <p className="text-gray-600 dark:text-gray-400">Acompanhe o status de cada documento enviado.</p>
       </div>
 
       {/* Filter Buttons */}
@@ -114,8 +114,8 @@ export function DocumentStatus({ documents, onUpload, onView }: DocumentStatusPr
             className={cn(
               "transition-all duration-200 rounded-lg border-2 hover:scale-105",
               activeFilter === filter.key 
-                ? "border-blue-500 bg-blue-50 shadow-md" 
-                : "border-gray-200 bg-white hover:border-gray-300"
+                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 shadow-md" 
+                : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600"
             )}
           >
             <div className="p-4">
@@ -126,7 +126,7 @@ export function DocumentStatus({ documents, onUpload, onView }: DocumentStatusPr
                 <div>
                   <p className={cn(
                     "text-sm font-medium",
-                    activeFilter === filter.key ? "text-blue-900" : "text-gray-900"
+                    activeFilter === filter.key ? "text-blue-900 dark:text-blue-200" : "text-gray-900 dark:text-white"
                   )}>{filter.label} ({filter.value})</p>
                 </div>
               </div>
@@ -140,8 +140,8 @@ export function DocumentStatus({ documents, onUpload, onView }: DocumentStatusPr
         {filteredDocuments.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">
+              <FileText className="h-12 w-12 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+              <p className="text-gray-500 dark:text-gray-400">
                 {activeFilter === 'all' 
                   ? 'Nenhum documento encontrado.' 
                   : `Nenhum documento ${filters.find(f => f.key === activeFilter)?.label.toLowerCase()} encontrado.`
@@ -164,13 +164,13 @@ export function DocumentStatus({ documents, onUpload, onView }: DocumentStatusPr
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-1">
-                          <h3 className="text-lg font-semibold text-gray-900">{document.name}</h3>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{document.name}</h3>
                           <Badge variant={config.badge}>{config.label}</Badge>
                         </div>
-                        <p className="text-gray-600 text-sm mb-2">{config.description}</p>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">{config.description}</p>
                         
                         {document.fileName && (
-                          <div className="flex items-center space-x-2 text-sm text-gray-500 mb-3">
+                          <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400 mb-3">
                             <FileText className="h-4 w-4" />
                             <span>{document.fileName}</span>
                             <span>•</span>
@@ -179,12 +179,12 @@ export function DocumentStatus({ documents, onUpload, onView }: DocumentStatusPr
                         )}
 
                         {document.status === 'rejected' && document.rejectionReason && (
-                          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg mb-3">
+                          <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg mb-3">
                             <div className="flex items-start space-x-2">
-                              <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                              <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 mt-0.5 flex-shrink-0" />
                               <div>
-                                <p className="text-red-800 font-medium text-sm">Motivo da rejeição:</p>
-                                <p className="text-red-700 text-sm mt-1">{document.rejectionReason}</p>
+                                <p className="text-red-800 dark:text-red-200 font-medium text-sm">Motivo da rejeição:</p>
+                                <p className="text-red-700 dark:text-red-300 text-sm mt-1">{document.rejectionReason}</p>
                               </div>
                             </div>
                           </div>
@@ -205,10 +205,10 @@ export function DocumentStatus({ documents, onUpload, onView }: DocumentStatusPr
                             <Button
                               variant="outline"
                               size="sm"
-                              className="text-black bg-gray-300"
+                              className="text-gray-900 dark:text-white"
                               onClick={() => onView?.(document)}
                             >
-                              <Eye className="h-4 w-4 mr-2 text-black" />
+                              <Eye className="h-4 w-4 mr-2" />
                               Visualizar
                             </Button>
                           )}
