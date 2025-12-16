@@ -1,4 +1,5 @@
 import { Client, Document, Process, Notification, RequiredDocument, ApprovedDocument, TranslatedDocument } from '../types'
+import { PartnerMetrics, Referral } from '../types';
 
 // Mock data for development
 export const mockClient: Client = {
@@ -9,6 +10,7 @@ export const mockClient: Client = {
   serviceType: 'Visto de Trabalho - Canadá',
   paymentStatus: 'confirmed',
   accessGranted: true,
+  isPartner: true,
   createdAt: new Date('2024-01-15'),
 }
 
@@ -89,6 +91,62 @@ export const mockProcess: Process = {
   createdAt: new Date('2024-01-15'),
   updatedAt: new Date('2024-01-26'),
 }
+
+export const mockPartnerMetrics: PartnerMetrics = {
+  referrals: 18,
+  conversions: 7,
+  revenue: 12450.75,
+  last30Days: {
+    referrals: 6,
+    conversions: 3,
+    revenue: 5320.0,
+  },
+  referralLink: 'https://boraexpandir.com/ref/joao-silva-2024',
+  referralList: [
+    {
+      id: 'ref_001',
+      name: 'Maria Oliveira',
+      email: 'maria.oliveira@example.com',
+      status: 'confirmado',
+      service: 'Visto de Trabalho - Canadá',
+      referredDate: new Date('2024-11-20'),
+      conversionDate: new Date('2024-12-05'),
+    },
+    {
+      id: 'ref_002',
+      name: 'Pedro Santos',
+      email: 'pedro.santos@example.com',
+      status: 'em-processo',
+      service: 'Visto de Estudante - UK',
+      referredDate: new Date('2024-12-01'),
+    },
+    {
+      id: 'ref_003',
+      name: 'Ana Costa',
+      email: 'ana.costa@example.com',
+      status: 'prospect',
+      service: 'Imigração - Austrália',
+      referredDate: new Date('2024-12-10'),
+    },
+    {
+      id: 'ref_004',
+      name: 'Carlos Ferreira',
+      email: 'carlos.ferreira@example.com',
+      status: 'concluido',
+      service: 'Visto de Trabalho - Canadá',
+      referredDate: new Date('2024-10-15'),
+      conversionDate: new Date('2024-11-10'),
+    },
+    {
+      id: 'ref_005',
+      name: 'Juliana Lima',
+      email: 'juliana.lima@example.com',
+      status: 'em-processo',
+      service: 'Visto de Trabalho - Irlanda',
+      referredDate: new Date('2024-11-05'),
+    },
+  ],
+};
 
 export const mockApprovedDocuments: ApprovedDocument[] = [
   {

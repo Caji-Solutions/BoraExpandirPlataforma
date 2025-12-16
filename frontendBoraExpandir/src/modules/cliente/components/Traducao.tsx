@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react'
-import { File, Download, Send, X } from 'lucide-react'
+import { useState, useRef, useMemo } from 'react'
+import { File, Download, Send, X, Eye, ChevronDown } from 'lucide-react'
 import type { ApprovedDocument, TranslatedDocument } from '../types'
 
 interface TraduzaoProps {
@@ -30,6 +30,11 @@ export function Traducao({
   const [selectedDocs, setSelectedDocs] = useState<string[]>([])
   const [targetLanguage, setTargetLanguage] = useState<string>('ES')
   const [showModal, setShowModal] = useState(false)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [selectedDocForDetails, setSelectedDocForDetails] = useState<ApprovedDocument | null>(null)
+  const [statusFilter, setStatusFilter] = useState<'todos' | 'aguardando' | 'traduzido'>('todos')
+  const [sortBy, setSortBy] = useState<'name' | 'date'>('date')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const fileInputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
 
   const toggleDoc = (docId: string) => {
@@ -74,6 +79,38 @@ export function Traducao({
     setSelectedDocs([])
   }
 
+  const handleViewDetails = (doc: ApprovedDocument) => {
+    setSelectedDocForDetails(doc)
+    setShowDetailsModal(true)
+  }
+
+  const filteredAndSortedDocs = useMemo(() => {
+    let filtered = approvedDocuments.map(doc => {
+      const translated = translatedDocuments.filter(t => t.approvedDocumentId === doc.id)
+      const status = translated.length > 0 ? 'traduzido' : 'aguardando'
+      return { ...doc, status, translated }
+    })
+
+    // Filtro por status
+    if (statusFilter !== 'todos') {
+      filtered = filtered.filter(doc => doc.status === statusFilter)
+    }
+
+    // Ordenação
+    filtered.sort((a, b) => {
+      if (sortBy === 'name') {
+        const comparison = a.name.localeCompare(b.name)
+        return sortOrder === 'asc' ? comparison : -comparison
+      } else {
+        const dateA = new Date(a.approvalDate).getTime()
+        const dateB = new Date(b.approvalDate).getTime()
+        return sortOrder === 'asc' ? dateA - dateB : dateB - dateA
+      }
+    })
+
+    return filtered
+  }, [approvedDocuments, translatedDocuments, statusFilter, sortBy, sortOrder])
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
@@ -88,6 +125,64 @@ export function Traducao({
           <Send className="h-4 w-4" />
           Enviar para tradução
         </button>
+      </div>
+
+      {/* Filtros e Ordenação */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-700 dark:text-gray-300">Status:</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setStatusFilter('todos')}
+              className={`px-3 py-1.5 rounded text-sm font-medium transition ${
+                statusFilter === 'todos'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 dark:bg-neutral-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-600'
+              }`}
+            >
+              Todos
+            </button>
+            <button
+              onClick={() => setStatusFilter('aguardando')}
+              className={`px-3 py-1.5 rounded text-sm font-medium transition ${
+                statusFilter === 'aguardando'
+                  ? 'bg-yellow-600 text-white'
+                  : 'bg-gray-100 dark:bg-neutral-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-600'
+              }`}
+            >
+              Aguardando
+            </button>
+            <button
+              onClick={() => setStatusFilter('traduzido')}
+              className={`px-3 py-1.5 rounded text-sm font-medium transition ${
+                statusFilter === 'traduzido'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-100 dark:bg-neutral-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-600'
+              }`}
+            >
+              Traduzido
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 ml-auto">
+          <span className="text-sm text-gray-700 dark:text-gray-300">Ordenar:</span>
+          <select
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value as 'name' | 'date')}
+            className="border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white rounded px-3 py-1.5 text-sm"
+          >
+            <option value="date">Data</option>
+            <option value="name">Nome</option>
+          </select>
+          <button
+            onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+            className="p-1.5 border border-gray-300 dark:border-neutral-600 rounded hover:bg-gray-100 dark:hover:bg-neutral-700 transition"
+            title={sortOrder === 'asc' ? 'Crescente' : 'Decrescente'}
+          >
+            <ChevronDown className={`h-4 w-4 text-gray-700 dark:text-gray-300 transition-transform ${sortOrder === 'asc' ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
       </div>
 
       {approvedDocuments.length === 0 ? (
@@ -105,38 +200,51 @@ export function Traducao({
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Documento</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Data de Aprovação</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Status</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-neutral-700">
-              {approvedDocuments.map(doc => {
-                const translated = translatedDocuments.filter(t => t.approvedDocumentId === doc.id)
-                const hasTranslated = translated.length > 0
-                const status = hasTranslated ? 'traduzido' : 'aguardando'
-                
-                return (
-                  <tr key={doc.id} className="hover:bg-gray-50 dark:hover:bg-neutral-700/30 transition">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900 dark:text-white">{doc.name}</p>
-                    
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                      {new Date(doc.approvalDate).toLocaleDateString('pt-BR')}
-                    </td>
-                    <td className="px-4 py-3">
-                      {status === 'aguardando' && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">
-                          Aguardando tradução
-                        </span>
-                      )}
-                      {status === 'traduzido' && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
-                          Documento traduzido
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
+              {filteredAndSortedDocs.map(doc => (
+                <tr key={doc.id} className="hover:bg-gray-50 dark:hover:bg-neutral-700/30 transition">
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-gray-900 dark:text-white">{doc.name}</p>
+                    {doc.translated.length > 0 && (
+                      <div className="mt-1 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                        {doc.translated.map(t => (
+                          <span key={t.id} className="flex items-center gap-1">
+                            <Download className="h-3 w-3 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400" />
+                            {t.fileName}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                    {new Date(doc.approvalDate).toLocaleDateString('pt-BR')}
+                  </td>
+                  <td className="px-4 py-3">
+                    {doc.status === 'aguardando' && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">
+                        Aguardando tradução
+                      </span>
+                    )}
+                    {doc.status === 'traduzido' && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
+                        Documento traduzido
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => handleViewDetails(doc)}
+                      className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition"
+                    >
+                      <Eye className="h-4 w-4" />
+                      Ver detalhes
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -286,6 +394,89 @@ export function Traducao({
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Detalhes do Documento */}
+      {showDetailsModal && selectedDocForDetails && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-neutral-800 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white dark:bg-neutral-800 border-b border-gray-200 dark:border-neutral-700 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Detalhes do Documento</h2>
+              <button
+                onClick={() => setShowDetailsModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Nome do Documento</label>
+                <p className="text-lg font-semibold text-gray-900 dark:text-white">{selectedDocForDetails.name}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Data de Aprovação</label>
+                  <p className="text-gray-900 dark:text-white">{new Date(selectedDocForDetails.approvalDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Idioma Original</label>
+                  <p className="text-gray-900 dark:text-white">{LANGUAGES[selectedDocForDetails.originalLanguage as keyof typeof LANGUAGES]}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 block">Idiomas Disponíveis para Tradução</label>
+                <div className="flex gap-2 flex-wrap">
+                  {selectedDocForDetails.targetLanguages.map(lang => (
+                    <span
+                      key={lang}
+                      className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1.5 rounded-full text-sm font-medium"
+                    >
+                      {LANGUAGES[lang as keyof typeof LANGUAGES]}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {translatedDocuments.filter(t => t.approvedDocumentId === selectedDocForDetails.id).length > 0 && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 block">Traduções Enviadas</label>
+                  <div className="space-y-2">
+                    {translatedDocuments.filter(t => t.approvedDocumentId === selectedDocForDetails.id).map(t => (
+                      <div key={t.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-neutral-700/50 rounded border border-gray-200 dark:border-neutral-600">
+                        <div className="flex items-center gap-3">
+                          <File className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white">{t.fileName}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {LANGUAGES[t.targetLanguage as keyof typeof LANGUAGES]} • {(t.fileSize / 1024).toFixed(2)} KB • {new Date(t.uploadDate).toLocaleDateString('pt-BR')}
+                            </p>
+                          </div>
+                        </div>
+                        <button className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
+                          <Download className="h-5 w-5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedDocForDetails.fileUrl && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 block">Documento Original</label>
+                  <button className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium">
+                    <Download className="h-4 w-4" />
+                    Baixar documento original
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

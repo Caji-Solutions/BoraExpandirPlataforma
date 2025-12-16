@@ -6,7 +6,31 @@ export interface Client {
   serviceType: string;
   paymentStatus: 'pending' | 'confirmed' | 'failed';
   accessGranted: boolean;
+  isPartner?: boolean;
   createdAt: Date;
+}
+
+export interface Referral {
+  id: string;
+  name: string;
+  email: string;
+  status: 'prospect' | 'em-processo' | 'confirmado' | 'concluido';
+  service: string;
+  referredDate: Date;
+  conversionDate?: Date;
+}
+
+export interface PartnerMetrics {
+  referrals: number;
+  conversions: number;
+  revenue: number; // em BRL
+  last30Days: {
+    referrals: number;
+    conversions: number;
+    revenue: number;
+  };
+  referralList?: Referral[];
+  referralLink?: string;
 }
 
 export interface Document {
