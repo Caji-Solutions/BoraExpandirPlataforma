@@ -29,6 +29,7 @@ interface FinancialProcess {
   totalParcelas: number;
   parcelasPagas: number;
   proximoVencimento: string;
+  valorProximaParcela: number;
   status: "em_dia" | "atrasado" | "aguardando";
 }
 
@@ -51,6 +52,7 @@ const processes: FinancialProcess[] = [
     totalParcelas: 4,
     parcelasPagas: 2,
     proximoVencimento: "25/11/2024",
+    valorProximaParcela: 1250,
     status: "em_dia",
   },
   {
@@ -62,6 +64,7 @@ const processes: FinancialProcess[] = [
     totalParcelas: 4,
     parcelasPagas: 1,
     proximoVencimento: "20/11/2024",
+    valorProximaParcela: 2000,
     status: "atrasado",
   },
   {
@@ -73,6 +76,7 @@ const processes: FinancialProcess[] = [
     totalParcelas: 6,
     parcelasPagas: 0,
     proximoVencimento: "01/12/2024",
+    valorProximaParcela: 2000,
     status: "aguardando",
   },
 ];
@@ -149,6 +153,7 @@ export function FinancialProcessList() {
                 <TableHead className="text-right">Valor Total</TableHead>
                 <TableHead>Progresso Pagamento</TableHead>
                 <TableHead>Próximo Vencimento</TableHead>
+                <TableHead className="text-right">Valor Próxima Parcela</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -175,6 +180,9 @@ export function FinancialProcessList() {
                   </TableCell>
                   <TableCell className={process.status === "atrasado" ? "text-destructive font-semibold" : ""}>
                     {process.proximoVencimento}
+                  </TableCell>
+                  <TableCell className="text-right font-mono font-medium">
+                    R$ {process.valorProximaParcela.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
@@ -246,13 +254,12 @@ export function FinancialProcessList() {
                 {installments.map((installment) => (
                   <Card
                     key={installment.id}
-                    className={`${
-                      installment.status === "atrasado"
-                        ? "border-destructive bg-destructive/5"
-                        : installment.status === "pago"
+                    className={`${installment.status === "atrasado"
+                      ? "border-destructive bg-destructive/5"
+                      : installment.status === "pago"
                         ? "border-success/30 bg-success/5"
                         : ""
-                    }`}
+                      }`}
                   >
                     <CardContent className="pt-4">
                       <div className="flex items-start justify-between">

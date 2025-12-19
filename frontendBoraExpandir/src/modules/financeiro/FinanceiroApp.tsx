@@ -23,12 +23,12 @@ import { Config } from '../../components/ui/Config'
 import UserManagement from '../adm/pages/admin/UserManagement'
 import AdminSettings from '../adm/pages/admin/Settings'
 import { Clientes } from './pages/Clientes'
+import { Relatorios } from './pages/Relatorios';
 import { Titularidades } from './pages/Titularidades'
 import { Processos } from './pages/Processos'
 import { Tarefas } from './pages/Tarefas'
 import { Movimentos } from './pages/Movimentos'
 
-const Relatorios = () => <div><h2 className="text-xl font-semibold mb-2">Relatórios</h2></div>
 
 export function FinanceiroApp() {
   const sidebarGroups: SidebarGroup[] = [

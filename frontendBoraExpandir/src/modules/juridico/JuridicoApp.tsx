@@ -8,17 +8,53 @@ import { ProcessQueue } from "./components/ProcessQueue";
 import { ReviewPanel } from "./components/ReviewPanel";
 import { Config } from "../../components/ui/Config";
 
+import { ProcessTable, ProcessData } from "./components/ProcessTable";
+
+const mockJuridicoData: ProcessData[] = [
+  {
+    id: "1",
+    status: "Preparando",
+    fase: 1,
+    processo: 1,
+    cliente: { nome: "João Silva" },
+    servico: "Familiar de Esp...",
+    tipo: "Pedido",
+    dataProtocolo: 0,
+    prazoResposta: 0,
+    observacao: "0",
+    valorAcao: "1,00 €",
+    responsavel: "Fernanda Borg..."
+  },
+  {
+    id: "2",
+    status: "Análise",
+    fase: 2,
+    processo: 2,
+    cliente: { nome: "Maria Santos" },
+    servico: "Visto D7",
+    tipo: "Renovação",
+    dataProtocolo: "12/12/2024",
+    prazoResposta: 15,
+    observacao: "Aguardando documentação",
+    valorAcao: "500,00 €",
+    responsavel: "Carlos Lima"
+  }
+];
+
 const MeusProcessos = () => (
   <div className="p-8">
-    <h1 className="text-3xl font-bold">Meus Processos</h1>
-    <p className="text-muted-foreground mt-2">Em desenvolvimento...</p>
+    <h1 className="text-3xl font-bold mb-6">Meus Processos</h1>
+    <ProcessTable data={mockJuridicoData} />
   </div>
 );
 
+import { TaskModule } from "../shared/components/TaskModule";
+
 const Tarefas = () => (
   <div className="p-8">
-    <h1 className="text-3xl font-bold">Tarefas</h1>
-    <p className="text-muted-foreground mt-2">Em desenvolvimento...</p>
+    <h1 className="text-3xl font-bold mb-6">Tarefas</h1>
+    {/* Simulating logged in user: Carlos Lima */}
+    <TaskModule currentUser="Carlos Lima" />
   </div>
 );
 
