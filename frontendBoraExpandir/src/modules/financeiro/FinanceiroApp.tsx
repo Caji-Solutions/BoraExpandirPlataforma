@@ -56,7 +56,7 @@ export function FinanceiroApp() {
       label: 'Sistema',
       items: [
         { label: 'Relatórios', to: '/financeiro/relatorios', icon: BarChart },
-        { label: 'Definições', to: '/financeiro/definicoes', icon: Settings },
+        { label: 'Configurações', to: '/financeiro/configuracoes', icon: Settings },
       ],
     },
   ]
@@ -84,8 +84,7 @@ export function FinanceiroApp() {
 
           {/* System */}
           <Route path="relatorios" element={<Relatorios />} />
-          <Route path="definicoes" element={<AdminSettings />} />
-          <Route path="configuracoes" element={<Config />} /> {/* Keeping old route just in case */}
+          <Route path="configuracoes" element={<Config />} />
 
           <Route path="*" element={<Navigate to="." replace />} />
         </Routes>

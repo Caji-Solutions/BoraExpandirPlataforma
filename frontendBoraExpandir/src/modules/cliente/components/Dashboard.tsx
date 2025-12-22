@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { Client, Document, Process } from '../types'
 import { formatDate } from '../lib/utils'
+import { AppointmentReminder } from './AppointmentReminder'
 
 interface DashboardProps {
   client: Client
@@ -71,6 +72,14 @@ export function Dashboard({ client, documents, process }: DashboardProps) {
     },
   ]
 
+  // Mock appointment data - substituir por dados reais do backend
+  const nextAppointment = {
+    date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 2 dias no futuro
+    time: "14:30",
+    service: "Consultoria Jurídica - Visto D7",
+    location: "Online - WhatsApp/Zoom"
+  }
+
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
@@ -95,6 +104,14 @@ export function Dashboard({ client, documents, process }: DashboardProps) {
           </div>
         </div>
       </div>
+
+      {/* Appointment Reminder */}
+      <AppointmentReminder 
+        appointmentDate={nextAppointment.date}
+        appointmentTime={nextAppointment.time}
+        service={nextAppointment.service}
+        location={nextAppointment.location}
+      />
 
       {/* Quick Actions */}
       {(pendingDocuments > 0 || rejectedDocuments > 0) && (

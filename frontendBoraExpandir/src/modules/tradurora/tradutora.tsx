@@ -6,9 +6,10 @@ import OrcamentosPage from './components/OrcamentosPage'
 import FilaDeTrabalho from './components/FilaDeTrabalho'
 import EntreguesPage from './components/EntreguesPage'
 import PagamentosPage from './components/PagamentosPage'
-import { FileText, Clock, CheckCircle2, DollarSign } from 'lucide-react'
+import { FileText, Clock, CheckCircle2, DollarSign, Settings } from 'lucide-react'
 import type { TraducaoItem } from './types'
 import type { OrcamentoItem, OrcamentoFormData } from './types/orcamento'
+import { Config } from '../../components/ui/Config'
 
 
 const mockTraducoes: TraducaoItem[] = [
@@ -171,6 +172,12 @@ export default function Tradutora() {
         { label: 'Pagamentos', to: '/tradutor/pagamentos', icon: DollarSign },
       ],
     },
+    {
+      label: 'Sistema',
+      items: [
+        { label: 'Configurações', to: '/tradutor/configuracoes', icon: Settings },
+      ],
+    },
   ]
 
   return (
@@ -195,6 +202,7 @@ export default function Tradutora() {
           <Route path="/fila" element={<FilaDeTrabalho traducoes={traducoes} onSubmitTraducao={handleSubmitTraducao} />} />
           <Route path="/entregues" element={<EntreguesPage traducoes={traducoes} />} />
           <Route path="/pagamentos" element={<PagamentosPage traducoes={traducoes} />} />
+          <Route path="/configuracoes" element={<Config />} />
           <Route path="*" element={<Navigate to="/tradutor/orcamentos" replace />} />
         </Routes>
       </main>

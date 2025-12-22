@@ -78,20 +78,38 @@ export function FinancialDashboard() {
           <CardContent>
             <ResponsiveContainer width="100%" height={350}>
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="month" className="text-sm" />
-                <YAxis className="text-sm" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                <XAxis 
+                  dataKey="month" 
+                  tick={{ fontSize: 12, fill: '#374151' }}
+                  stroke="#9ca3af"
+                />
+                <YAxis 
+                  tick={{ fontSize: 12, fill: '#374151' }}
+                  stroke="#9ca3af"
+                />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                   }}
                   formatter={(value) => `R$ ${Number(value).toLocaleString("pt-BR")}`}
                 />
-                <Legend />
-                <Bar dataKey="previsto" fill="hsl(var(--muted-foreground))" name="Previsto" />
-                <Bar dataKey="realizado" fill="hsl(var(--success))" name="Realizado" />
+                <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                <Bar 
+                  dataKey="previsto" 
+                  fill="#eab308" 
+                  name="Previsto"
+                  radius={[4, 4, 0, 0]}
+                />
+                <Bar 
+                  dataKey="realizado" 
+                  fill="#1e3a8a" 
+                  name="Realizado"
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

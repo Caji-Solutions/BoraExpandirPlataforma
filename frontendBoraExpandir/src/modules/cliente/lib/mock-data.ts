@@ -8,11 +8,11 @@ export const mockClient: Client = {
   email: 'joao.silva@email.com',
   phone: '+55 11 99999-9999',
   serviceType: 'Visto de Trabalho - Canadá',
-  paymentStatus: 'confirmed',
+  paymentStatus: 'confirmed', 
   accessGranted: true,
-  isPartner: true,
-  isClient: false,
-  createdAt: new Date('2024-01-15'),
+  isPartner: false,
+  isClient: true,
+  createdAt: new Date('2024-12-22'),
 }
 
 export const mockDocuments: Document[] = [

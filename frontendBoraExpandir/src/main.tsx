@@ -7,9 +7,8 @@ import { ClienteApp } from '@/modules/cliente/ClienteApp'
 import { FinanceiroApp } from '@/modules/financeiro/FinanceiroApp'
 import { JuridicoApp } from '@/modules/juridico/JuridicoApp'
 import  AdmApp  from '@/modules/adm/AdmApp'
-import ParceiroApp from '@/modules/parceiro/ParceiroApp'
-import CadastroParceiro from './modules/parceiro/CadastroParceiro'
-import TelaIndicado from './modules/parceiro/TelaIndicado'
+import CadastroParceiro from './modules/shared/components/parceiro/CadastroParceiro'
+import TelaIndicado from './modules/shared/components/parceiro/TelaIndicado'
 import Comercial from './modules/comercial/Comercial'
 import Tradutora from './modules/tradurora/tradutora'
 import { ThemeProvider } from './components/ui/ThemeProvider'
@@ -51,7 +50,6 @@ function Home() {
           <a href="/financeiro" className="px-4 py-2 bg-amber-600 text-white rounded">Financeiro</a>
           <a href="/juridico" className="px-4 py-2 bg-violet-600 text-white rounded">Jurídico</a>
           <a href="/adm" className="px-4 py-2 bg-rose-600 text-white rounded">Admin</a>
-          <a href="/parceiro" className="px-4 py-2 bg-cyan-600 text-white rounded">Parceiro</a>
           <a href="/tradutor" className="px-4 py-2 bg-indigo-600 text-white rounded">Tradutor</a>
         </div>
       </div>
@@ -70,8 +68,7 @@ function AppRouter() {
         <Route path="/financeiro/*" element={<FinanceiroApp />} />
         <Route path="/juridico/*" element={<JuridicoApp />} />
         <Route path="/adm/*" element={<AdmApp />} />
-        <Route path="/parceiro/*" element={<ParceiroApp />} />
-         <Route path="/parceiro/cadastro*" element={<CadastroParceiro />} />
+        <Route path="/parceiro/cadastro" element={<CadastroParceiro />} />
         <Route path="/indicado/:partnerId" element={<TelaIndicadoWrapper />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

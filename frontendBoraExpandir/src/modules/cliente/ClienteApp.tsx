@@ -22,7 +22,8 @@ import {
   mockTranslatedDocuments,
 } from './lib/mock-data'
 import { Document, Notification, ApprovedDocument, TranslatedDocument } from './types'
-import { Home, FileText, Upload, GitBranch, Bell, Languages, Users, Calendar } from 'lucide-react'
+import { Home, FileText, Upload, GitBranch, Bell, Languages, Users, Calendar, Settings } from 'lucide-react'
+import { Config } from '../../components/ui/Config'
 
 export function ClienteApp() {
   const location = useLocation()
@@ -182,6 +183,12 @@ export function ClienteApp() {
           { label: 'Parceiro', to: '/cliente/parceiro', icon: Users },
         ],
       },
+      {
+        label: 'Sistema',
+        items: [
+          { label: 'Configurações', to: '/cliente/configuracoes', icon: Settings },
+        ],
+      },
     ]
     : [
       {
@@ -207,6 +214,12 @@ export function ClienteApp() {
           },
         ],
       },
+      {
+        label: 'Sistema',
+        items: [
+          { label: 'Configurações', to: '/cliente/configuracoes', icon: Settings },
+        ],
+      },
     ]
 
   // Modo parceiro (não cliente)
@@ -230,6 +243,7 @@ export function ClienteApp() {
             <Route index element={<PartnerDashboard client={mockClient} onBecomeClient={handleBecomeClient} />} />
             <Route path="parceiro" element={<Parceiro />} />
             <Route path="agendamento" element={<ClienteAgendamento client={mockClient} />} />
+            <Route path="configuracoes" element={<Config />} />
           </Routes>
         </main>
       </div>
@@ -342,6 +356,7 @@ export function ClienteApp() {
               />
             }
           />
+          <Route path="configuracoes" element={<Config />} />
         </Routes>
       </main>
 

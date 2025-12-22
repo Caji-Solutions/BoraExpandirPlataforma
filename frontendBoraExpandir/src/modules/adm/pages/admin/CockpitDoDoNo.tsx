@@ -80,42 +80,44 @@ export default function CockpitDoDoNo() {
         <CardContent>
           <ResponsiveContainer width="100%" height={350}>
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
               <XAxis 
                 dataKey="month" 
-                stroke="hsl(var(--muted-foreground))"
-                style={{ fontSize: '12px' }}
+                tick={{ fontSize: 12, fill: '#374151' }}
+                stroke="#9ca3af"
               />
               <YAxis 
-                stroke="hsl(var(--muted-foreground))"
-                style={{ fontSize: '12px' }}
+                tick={{ fontSize: 12, fill: '#374151' }}
+                stroke="#9ca3af"
                 tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
               />
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: 'hsl(var(--popover))',
-                  border: '1px solid hsl(var(--border))',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e5e7eb',
                   borderRadius: '8px',
-                  color: 'hsl(var(--foreground))'
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                 }}
                 formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR')}`, '']}
               />
-              <Legend />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
               <Line 
                 type="monotone" 
                 dataKey="receita" 
-                stroke="hsl(var(--status-success))" 
-                strokeWidth={2}
+                stroke="#1e3a8a" 
+                strokeWidth={3}
                 name="Receita"
-                dot={{ fill: 'hsl(var(--status-success))' }}
+                dot={{ r: 5, fill: '#1e3a8a', strokeWidth: 2, stroke: '#fff' }}
+                activeDot={{ r: 7 }}
               />
               <Line 
                 type="monotone" 
                 dataKey="despesas" 
-                stroke="hsl(var(--status-error))" 
-                strokeWidth={2}
+                stroke="#ef4444" 
+                strokeWidth={3}
                 name="Despesas"
-                dot={{ fill: 'hsl(var(--status-error))' }}
+                dot={{ r: 5, fill: '#ef4444', strokeWidth: 2, stroke: '#fff' }}
+                activeDot={{ r: 7 }}
               />
             </LineChart>
           </ResponsiveContainer>
