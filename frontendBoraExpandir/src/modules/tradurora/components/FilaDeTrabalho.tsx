@@ -3,6 +3,7 @@ import { Clock, CheckCircle2, AlertTriangle } from 'lucide-react'
 import DeliveryModal from './DeliveryModal'
 import { UrgencyBadge, CountdownBadge, SLACard } from './SLAComponents'
 import type { TraducaoItem, SLAOverview } from '../types'
+import { Badge } from '../../../components/ui/Badge'
 
 interface FilaDeTrabalhoProps {
   traducoes: TraducaoItem[]
@@ -101,9 +102,9 @@ export default function FilaDeTrabalho({ traducoes, onSubmitTraducao }: FilaDeTr
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400">
+                      <Badge variant="default">
                         {traducao.parIdiomas.origem} → {traducao.parIdiomas.destino}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                       {new Date(traducao.prazoSLA).toLocaleString('pt-BR', {

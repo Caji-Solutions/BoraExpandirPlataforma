@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo } from 'react'
 import { File, Download, Send, X, Eye, ChevronDown } from 'lucide-react'
 import type { ApprovedDocument, TranslatedDocument } from '../types'
+import { Badge } from '../../../components/ui/Badge'
 
 interface TraduzaoProps {
   approvedDocuments: ApprovedDocument[]
@@ -224,14 +225,10 @@ export function Traducao({
                   </td>
                   <td className="px-4 py-3">
                     {doc.status === 'aguardando' && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">
-                        Aguardando tradução
-                      </span>
+                      <Badge variant="warning">Aguardando tradução</Badge>
                     )}
                     {doc.status === 'traduzido' && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
-                        Documento traduzido
-                      </span>
+                      <Badge variant="success">Documento traduzido</Badge>
                     )}
                   </td>
                   <td className="px-4 py-3">

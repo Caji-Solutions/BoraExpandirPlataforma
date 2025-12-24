@@ -1,5 +1,5 @@
 import { Eye } from "lucide-react";
-import { Badge } from "./ui/badge";
+import { Badge } from '../../../components/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import {
     Table,
@@ -34,6 +34,24 @@ interface ProcessTableProps {
     onRowClick?: (process: ProcessData) => void;
 }
 
+function getStatusBadge(status: string) {
+    const statusLower = status.toLowerCase();
+    
+    // Mapeamento de status comuns
+    if (statusLower.includes('concluído') || statusLower.includes('aprovado') || statusLower.includes('finalizado')) {
+        return <Badge variant="success">{status}</Badge>;
+    }
+    if (statusLower.includes('pendente') || statusLower.includes('aguardando') || statusLower.includes('em andamento')) {
+        return <Badge variant="warning">{status}</Badge>;
+    }
+    if (statusLower.includes('cancelado') || statusLower.includes('rejeitado') || statusLower.includes('atrasado')) {
+        return <Badge variant="destructive">{status}</Badge>;
+    }
+    
+    // Status padrão - azul da marca
+    return <Badge variant="default">{status}</Badge>;
+}
+
 export function ProcessTable({ data, onRowClick }: ProcessTableProps) {
     return (
         <Card>
@@ -66,10 +84,7 @@ export function ProcessTable({ data, onRowClick }: ProcessTableProps) {
                                     onClick={() => onRowClick?.(row)}
                                 >
                                     <TableCell className="font-medium">
-                                        <Badge variant="outline" className="font-normal rounded-full px-3">
-                                            <div className="w-2 h-2 rounded-full bg-orange-400 mr-2" />
-                                            {row.status}
-                                        </Badge>
+                                        {getStatusBadge(row.status)}
                                     </TableCell>
                                     <TableCell>{row.fase}</TableCell>
                                     <TableCell>{row.processo}</TableCell>

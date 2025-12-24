@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Badge } from "./ui/badge";
+import { Badge } from '../../../components/ui/Badge';
 import { Clock, CheckCircle2 } from "lucide-react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "./ui/select";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "./ui/table";
@@ -68,6 +68,21 @@ const statusLabels: Record<string, string> = {
   concluido: "Concluído",
   cancelado: "Cancelado",
 };
+
+function getStatusBadge(status: string) {
+  switch (status) {
+    case 'concluido':
+      return <Badge variant="success">Concluído</Badge>;
+    case 'em_andamento':
+      return <Badge variant="warning">Em Andamento</Badge>;
+    case 'cancelado':
+      return <Badge variant="destructive">Cancelado</Badge>;
+    case 'pendente':
+      return <Badge variant="warning">Pendente</Badge>;
+    default:
+      return <Badge variant="default">{statusLabels[status] || status}</Badge>;
+  }
+}
 
 export function Dashboard() {
   const [statusFilter, setStatusFilter] = useState<string>("todos");
@@ -170,7 +185,7 @@ export function Dashboard() {
                     <TableCell>{p.cliente}</TableCell>
                     <TableCell>{p.tipo}</TableCell>
                     <TableCell>
-                      <Badge className="border border-border bg-transparent text-foreground">{statusLabels[p.status] || p.status}</Badge>
+                      {getStatusBadge(p.status)}
                     </TableCell>
                     <TableCell>{p.dataCriacao.toLocaleDateString()}</TableCell>
                     <TableCell>{p.prazo.toLocaleDateString()}</TableCell>
@@ -214,7 +229,7 @@ export function Dashboard() {
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">{task.time}</p>
                   </div>
-                  <Badge className={task.status === "completed" ? "border border-border bg-transparent text-muted-foreground" : "bg-primary text-primary-foreground"}>
+                  <Badge variant={task.status === "completed" ? "secondary" : "default"}>
                     {task.status === "completed" ? "Concluído" : "Pendente"}
                   </Badge>
                 </div>

@@ -2,21 +2,19 @@ import React, { useMemo, useState } from 'react'
 import { Calendar, Clock, Filter, Search, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Agendamento } from '../../types/comercial'
+import { Badge } from '../../components/ui/Badge'
 
-const statusColors: Record<Agendamento['status'], { badge: string; text: string; label: string }> = {
+const statusConfig: Record<Agendamento['status'], { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'; label: string }> = {
 	agendado: {
-		badge: 'bg-emerald-100 dark:bg-emerald-500/20',
-		text: 'text-emerald-700 dark:text-emerald-400',
+		variant: 'success',
 		label: 'Agendado',
 	},
 	realizado: {
-		badge: 'bg-blue-100 dark:bg-blue-500/20',
-		text: 'text-blue-700 dark:text-blue-400',
+		variant: 'default',
 		label: 'Realizado',
 	},
 	cancelado: {
-		badge: 'bg-red-100 dark:bg-red-500/20',
-		text: 'text-red-700 dark:text-red-400',
+		variant: 'destructive',
 		label: 'Cancelado',
 	},
 }
@@ -137,11 +135,9 @@ export default function AgendamentosPage({ agendamentos }: AgendamentosPageProps
 											{agendamento.produto}
 										</td>
 										<td className="px-6 py-4">
-											<span
-												className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[agendamento.status].badge} ${statusColors[agendamento.status].text}`}
-											>
-												{statusColors[agendamento.status].label}
-											</span>
+											<Badge variant={statusConfig[agendamento.status].variant}>
+												{statusConfig[agendamento.status].label}
+											</Badge>
 										</td>
 									</tr>
 								))}

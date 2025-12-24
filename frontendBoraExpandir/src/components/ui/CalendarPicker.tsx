@@ -140,10 +140,10 @@ export function CalendarPicker({
                 ${disabled 
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-neutral-800 dark:text-neutral-500' 
                   : selected
-                  ? 'bg-emerald-600 text-white shadow-md hover:bg-emerald-700'
+                  ? 'bg-blue-700 text-white shadow-md hover:bg-blue-500 hover:text-white'
                   : today
-                  ? 'bg-blue-100 text-blue-900 font-bold hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-100'
-                  : 'bg-gray-50 text-gray-900 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700'
+                  ? 'bg-blue-900 text-white font-bold hover:bg-blue-500 hover:text-white dark:bg-blue-900 dark:text-blue-100 dark:hover:bg-blue-500'
+                  : 'bg-gray-50 text-gray-900 hover:bg-blue-500 hover:text-white dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-blue-500 dark:hover:text-white'
                 }
               `}
             >

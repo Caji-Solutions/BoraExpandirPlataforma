@@ -10,7 +10,7 @@ import {
 } from "../../components/ui/table";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
-import { Badge } from "../../components/ui/badge";
+import { Badge } from '../../../../components/ui/Badge';
 import { Search, Calendar } from "lucide-react";
 
 interface AuditLog {
@@ -65,12 +65,12 @@ const mockLogs: AuditLog[] = [
   },
 ];
 
-const getActionColor = (action: string): string => {
-  if (action.includes("Deletou")) return "bg-destructive/10 text-destructive border-destructive/20";
-  if (action.includes("Criou")) return "bg-status-success/10 text-status-success border-status-success/20";
+const getActionBadge = (action: string) => {
+  if (action.includes("Deletou")) return <Badge variant="destructive">{action}</Badge>;
+  if (action.includes("Criou")) return <Badge variant="success">{action}</Badge>;
   if (action.includes("Atualizou") || action.includes("Upload"))
-    return "bg-status-info/10 text-status-info border-status-info/20";
-  return "bg-status-warning/10 text-status-warning border-status-warning/20";
+    return <Badge variant="default">{action}</Badge>;
+  return <Badge variant="warning">{action}</Badge>;
 };
 
 export default function AuditLogs() {
@@ -143,9 +143,7 @@ export default function AuditLogs() {
                     </TableCell>
                     <TableCell className="font-medium text-foreground">{log.user}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={getActionColor(log.action)}>
-                        {log.action}
-                      </Badge>
+                      {getActionBadge(log.action)}
                     </TableCell>
                     <TableCell className="text-foreground">{log.target}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">

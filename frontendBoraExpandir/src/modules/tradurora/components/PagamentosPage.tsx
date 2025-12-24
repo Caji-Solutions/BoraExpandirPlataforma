@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import { DollarSign, Copy, CheckCircle } from 'lucide-react'
 import type { TraducaoItem } from '../types'
+import { Badge } from '../../../components/ui/Badge'
 
 interface PagamentosPageProps {
   traducoes: TraducaoItem[]
@@ -59,17 +60,10 @@ export default function PagamentosPage({ traducoes }: PagamentosPageProps) {
     .filter(p => p.status === 'pago')
     .reduce((sum, p) => sum + p.valor, 0)
 
-  const statusBadge = (status: string) => {
-    switch (status) {
-      case 'pendente':
-        return 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
-      case 'pago':
-        return 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
-      case 'processando':
-        return 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400'
-      default:
-        return 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
-    }
+  const statusConfig: Record<'pendente' | 'pago' | 'processando', { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'; label: string }> = {
+    pendente: { variant: 'warning', label: 'Pendente' },
+    pago: { variant: 'success', label: 'Pago' },
+    processando: { variant: 'default', label: 'Processando' },
   }
 
   return (
@@ -135,11 +129,9 @@ export default function PagamentosPage({ traducoes }: PagamentosPageProps) {
                     R$ {pagamento.valor.toFixed(2).replace('.', ',')}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadge(pagamento.status)}`}>
-                      {pagamento.status === 'pendente' && 'Pendente'}
-                      {pagamento.status === 'pago' && 'Pago'}
-                      {pagamento.status === 'processando' && 'Processando'}
-                    </span>
+                    <Badge variant={statusConfig[pagamento.status].variant}>
+                      {statusConfig[pagamento.status].label}
+                    </Badge>
                   </td>
                 </tr>
               ))}

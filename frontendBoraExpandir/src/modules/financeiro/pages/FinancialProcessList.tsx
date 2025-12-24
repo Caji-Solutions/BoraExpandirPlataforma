@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ExternalLink, Send, CheckCircle, FileText } from "lucide-react";
-import { Badge } from "../components/ui/badge";
+import { Badge } from "../../../components/ui/Badge";
 import { Button } from "../components/ui/button";
 import { Progress } from "../components/ui/progress";
 import {
@@ -109,11 +109,11 @@ const installments: Installment[] = [
 function getStatusBadge(status: string) {
   switch (status) {
     case "em_dia":
-      return <Badge className="bg-success text-success-foreground hover:bg-success">Em Dia</Badge>;
+      return <Badge variant="success">Em Dia</Badge>;
     case "atrasado":
-      return <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive">Atrasado</Badge>;
+      return <Badge variant="destructive">Atrasado</Badge>;
     case "aguardando":
-      return <Badge className="bg-muted text-muted-foreground hover:bg-muted">Aguardando Início</Badge>;
+      return <Badge variant="secondary">Aguardando Início</Badge>;
     default:
       return null;
   }
@@ -291,15 +291,15 @@ export function FinancialProcessList() {
 
               {/* Action Buttons */}
               <div className="flex flex-col gap-3 pt-4 border-t">
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full hover:bg-blue-600 hover:text-white hover:border-blue-600">
                   <Send className="h-4 w-4 mr-2" />
                   Reenviar Cobrança
                 </Button>
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full hover:bg-blue-600 hover:text-white hover:border-blue-600">
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Dar Baixa Manual
                 </Button>
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full hover:bg-blue-600 hover:text-white hover:border-blue-600">
                   <FileText className="h-4 w-4 mr-2" />
                   Visualizar Nota Fiscal
                 </Button>

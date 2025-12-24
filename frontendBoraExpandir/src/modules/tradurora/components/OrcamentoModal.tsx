@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { X, FileText, Calendar, DollarSign, Send } from 'lucide-react'
 import type { OrcamentoItem, OrcamentoFormData } from '../types/orcamento'
+import { Badge } from '../../../components/ui/Badge'
 
 interface OrcamentoModalProps {
   orcamento: OrcamentoItem | null
@@ -81,9 +82,9 @@ export default function OrcamentoModal({ orcamento, onClose, onSubmit }: Orcamen
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Par de Idiomas</p>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 mt-1">
+                <Badge variant="default" className="mt-1">
                   {orcamento.parIdiomas.origem} → {orcamento.parIdiomas.destino}
-                </span>
+                </Badge>
               </div>
               {orcamento.numeroPaginas && (
                 <div>

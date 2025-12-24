@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Plus, Trash2, Mail, Phone, Building2 } from 'lucide-react'
 import type { Lead } from '../../types/comercial'
+import { Badge } from '../../components/ui/Badge'
 
 const mockLeads: Lead[] = [
   {
@@ -85,35 +86,27 @@ const mockLeads: Lead[] = [
   },
 ]
 
-const statusColors: Record<string, { badge: string; text: string }> = {
+const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'; label: string }> = {
   pendente: {
-    badge: 'bg-yellow-100 dark:bg-yellow-500/20',
-    text: 'text-yellow-700 dark:text-yellow-400',
+    variant: 'warning',
+    label: 'Pendente',
   },
   contatado: {
-    badge: 'bg-blue-100 dark:bg-blue-500/20',
-    text: 'text-blue-700 dark:text-blue-400',
+    variant: 'default',
+    label: 'Contatado',
   },
   qualificado: {
-    badge: 'bg-emerald-100 dark:bg-emerald-500/20',
-    text: 'text-emerald-700 dark:text-emerald-400',
+    variant: 'success',
+    label: 'Qualificado',
   },
   convertido: {
-    badge: 'bg-green-100 dark:bg-green-500/20',
-    text: 'text-green-700 dark:text-green-400',
+    variant: 'success',
+    label: 'Convertido',
   },
   perdido: {
-    badge: 'bg-red-100 dark:bg-red-500/20',
-    text: 'text-red-700 dark:text-red-400',
+    variant: 'destructive',
+    label: 'Perdido',
   },
-}
-
-const statusLabels: Record<string, string> = {
-  pendente: 'Pendente',
-  contatado: 'Contatado',
-  qualificado: 'Qualificado',
-  convertido: 'Convertido',
-  perdido: 'Perdido',
 }
 
 export default function LeadsPage() {
@@ -218,13 +211,9 @@ export default function LeadsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          statusColors[lead.status]?.badge
-                        } ${statusColors[lead.status]?.text}`}
-                      >
-                        {statusLabels[lead.status]}
-                      </span>
+                      <Badge variant={statusConfig[lead.status]?.variant || 'secondary'}>
+                        {statusConfig[lead.status]?.label || lead.status}
+                      </Badge>
                     </td>
                     <td className="px-6 py-4">
                       <button

@@ -1,5 +1,5 @@
 import { TrendingUp, DollarSign, AlertCircle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 const kpiData = [
@@ -8,24 +8,24 @@ const kpiData = [
     value: "R$ 45.200,00",
     icon: DollarSign,
     trend: "up",
-    bgClass: "bg-success/10",
-    textClass: "text-success",
+    bgClass: "bg-green-600",
+    textClass: "text-white",
   },
   {
     title: "A Receber (Próx. 7 dias)",
     value: "R$ 12.500,00",
     icon: TrendingUp,
     trend: "neutral",
-    bgClass: "bg-kpi-yellow-bg",
-    textClass: "text-kpi-yellow",
+    bgClass: "bg-yellow-500",
+    textClass: "text-white",
   },
   {
     title: "Inadimplência (Atrasados)",
     value: "R$ 3.200,00",
     icon: AlertCircle,
     trend: "down",
-    bgClass: "bg-destructive/10",
-    textClass: "text-destructive",
+    bgClass: "bg-red-600",
+    textClass: "text-white",
   },
 ];
 
@@ -48,25 +48,25 @@ export function FinancialDashboard() {
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {kpiData.map((kpi) => (
-            <Card key={kpi.title} className={kpi.bgClass}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
+            <div key={kpi.title} className={`${kpi.bgClass} rounded-lg shadow-sm p-6`}>
+              <div className="flex flex-row items-center justify-between pb-2">
+                <h3 className="text-sm font-medium text-white">
                   {kpi.title}
-                </CardTitle>
-                <kpi.icon className={`h-5 w-5 ${kpi.textClass}`} />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-3xl font-bold font-mono ${kpi.textClass}`}>
+                </h3>
+                <kpi.icon className="h-5 w-5 text-white" />
+              </div>
+              <div className="pt-0">
+                <div className="text-3xl font-bold font-mono text-white">
                   {kpi.value}
                 </div>
                 {kpi.trend === "up" && (
-                  <p className="text-xs text-success mt-1 flex items-center gap-1">
+                  <p className="text-xs text-white/90 mt-1 flex items-center gap-1">
                     <TrendingUp className="h-3 w-3" />
-                    +8% vs mês anterior
+                    +8% vs mês ante
                   </p>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
 

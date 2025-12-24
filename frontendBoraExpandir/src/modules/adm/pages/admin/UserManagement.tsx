@@ -25,7 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
-import { Badge } from "../../components/ui/badge";
+import { Badge } from "../../../../components/ui/Badge";
 import { Avatar, AvatarFallback } from "../../components/ui/avatar";
 import { Plus, MoreVertical } from "lucide-react";
 import { Checkbox } from "../../components/ui/checkbox";
@@ -71,11 +71,11 @@ const mockUsers: User[] = [
   },
 ];
 
-const getRoleBadgeVariant = (role: UserRole): string => {
-  const variants: Record<UserRole, string> = {
-    sales: "bg-role-sales/10 text-role-sales border-role-sales/20",
-    legal: "bg-role-legal/10 text-role-legal border-role-legal/20",
-    finance: "bg-role-finance/10 text-role-finance border-role-finance/20",
+const getRoleBadgeVariant = (role: UserRole): "default" | "secondary" | "success" | "warning" | "destructive" => {
+  const variants: Record<UserRole, "default" | "secondary" | "success" | "warning" | "destructive"> = {
+    sales: "default",      // Azul para vendas
+    legal: "warning",      // Amarelo para jurídico
+    finance: "success",    // Verde para financeiro
   };
   return variants[role];
 };
@@ -222,10 +222,7 @@ export default function UserManagement() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={getRoleBadgeVariant(user.role)}
-                    >
+                    <Badge variant={getRoleBadgeVariant(user.role)}>
                       {getRoleLabel(user.role)}
                     </Badge>
                   </TableCell>

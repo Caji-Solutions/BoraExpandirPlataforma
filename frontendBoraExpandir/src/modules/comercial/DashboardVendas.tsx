@@ -1,6 +1,7 @@
 import React from 'react'
 import { TrendingUp, Target,Plus, DollarSign, Percent, Clock, AlertCircle, CheckCircle, ArrowRight } from 'lucide-react'
 import type { Contrato, Cliente } from '../../types/comercial'
+import { Badge } from '../../components/ui/Badge'
 
 interface DashboardVendasProps {
   contratos: Contrato[]
@@ -147,9 +148,9 @@ export default function DashboardVendas({
                           <h3 className="font-semibold text-gray-900 truncate">
                             {contrato.cliente?.nome || 'Cliente sem identificação'}
                           </h3>
-                          <span className="inline-block px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full font-medium">
+                          <Badge variant="warning">
                             Aguardando
-                          </span>
+                          </Badge>
                         </div>
                         <p className="text-sm text-gray-600 mb-2">{contrato.titulo}</p>
                         <div className="flex items-center gap-4 text-sm">

@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
+import { Badge } from "../../../components/ui/Badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { TrendingUp, Users, DollarSign, Calendar, ArrowUpRight } from "lucide-react";
 
@@ -81,13 +81,13 @@ const mockPartners: Partner[] = [
 
 const getStatusBadge = (status: Partner["status"]) => {
   const variants = {
-    active: { label: "Ativo", className: "bg-green-100 text-green-800 hover:bg-green-100" },
-    inactive: { label: "Inativo", className: "bg-gray-100 text-gray-800 hover:bg-gray-100" },
-    pending: { label: "Pendente", className: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100" },
+    active: { label: "Ativo", variant: "success" as const },
+    inactive: { label: "Inativo", variant: "secondary" as const },
+    pending: { label: "Pendente", variant: "warning" as const },
   } as const;
 
-  const variant = variants[status];
-  return <Badge className={variant.className}>{variant.label}</Badge>;
+  const config = variants[status];
+  return <Badge variant={config.variant}>{config.label}</Badge>;
 };
 
 const formatCurrency = (value: number) => {

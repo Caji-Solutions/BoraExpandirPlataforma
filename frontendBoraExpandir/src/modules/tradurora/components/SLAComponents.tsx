@@ -1,6 +1,7 @@
 import React from 'react'
 import { AlertTriangle, Clock, CheckCircle2 } from 'lucide-react'
 import type { TraducaoItem } from '../types'
+import { Badge } from '../../../components/ui/Badge'
 
 interface UrgencyBadgeProps {
   prazoSLA: string
@@ -42,9 +43,9 @@ export function CountdownBadge({ prazoSLA }: CountdownBadgeProps) {
 
   if (diffMs < 0) {
     return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
+      <Badge variant="destructive">
         Atrasado
-      </span>
+      </Badge>
     )
   }
 
@@ -52,9 +53,9 @@ export function CountdownBadge({ prazoSLA }: CountdownBadgeProps) {
   const minutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
 
   return (
-    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400">
+    <Badge variant="default">
       {horas}h {minutos}m
-    </span>
+    </Badge>
   )
 }
 

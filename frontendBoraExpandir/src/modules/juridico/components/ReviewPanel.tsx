@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FileText, CheckCircle, XCircle, Clock } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
-import { Badge } from "./ui/badge";
+import { Badge } from '../../../components/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { DocumentViewer } from "./DocumentViewer";
 import { ReviewActions } from "./ReviewActions";
@@ -48,11 +48,11 @@ export function ReviewPanel({ clientName, visaType }: ReviewPanelProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "approved":
-        return <Badge className="bg-success text-success-foreground">Aprovado</Badge>;
+        return <Badge variant="success">Aprovado</Badge>;
       case "rejected":
-        return <Badge className="bg-destructive text-destructive-foreground">Rejeitado</Badge>;
+        return <Badge variant="destructive">Rejeitado</Badge>;
       default:
-        return <Badge className="bg-muted text-muted-foreground">Pendente</Badge>;
+        return <Badge variant="warning">Pendente</Badge>;
     }
   };
 

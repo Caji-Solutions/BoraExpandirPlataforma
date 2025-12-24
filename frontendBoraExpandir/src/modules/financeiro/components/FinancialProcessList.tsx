@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { ExternalLink, Send, CheckCircle, FileText } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from '../../../components/ui/Badge';
+import { Button } from "../../../components/ui/Button";
+import { Progress } from "../../../components/ui/progress";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet";
+} from "../../../components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -17,8 +17,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
+} from "../../../components/ui/table";
+import { Card, CardContent } from "../../../components/ui/card";
 
 interface FinancialProcess {
   id: string;
@@ -104,12 +104,12 @@ const installments: Installment[] = [
 
 function getStatusBadge(status: string) {
   switch (status) {
-    case "em_dia":
-      return <Badge className="bg-success text-success-foreground hover:bg-success">Em Dia</Badge>;
-    case "atrasado":
-      return <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive">Atrasado</Badge>;
-    case "aguardando":
-      return <Badge className="bg-muted text-muted-foreground hover:bg-muted">Aguardando Início</Badge>;
+    case 'em_dia':
+      return <Badge variant="success">Em Dia</Badge>;
+    case 'atrasado':
+      return <Badge variant="destructive">Atrasado</Badge>;
+    case 'aguardando':
+      return <Badge variant="secondary">Aguardando Início</Badge>;
     default:
       return null;
   }

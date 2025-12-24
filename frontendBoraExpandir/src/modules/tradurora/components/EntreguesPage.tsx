@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import { CheckCircle2 } from 'lucide-react'
 import type { TraducaoItem } from '../types'
+import { Badge } from '../../../components/ui/Badge'
 
 interface EntreguesPageProps {
   traducoes: TraducaoItem[]
@@ -44,9 +45,9 @@ export default function EntreguesPage({ traducoes }: EntreguesPageProps) {
                       <p className="font-medium text-gray-900 dark:text-white">{traducao.documentoNome}</p>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400">
+                      <Badge variant="default">
                         {traducao.parIdiomas.origem} → {traducao.parIdiomas.destino}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                       {new Date(traducao.updated_at).toLocaleString('pt-BR', {

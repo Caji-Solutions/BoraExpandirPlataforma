@@ -640,7 +640,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
           </div>
 
           <div className="lg:col-span-1 flex justify-center">
-            <div className="w-full max-w-md bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-500/10 dark:to-neutral-800 rounded-xl border border-emerald-200 dark:border-emerald-500/30 p-6 shadow-sm sticky top-8">
+            <div className="w-full max-w-md bg-gradient-to-br from-blue-300 to-white dark:from-blue-500/10 dark:to-neutral-800 rounded-xl border border-blue-200 dark:border-blue-500/30 p-6 shadow-sm sticky top-8">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 text-center">Resumo</h3>
 
               {/* Data */}
@@ -743,7 +743,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
         </div>
       ) : (
         <div className="flex justify-center">
-          <div className="w-full max-w-xl bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-500/10 dark:to-neutral-800 rounded-xl border border-emerald-200 dark:border-emerald-500/30 p-6 shadow-sm">
+          <div className="w-full max-w-xl bg-gradient-to-br from-blue-50 to-white dark:from-blue-500/10 dark:to-neutral-800 rounded-xl border border-blue-200 dark:border-blue-500/30 p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 text-center">Resumo</h3>
             {/* Data */}
             {dataSelecionada && (

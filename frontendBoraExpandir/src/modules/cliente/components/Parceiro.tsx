@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { mockClient, mockPartnerMetrics } from '../lib/mock-data';
+import { Badge } from '../../../components/ui/Badge';
 
-const statusColors = {
-  prospect: { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-200', label: 'Prospect' },
-  'em-processo': { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-200', label: 'Em Processo' },
-  confirmado: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-200', label: 'Confirmado' },
-  concluido: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-200', label: 'Concluído' },
+const statusConfig = {
+  prospect: { variant: 'secondary' as const, label: 'Prospect' },
+  'em-processo': { variant: 'default' as const, label: 'Em Processo' },
+  confirmado: { variant: 'success' as const, label: 'Confirmado' },
+  concluido: { variant: 'success' as const, label: 'Concluído' },
 };
 
 
@@ -81,16 +82,16 @@ export default function Parceiro() {
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-neutral-700">
               {metrics.referralList?.map((referral) => {
-                const statusColor = statusColors[referral.status as keyof typeof statusColors];
+                const statusInfo = statusConfig[referral.status as keyof typeof statusConfig];
                 return (
                   <tr key={referral.id} className="hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{referral.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{referral.email}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{referral.service}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor.bg} ${statusColor.text}`}>
-                        {statusColor.label}
-                      </span>
+                      <Badge variant={statusInfo.variant}>
+                        {statusInfo.label}
+                      </Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                       {new Date(referral.referredDate).toLocaleDateString('pt-BR')}

@@ -13,7 +13,7 @@ import { ProcessTable, ProcessData } from "./components/ProcessTable";
 const mockJuridicoData: ProcessData[] = [
   {
     id: "1",
-    status: "Preparando",
+    status: "pendente",
     fase: 1,
     processo: 1,
     cliente: { nome: "João Silva" },
@@ -27,7 +27,7 @@ const mockJuridicoData: ProcessData[] = [
   },
   {
     id: "2",
-    status: "Análise",
+    status: "pendente",
     fase: 2,
     processo: 2,
     cliente: { nome: "Maria Santos" },

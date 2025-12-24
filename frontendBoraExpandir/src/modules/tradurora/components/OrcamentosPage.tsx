@@ -2,31 +2,28 @@ import React, { useMemo, useState } from 'react'
 import { FileText, Mail, Phone, Calendar, Send } from 'lucide-react'
 import OrcamentoModal from './OrcamentoModal'
 import type { OrcamentoItem, OrcamentoFormData } from '../types/orcamento'
+import { Badge } from '../../../components/ui/Badge'
 
 interface OrcamentosPageProps {
   orcamentos: OrcamentoItem[]
   onResponderOrcamento: (orcamentoId: string, dados: OrcamentoFormData) => void
 }
 
-const statusColors: Record<OrcamentoItem['status'], { badge: string; text: string; label: string }> = {
+const statusConfig: Record<OrcamentoItem['status'], { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'; label: string }> = {
   pendente: {
-    badge: 'bg-yellow-100 dark:bg-yellow-500/20',
-    text: 'text-yellow-700 dark:text-yellow-400',
+    variant: 'warning',
     label: 'Pendente',
   },
   respondido: {
-    badge: 'bg-blue-100 dark:bg-blue-500/20',
-    text: 'text-blue-700 dark:text-blue-400',
+    variant: 'default',
     label: 'Respondido',
   },
   aceito: {
-    badge: 'bg-green-100 dark:bg-green-500/20',
-    text: 'text-green-700 dark:text-green-400',
+    variant: 'success',
     label: 'Aceito',
   },
   recusado: {
-    badge: 'bg-red-100 dark:bg-red-500/20',
-    text: 'text-red-700 dark:text-red-400',
+    variant: 'destructive',
     label: 'Recusado',
   },
 }
@@ -49,9 +46,9 @@ export default function OrcamentosPage({ orcamentos, onResponderOrcamento }: Orc
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Orçamentos</h1>
           {pendentesCount > 0 && (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400">
+            <Badge variant="warning">
               {pendentesCount} {pendentesCount === 1 ? 'pendente' : 'pendentes'}
-            </span>
+            </Badge>
           )}
         </div>
         <p className="text-gray-600 dark:text-gray-400">Solicitações de orçamento dos clientes</p>
@@ -107,7 +104,7 @@ export default function OrcamentosPage({ orcamentos, onResponderOrcamento }: Orc
           <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-12 text-center">
             <FileText className="h-12 w-12 text-gray-300 dark:text-neutral-600 mx-auto mb-3" />
             <p className="text-gray-600 dark:text-gray-400">
-              {filter === 'todos' ? 'Nenhum orçamento encontrado' : `Nenhum orçamento ${statusColors[filter as OrcamentoItem['status']].label.toLowerCase()}`}
+              {filter === 'todos' ? 'Nenhum orçamento encontrado' : `Nenhum orçamento ${statusConfig[filter as OrcamentoItem['status']].label.toLowerCase()}`}
             </p>
           </div>
         ) : (
@@ -124,13 +121,13 @@ export default function OrcamentosPage({ orcamentos, onResponderOrcamento }: Orc
                       <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
                         {orcamento.documentoNome}
                       </h3>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 mt-1">
+                      <Badge variant="default">
                         {orcamento.parIdiomas.origem} → {orcamento.parIdiomas.destino}
-                      </span>
+                      </Badge>
                     </div>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[orcamento.status].badge} ${statusColors[orcamento.status].text}`}>
-                      {statusColors[orcamento.status].label}
-                    </span>
+                    <Badge variant={statusConfig[orcamento.status].variant}>
+                      {statusConfig[orcamento.status].label}
+                    </Badge>
                   </div>
 
                   {/* Cliente Info */}

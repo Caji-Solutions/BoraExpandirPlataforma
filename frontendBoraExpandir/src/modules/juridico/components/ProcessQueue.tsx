@@ -1,6 +1,6 @@
 import { Clock, FileText, User, ChevronRight } from "lucide-react";
 import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
+import { Badge } from '../../../components/ui/Badge';
 import {
   Table,
   TableBody,
@@ -65,13 +65,13 @@ const mockProcesses: Process[] = [
 
 const StatusBadge = ({ status }: { status: Process["status"] }) => {
   const variants = {
-    new: { label: "Novo", className: "bg-destructive text-destructive-foreground" },
-    pending_client: { label: "Pendente", className: "bg-warning text-warning-foreground" },
-    ready: { label: "Pronto", className: "bg-success text-success-foreground" },
+    new: { label: "Novo", variant: "destructive" as const },
+    pending_client: { label: "Pendente", variant: "warning" as const },
+    ready: { label: "Pronto", variant: "success" as const },
   };
 
-  const { label, className } = variants[status];
-  return <Badge className={className}>{label}</Badge>;
+  const { label, variant } = variants[status];
+  return <Badge variant={variant}>{label}</Badge>;
 };
 
 const SLAIndicator = ({ hours }: { hours: number }) => {

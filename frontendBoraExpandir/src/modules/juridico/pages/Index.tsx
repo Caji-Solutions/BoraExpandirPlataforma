@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { FolderOpen, Star, AlertCircle, Video, AlertTriangle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Textarea } from "../components/ui/textarea";
+import { Badge } from '../../../components/ui/Badge';
 
 const kpiData = [
   {

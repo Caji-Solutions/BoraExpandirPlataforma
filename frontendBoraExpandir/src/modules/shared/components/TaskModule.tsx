@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Eye, Calendar, User } from "lucide-react";
-import { Badge } from "./ui/badge";
+import { Badge } from "../../../components/ui/Badge";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Checkbox } from "./ui/checkbox";
 import { Input } from "./ui/input";
@@ -143,16 +143,16 @@ export function TaskModule({ currentUser }: TaskModuleProps) {
                                     </TableCell>
                                     <TableCell>
                                         {task.status === "Atrasado" && (
-                                            <span className="text-destructive font-medium">Atrasado</span>
+                                            <Badge variant="destructive">Atrasado</Badge>
                                         )}
                                         {task.status === "Em Andamento" && (
-                                            <span className="text-blue-600 font-medium">Em Andamento</span>
+                                            <Badge variant="default">Em Andamento</Badge>
                                         )}
                                         {task.status === "Pendente" && (
-                                            <span className="text-orange-500 font-medium">Pendente</span>
+                                            <Badge variant="warning">Pendente</Badge>
                                         )}
                                         {task.status === "Concluído" && (
-                                            <span className="text-green-600 font-medium">Concluído</span>
+                                            <Badge variant="success">Concluído</Badge>
                                         )}
                                     </TableCell>
                                     <TableCell>{task.observacao}</TableCell>

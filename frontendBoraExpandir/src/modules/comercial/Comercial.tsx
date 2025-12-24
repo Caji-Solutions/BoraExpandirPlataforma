@@ -31,6 +31,7 @@ import type {
 
 } from '../../types/comercial'
 import Toast, { useToast, ToastContainer } from '../../components/ui/Toast'
+import { Badge } from '../../components/ui/Badge'
 
 // Componentes de página
 function DashboardPage({ 
@@ -54,7 +55,7 @@ function DashboardPage({
 }) {
   return (
     <div>
-      <h1 className="text-3xl font-bold text-red-900 dark:text-white mb-2">Dashboard Comercial</h1>
+      <h1 className="text-3xl font-bold text-dark dark:text-white mb-2">Dashboard Comercial</h1>
       <p className="text-gray-600 dark:text-gray-400 mb-8">Visão geral das atividades comerciais</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -212,14 +213,14 @@ function ContratosPage({
                       <span className="text-gray-600 dark:text-gray-400">
                         Valor: <strong className="text-gray-900 dark:text-white">R$ {contrato.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
                       </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        contrato.status === 'assinado' ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400' :
-                        contrato.status === 'aguardando_assinatura' ? 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400' :
-                        contrato.status === 'rascunho' ? 'bg-gray-100 dark:bg-neutral-700 text-gray-700 dark:text-gray-300' :
-                        'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400'
-                      }`}>
+                      <Badge variant={
+                        contrato.status === 'assinado' ? 'success' :
+                        contrato.status === 'aguardando_assinatura' ? 'warning' :
+                        contrato.status === 'rascunho' ? 'secondary' :
+                        'destructive'
+                      }>
                         {contrato.status}
-                      </span>
+                      </Badge>
                     </div>
                   </div>
                   <button
@@ -281,14 +282,14 @@ function PagamentosPage({
                       <span className="text-gray-600 dark:text-gray-400">
                         Valor: <strong className="text-gray-900 dark:text-white">R$ {link.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
                       </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        link.status === 'pago' ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400' :
-                        link.status === 'ativo' ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400' :
-                        link.status === 'expirado' ? 'bg-gray-100 dark:bg-neutral-700 text-gray-700 dark:text-gray-300' :
-                        'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400'
-                      }`}>
+                      <Badge variant={
+                        link.status === 'pago' ? 'success' :
+                        link.status === 'ativo' ? 'default' :
+                        link.status === 'expirado' ? 'secondary' :
+                        'destructive'
+                      }>
                         {link.status}
-                      </span>
+                      </Badge>
                     </div>
                     <div className="flex items-center gap-2">
                       <input
@@ -350,13 +351,13 @@ function RequerimentosPage({
               <div key={req.id} className="p-6 hover:bg-gray-50 dark:hover:bg-neutral-700">
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="font-semibold text-gray-900 dark:text-white">{req.titulo}</h3>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    req.status === 'aprovado' ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400' :
-                    req.status === 'pendente' ? 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400' :
-                    'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400'
-                  }`}>
+                  <Badge variant={
+                    req.status === 'aprovado' ? 'success' :
+                    req.status === 'pendente' ? 'warning' :
+                    'destructive'
+                  }>
                     {req.status}
-                  </span>
+                  </Badge>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{req.descricao}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-500">Tipo: {req.tipo}</p>
