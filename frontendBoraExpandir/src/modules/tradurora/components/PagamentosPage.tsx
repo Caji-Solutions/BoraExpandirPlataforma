@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { DollarSign, Copy, CheckCircle } from 'lucide-react'
+import { DollarSign, Copy, CheckCircle, TrendingUp, FileCheck } from 'lucide-react'
 import type { TraducaoItem } from '../types'
 import { Badge } from '../../../components/ui/Badge'
 
@@ -60,6 +60,10 @@ export default function PagamentosPage({ traducoes }: PagamentosPageProps) {
     .filter(p => p.status === 'pago')
     .reduce((sum, p) => sum + p.valor, 0)
 
+  const totalGanhos = pagamentos.reduce((sum, p) => sum + p.valor, 0)
+  
+  const traducoesRealizadas = pagamentos.length
+
   const statusConfig: Record<'pendente' | 'pago' | 'processando', { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'; label: string }> = {
     pendente: { variant: 'warning', label: 'Pendente' },
     pago: { variant: 'success', label: 'Pago' },
@@ -74,7 +78,40 @@ export default function PagamentosPage({ traducoes }: PagamentosPageProps) {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Total Ganhos */}
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-500/10 dark:to-blue-500/5 p-6 rounded-xl shadow-sm border border-blue-200 dark:border-blue-500/30">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-blue-900 dark:text-blue-300">Total Ganhos</h3>
+            <div className="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-lg">
+              <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">
+            R$ {totalGanhos.toFixed(2).replace('.', ',')}
+          </p>
+          <p className="text-xs text-blue-700 dark:text-blue-400 mt-2">
+            Soma de todos os pagamentos
+          </p>
+        </div>
+
+        {/* Traduções Realizadas */}
+        <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-500/10 dark:to-purple-500/5 p-6 rounded-xl shadow-sm border border-purple-200 dark:border-purple-500/30">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-purple-900 dark:text-purple-300">Traduções Realizadas</h3>
+            <div className="p-2 bg-purple-100 dark:bg-purple-500/20 rounded-lg">
+              <FileCheck className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-purple-900 dark:text-purple-100">
+            {traducoesRealizadas}
+          </p>
+          <p className="text-xs text-purple-700 dark:text-purple-400 mt-2">
+            Total de documentos traduzidos
+          </p>
+        </div>
+
+        {/* Pendente */}
         <div className="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Pendente</h3>
@@ -85,8 +122,12 @@ export default function PagamentosPage({ traducoes }: PagamentosPageProps) {
           <p className="text-3xl font-bold text-gray-900 dark:text-white">
             R$ {totalPendente.toFixed(2).replace('.', ',')}
           </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            Aguardando pagamento
+          </p>
         </div>
 
+        {/* Pago */}
         <div className="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Pago</h3>
@@ -96,6 +137,9 @@ export default function PagamentosPage({ traducoes }: PagamentosPageProps) {
           </div>
           <p className="text-3xl font-bold text-gray-900 dark:text-white">
             R$ {totalPago.toFixed(2).replace('.', ',')}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            Pagamentos recebidos
           </p>
         </div>
       </div>

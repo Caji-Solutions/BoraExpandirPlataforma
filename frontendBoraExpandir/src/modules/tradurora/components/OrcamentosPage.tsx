@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { FileText, Mail, Phone, Calendar, Send } from 'lucide-react'
+import { FileText, Calendar, Send } from 'lucide-react'
 import OrcamentoModal from './OrcamentoModal'
 import type { OrcamentoItem, OrcamentoFormData } from '../types/orcamento'
 import { Badge } from '../../../components/ui/Badge'
@@ -99,9 +99,9 @@ export default function OrcamentosPage({ orcamentos, onResponderOrcamento }: Orc
       </div>
 
       {/* Lista de Orçamentos */}
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredOrcamentos.length === 0 ? (
-          <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-12 text-center">
+          <div className="col-span-full bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-12 text-center">
             <FileText className="h-12 w-12 text-gray-300 dark:text-neutral-600 mx-auto mb-3" />
             <p className="text-gray-600 dark:text-gray-400">
               {filter === 'todos' ? 'Nenhum orçamento encontrado' : `Nenhum orçamento ${statusConfig[filter as OrcamentoItem['status']].label.toLowerCase()}`}
@@ -111,89 +111,82 @@ export default function OrcamentosPage({ orcamentos, onResponderOrcamento }: Orc
           filteredOrcamentos.map(orcamento => (
             <div
               key={orcamento.id}
-              className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6 hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6 hover:shadow-lg transition-all hover:scale-[1.02] flex flex-col"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 space-y-3">
-                  {/* Header */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
-                        {orcamento.documentoNome}
-                      </h3>
-                      <Badge variant="default">
-                        {orcamento.parIdiomas.origem} → {orcamento.parIdiomas.destino}
-                      </Badge>
-                    </div>
-                    <Badge variant={statusConfig[orcamento.status].variant}>
-                      {statusConfig[orcamento.status].label}
-                    </Badge>
-                  </div>
+              {/* Header com Status */}
+              <div className="flex items-start justify-between gap-2 mb-4">
+                <Badge variant={statusConfig[orcamento.status].variant}>
+                  {statusConfig[orcamento.status].label}
+                </Badge>
+                <Badge variant="default" className="text-xs">
+                  {orcamento.parIdiomas.origem} → {orcamento.parIdiomas.destino}
+                </Badge>
+              </div>
 
-                  {/* Cliente Info */}
-                  <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
-                    <div className="flex items-center gap-1">
-                      <FileText className="h-4 w-4" />
-                      <span>{orcamento.clienteNome}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Mail className="h-4 w-4" />
-                      <span>{orcamento.clienteEmail}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Phone className="h-4 w-4" />
-                      <span>{orcamento.clienteTelefone}</span>
-                    </div>
-                  </div>
+              {/* Documento */}
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <h3 className="font-semibold text-base text-gray-900 dark:text-white line-clamp-1">
+                    {orcamento.documentoNome}
+                  </h3>
+                </div>
+              </div>
 
-                  {/* Detalhes */}
-                  <div className="flex flex-wrap gap-4 text-sm">
-                    {orcamento.numeroPaginas && (
-                      <div>
-                        <span className="text-gray-500 dark:text-gray-400">Páginas:</span>{' '}
-                        <span className="font-medium text-gray-900 dark:text-white">{orcamento.numeroPaginas}</span>
-                      </div>
-                    )}
-                    {orcamento.numeroPalavras && (
-                      <div>
-                        <span className="text-gray-500 dark:text-gray-400">Palavras:</span>{' '}
-                        <span className="font-medium text-gray-900 dark:text-white">{orcamento.numeroPalavras}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4 text-gray-400" />
-                      <span className="text-gray-500 dark:text-gray-400">Prazo desejado:</span>{' '}
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {new Date(orcamento.prazoDesejado).toLocaleDateString('pt-BR')}
-                      </span>
-                    </div>
-                  </div>
+              {/* Cliente Info - Apenas Nome e ID */}
+              <div className="mb-4 pb-4 border-b border-gray-200 dark:border-neutral-700">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Cliente</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">{orcamento.clienteNome}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">ID: {orcamento.id.slice(0, 8)}...</p>
+              </div>
 
-                  {/* Valor do Orçamento (se já respondido) */}
-                  {orcamento.valorOrcamento && (
-                    <div className="bg-gray-50 dark:bg-neutral-700/50 p-3 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Orçamento enviado:</p>
-                      <p className="text-xl font-bold text-gray-900 dark:text-white">
-                        R$ {orcamento.valorOrcamento.toFixed(2).replace('.', ',')}
-                      </p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                        Entrega: {orcamento.prazoEntrega ? new Date(orcamento.prazoEntrega).toLocaleDateString('pt-BR') : '-'}
-                      </p>
-                    </div>
+              {/* Detalhes do Documento */}
+              <div className="space-y-2 mb-4 flex-1">
+                {orcamento.numeroPaginas && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 dark:text-gray-400">Páginas:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{orcamento.numeroPaginas}</span>
+                  </div>
+                )}
+                {orcamento.numeroPalavras && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 dark:text-gray-400">Palavras:</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{orcamento.numeroPalavras}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500 dark:text-gray-400">Prazo:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {new Date(orcamento.prazoDesejado).toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Valor do Orçamento (se já respondido) */}
+              {orcamento.valorOrcamento && (
+                <div className="bg-emerald-50 dark:bg-emerald-500/10 p-3 rounded-lg mb-4">
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400 mb-1">Orçamento enviado</p>
+                  <p className="text-xl font-bold text-emerald-900 dark:text-emerald-300">
+                    R$ {orcamento.valorOrcamento.toFixed(2).replace('.', ',')}
+                  </p>
+                  {orcamento.prazoEntrega && (
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                      Entrega: {new Date(orcamento.prazoEntrega).toLocaleDateString('pt-BR')}
+                    </p>
                   )}
                 </div>
+              )}
 
-                {/* Ação */}
-                {orcamento.status === 'pendente' && (
-                  <button
-                    onClick={() => setSelectedOrcamento(orcamento)}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
-                  >
-                    <Send className="h-4 w-4" />
-                    Responder
-                  </button>
-                )}
-              </div>
+              {/* Ação */}
+              {orcamento.status === 'pendente' && (
+                <button
+                  onClick={() => setSelectedOrcamento(orcamento)}
+                  className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
+                >
+                  <Send className="h-4 w-4" />
+                  Responder
+                </button>
+              )}
             </div>
           ))
         )}

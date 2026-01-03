@@ -61,15 +61,9 @@ export default function OrcamentoModal({ orcamento, onClose, onSubmit }: Orcamen
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Cliente</p>
               <p className="text-sm font-semibold text-gray-900 dark:text-white">{orcamento.clienteNome}</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Email</p>
-                <p className="text-sm text-gray-700 dark:text-gray-300">{orcamento.clienteEmail}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Telefone</p>
-                <p className="text-sm text-gray-700 dark:text-gray-300">{orcamento.clienteTelefone}</p>
-              </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">ID</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300 font-mono">{orcamento.id}</p>
             </div>
           </div>
 

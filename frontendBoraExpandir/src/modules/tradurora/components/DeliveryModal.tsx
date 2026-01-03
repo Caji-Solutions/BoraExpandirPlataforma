@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { X, Download, Upload, AlertTriangle } from 'lucide-react'
+import { X, Upload, AlertTriangle } from 'lucide-react'
 import type { TraducaoItem } from '../types'
 
 interface DeliveryModalProps {
@@ -44,7 +44,15 @@ export default function DeliveryModal({ traducao, onClose, onSubmit }: DeliveryM
     if (!arquivo || !revisada) return
     setUploading(true)
     try {
-      onSubmit(traducao.id, arquivo)
+      await onSubmit(traducao.id, arquivo)
+      // Resetar estados
+      setArquivo(null)
+      setRevisada(false)
+      // Fechar modal após sucesso
+      onClose()
+    } catch (error) {
+      console.error('Erro ao enviar tradução:', error)
+      // Em caso de erro, manter o modal aberto
     } finally {
       setUploading(false)
     }
@@ -94,13 +102,17 @@ export default function DeliveryModal({ traducao, onClose, onSubmit }: DeliveryM
             </p>
           </div>
 
-          {/* Download Original */}
+          {/* Preview do Documento Original */}
           <div>
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Documento Original</p>
-            <button className="flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-500/30 transition-colors">
-              <Download className="h-4 w-4" />
-              Baixar Original (.pdf)
-            </button>
+            <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-lg p-4">
+              <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                📄 {traducao.documentoNome}
+              </p>
+              <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                Visualização apenas - Documento disponível para tradução
+              </p>
+            </div>
           </div>
 
           {/* Upload Area */}
