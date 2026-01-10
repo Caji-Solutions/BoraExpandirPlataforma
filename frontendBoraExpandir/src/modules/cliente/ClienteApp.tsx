@@ -327,9 +327,27 @@ export function ClienteApp() {
             path="upload"
             element={
               <DocumentUpload
+                clienteId={mockClient.id}
                 documents={documents}
                 requiredDocuments={mockRequiredDocuments}
-                onUpload={handleUpload}
+                onUploadSuccess={(data) => {
+                  console.log('Upload concluído:', data)
+                  // Atualizar lista de documentos após upload bem-sucedido
+                  const newDocument: Document = {
+                    id: Date.now().toString(),
+                    clientId: mockClient.id,
+                    name: mockRequiredDocuments.find(req => req.type === data.documentType)?.name || 'Documento',
+                    type: data.documentType,
+                    status: 'analyzing',
+                    uploadDate: new Date(),
+                    fileName: data.fileName,
+                    fileUrl: data.publicUrl,
+                  }
+                  setDocuments(prev => {
+                    const filtered = prev.filter(doc => doc.type !== data.documentType)
+                    return [...filtered, newDocument]
+                  })
+                }}
                 onDelete={handleDeleteDocument}
               />
             }

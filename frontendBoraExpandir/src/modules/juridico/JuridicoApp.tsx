@@ -1,14 +1,24 @@
 import { useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { Home, FolderOpen, FileSearch, CheckSquare, DollarSign, Settings } from "lucide-react";
+import { Home, FolderOpen, FileSearch, CheckSquare, DollarSign, Settings, Users, FileStack } from "lucide-react";
 import { Sidebar } from "../../components/ui/Sidebar";
 import type { SidebarGroup } from "../../components/ui/Sidebar";
 import { Dashboard } from "./components/Dashboard";
 import { ProcessQueue } from "./components/ProcessQueue";
 import { ReviewPanel } from "./components/ReviewPanel";
 import { Config } from "../../components/ui/Config";
+import { DelegacaoDocumentos } from "./components/DelegacaoDocumentos";
+import { EquipeJuridica } from "./components/EquipeJuridica";
 
 import { ProcessTable, ProcessData } from "./components/ProcessTable";
+
+// Simulação: Usuário logado é Supervisor
+// Em produção, isso viria do contexto de autenticação
+const USUARIO_LOGADO = {
+  nome: "Dr. Carlos Lima",
+  cargo: "Supervisor Jurídico",
+  isSupervisor: true, // Altere para false para testar como usuário comum
+};
 
 const mockJuridicoData: ProcessData[] = [
   {
@@ -70,6 +80,7 @@ const Index = () => {
   } | null>(null);
 
   // Configuração da sidebar seguindo o padrão do projeto
+  // Itens exclusivos para supervisor são adicionados condicionalmente
   const sidebarGroups: SidebarGroup[] = [
     {
       label: "Menu Principal",
@@ -80,6 +91,14 @@ const Index = () => {
         { label: "Tarefas", to: "/juridico/tarefas", icon: CheckSquare },
       ],
     },
+    // Grupo exclusivo para Supervisores
+    ...(USUARIO_LOGADO.isSupervisor ? [{
+      label: "Supervisão",
+      items: [
+        { label: "Delegação de Documentos", to: "/juridico/delegacao", icon: FileStack },
+        { label: "Equipe Jurídica", to: "/juridico/equipe", icon: Users },
+      ],
+    }] : []),
     {
       label: "Sistema",
       items: [
@@ -94,6 +113,18 @@ const Index = () => {
       <Sidebar groups={sidebarGroups} />
 
       <main className="ml-64 p-6">
+        {/* Badge de Supervisor */}
+        {USUARIO_LOGADO.isSupervisor && (
+          <div className="mb-4 flex items-center gap-2">
+            <span className="px-2.5 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
+              👑 Supervisor
+            </span>
+            <span className="text-sm text-muted-foreground">
+              Logado como {USUARIO_LOGADO.nome}
+            </span>
+          </div>
+        )}
+
         {selectedProcess && (
           <div className="border-b bg-muted/30 p-4 -m-6 mb-6">
             <button
@@ -130,6 +161,15 @@ const Index = () => {
             <Route path="tarefas" element={<Tarefas />} />
             <Route path="financeiro" element={<Financeiro />} />
             <Route path="configuracoes" element={<Config />} />
+            
+            {/* Rotas exclusivas para Supervisores */}
+            {USUARIO_LOGADO.isSupervisor && (
+              <>
+                <Route path="delegacao" element={<DelegacaoDocumentos />} />
+                <Route path="equipe" element={<EquipeJuridica />} />
+              </>
+            )}
+            
             <Route path="*" element={<Navigate to="." replace />} />
           </Routes>
         )}
