@@ -43,3 +43,43 @@ model Notificacao {
 
   @@map("notificacoes")
 }
+
+// Enumeração para status do documento
+enum StatusDocumento {
+  PENDING     // Aguardando análise
+  ANALYZING   // Em análise
+  APPROVED    // Aprovado
+  REJECTED    // Rejeitado
+}
+
+// Modelo para armazenar documentos dos clientes
+model Documento {
+  id              String          @id @default(uuid())
+  
+  // Relacionamento com o cliente (UUID do Supabase)
+  clienteId       String          @db.Uuid @map("cliente_id")
+  
+  // Informações do arquivo
+  tipo            String          // Tipo do documento (passport, identity, proof_of_address, etc.)
+  nomeOriginal    String          @map("nome_original")  // Nome original do arquivo
+  nomeArquivo     String          @map("nome_arquivo")   // Nome salvo no storage
+  storagePath     String          @map("storage_path")   // Caminho completo no Supabase Storage
+  publicUrl       String?         @map("public_url")     // URL pública do arquivo
+  contentType     String?         @map("content_type")   // MIME type do arquivo
+  tamanho         Int?            // Tamanho em bytes
+  
+  // Status e análise
+  status          StatusDocumento @default(PENDING)
+  motivoRejeicao  String?         @map("motivo_rejeicao")
+  analisadoPor    String?         @db.Uuid @map("analisado_por") // ID do usuário que analisou
+  analisadoEm     DateTime?       @map("analisado_em")
+  
+  // Timestamps
+  criadoEm        DateTime        @default(now()) @map("criado_em")
+  atualizadoEm    DateTime        @updatedAt @map("atualizado_em")
+
+  @@index([clienteId])
+  @@index([tipo])
+  @@index([status])
+  @@map("documentos")
+}

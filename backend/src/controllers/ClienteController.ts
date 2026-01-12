@@ -92,19 +92,111 @@ class ClienteController {
         contentType: file.mimetype
       })
 
+      // Criar registro do documento no banco de dados
+      const documentoRecord = await ClienteRepository.createDocumento({
+        clienteId,
+        tipo: documentType,
+        nomeOriginal: file.originalname,
+        nomeArquivo: fileName,
+        storagePath: filePath,
+        publicUrl: uploadResult.publicUrl,
+        contentType: file.mimetype,
+        tamanho: file.size
+      })
+
+      console.log('Documento registrado no banco:', documentoRecord.id)
+
       return res.status(200).json({
         message: 'Documento enviado com sucesso',
         data: {
+          id: documentoRecord.id,
           ...uploadResult,
           fileName: file.originalname,
           documentType,
-          clienteId
+          clienteId,
+          status: documentoRecord.status
         }
       })
     } catch (error: any) {
       console.error('Erro inesperado no upload:', error)
       return res.status(500).json({ 
         message: 'Erro ao fazer upload do documento', 
+        error: error.message 
+      })
+    }
+  }
+
+  // GET /cliente/:clienteId/documentos
+  async getDocumentos(req: any, res: any) {
+    try {
+      const { clienteId } = req.params
+
+      if (!clienteId) {
+        return res.status(400).json({ message: 'clienteId é obrigatório' })
+      }
+
+      const documentos = await ClienteRepository.getDocumentosByClienteId(clienteId)
+
+      return res.status(200).json({
+        message: 'Documentos recuperados com sucesso',
+        data: documentos
+      })
+    } catch (error: any) {
+      console.error('Erro ao buscar documentos:', error)
+      return res.status(500).json({ 
+        message: 'Erro ao buscar documentos', 
+        error: error.message 
+      })
+    }
+  }
+
+  // DELETE /cliente/documento/:documentoId
+  async deleteDocumento(req: any, res: any) {
+    try {
+      const { documentoId } = req.params
+
+      if (!documentoId) {
+        return res.status(400).json({ message: 'documentoId é obrigatório' })
+      }
+
+      await ClienteRepository.deleteDocumento(documentoId)
+
+      return res.status(200).json({
+        message: 'Documento deletado com sucesso'
+      })
+    } catch (error: any) {
+      console.error('Erro ao deletar documento:', error)
+      return res.status(500).json({ 
+        message: 'Erro ao deletar documento', 
+        error: error.message 
+      })
+    }
+  }
+
+  // PATCH /cliente/documento/:documentoId/status
+  async updateDocumentoStatus(req: any, res: any) {
+    try {
+      const { documentoId } = req.params
+      const { status, motivoRejeicao, analisadoPor } = req.body
+
+      if (!documentoId) {
+        return res.status(400).json({ message: 'documentoId é obrigatório' })
+      }
+
+      if (!status || !['PENDING', 'ANALYZING', 'APPROVED', 'REJECTED'].includes(status)) {
+        return res.status(400).json({ message: 'status é obrigatório e deve ser PENDING, ANALYZING, APPROVED ou REJECTED' })
+      }
+
+      const documento = await ClienteRepository.updateDocumentoStatus(documentoId, status, motivoRejeicao, analisadoPor)
+
+      return res.status(200).json({
+        message: 'Status do documento atualizado com sucesso',
+        data: documento
+      })
+    } catch (error: any) {
+      console.error('Erro ao atualizar status do documento:', error)
+      return res.status(500).json({ 
+        message: 'Erro ao atualizar status do documento', 
         error: error.message 
       })
     }

@@ -3,7 +3,7 @@ import { PartnerMetrics, Referral } from '../types';
 
 // Mock data for development
 export const mockClient: Client = {
-  id: '1',
+  id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', // UUID válido para teste
   name: 'João Silva',
   email: 'joao.silva@email.com',
   phone: '+55 11 99999-9999',
