@@ -1,139 +1,29 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   FileText, 
-  User, 
   Clock, 
-  CheckCircle2, 
   AlertCircle,
   ChevronRight,
   Filter,
   Search,
   UserPlus,
-  Eye
+  Eye,
+  Loader2,
+  RefreshCw
 } from "lucide-react";
-
-// Tipos
-interface DocumentoCliente {
-  id: string;
-  clienteNome: string;
-  clienteId: string;
-  tipoServico: string;
-  documentos: {
-    nome: string;
-    tipo: string;
-    dataUpload: string;
-    status: 'pendente' | 'em_analise' | 'aprovado' | 'rejeitado';
-  }[];
-  dataSubmissao: string;
-  prioridade: 'alta' | 'media' | 'baixa';
-  delegadoPara: string | null;
-  status: 'aguardando_delegacao' | 'delegado' | 'em_analise' | 'concluido';
-}
-
-interface MembroEquipe {
-  id: string;
-  nome: string;
-  cargo: string;
-  processosAtivos: number;
-  disponibilidade: 'disponivel' | 'ocupado' | 'ausente';
-  avatar?: string;
-}
-
-// Mock de documentos enviados por clientes aguardando delegação
-const mockDocumentosClientes: DocumentoCliente[] = [
-  {
-    id: "DOC-001",
-    clienteNome: "João Pedro Silva",
-    clienteId: "CLI-2025-001",
-    tipoServico: "Visto D7",
-    documentos: [
-      { nome: "Passaporte.pdf", tipo: "Identificação", dataUpload: "2026-01-08", status: 'pendente' },
-      { nome: "Comprovante_Renda.pdf", tipo: "Financeiro", dataUpload: "2026-01-08", status: 'pendente' },
-      { nome: "Extrato_Bancario.pdf", tipo: "Financeiro", dataUpload: "2026-01-08", status: 'pendente' },
-    ],
-    dataSubmissao: "2026-01-08",
-    prioridade: 'alta',
-    delegadoPara: null,
-    status: 'aguardando_delegacao',
-  },
-  {
-    id: "DOC-002",
-    clienteNome: "Maria Costa Oliveira",
-    clienteId: "CLI-2025-002",
-    tipoServico: "Cidadania Portuguesa",
-    documentos: [
-      { nome: "Certidao_Nascimento.pdf", tipo: "Civil", dataUpload: "2026-01-07", status: 'pendente' },
-      { nome: "Certidao_Casamento.pdf", tipo: "Civil", dataUpload: "2026-01-07", status: 'pendente' },
-    ],
-    dataSubmissao: "2026-01-07",
-    prioridade: 'media',
-    delegadoPara: null,
-    status: 'aguardando_delegacao',
-  },
-  {
-    id: "DOC-003",
-    clienteNome: "Carlos Eduardo Santos",
-    clienteId: "CLI-2025-003",
-    tipoServico: "Autorização de Residência",
-    documentos: [
-      { nome: "Contrato_Trabalho.pdf", tipo: "Trabalho", dataUpload: "2026-01-06", status: 'em_analise' },
-      { nome: "NIF.pdf", tipo: "Fiscal", dataUpload: "2026-01-06", status: 'aprovado' },
-    ],
-    dataSubmissao: "2026-01-06",
-    prioridade: 'baixa',
-    delegadoPara: "Ana Lucia",
-    status: 'delegado',
-  },
-  {
-    id: "DOC-004",
-    clienteNome: "Fernanda Lima",
-    clienteId: "CLI-2025-004",
-    tipoServico: "Renovação Visto",
-    documentos: [
-      { nome: "Passaporte_Atual.pdf", tipo: "Identificação", dataUpload: "2026-01-09", status: 'pendente' },
-      { nome: "Comprovante_Residencia.pdf", tipo: "Residência", dataUpload: "2026-01-09", status: 'pendente' },
-      { nome: "Seguro_Saude.pdf", tipo: "Seguro", dataUpload: "2026-01-09", status: 'pendente' },
-    ],
-    dataSubmissao: "2026-01-09",
-    prioridade: 'alta',
-    delegadoPara: null,
-    status: 'aguardando_delegacao',
-  },
-];
-
-// Mock de membros da equipe jurídica
-const mockMembrosEquipe: MembroEquipe[] = [
-  { id: "MEM-001", nome: "Ana Lucia", cargo: "Advogada Sênior", processosAtivos: 8, disponibilidade: 'disponivel' },
-  { id: "MEM-002", nome: "Ricardo Mendes", cargo: "Advogado Pleno", processosAtivos: 12, disponibilidade: 'ocupado' },
-  { id: "MEM-003", nome: "Juliana Ferreira", cargo: "Advogada Júnior", processosAtivos: 5, disponibilidade: 'disponivel' },
-  { id: "MEM-004", nome: "Pedro Almeida", cargo: "Paralegal", processosAtivos: 3, disponibilidade: 'disponivel' },
-  { id: "MEM-005", nome: "Mariana Costa", cargo: "Advogada Pleno", processosAtivos: 10, disponibilidade: 'ausente' },
-];
-
-// Componente de Badge de Prioridade
-function PrioridadeBadge({ prioridade }: { prioridade: 'alta' | 'media' | 'baixa' }) {
-  const config = {
-    alta: { bg: 'bg-red-100', text: 'text-red-700', label: 'Alta' },
-    media: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Média' },
-    baixa: { bg: 'bg-green-100', text: 'text-green-700', label: 'Baixa' },
-  };
-  const { bg, text, label } = config[prioridade];
-  return (
-    <span className={`px-2 py-0.5 rounded text-xs font-semibold ${bg} ${text}`}>
-      {label}
-    </span>
-  );
-}
+import { ModalDelegacao, type MembroEquipe } from "./ModalDelegacao";
+import { getProcessos, getFuncionariosJuridico, type Processo, type FuncionarioJuridico } from "../services/juridicoService";
 
 // Componente de Status
-function StatusBadge({ status }: { status: DocumentoCliente['status'] }) {
-  const config = {
-    aguardando_delegacao: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Aguardando Delegação' },
-    delegado: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Delegado' },
+function StatusBadge({ status }: { status: string }) {
+  const config: Record<string, { bg: string; text: string; label: string }> = {
+    pendente_documentos: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Pendente Docs' },
     em_analise: { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Em Análise' },
+    aguardando_cliente: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Aguardando Cliente' },
     concluido: { bg: 'bg-green-100', text: 'text-green-700', label: 'Concluído' },
+    cancelado: { bg: 'bg-red-100', text: 'text-red-700', label: 'Cancelado' },
   };
-  const { bg, text, label } = config[status];
+  const { bg, text, label } = config[status] || { bg: 'bg-gray-100', text: 'text-gray-700', label: status };
   return (
     <span className={`px-2 py-0.5 rounded text-xs font-semibold ${bg} ${text}`}>
       {label}
@@ -141,7 +31,7 @@ function StatusBadge({ status }: { status: DocumentoCliente['status'] }) {
   );
 }
 
-// Componente de Disponibilidade
+// Componente de Disponibilidade para uso na lista de equipe
 function DisponibilidadeBadge({ disponibilidade }: { disponibilidade: MembroEquipe['disponibilidade'] }) {
   const config = {
     disponivel: { bg: 'bg-green-500', label: 'Disponível' },
@@ -154,52 +44,145 @@ function DisponibilidadeBadge({ disponibilidade }: { disponibilidade: MembroEqui
   );
 }
 
+// Adaptar Processo para o formato do Modal  
+function adaptProcessoParaModal(processo: Processo) {
+  return {
+    id: processo.id,
+    clienteNome: processo.clientes?.nome || 'Cliente não identificado',
+    clienteId: processo.cliente_id,
+    tipoServico: processo.tipo_servico,
+    documentos: processo.documentos || [],
+    dataSubmissao: processo.created_at,
+    prioridade: 'media' as const,
+    delegadoPara: processo.responsavel?.full_name || null,
+    status: processo.responsavel_id ? 'delegado' as const : 'aguardando_delegacao' as const,
+  };
+}
+
+// Adaptar FuncionarioJuridico para MembroEquipe
+function adaptFuncionarioParaMembro(func: FuncionarioJuridico): MembroEquipe {
+  return {
+    id: func.id,
+    nome: func.full_name || 'Sem nome',
+    cargo: 'Equipe Jurídica',
+    processosAtivos: 0, // TODO: buscar da API
+    disponibilidade: 'disponivel' as const,
+  };
+}
+
 export function DelegacaoDocumentos() {
-  const [documentos, setDocumentos] = useState(mockDocumentosClientes);
+  const [processos, setProcessos] = useState<Processo[]>([]);
+  const [membrosEquipe, setMembrosEquipe] = useState<MembroEquipe[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
   const [filtroStatus, setFiltroStatus] = useState<string>('todos');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDoc, setSelectedDoc] = useState<DocumentoCliente | null>(null);
+  const [selectedProcesso, setSelectedProcesso] = useState<Processo | null>(null);
   const [showDelegacaoModal, setShowDelegacaoModal] = useState(false);
 
-  // Filtrar documentos
-  const documentosFiltrados = documentos.filter(doc => {
-    const matchStatus = filtroStatus === 'todos' || doc.status === filtroStatus;
-    const matchSearch = doc.clienteNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        doc.tipoServico.toLowerCase().includes(searchTerm.toLowerCase());
+  // Buscar dados da API
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [processosData, funcionariosData] = await Promise.all([
+        getProcessos(),
+        getFuncionariosJuridico()
+      ]);
+      setProcessos(processosData);
+      setMembrosEquipe(funcionariosData.map(adaptFuncionarioParaMembro));
+    } catch (err: any) {
+      console.error('Erro ao buscar dados:', err);
+      setError(err.message || 'Erro ao carregar dados');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Filtrar processos
+  const processosFiltrados = processos.filter(proc => {
+    const isDelegado = proc.responsavel_id !== null;
+    const matchStatus = 
+      filtroStatus === 'todos' || 
+      (filtroStatus === 'delegado' && isDelegado) ||
+      (filtroStatus === 'aguardando_delegacao' && !isDelegado) ||
+      proc.status === filtroStatus;
+    
+    const nomeCliente = proc.clientes?.nome || '';
+    const matchSearch = 
+      nomeCliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      proc.tipo_servico.toLowerCase().includes(searchTerm.toLowerCase());
+    
     return matchStatus && matchSearch;
   });
 
   // Estatísticas
-  const aguardandoDelegacao = documentos.filter(d => d.status === 'aguardando_delegacao').length;
-  const delegados = documentos.filter(d => d.status === 'delegado').length;
-  const emAnalise = documentos.filter(d => d.status === 'em_analise').length;
+  const aguardandoDelegacao = processos.filter(p => !p.responsavel_id).length;
+  const delegados = processos.filter(p => p.responsavel_id !== null).length;
+  const emAnalise = processos.filter(p => p.status === 'em_analise').length;
 
-  // Delegar documento
-  const delegarDocumento = (docId: string, membroId: string) => {
-    const membro = mockMembrosEquipe.find(m => m.id === membroId);
-    if (membro) {
-      setDocumentos(prev => prev.map(doc => 
-        doc.id === docId 
-          ? { ...doc, delegadoPara: membro.nome, status: 'delegado' as const }
-          : doc
-      ));
-      setShowDelegacaoModal(false);
-      setSelectedDoc(null);
-    }
+  // Callback após delegação
+  const handleDelegacao = (processoId: string, membroId: string) => {
+    // Recarregar dados para refletir a mudança
+    fetchData();
+    setShowDelegacaoModal(false);
+    setSelectedProcesso(null);
   };
+
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-muted-foreground">Carregando processos...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-3" />
+          <p className="text-red-700 font-medium">{error}</p>
+          <button 
+            onClick={fetchData}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 space-y-6">
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 text-sm text-orange-600 mb-2">
-          <AlertCircle className="h-4 w-4" />
-          <span className="font-medium">Área exclusiva para Supervisores</span>
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-sm text-orange-600 mb-2">
+            <AlertCircle className="h-4 w-4" />
+            <span className="font-medium">Área exclusiva para Supervisores</span>
+          </div>
+          <h1 className="text-3xl font-bold text-foreground">Delegação de Processos</h1>
+          <p className="text-muted-foreground mt-1">
+            Gerencie e delegue os processos para a equipe jurídica
+          </p>
         </div>
-        <h1 className="text-3xl font-bold text-foreground">Delegação de Documentos</h1>
-        <p className="text-muted-foreground mt-1">
-          Gerencie e delegue os documentos enviados pelos clientes para a equipe jurídica
-        </p>
+        <button
+          onClick={fetchData}
+          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Atualizar
+        </button>
       </div>
 
       {/* Cards de Estatísticas */}
@@ -240,8 +223,8 @@ export function DelegacaoDocumentos() {
         <div className="bg-white border rounded-xl p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Total Documentos</p>
-              <p className="text-2xl font-bold text-gray-700">{documentos.length}</p>
+              <p className="text-sm text-muted-foreground">Total Processos</p>
+              <p className="text-2xl font-bold text-gray-700">{processos.length}</p>
             </div>
             <div className="p-3 bg-gray-100 rounded-lg">
               <FileText className="h-6 w-6 text-gray-600" />
@@ -274,13 +257,14 @@ export function DelegacaoDocumentos() {
               <option value="aguardando_delegacao">Aguardando Delegação</option>
               <option value="delegado">Delegado</option>
               <option value="em_analise">Em Análise</option>
+              <option value="pendente_documentos">Pendente Docs</option>
               <option value="concluido">Concluído</option>
             </select>
           </div>
         </div>
       </div>
 
-      {/* Lista de Documentos */}
+      {/* Lista de Processos */}
       <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -288,48 +272,39 @@ export function DelegacaoDocumentos() {
               <tr>
                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cliente</th>
                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Serviço</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Documentos</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Data</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Prioridade</th>
+                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Etapa</th>
                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Delegado Para</th>
                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {documentosFiltrados.map((doc) => (
-                <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
+              {processosFiltrados.map((processo) => (
+                <tr key={processo.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4">
                     <div>
-                      <p className="font-medium text-gray-900">{doc.clienteNome}</p>
-                      <p className="text-sm text-gray-500">{doc.clienteId}</p>
+                      <p className="font-medium text-gray-900">{processo.clientes?.nome || 'N/A'}</p>
+                      <p className="text-sm text-gray-500 font-mono">{processo.cliente_id.slice(0, 8)}...</p>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-gray-700">{doc.tipoServico}</td>
+                  <td className="px-6 py-4 text-gray-700">{processo.tipo_servico}</td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-1.5">
-                      <FileText className="h-4 w-4 text-gray-400" />
-                      <span className="text-gray-700">{doc.documentos.length} arquivo(s)</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-gray-600 text-sm">
-                    {new Date(doc.dataSubmissao).toLocaleDateString('pt-BR')}
+                    <span className="px-2 py-1 bg-gray-100 rounded text-sm font-medium">
+                      Etapa {processo.etapa_atual}
+                    </span>
                   </td>
                   <td className="px-6 py-4">
-                    <PrioridadeBadge prioridade={doc.prioridade} />
+                    <StatusBadge status={processo.status} />
                   </td>
                   <td className="px-6 py-4">
-                    <StatusBadge status={doc.status} />
-                  </td>
-                  <td className="px-6 py-4">
-                    {doc.delegadoPara ? (
+                    {processo.responsavel ? (
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
                           <span className="text-white text-xs font-medium">
-                            {doc.delegadoPara.charAt(0)}
+                            {processo.responsavel.full_name?.charAt(0) || '?'}
                           </span>
                         </div>
-                        <span className="text-gray-700">{doc.delegadoPara}</span>
+                        <span className="text-gray-700">{processo.responsavel.full_name}</span>
                       </div>
                     ) : (
                       <span className="text-gray-400 italic">Não delegado</span>
@@ -339,12 +314,12 @@ export function DelegacaoDocumentos() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => {
-                          setSelectedDoc(doc);
+                          setSelectedProcesso(processo);
                           setShowDelegacaoModal(true);
                         }}
-                        disabled={doc.status !== 'aguardando_delegacao'}
+                        disabled={processo.responsavel_id !== null}
                         className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                          doc.status === 'aguardando_delegacao'
+                          processo.responsavel_id === null
                             ? 'bg-blue-600 text-white hover:bg-blue-700'
                             : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                         }`}
@@ -363,10 +338,10 @@ export function DelegacaoDocumentos() {
           </table>
         </div>
         
-        {documentosFiltrados.length === 0 && (
+        {processosFiltrados.length === 0 && (
           <div className="p-12 text-center">
             <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 font-medium">Nenhum documento encontrado</p>
+            <p className="text-gray-500 font-medium">Nenhum processo encontrado</p>
             <p className="text-sm text-gray-400 mt-1">Tente ajustar os filtros de busca</p>
           </div>
         )}
@@ -375,132 +350,52 @@ export function DelegacaoDocumentos() {
       {/* Equipe Disponível */}
       <div className="bg-white border rounded-xl shadow-sm p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Equipe Jurídica</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {mockMembrosEquipe.map((membro) => (
-            <div 
-              key={membro.id} 
-              className={`p-4 border rounded-lg ${
-                membro.disponibilidade === 'disponivel' ? 'border-green-200 bg-green-50/50' :
-                membro.disponibilidade === 'ocupado' ? 'border-yellow-200 bg-yellow-50/50' :
-                'border-gray-200 bg-gray-50/50'
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-                    <span className="text-white font-semibold">
-                      {membro.nome.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                    </span>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-gray-900">{membro.nome}</p>
-                      <DisponibilidadeBadge disponibilidade={membro.disponibilidade} />
+        {membrosEquipe.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {membrosEquipe.map((membro) => (
+              <div 
+                key={membro.id} 
+                className="p-4 border rounded-lg border-green-200 bg-green-50/50"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                      <span className="text-white font-semibold">
+                        {membro.nome.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                      </span>
                     </div>
-                    <p className="text-sm text-gray-500">{membro.cargo}</p>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-gray-900">{membro.nome}</p>
+                        <DisponibilidadeBadge disponibilidade={membro.disponibilidade} />
+                      </div>
+                      <p className="text-sm text-gray-500">{membro.cargo}</p>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="mt-3 flex items-center justify-between text-sm">
-                <span className="text-gray-500">Processos ativos:</span>
-                <span className={`font-semibold ${
-                  membro.processosAtivos > 10 ? 'text-red-600' :
-                  membro.processosAtivos > 6 ? 'text-yellow-600' :
-                  'text-green-600'
-                }`}>
-                  {membro.processosAtivos}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-6 text-gray-500">
+            <p>Nenhum funcionário do jurídico cadastrado</p>
+            <p className="text-sm text-gray-400 mt-1">Adicione funcionários com role 'juridico' na tabela profiles</p>
+          </div>
+        )}
       </div>
 
       {/* Modal de Delegação */}
-      {showDelegacaoModal && selectedDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div 
-            className="absolute inset-0 bg-black/50"
-            onClick={() => {
-              setShowDelegacaoModal(false);
-              setSelectedDoc(null);
-            }}
-          />
-          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
-            {/* Header do Modal */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-5">
-              <h3 className="font-bold text-white text-lg">Delegar Documento</h3>
-              <p className="text-blue-100 text-sm mt-1">
-                Selecione um membro da equipe para analisar os documentos
-              </p>
-            </div>
-
-            {/* Info do Documento */}
-            <div className="p-5 border-b bg-gray-50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white rounded-lg border">
-                  <FileText className="h-5 w-5 text-gray-500" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">{selectedDoc.clienteNome}</p>
-                  <p className="text-sm text-gray-500">{selectedDoc.tipoServico} • {selectedDoc.documentos.length} documento(s)</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Lista de Membros */}
-            <div className="p-5 max-h-80 overflow-y-auto">
-              <p className="text-sm font-medium text-gray-700 mb-3">Selecione o responsável:</p>
-              <div className="space-y-2">
-                {mockMembrosEquipe
-                  .filter(m => m.disponibilidade !== 'ausente')
-                  .map((membro) => (
-                    <button
-                      key={membro.id}
-                      onClick={() => delegarDocumento(selectedDoc.id, membro.id)}
-                      className="w-full p-3 border rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all flex items-center justify-between group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-                          <span className="text-white font-semibold text-sm">
-                            {membro.nome.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                          </span>
-                        </div>
-                        <div className="text-left">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-gray-900">{membro.nome}</p>
-                            <DisponibilidadeBadge disponibilidade={membro.disponibilidade} />
-                          </div>
-                          <p className="text-sm text-gray-500">{membro.cargo}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className={`text-sm font-medium ${
-                          membro.processosAtivos > 10 ? 'text-red-600' : 'text-gray-600'
-                        }`}>
-                          {membro.processosAtivos} processos
-                        </p>
-                        <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors ml-auto" />
-                      </div>
-                    </button>
-                  ))}
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="p-4 border-t bg-gray-50 flex justify-end">
-              <button
-                onClick={() => {
-                  setShowDelegacaoModal(false);
-                  setSelectedDoc(null);
-                }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
+      {selectedProcesso && (
+        <ModalDelegacao
+          isOpen={showDelegacaoModal}
+          documento={adaptProcessoParaModal(selectedProcesso)}
+          membrosEquipe={membrosEquipe}
+          onClose={() => {
+            setShowDelegacaoModal(false);
+            setSelectedProcesso(null);
+          }}
+          onDelegar={handleDelegacao}
+        />
       )}
     </div>
   );

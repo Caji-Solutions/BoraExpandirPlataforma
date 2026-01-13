@@ -53,16 +53,54 @@ class JuridicoController {
     }
 
     // =============================================
-    // GESTÃO DE CLIENTES
+    // GESTÃO DE PROCESSOS
     // =============================================
 
-    // POST /juridico/atribuir-responsavel - Atribuir responsável a um cliente
+    // GET /juridico/processos - Lista todos os processos
+    async getProcessos(req: any, res: any) {
+        try {
+            const processos = await JuridicoRepository.getProcessos()
+
+            return res.status(200).json({
+                message: 'Processos recuperados com sucesso',
+                data: processos,
+                total: processos.length
+            })
+        } catch (error: any) {
+            console.error('Erro ao buscar processos:', error)
+            return res.status(500).json({ 
+                message: 'Erro ao buscar processos', 
+                error: error.message 
+            })
+        }
+    }
+
+    // GET /juridico/processos/vagos - Lista processos sem responsável
+    async getProcessosVagos(req: any, res: any) {
+        try {
+            const processos = await JuridicoRepository.getProcessosSemResponsavel()
+
+            return res.status(200).json({
+                message: 'Processos sem responsável recuperados com sucesso',
+                data: processos,
+                total: processos.length
+            })
+        } catch (error: any) {
+            console.error('Erro ao buscar processos sem responsável:', error)
+            return res.status(500).json({ 
+                message: 'Erro ao buscar processos sem responsável', 
+                error: error.message 
+            })
+        }
+    }
+
+    // POST /juridico/atribuir-responsavel - Atribuir responsável a um processo
     async atribuirResponsavel(req: any, res: any) {
         try {
-            const { clienteId, responsavelId } = req.body // Ambos vêm do corpo da requisição
+            const { processoId, responsavelId } = req.body // Ambos vêm do corpo da requisição
 
-            if (!clienteId) {
-                return res.status(400).json({ message: 'clienteId é obrigatório' })
+            if (!processoId) {
+                return res.status(400).json({ message: 'processoId é obrigatório' })
             }
 
             // Se responsavelId foi fornecido, validar se é um funcionário do jurídico
@@ -75,13 +113,13 @@ class JuridicoController {
                 }
             }
 
-            const cliente = await JuridicoRepository.atribuirResponsavel(clienteId, responsavelId || null)
+            const processo = await JuridicoRepository.atribuirResponsavel(processoId, responsavelId || null)
 
             return res.status(200).json({
                 message: responsavelId 
                     ? 'Responsável jurídico atribuído com sucesso' 
-                    : 'Responsável jurídico removido - cliente agora está vago',
-                data: cliente
+                    : 'Responsável jurídico removido - processo agora está vago',
+                data: processo
             })
         } catch (error: any) {
             console.error('Erro ao atribuir responsável jurídico:', error)

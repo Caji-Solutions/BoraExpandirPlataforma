@@ -14,6 +14,16 @@ juridico.get('/funcionarios', JuridicoController.getFuncionarios.bind(JuridicoCo
 juridico.get('/funcionario/:funcionarioId', JuridicoController.getFuncionarioById.bind(JuridicoController))
 
 // =============================================
+// ROTAS DE PROCESSOS
+// =============================================
+
+// Lista todos os processos
+juridico.get('/processos', JuridicoController.getProcessos.bind(JuridicoController))
+
+// Lista processos sem responsável (vagos)
+juridico.get('/processos/vagos', JuridicoController.getProcessosVagos.bind(JuridicoController))
+
+// =============================================
 // ROTAS DE CLIENTES
 // =============================================
 
@@ -29,14 +39,8 @@ juridico.get('/clientes/por-responsavel/:responsavelId', JuridicoController.getC
 // Buscar cliente específico com dados do responsável
 juridico.get('/cliente/:clienteId', JuridicoController.getClienteComResponsavel.bind(JuridicoController))
 
-// Atribuir/remover responsável de um cliente (clienteId e responsavelId no body)
 juridico.post('/atribuir-responsavel', JuridicoController.atribuirResponsavel.bind(JuridicoController))
 
-// =============================================
-// ROTAS DE ESTATÍSTICAS
-// =============================================
-
-// Estatísticas por responsável
 juridico.get('/estatisticas', JuridicoController.getEstatisticas.bind(JuridicoController))
 
 export default juridico

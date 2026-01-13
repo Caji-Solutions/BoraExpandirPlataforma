@@ -63,18 +63,97 @@ class JuridicoRepository {
     }
 
     // =============================================
-    // GESTÃO DE CLIENTES DO JURÍDICO
+    // GESTÃO DE PROCESSOS DO JURÍDICO
     // =============================================
 
-    // Atribuir responsável jurídico a um cliente
-    async atribuirResponsavel(clienteId: string, responsavelId: string | null): Promise<any> {
+    // Listar todos os processos com dados do cliente e responsável
+    async getProcessos(): Promise<any[]> {
+        const { data: processos, error } = await supabase
+            .from('processos')
+            .select(`
+                *,
+                clientes (
+                    id,
+                    nome,
+                    email,
+                    whatsapp
+                )
+            `)
+            .order('created_at', { ascending: false })
+
+        if (error) {
+            console.error('Erro ao buscar processos:', error)
+            throw error
+        }
+
+        if (!processos || processos.length === 0) return []
+
+        // Buscar responsáveis únicos
+        const responsavelIds = [...new Set(
+            processos
+                .filter(p => p.responsavel_id)
+                .map(p => p.responsavel_id)
+        )]
+
+        let responsaveisMap: Record<string, FuncionarioJuridico> = {}
+
+        if (responsavelIds.length > 0) {
+            const { data: responsaveis } = await supabase
+                .from('profiles')
+                .select('id, full_name, email, telefone')
+                .in('id', responsavelIds)
+
+            if (responsaveis) {
+                responsaveisMap = responsaveis.reduce((acc, r) => {
+                    acc[r.id] = r as FuncionarioJuridico
+                    return acc
+                }, {} as Record<string, FuncionarioJuridico>)
+            }
+        }
+
+        // Mapear processos com seus responsáveis
+        return processos.map(processo => ({
+            ...processo,
+            responsavel: processo.responsavel_id 
+                ? responsaveisMap[processo.responsavel_id] || null 
+                : null
+        }))
+    }
+
+    // Listar processos sem responsável (vagos)
+    async getProcessosSemResponsavel(): Promise<any[]> {
         const { data, error } = await supabase
-            .from('clientes')
-            .update({ 
-                responsavel_juridico_id: responsavelId,
+            .from('processos')
+            .select(`
+                *,
+                clientes (
+                    id,
+                    nome,
+                    email,
+                    whatsapp
+                )
+            `)
+            .is('responsavel_id', null)
+            .order('created_at', { ascending: false })
+
+        if (error) {
+            console.error('Erro ao buscar processos sem responsável:', error)
+            throw error
+        }
+
+        return data || []
+    }
+
+    // Atribuir responsável jurídico a um processo
+    async atribuirResponsavel(processoId: string, responsavelId: string | null): Promise<any> {
+        const { data, error } = await supabase
+            .from('processos')
+            .update({   
+                responsavel_id: responsavelId,
+                delegado_em: responsavelId ? new Date().toISOString() : null,
                 updated_at: new Date().toISOString()
             })
-            .eq('id', clienteId)
+            .eq('id', processoId)
             .select()
             .single()
 
