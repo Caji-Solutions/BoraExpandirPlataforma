@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Upload, FileText, AlertCircle, CheckCircle, Clock, X, Trash2, Loader2, RefreshCw } from 'lucide-react'
-import { Document, RequiredDocument } from '../types'
+import { Document as ClientDocument, RequiredDocument } from '../types'
 import { cn, formatDate, formatFileSize } from '../lib/utils'
 
 interface PendingUpload {
@@ -23,7 +23,7 @@ interface Processo {
 interface DocumentUploadProps {
   clienteId: string
   memberId?: string
-  documents: Document[]
+  documents: ClientDocument[]
   requiredDocuments?: RequiredDocument[]  // Agora opcional - fallback caso API falhe
   onUploadSuccess?: (data: any) => void
   onDelete: (documentId: string) => void

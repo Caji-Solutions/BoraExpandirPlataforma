@@ -250,15 +250,7 @@ export function ClienteApp() {
           { label: 'Dashboard', to: '/cliente', icon: Home },
           { label: 'Meu Processo', to: '/cliente/processo', icon: GitBranch },
           { label: 'Agendamento', to: '/cliente/agendamento', icon: Calendar },
-          {
-            label: 'Documentos',
-            icon: FileText,
-            children: [
-              { label: 'Enviar Documentos', to: '/cliente/upload', icon: Upload },
-            ]
-          },
-          { label: 'Apostilamento', to: '/cliente/apostilamento', icon: Stamp },
-          { label: 'Tradução', to: '/cliente/traducao', icon: Languages },
+          { label: 'Documentos', to: '/cliente/upload', icon: FileText },
           { label: 'Parceiro', to: '/cliente/parceiro', icon: Users },
 
           {

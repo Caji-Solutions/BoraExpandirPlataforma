@@ -1,12 +1,10 @@
-import { useState } from 'react'
 import { FamilyFolders } from './FamilyFolders'
-import { FamilyMemberModal } from './FamilyMemberModal'
 import { mockFamilyMembers } from '../lib/mock-data'
-import { Document, RequiredDocument } from '../types'
+import { Document as ClientDocument, RequiredDocument } from '../types'
 
 interface DocumentUploadFlowProps {
     clienteId: string
-    documents: Document[]
+    documents: ClientDocument[]
     requiredDocuments: RequiredDocument[]
     onUploadSuccess?: (data: any) => void
     onDelete: (documentId: string) => void
@@ -21,7 +19,6 @@ export function DocumentUploadFlow({
     onUploadSuccess,
     onDelete
 }: DocumentUploadFlowProps) {
-    const [selectedMember, setSelectedMember] = useState<{ id: string, name: string, type: string } | null>(null)
 
     const handleUpload = async (file: File, documentType: string, memberId: string) => {
         const formData = new FormData()
@@ -45,34 +42,21 @@ export function DocumentUploadFlow({
     }
 
     return (
-        <>
-            <div className="space-y-6">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Envio de Documentos</h2>
-                    <p className="text-gray-600 dark:text-gray-400">
-                        Selecione a pasta do familiar para enviar os documentos solicitados.
-                    </p>
-                </div>
-
-                <FamilyFolders
-                    members={mockFamilyMembers}
-                    documents={documents}
-                    requiredDocuments={requiredDocuments}
-                    onSelectMember={setSelectedMember}
-                />
+        <div className="space-y-6">
+            <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Envio de Documentos</h2>
+                <p className="text-gray-600 dark:text-gray-400">
+                    Clique na pasta do familiar para ver e enviar os documentos solicitados.
+                </p>
             </div>
 
-            {selectedMember && (
-                <FamilyMemberModal
-                    isOpen={!!selectedMember}
-                    onClose={() => setSelectedMember(null)}
-                    member={selectedMember}
-                    documents={documents}
-                    requiredDocuments={requiredDocuments}
-                    onUpload={handleUpload}
-                    onDelete={onDelete}
-                />
-            )}
-        </>
+            <FamilyFolders
+                members={mockFamilyMembers}
+                documents={documents}
+                requiredDocuments={requiredDocuments}
+                onUpload={handleUpload}
+                onDelete={onDelete}
+            />
+        </div>
     )
 }
