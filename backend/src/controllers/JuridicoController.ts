@@ -94,6 +94,31 @@ class JuridicoController {
         }
     }
 
+    // GET /juridico/processos/por-responsavel/:responsavelId - Processos de um responsável
+    async getProcessosByResponsavel(req: any, res: any) {
+        try {
+            const { responsavelId } = req.params
+
+            if (!responsavelId) {
+                return res.status(400).json({ message: 'responsavelId é obrigatório' })
+            }
+
+            const processos = await JuridicoRepository.getProcessosByResponsavel(responsavelId)
+
+            return res.status(200).json({
+                message: 'Processos do responsável recuperados com sucesso',
+                data: processos,
+                total: processos.length
+            })
+        } catch (error: any) {
+            console.error('Erro ao buscar processos do responsável:', error)
+            return res.status(500).json({ 
+                message: 'Erro ao buscar processos do responsável', 
+                error: error.message 
+            })
+        }
+    }
+
     // POST /juridico/atribuir-responsavel - Atribuir responsável a um processo
     async atribuirResponsavel(req: any, res: any) {
         try {

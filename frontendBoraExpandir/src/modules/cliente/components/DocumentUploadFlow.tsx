@@ -3,6 +3,7 @@ import { Document as ClientDocument, RequiredDocument } from '../types'
 
 interface DocumentUploadFlowProps {
     clienteId: string
+    clientName: string
     processoId?: string
     processType?: string
     familyMembers: {id: string, name: string, type: string}[]
@@ -16,6 +17,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
 export function DocumentUploadFlow({
     clienteId,
+    clientName,
     processoId,
     processType,
     familyMembers,
@@ -69,6 +71,8 @@ export function DocumentUploadFlow({
             </div>
 
             <FamilyFolders
+                clienteId={clienteId}
+                clientName={clientName}
                 members={familyMembers}
                 documents={documents}
                 requiredDocuments={requiredDocuments}

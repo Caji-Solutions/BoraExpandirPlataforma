@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react'
-import { Clock, FileText, User, ChevronRight, Folder, ChevronLeft } from "lucide-react";
+import { useState, useEffect, useMemo } from 'react'
+import { FileText, User, ChevronRight, Folder, ChevronLeft } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from '../../../components/ui/Badge';
 import { Card } from "../../cliente/components/ui/card";
 import { ProcessAnalysis, JuridicoDocument, AnalysisStage } from './ProcessAnalysis';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+import juridicoService, { Processo } from '../services/juridicoService';
 
 export interface Process {
   id: string;
@@ -22,21 +21,6 @@ export interface Process {
   documentsAnalyzing: number;
   documentsApostilled: number;
   documentsTranslated: number;
-}
-
-interface BackendProcess {
-    id: string;
-    client_id: string;
-    client?: {
-        id: string;
-        full_name: string;
-        email: string;
-    };
-    tipo_servico: string;
-    status: string;
-    etapa_atual: number;
-    criado_em: string;
-    // ... add other fields as needed
 }
 
 const StatusBadge = ({ status }: { status: Process["status"] }) => {
@@ -58,227 +42,174 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
   const [processes, setProcesses] = useState<Process[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<Process | null>(null);
   const [selectedFolderDocs, setSelectedFolderDocs] = useState<any[]>([]); // Raw backend documents
+  const [dependents, setDependents] = useState<any[]>([]); // To resolve names
   const [selectedMember, setSelectedMember] = useState<{name: string, id?: string} | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Mock Data para Apresentação
-  const MOCK_PROCESSES: Process[] = [
-    {
-      id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-      clientName: 'João Carlos Silva',
-      clientId: 'cli-001',
-      serviceType: 'Cidadania Italiana',
-      currentStage: '2',
-      totalStages: 4,
-      status: 'new',
-      waitingTime: 2,
-      documentsTotal: 18,
-      documentsApproved: 5,
-      documentsPending: 4,
-      documentsAnalyzing: 6,
-      documentsApostilled: 2,
-      documentsTranslated: 1
-    },
-    {
-      id: 'proc-002',
-      clientName: 'Maria Fernanda Costa',
-      clientId: 'cli-002',
-      serviceType: 'Cidadania Portuguesa',
-      currentStage: '3',
-      totalStages: 4,
-      status: 'pending_client',
-      waitingTime: 5,
-      documentsTotal: 12,
-      documentsApproved: 8,
-      documentsPending: 2,
-      documentsAnalyzing: 1,
-      documentsApostilled: 1,
-      documentsTranslated: 0
-    },
-    {
-      id: 'proc-003',
-      clientName: 'Roberto Mendes Junior',
-      clientId: 'cli-003',
-      serviceType: 'Cidadania Italiana',
-      currentStage: '4',
-      totalStages: 4,
-      status: 'ready',
-      waitingTime: 0,
-      documentsTotal: 22,
-      documentsApproved: 20,
-      documentsPending: 0,
-      documentsAnalyzing: 0,
-      documentsApostilled: 2,
-      documentsTranslated: 0
-    },
-    {
-      id: 'proc-004',
-      clientName: 'Ana Paula Rodrigues',
-      clientId: 'cli-004',
-      serviceType: 'Cidadania Espanhola',
-      currentStage: '1',
-      totalStages: 4,
-      status: 'new',
-      waitingTime: 1,
-      documentsTotal: 15,
-      documentsApproved: 0,
-      documentsPending: 8,
-      documentsAnalyzing: 7,
-      documentsApostilled: 0,
-      documentsTranslated: 0
-    },
-    {
-      id: 'proc-005',
-      clientName: 'Carlos Eduardo Pereira',
-      clientId: 'cli-005',
-      serviceType: 'Cidadania Italiana',
-      currentStage: '2',
-      totalStages: 4,
-      status: 'pending_client',
-      waitingTime: 3,
-      documentsTotal: 20,
-      documentsApproved: 12,
-      documentsPending: 3,
-      documentsAnalyzing: 2,
-      documentsApostilled: 2,
-      documentsTranslated: 1
-    },
-    {
-      id: 'proc-006',
-      clientName: 'Beatriz Santos Lima',
-      clientId: 'cli-006',
-      serviceType: 'Cidadania Portuguesa',
-      currentStage: '3',
-      totalStages: 4,
-      status: 'new',
-      waitingTime: 4,
-      documentsTotal: 16,
-      documentsApproved: 10,
-      documentsPending: 1,
-      documentsAnalyzing: 3,
-      documentsApostilled: 1,
-      documentsTranslated: 1
-    },
-    {
-      id: 'proc-007',
-      clientName: 'Fernando Oliveira Campos',
-      clientId: 'cli-007',
-      serviceType: 'Cidadania Italiana',
-      currentStage: '4',
-      totalStages: 4,
-      status: 'ready',
-      waitingTime: 0,
-      documentsTotal: 25,
-      documentsApproved: 23,
-      documentsPending: 0,
-      documentsAnalyzing: 0,
-      documentsApostilled: 2,
-      documentsTranslated: 0
-    },
-    {
-      id: 'proc-008',
-      clientName: 'Luciana Martins Alves',
-      clientId: 'cli-008',
-      serviceType: 'Cidadania Espanhola',
-      currentStage: '2',
-      totalStages: 4,
-      status: 'pending_client',
-      waitingTime: 6,
-      documentsTotal: 14,
-      documentsApproved: 6,
-      documentsPending: 5,
-      documentsAnalyzing: 2,
-      documentsApostilled: 1,
-      documentsTranslated: 0
-    }
-  ];
+  // Helper function to map Backend Process to Frontend Process View
+  const mapProcessoToView = (p: Processo): Process => {
+      const docs = p.documentos || [];
+      const total = docs.length;
+      
+      const approved = docs.filter(d => d.status === 'APPROVED').length;
+      const analyzing = docs.filter(d => d.status?.startsWith('ANALYZING') || d.status === 'PENDING_REVIEW').length; 
+      const pending = docs.filter(d => !d.status || d.status === 'PENDING').length;
+      const apostilled = docs.filter(d => d.status?.includes('APOSTILLE')).length; // Loose check based on behavior
+      const translated = docs.filter(d => d.status?.includes('TRANSLATION')).length;
 
-  // Usando mock para apresentação
+      // Determine status based on some logic, or use backend status if it matches
+      let status: Process['status'] = 'pending_client';
+      if (p.status === 'NOVO') status = 'new';
+      if (p.status === 'PRONTO') status = 'ready';
+      
+      return {
+          id: p.id,
+          clientName: p.clientes?.nome || 'Cliente Desconhecido',
+          clientId: p.cliente_id,
+          serviceType: p.tipo_servico || 'Serviço',
+          currentStage: p.etapa_atual?.toString() || '1',
+          totalStages: 4, // Fixed for now or from backend
+          status: status, 
+          waitingTime: 0, // Calculate from created_at
+          documentsTotal: total,
+          documentsApproved: approved,
+          documentsPending: pending,
+          documentsAnalyzing: analyzing,
+          documentsApostilled: apostilled,
+          documentsTranslated: translated
+      };
+  };
+
   useEffect(() => {
-    setLoading(true);
-    // Simula delay de carregamento
-    setTimeout(() => {
-      setProcesses(MOCK_PROCESSES);
-      setLoading(false);
-    }, 500);
+    const fetchProcesses = async () => {
+        setLoading(true);
+        try {
+            // Simulated Lawyer ID from user request
+            const LAWYER_ID = '41f21e5c-dd93-4592-9470-e043badc3a18';
+            const data = await juridicoService.getProcessosByResponsavel(LAWYER_ID);
+            const mapped = data.map(mapProcessoToView);
+            setProcesses(mapped);
+        } catch (error) {
+            console.error("Failed to fetch processes", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchProcesses();
   }, []);
 
-  // Fetch Documents when Folder Selected
+  // Fetch Documents and Dependents when Folder Selected
   useEffect(() => {
     if (!selectedFolder) return;
 
-    const fetchDocs = async () => {
+    const fetchData = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/cliente/${selectedFolder.clientId}/documentos`);
-            if (!response.ok) throw new Error('Falha ao buscar documentos');
-            const result = await response.json();
-            const docs = result.data || [];
+            const [docs, deps] = await Promise.all([
+                juridicoService.getDocumentosByProcesso(selectedFolder.id),
+                juridicoService.getDependentes(selectedFolder.clientId)
+            ]);
             setSelectedFolderDocs(docs);
-            
-            // Recalculate stats for the selected folder (optional if we want to update the view)
+            setDependents(deps);
         } catch (error) {
             console.error(error);
         }
     }
-    fetchDocs();
+    fetchData();
   }, [selectedFolder]);
 
 
-  // Derived Members from Documents
-  const members = selectedFolderDocs.reduce((acc: any[], doc: any) => {
-      // Logic to extract member name (e.g. from storage_path or memberId)
-      // Assuming storage_path: clientID/MemberName/type/file
-      let memberName = selectedFolder?.clientName || 'Titular';
-      let memberType = 'Titular';
 
-      if (doc.member_id) {
-          // If we had member names map... 
-          // For now try to parse from storage_path if name not available?
-           if (doc.storage_path) {
-              const parts = doc.storage_path.split('/');
-              if (parts.length > 2) {
-                  // Removing underscores might be nice
-                  memberName = parts[1].replace(/_/g, ' '); 
-              }
-          }
-      } else if (doc.storage_path) {
-          const parts = doc.storage_path.split('/');
-          if (parts.length > 2) {
-              memberName = parts[1].replace(/_/g, ' ');
-          }
+  // Derived Members
+  const members = useMemo(() => {
+      // 1. Initialize with Titular and Dependents
+      const initialMembers: any[] = [];
+      
+      if (selectedFolder) {
+          // Add Titular
+          initialMembers.push({
+              id: selectedFolder.clientId,
+              name: selectedFolder.clientName || 'Titular',
+              type: 'Titular',
+              isTitular: true,
+              docs: 0,
+              pending: 0,
+              status: []
+          });
+
+          // Add fetched dependents
+          dependents.forEach(dep => {
+              initialMembers.push({
+                  id: dep.id,
+                  name: dep.nome_completo || dep.name,
+                  type: dep.parentesco ? (dep.parentesco.charAt(0).toUpperCase() + dep.parentesco.slice(1)) : 'Dependente',
+                  isTitular: false,
+                  docs: 0,
+                  pending: 0,
+                  status: []
+              });
+          });
       }
 
-      const existing = acc.find(m => m.name === memberName);
-      const isPending = doc.status === 'PENDING' || !doc.status;
-      const isAnalyzing = doc.status === 'ANALYZING' || doc.status?.startsWith('ANALYZING_'); 
+      // 2. Map Documents to Members
+      return selectedFolderDocs.reduce((acc: any[], doc: any) => {
+          // Use dependente_id if present, otherwise it's the titular (cliente_id)
+          let memberId = doc.dependente_id || selectedFolder?.clientId;
+          
+          let existing = acc.find((m: any) => m.id === memberId);
+          const isPending = doc.status === 'PENDING' || !doc.status;
 
-      if (existing) {
-          existing.docs++;
-          if (isPending) existing.pending++;
-          existing.status.push(doc.status);
-      } else {
-           acc.push({
-               name: memberName,
-               type: memberType, // Logic to determine type?
-               docs: 1,
-               pending: isPending ? 1 : 0,
-               status: [doc.status],
-               id: doc.member_id // Store member ID if available
-           });
-      }
-      return acc;
-  }, []);
+          if (existing) {
+              existing.docs++;
+              if (isPending) existing.pending++;
+              existing.status.push(doc.status);
+          } else {
+               // Fallback for members not in dependents list (legacy documents?)
+               let memberName = '...';
+               let memberType = 'Dependente';
+               let isTitular = false;
 
-  const getFilteredDocsForMember = (memberName: string): JuridicoDocument[] => {
+               if (!doc.dependente_id) {
+                    memberName = selectedFolder?.clientName || 'Titular';
+                    memberType = 'Titular';
+                    isTitular = true;
+               } else {
+                    if (doc.storage_path) {
+                        const parts = doc.storage_path.split('/');
+                        if (parts.length > 2) {
+                            memberName = parts[1].replace(/_/g, ' ');
+                        }
+                    }
+               }
+
+               acc.push({
+                   id: memberId,
+                   name: memberName,
+                   type: memberType,
+                   isTitular: isTitular,
+                   docs: 1,
+                   pending: isPending ? 1 : 0,
+                   status: [doc.status]
+               });
+          }
+          return acc;
+      }, initialMembers);
+  }, [selectedFolder, selectedFolderDocs, dependents]);
+
+
+  // Sort members: titular first, then alphabetically
+  members.sort((a, b) => {
+      if (a.isTitular) return -1;
+      if (b.isTitular) return 1;
+      return a.name.localeCompare(b.name);
+  });
+
+  const getFilteredDocsForMember = (memberId: string): JuridicoDocument[] => {
       // Filter raw docs and map to JuridicoDocument
        return selectedFolderDocs
         .filter(doc => {
-            let docMember = selectedFolder?.clientName || 'Titular';
-             if (doc.storage_path) {
-                const parts = doc.storage_path.split('/');
-                if (parts.length > 2) docMember = parts[1].replace(/_/g, ' ');
-            }
-            return docMember === memberName;
+            // Match by dependente_id (if null, it belongs to titular which is clientId)
+            const docMemberId = doc.dependente_id || selectedFolder?.clientId;
+            return docMemberId === memberId;
         })
         .map(doc => {
             // Map Backend Status directly to lower case or specific logic
@@ -303,7 +234,7 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
   };
 
   if (selectedMember && selectedFolder) {
-    const memberDocs = getFilteredDocsForMember(selectedMember.name);
+    const memberDocs = getFilteredDocsForMember(selectedMember.id || selectedFolder.clientId);
     
     return (
       <ProcessAnalysis 
@@ -315,19 +246,11 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
              // Optimistic update
              const newStatus = updates.status?.toUpperCase();
              try {
-                // Determine rejection reason
-                // In updates we might have reason if we passed it in
-                // But ProcessAnalysis only calls onUpdateDocument(id, {status...})
-                // The actual backend call needs to happen here.
-                
-                await fetch(`${API_BASE_URL}/cliente/documento/${id}/status`, {
-                    method: 'PATCH',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        status: newStatus,
-                        motivoRejeicao: updates.status === 'rejected' ? 'Rejeitado pelo jurídico' : undefined // Would need to pass reason from component
-                    })
-                });
+                await juridicoService.updateDocumentStatus(
+                    id, 
+                    newStatus || '', 
+                    updates.status === 'rejected' ? 'Rejeitado pelo jurídico' : undefined
+                );
 
                 // Update local list
                  const updatedRaw = selectedFolderDocs.map(d => d.id === id ? {...d, status: newStatus} : d);
@@ -365,7 +288,7 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {members.length > 0 ? members.map((member, idx) => (
+                {members.length > 0 ? members.map((member: any, idx: number) => (
                      <Card 
                         key={idx}
                         className="p-6 cursor-pointer hover:shadow-md transition-all border-l-4 border-l-blue-500 group relative overflow-hidden"

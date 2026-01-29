@@ -59,7 +59,9 @@ export function ClienteApp() {
         // New Path format: processoId/memberId/docType/file
         let memberId = mockClient.id // Default to main client
         
-        if (doc.storage_path) {
+        if (doc.dependente_id) {
+          memberId = doc.dependente_id
+        } else if (doc.storage_path) {
           const parts = doc.storage_path.split('/')
           // parts[0] is processoId (or sem_processo)
           // parts[1] is memberId (UUID)
@@ -468,7 +470,7 @@ export function ClienteApp() {
               <Dashboard
                 client={mockClient}
                 documents={documents}
-                process={processo!}
+                process={processo}
               />
             }
           />
@@ -482,6 +484,7 @@ export function ClienteApp() {
             element={
               <DocumentUploadFlow
                 clienteId={mockClient.id}
+                clientName={mockClient.name}
                 processoId={processo?.id || ''}
                 processType={processo?.serviceType}
                 familyMembers={familyMembers}

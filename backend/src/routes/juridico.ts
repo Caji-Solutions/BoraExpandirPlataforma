@@ -23,6 +23,9 @@ juridico.get('/processos', JuridicoController.getProcessos.bind(JuridicoControll
 // Lista processos sem responsável (vagos)
 juridico.get('/processos/vagos', JuridicoController.getProcessosVagos.bind(JuridicoController))
 
+// Lista processos de um responsável específico
+juridico.get('/processos/por-responsavel/:responsavelId', JuridicoController.getProcessosByResponsavel.bind(JuridicoController))
+
 // =============================================
 // ROTAS DE CLIENTES
 // =============================================

@@ -142,6 +142,29 @@ class JuridicoRepository {
         return data || []
     }
 
+    // Listar processos de um responsável específico
+    async getProcessosByResponsavel(responsavelId: string): Promise<any[]> {
+        const { data, error } = await supabase
+            .from('processos')
+            .select(`
+                *,
+                clientes:clientes!cliente_id (
+                    id,
+                    nome,
+                    email
+                )
+            `)
+            .eq('responsavel_id', responsavelId)
+            .order('created_at', { ascending: false })
+
+        if (error) {
+            console.error('Erro ao buscar processos do responsável:', error)
+            throw error
+        }
+
+        return data || []
+    }
+
     // Atribuir responsável jurídico a um processo
     async atribuirResponsavel(processoId: string, responsavelId: string | null): Promise<any> {
         const { data, error } = await supabase

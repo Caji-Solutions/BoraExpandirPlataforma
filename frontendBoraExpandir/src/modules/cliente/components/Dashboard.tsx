@@ -25,7 +25,7 @@ import { mockReminders, mockPendingActions } from '../lib/mock-data'
 interface DashboardProps {
   client: Client
   documents: Document[]
-  process: Process
+  process: Process | null
 }
 
 export function Dashboard({ client, documents, process }: DashboardProps) {
@@ -35,9 +35,9 @@ export function Dashboard({ client, documents, process }: DashboardProps) {
   const rejectedDocuments = documents.filter(doc => doc.status === 'rejected').length
   const analyzingDocuments = documents.filter(doc => doc.status === 'analyzing').length
 
-  const completedSteps = process.steps.filter(step => step.status === 'completed').length
-  const totalSteps = process.steps.length
-  const progressPercentage = (completedSteps / totalSteps) * 100
+  const completedSteps = process?.steps?.filter(step => step.status === 'completed').length || 0
+  const totalSteps = process?.steps?.length || 0
+  const progressPercentage = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0
 
   const recentDocuments = documents
     .sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime())
@@ -226,7 +226,8 @@ export function Dashboard({ client, documents, process }: DashboardProps) {
             </div>
 
             <div className="space-y-3">
-              {process.steps.map((step, index) => (
+              {process?.steps && process.steps.length > 0 ? (
+                process.steps.map((step, index) => (
                 <div key={step.id} className="flex items-center space-x-3">
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step.status === 'completed' ? 'bg-green-500 text-white' :
                     step.status === 'in_progress' ? 'bg-blue-500 text-white' :
@@ -247,7 +248,10 @@ export function Dashboard({ client, documents, process }: DashboardProps) {
                     {step.status === 'in_progress' && <Clock className="h-4 w-4 text-blue-500" />}
                   </div>
                 </div>
-              ))}
+              ))
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum passo definido para este processo.</p>
+              )}
             </div>
           </CardContent>
         </Card>

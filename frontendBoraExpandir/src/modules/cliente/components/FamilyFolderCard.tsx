@@ -10,6 +10,7 @@ interface FamilyMember {
   id: string
   name: string
   type: string
+  isTitular?: boolean
 }
 
 interface FamilyFolderCardProps {
@@ -290,6 +291,11 @@ export function FamilyFolderCard({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{member.name}</h3>
+                {member.isTitular && (
+                  <Badge variant="default" className="text-[10px] px-2 py-0.5 bg-blue-600 hover:bg-blue-700">
+                    Titular
+                  </Badge>
+                )}
                 {!hasSentDocuments && (
                   <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
                     Pendente envio

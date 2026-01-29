@@ -68,6 +68,20 @@ export async function getProcessos(): Promise<Processo[]> {
 }
 
 /**
+ * Busca processos de um responsável específico
+ */
+export async function getProcessosByResponsavel(responsavelId: string): Promise<Processo[]> {
+  const response = await fetch(`${API_BASE_URL}/juridico/processos/por-responsavel/${responsavelId}`);
+
+  if (!response.ok) {
+    throw new Error('Erro ao buscar processos do responsável');
+  }
+
+  const result = await response.json();
+  return result.data;
+}
+
+/**
  * Busca processos sem responsável (vagos)
  */
 export async function getProcessosVagos(): Promise<Processo[]> {
@@ -183,6 +197,7 @@ export async function getClientesByResponsavel(responsavelId: string): Promise<C
 
 export default {
   getProcessos,
+  getProcessosByResponsavel,
   getProcessosVagos,
   atribuirResponsavel,
   removerResponsavel,
@@ -190,4 +205,76 @@ export default {
   getClientesVagos,
   getAllClientesComResponsavel,
   getClientesByResponsavel,
+  getDocumentosCliente,
+  getDocumentosByProcesso,
+  getDependentes,
+  updateDocumentStatus,
 };
+
+/**
+ * Busca documentos de um cliente específico
+ */
+export async function getDocumentosCliente(clienteId: string): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/cliente/${clienteId}/documentos`);
+
+  if (!response.ok) {
+    throw new Error('Erro ao buscar documentos');
+  }
+
+  const result = await response.json();
+  return result.data || [];
+}
+
+/**
+ * Busca documentos de um processo específico (inclui todos os membros da família)
+ */
+export async function getDocumentosByProcesso(processoId: string): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/cliente/processo/${processoId}/documentos`);
+
+  if (!response.ok) {
+    throw new Error('Erro ao buscar documentos do processo');
+  }
+
+  const result = await response.json();
+  return result.data || [];
+}
+
+/**
+ * Busca dependentes de um cliente
+ */
+export async function getDependentes(clienteId: string): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/cliente/${clienteId}/dependentes`);
+
+  if (!response.ok) {
+    throw new Error('Erro ao buscar dependentes');
+  }
+
+  const result = await response.json();
+  return result.data || []; // The response structure from ClienteApp seems to be { data: [...] }
+}
+
+/**
+ * Atualiza o status de um documento
+ */
+export async function updateDocumentStatus(
+  documentoId: string, 
+  status: string, 
+  motivoRejeicao?: string
+): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/cliente/documento/${documentoId}/status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      status,
+      motivoRejeicao
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Erro ao atualizar status do documento');
+  }
+
+  return response.json();
+}

@@ -46,6 +46,9 @@ interface DocumentoRecord {
     analisado_em: string | null
     criado_em: string
     atualizado_em: string
+    dependente_id: string | null
+    apostilado: boolean
+    traduzido: boolean
 }
 
 class ClienteRepository {

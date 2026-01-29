@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FamilyFolderCard } from './FamilyFolderCard'
 import { InitialUploadModal } from './InitialUploadModal'
 import { Document as ClientDocument, RequiredDocument } from '../types'
@@ -7,9 +7,12 @@ interface FamilyMember {
     id: string
     name: string
     type: string
+    isTitular?: boolean
 }
 
 interface FamilyFoldersProps {
+    clienteId: string
+    clientName: string
     members: FamilyMember[]
     documents: ClientDocument[]
     requiredDocuments: RequiredDocument[]
@@ -17,8 +20,12 @@ interface FamilyFoldersProps {
     onDelete: (documentId: string) => void
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+
 export function FamilyFolders({ 
-    members, 
+    clienteId,
+    clientName,
+    members: initialMembers, 
     documents, 
     requiredDocuments, 
     onUpload,
@@ -29,6 +36,50 @@ export function FamilyFolders({
     
     // Track which member has the upload modal open
     const [uploadModalMember, setUploadModalMember] = useState<FamilyMember | null>(null)
+    
+    // Enriched members with fetched data
+    const [members, setMembers] = useState<FamilyMember[]>(initialMembers)
+
+    // Fetch dependentes and client information
+    useEffect(() => {
+        const fetchFamilyData = async () => {
+            try {
+                const dependentesRes = await fetch(`${API_BASE_URL}/cliente/${clienteId}/dependentes`)
+                const dependentesData = dependentesRes.ok ? await dependentesRes.json() : { data: [] }
+                
+                // Build family members list
+                const familyMembers: FamilyMember[] = []
+
+                // Add titular (main client) - always first
+                familyMembers.push({
+                    id: clienteId,
+                    name: clientName,
+                    type: 'Titular',
+                    isTitular: true
+                })
+
+                // Add dependentes
+                if (dependentesData.data && Array.isArray(dependentesData.data)) {
+                    const dependentes = dependentesData.data.map((dep: any) => ({
+                        id: dep.id,
+                        name: dep.nome_completo || dep.name || 'Dependente',
+                        type: dep.parentesco ? (dep.parentesco.charAt(0).toUpperCase() + dep.parentesco.slice(1)) : 'Dependente',
+                        isTitular: false
+                    }))
+                    familyMembers.push(...dependentes)
+                }
+
+                setMembers(familyMembers)
+            } catch (error) {
+                console.error('Erro ao buscar dados da família:', error)
+                // Keep initial members on error
+            }
+        }
+
+        if (clienteId) {
+            fetchFamilyData()
+        }
+    }, [clienteId, clientName])
 
     const toggleCard = (memberId: string) => {
         setExpandedCardId(prev => prev === memberId ? null : memberId)

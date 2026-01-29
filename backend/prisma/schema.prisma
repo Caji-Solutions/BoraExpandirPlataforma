@@ -56,13 +56,37 @@ enum StatusDocumento {
   REJECTED              // Rejeitado
 }
 
+// Modelo para Processos
+model Processo {
+  id String @id @default(uuid()) @db.Uuid
+  
+  documentos Documento[]
+
+  @@map("processos")
+}
+
+// Modelo para Dependentes (Membros da Família)
+model Dependente {
+  id String @id @default(uuid()) @db.Uuid
+  
+  documentos Documento[]
+
+  @@map("dependentes")
+}
+
 // Modelo para armazenar documentos dos clientes
 model Documento {
-  id              String          @id @default(uuid())
+  id              String          @id @default(uuid()) @db.Uuid
   
   // Relacionamento com o cliente (UUID do Supabase)
   clienteId       String          @db.Uuid @map("cliente_id")
-  memberId        String?         @map("member_id") // ID do membro familiar (pode ser string simples ou UUID)
+  
+  // Novos relacionamentos
+  processoId      String?         @db.Uuid @map("processo_id")
+  processo        Processo?       @relation(fields: [processoId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  dependenteId    String?         @db.Uuid @map("dependente_id")
+  dependente      Dependente?     @relation(fields: [dependenteId], references: [id], onDelete: SetNull)
   
   // Informações do arquivo
   tipo            String          // Tipo do documento (passport, identity, proof_of_address, etc.)
@@ -88,5 +112,7 @@ model Documento {
   @@index([clienteId])
   @@index([tipo])
   @@index([status])
+  @@index([processoId])
+  @@index([dependenteId])
   @@map("documentos")
 }
