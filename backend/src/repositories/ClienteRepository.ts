@@ -101,7 +101,7 @@ class ClienteRepository {
     // Buscar dependentes de um cliente
     async getDependentesByClienteId(clienteId: string) {
         console.log('Repository: Buscando dependentes para clienteId:', clienteId)
-        
+
         const { data, error } = await supabase
             .from('dependentes')
             .select('id, nome_completo, parentesco')
@@ -270,9 +270,9 @@ class ClienteRepository {
 
     // Atualizar status do documento
     async updateDocumentoStatus(
-        documentoId: string, 
-        status: 'PENDING' | 'ANALYZING' | 'WAITING_APOSTILLE' | 'ANALYZING_APOSTILLE' | 'WAITING_TRANSLATION' | 'ANALYZING_TRANSLATION' | 'APPROVED' | 'REJECTED', 
-        motivoRejeicao?: string, 
+        documentoId: string,
+        status: 'PENDING' | 'ANALYZING' | 'WAITING_APOSTILLE' | 'ANALYZING_APOSTILLE' | 'WAITING_TRANSLATION' | 'ANALYZING_TRANSLATION' | 'APPROVED' | 'REJECTED',
+        motivoRejeicao?: string,
         analisadoPor?: string,
         apostilado?: boolean,
         traduzido?: boolean
@@ -349,6 +349,112 @@ class ClienteRepository {
         }
 
         return data as DocumentoRecord
+    }
+
+    // ========== FORMULÁRIOS E DECLARAÇÕES ==========
+
+    // Interface para formulários
+    // Buscar formulários de um processo (opcionalmente filtrado por memberId)
+    async getFormulariosByProcessoId(processoId: string, memberId?: string): Promise<any[]> {
+        let query = supabase
+            .from('formularios')
+            .select('*')
+            .eq('processo_id', processoId)
+            .order('criado_em', { ascending: false })
+
+        if (memberId) {
+            query = query.eq('membro_id', memberId)
+        }
+
+        const { data, error } = await query
+
+        if (error) {
+            console.error('Erro ao buscar formulários:', error)
+            throw error
+        }
+
+        return (data || []).map(f => ({
+            id: f.id,
+            name: f.nome_original?.replace(/\.[^/.]+$/, '') || 'Formulário',
+            fileName: f.nome_original,
+            fileSize: f.tamanho,
+            uploadDate: f.criado_em,
+            memberId: f.membro_id,
+            downloadUrl: f.public_url
+        }))
+    }
+
+    // Criar formulário
+    async createFormulario(params: {
+        processoId: string
+        clienteId: string
+        memberId: string
+        nomeOriginal: string
+        nomeArquivo: string
+        storagePath: string
+        publicUrl: string
+        contentType: string
+        tamanho: number
+    }): Promise<any> {
+        const { data, error } = await supabase
+            .from('formularios')
+            .insert([{
+                processo_id: params.processoId,
+                cliente_id: params.clienteId,
+                membro_id: params.memberId,
+                nome_original: params.nomeOriginal,
+                nome_arquivo: params.nomeArquivo,
+                storage_path: params.storagePath,
+                public_url: params.publicUrl,
+                content_type: params.contentType,
+                tamanho: params.tamanho
+            }])
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro ao criar formulário:', error)
+            throw error
+        }
+
+        return data
+    }
+
+    // Deletar formulário
+    async deleteFormulario(formularioId: string): Promise<void> {
+        // Buscar o formulário para obter o storage_path
+        const { data: formulario, error: fetchError } = await supabase
+            .from('formularios')
+            .select('storage_path')
+            .eq('id', formularioId)
+            .single()
+
+        if (fetchError) {
+            console.error('Erro ao buscar formulário para deletar:', fetchError)
+            throw fetchError
+        }
+
+        if (formulario?.storage_path) {
+            // Deletar do storage
+            const { error: storageError } = await supabase.storage
+                .from('documentos')
+                .remove([formulario.storage_path])
+
+            if (storageError) {
+                console.error('Erro ao deletar arquivo do storage:', storageError)
+            }
+        }
+
+        // Deletar registro do banco
+        const { error: deleteError } = await supabase
+            .from('formularios')
+            .delete()
+            .eq('id', formularioId)
+
+        if (deleteError) {
+            console.error('Erro ao deletar formulário:', deleteError)
+            throw deleteError
+        }
     }
 }
 

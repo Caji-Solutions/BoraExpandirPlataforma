@@ -231,15 +231,15 @@ class ClienteController {
         // Se o status era WAITING_APOSTILLE, muda para ANALYZING_APOSTILLE
         // Se era WAITING_TRANSLATION, muda para ANALYZING_TRANSLATION
         // Caso contrário, assume ANALYZING
-        
+
         // Para simplificar, poderíamos buscar o documento antes, mas vamos usar uma lógica baseada em flags ou status esperado
         // Por enquanto, vamos inferir do status atual no banco ou via parâmetro extra.
         // Como o Repository.updateDocumentoStatus já lida com status, vamos apenas atualizar o arquivo aqui.
-        
+
         // Buscar status atual para decidir o próximo
         const docs = await ClienteRepository.getDocumentosByClienteId(clienteId);
         const docAtual = docs.find(d => d.id === documentoId);
-        
+
         let novoStatus: 'ANALYZING' | 'ANALYZING_APOSTILLE' | 'ANALYZING_TRANSLATION' = 'ANALYZING';
         if (docAtual?.status === 'WAITING_APOSTILLE') {
           novoStatus = 'ANALYZING_APOSTILLE';
@@ -379,7 +379,7 @@ class ClienteController {
       }
 
       const validStatuses = [
-        'PENDING', 'ANALYZING', 'WAITING_APOSTILLE', 'ANALYZING_APOSTILLE', 
+        'PENDING', 'ANALYZING', 'WAITING_APOSTILLE', 'ANALYZING_APOSTILLE',
         'WAITING_TRANSLATION', 'ANALYZING_TRANSLATION', 'APPROVED', 'REJECTED'
       ];
 
@@ -392,11 +392,11 @@ class ClienteController {
       let traduzido: boolean | undefined = undefined;
 
       // Se passou da análise inicial e foi para apostilamento, nada muda (já é false por padrão)
-      
+
       // Se passou da análise do apostilamento e foi para tradução
       if (['WAITING_TRANSLATION', 'ANALYZING_TRANSLATION'].includes(status)) {
         apostilado = true;
-      } 
+      }
       // Se foi aprovado totalmente
       else if (status === 'APPROVED') {
         apostilado = true;
@@ -404,9 +404,9 @@ class ClienteController {
       }
 
       const documento = await ClienteRepository.updateDocumentoStatus(
-        documentoId, 
-        status, 
-        motivoRejeicao, 
+        documentoId,
+        status,
+        motivoRejeicao,
         analisadoPor,
         apostilado,
         traduzido
@@ -420,6 +420,127 @@ class ClienteController {
       console.error('Erro ao atualizar status do documento:', error)
       return res.status(500).json({
         message: 'Erro ao atualizar status do documento',
+        error: error.message
+      })
+    }
+  }
+
+  // GET /cliente/processo/:processoId/formularios
+  // Retorna todos os formulários/declarações para um processo
+  async getFormularios(req: any, res: any) {
+    try {
+      const { processoId } = req.params
+      const { memberId } = req.params // Optional
+
+      if (!processoId) {
+        return res.status(400).json({ message: 'processoId é obrigatório' })
+      }
+
+      const formularios = await ClienteRepository.getFormulariosByProcessoId(processoId, memberId)
+
+      return res.status(200).json({
+        message: 'Formulários recuperados com sucesso',
+        data: formularios
+      })
+    } catch (error: any) {
+      console.error('Erro ao buscar formulários:', error)
+      return res.status(500).json({
+        message: 'Erro ao buscar formulários',
+        error: error.message
+      })
+    }
+  }
+
+  // POST /cliente/processo/:processoId/formularios
+  // Upload de formulário pelo jurídico
+  async uploadFormulario(req: any, res: any) {
+    try {
+      const { processoId } = req.params
+      const { clienteId, memberId } = req.body
+      const file = req.file
+
+      console.log('========== UPLOAD FORMULARIO DEBUG ==========')
+      console.log('processoId:', processoId)
+      console.log('clienteId:', clienteId)
+      console.log('memberId:', memberId)
+      console.log('file:', file ? { originalname: file.originalname, size: file.size } : 'undefined')
+      console.log('=============================================')
+
+      if (!file) {
+        return res.status(400).json({ message: 'Nenhum arquivo enviado' })
+      }
+
+      if (!processoId || !clienteId || !memberId) {
+        return res.status(400).json({ message: 'processoId, clienteId e memberId são obrigatórios' })
+      }
+
+      // Gerar nome único
+      const timestamp = Date.now()
+      const fileExtension = file.originalname.split('.').pop()
+      const fileName = `formulario_${timestamp}.${fileExtension}`
+
+      // Construir caminho: processoId/formularios/memberId/filename
+      const filePath = `${processoId}/formularios/${memberId}/${fileName}`
+
+      // Upload para o Supabase
+      const uploadResult = await ClienteRepository.uploadDocument({
+        filePath,
+        fileBuffer: file.buffer,
+        contentType: file.mimetype
+      })
+
+      // Criar registro na tabela de formulários
+      const formularioRecord = await ClienteRepository.createFormulario({
+        processoId,
+        clienteId,
+        memberId,
+        nomeOriginal: file.originalname,
+        nomeArquivo: fileName,
+        storagePath: filePath,
+        publicUrl: uploadResult.publicUrl,
+        contentType: file.mimetype,
+        tamanho: file.size
+      })
+
+      return res.status(200).json({
+        message: 'Formulário enviado com sucesso',
+        data: {
+          id: formularioRecord.id,
+          name: file.originalname.replace(/\.[^/.]+$/, ''),
+          fileName: file.originalname,
+          fileSize: file.size,
+          uploadDate: new Date(),
+          memberId,
+          downloadUrl: uploadResult.publicUrl
+        }
+      })
+    } catch (error: any) {
+      console.error('Erro ao upload de formulário:', error)
+      return res.status(500).json({
+        message: 'Erro ao enviar formulário',
+        error: error.message
+      })
+    }
+  }
+
+  // DELETE /cliente/processo/:processoId/formularios/:formularioId
+  async deleteFormulario(req: any, res: any) {
+    try {
+      const { formularioId } = req.params
+
+      if (!formularioId) {
+        return res.status(400).json({ message: 'formularioId é obrigatório' })
+      }
+
+      await ClienteRepository.deleteFormulario(formularioId)
+
+      return res.status(200).json({
+        message: 'Formulário deletado com sucesso'
+      })
+    } catch (error: any) {
+      console.error('Erro ao deletar formulário:', error)
+      return res.status(500).json({
+        message: 'Erro ao deletar formulário',
         error: error.message
       })
     }

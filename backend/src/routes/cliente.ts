@@ -6,7 +6,7 @@ const cliente = Router()
 
 // Configuração do multer para armazenar em memória (buffer)
 const storage = multer.memoryStorage()
-const upload = multer({ 
+const upload = multer({
   storage,
   limits: {
     fileSize: 10 * 1024 * 1024, // Limite de 10MB
@@ -16,12 +16,12 @@ const upload = multer({
     const allowedTypes = [
       'application/pdf',
       'image/jpeg',
-      'image/jpg', 
+      'image/jpg',
       'image/png',
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     ]
-    
+
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true)
     } else {
@@ -44,5 +44,11 @@ cliente.get('/:clienteId/documentos', ClienteController.getDocumentos.bind(Clien
 cliente.get('/processo/:processoId/documentos', ClienteController.getDocumentosByProcesso.bind(ClienteController))
 cliente.delete('/documento/:documentoId', ClienteController.deleteDocumento.bind(ClienteController))
 cliente.patch('/documento/:documentoId/status', ClienteController.updateDocumentoStatus.bind(ClienteController))
+
+// Formulários e Declarações Routes
+cliente.get('/processo/:processoId/formularios', ClienteController.getFormularios.bind(ClienteController))
+cliente.get('/processo/:processoId/formularios/:memberId', ClienteController.getFormularios.bind(ClienteController))
+cliente.post('/processo/:processoId/formularios', upload.single('file'), ClienteController.uploadFormulario.bind(ClienteController))
+cliente.delete('/processo/:processoId/formularios/:formularioId', ClienteController.deleteFormulario.bind(ClienteController))
 
 export default cliente

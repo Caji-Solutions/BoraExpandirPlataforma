@@ -31,6 +31,9 @@ export function InitialUploadModal({
     const [uploadedFiles, setUploadedFiles] = useState<Map<string, UploadedFile>>(new Map())
     const [dragOver, setDragOver] = useState<string | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [showPdfWarning, setShowPdfWarning] = useState(false)
+    const [pendingInputId, setPendingInputId] = useState<string | null>(null)
+    const [pdfError, setPdfError] = useState<string | null>(null)
 
     // Count required docs
     const requiredCount = requiredDocuments.filter(d => d.required).length
@@ -43,6 +46,14 @@ export function InitialUploadModal({
         const file = e.target.files?.[0]
         if (!file) return
 
+        // Validate PDF
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+            setPdfError('Apenas arquivos PDF são aceitos!')
+            e.target.value = ''
+            return
+        }
+
+        setPdfError(null)
         setUploadedFiles(prev => {
             const next = new Map(prev)
             next.set(docType, { type: docType, file, status: 'pending' })
@@ -58,11 +69,39 @@ export function InitialUploadModal({
         const file = e.dataTransfer.files[0]
         if (!file) return
 
+        // Validate PDF
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+            setPdfError('Apenas arquivos PDF são aceitos!')
+            return
+        }
+
+        setPdfError(null)
         setUploadedFiles(prev => {
             const next = new Map(prev)
             next.set(docType, { type: docType, file, status: 'pending' })
             return next
         })
+    }
+
+    // Handle upload button click - show PDF warning first
+    const handleUploadClick = (inputId: string) => {
+        setPendingInputId(inputId)
+        setShowPdfWarning(true)
+    }
+
+    // Confirm PDF warning and open file picker
+    const handleConfirmPdfWarning = () => {
+        setShowPdfWarning(false)
+        if (pendingInputId) {
+            document.getElementById(pendingInputId)?.click()
+            setPendingInputId(null)
+        }
+    }
+
+    // Cancel PDF warning
+    const handleCancelPdfWarning = () => {
+        setShowPdfWarning(false)
+        setPendingInputId(null)
     }
 
     const removeFile = (docType: string) => {
@@ -92,7 +131,7 @@ export function InitialUploadModal({
 
             try {
                 await onUpload(fileData.file, docType, member.id)
-                
+
                 // Mark as success
                 setUploadedFiles(prev => {
                     const next = new Map(prev)
@@ -216,7 +255,7 @@ export function InitialUploadModal({
                                                 ) : (
                                                     <FileText className="h-5 w-5 text-gray-500 shrink-0" />
                                                 )}
-                                                
+
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                                                         {uploadedFile.file.name}
@@ -247,7 +286,7 @@ export function InitialUploadModal({
                                                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                                                         : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 hover:bg-blue-50/50'
                                                 )}
-                                                onClick={() => document.getElementById(inputId)?.click()}
+                                                onClick={() => handleUploadClick(inputId)}
                                             >
                                                 <Upload className={cn(
                                                     "h-5 w-5",
@@ -263,7 +302,7 @@ export function InitialUploadModal({
                                             type="file"
                                             id={inputId}
                                             className="hidden"
-                                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                            accept=".pdf"
                                             onChange={(e) => handleFileSelect(e, doc.type)}
                                         />
                                     </div>
@@ -285,7 +324,7 @@ export function InitialUploadModal({
                             `Selecione todos os ${requiredCount} documentos obrigatórios`
                         )}
                     </p>
-                    
+
                     <div className="flex gap-3">
                         <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
                             Cancelar
@@ -310,6 +349,49 @@ export function InitialUploadModal({
                     </div>
                 </div>
             </DialogContent>
+
+            {/* PDF Warning Modal */}
+            {showPdfWarning && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleCancelPdfWarning} />
+                    <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6">
+                            <div className="flex items-center gap-4">
+                                <div className="h-14 w-14 rounded-full bg-white/20 flex items-center justify-center">
+                                    <FileText className="h-7 w-7 text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-white">Formato de Arquivo</h3>
+                                    <p className="text-blue-100 text-sm mt-1">Informação importante</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                                <div className="flex items-start gap-3">
+                                    <AlertCircle className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-semibold text-amber-900 dark:text-amber-100">Somente arquivos PDF são aceitos!</p>
+                                        <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">Certifique-se de que seu documento está no formato <span className="font-bold">.PDF</span>.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {pdfError && (
+                                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                                    <p className="text-sm text-red-700 dark:text-red-300">{pdfError}</p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t flex justify-end gap-3">
+                            <Button variant="outline" onClick={handleCancelPdfWarning}>Cancelar</Button>
+                            <Button onClick={handleConfirmPdfWarning} className="bg-blue-600 hover:bg-blue-700 text-white">
+                                <Upload className="h-4 w-4 mr-2" />
+                                Entendi, Selecionar PDF
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </Dialog>
     )
 }

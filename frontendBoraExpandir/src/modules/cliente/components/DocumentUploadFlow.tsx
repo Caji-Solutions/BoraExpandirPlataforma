@@ -6,7 +6,7 @@ interface DocumentUploadFlowProps {
     clientName: string
     processoId?: string
     processType?: string
-    familyMembers: {id: string, name: string, type: string}[]
+    familyMembers: { id: string, name: string, type: string }[]
     documents: ClientDocument[]
     requiredDocuments: RequiredDocument[]
     onUploadSuccess?: (data: any) => void
@@ -33,7 +33,7 @@ export function DocumentUploadFlow({
         formData.append('clienteId', clienteId)
         formData.append('documentType', documentType)
         formData.append('memberId', memberId)
-        
+
         if (processoId) {
             formData.append('processoId', processoId)
         }
@@ -41,7 +41,7 @@ export function DocumentUploadFlow({
         if (documentoId) {
             formData.append('documentoId', documentoId)
         }
-        
+
         // memberName removido para usar apenas IDs na estrutura de pastas
 
         const response = await fetch(`${API_BASE_URL}/cliente/uploadDoc`, {
@@ -77,6 +77,7 @@ export function DocumentUploadFlow({
             <FamilyFolders
                 clienteId={clienteId}
                 clientName={clientName}
+                processoId={processoId}
                 members={familyMembers}
                 documents={documents}
                 requiredDocuments={requiredDocuments}

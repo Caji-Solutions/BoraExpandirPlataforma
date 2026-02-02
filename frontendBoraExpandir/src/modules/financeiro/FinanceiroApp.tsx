@@ -14,6 +14,7 @@ import {
   ArrowRightLeft,
   GitCompareArrows,
   Stamp,
+  Dna,
 } from 'lucide-react'
 import { Sidebar } from '../../components/ui/Sidebar'
 import type { SidebarGroup } from '../../components/ui/Sidebar'
@@ -32,6 +33,7 @@ import { Tarefas } from './pages/Tarefas'
 import { Movimentos } from './pages/Movimentos'
 import { RelatoriosComparativos } from './pages/RelatoriosComparativos'
 import { AdminApostilamento } from './pages/AdminApostilamento'
+import { ClientDNAPage } from '../../components/ui/ClientDNA'
 
 
 export function FinanceiroApp() {
@@ -40,6 +42,7 @@ export function FinanceiroApp() {
       label: 'Geral',
       items: [
         { label: 'Início', to: '/financeiro', icon: LayoutDashboard },
+        { label: 'DNA do Cliente', to: '/financeiro/dna', icon: Dna },
         { label: 'Clientes', to: '/financeiro/clientes', icon: Users },
         { label: 'Titularidades', to: '/financeiro/titularidades', icon: ShieldCheck },
         { label: 'Responsáveis', to: '/financeiro/responsaveis', icon: Users },
@@ -83,6 +86,7 @@ export function FinanceiroApp() {
           <Route path="tarefas" element={<Tarefas />} />
           <Route path="movimentos" element={<Movimentos />} />
           <Route path="apostilagem" element={<AdminApostilamento />} />
+          <Route path="dna" element={<ClientDNAPage />} />
 
           {/* Existing Financial Modules */}
           <Route path="visao-geral" element={<FinancialDashboard />} />

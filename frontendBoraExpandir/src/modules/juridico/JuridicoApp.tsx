@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { Home, FolderOpen, FileSearch, CheckSquare, DollarSign, Settings, Users, FileStack } from "lucide-react";
+import { Home, FolderOpen, FileSearch, CheckSquare, Settings, Users, FileStack, Dna } from "lucide-react";
 import { Sidebar } from "../../components/ui/Sidebar";
 import type { SidebarGroup } from "../../components/ui/Sidebar";
 import { Dashboard } from "./components/Dashboard";
@@ -9,6 +9,7 @@ import { ReviewPanel } from "./components/ReviewPanel";
 import { Config } from "../../components/ui/Config";
 import { DelegacaoDocumentos } from "./components/DelegacaoDocumentos";
 import { EquipeJuridica } from "./components/EquipeJuridica";
+import { ClientDNAPage } from "../../components/ui/ClientDNA";
 
 import { ProcessTable, ProcessData } from "./components/ProcessTable";
 
@@ -66,12 +67,7 @@ const Tarefas = () => (
   </div>
 );
 
-const Financeiro = () => (
-  <div className="p-8">
-    <h1 className="text-3xl font-bold">Financeiro</h1>
-    <p className="text-muted-foreground mt-2">Em desenvolvimento...</p>
-  </div>
-);
+
 
 const Index = () => {
   const [selectedProcess, setSelectedProcess] = useState<{
@@ -86,6 +82,7 @@ const Index = () => {
       label: "Menu Principal",
       items: [
         { label: "Início", to: "/juridico", icon: Home },
+        { label: "DNA do Cliente", to: "/juridico/dna", icon: Dna },
         { label: "Meus Processos", to: "/juridico/processos", icon: FolderOpen },
         { label: "Fila de Análise", to: "/juridico/analise", icon: FileSearch },
         { label: "Tarefas", to: "/juridico/tarefas", icon: CheckSquare },
@@ -102,7 +99,6 @@ const Index = () => {
     {
       label: "Sistema",
       items: [
-        { label: "Financeiro", to: "/juridico/financeiro", icon: DollarSign },
         { label: "Configurações", to: "/juridico/configuracoes", icon: Settings },
       ],
     },
@@ -149,9 +145,10 @@ const Index = () => {
               }
             />
             <Route path="tarefas" element={<Tarefas />} />
-            <Route path="financeiro" element={<Financeiro />} />
+            <Route path="dna" element={<ClientDNAPage />} />
+
             <Route path="configuracoes" element={<Config />} />
-            
+
             {/* Rotas exclusivas para Supervisores */}
             {USUARIO_LOGADO.isSupervisor && (
               <>
@@ -159,7 +156,7 @@ const Index = () => {
                 <Route path="equipe" element={<EquipeJuridica />} />
               </>
             )}
-            
+
             <Route path="*" element={<Navigate to="." replace />} />
           </Routes>
         )}

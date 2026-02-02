@@ -9,6 +9,7 @@ import AuditoriaAprovacoes from "./pages/admin/AuditoriaAprovacoes";
 import GestaoTradutores from "./pages/admin/GestaoTradutores";
 import PagamentosAdmin from "./pages/admin/PagamentosAdmin";
 import { Config } from "../../components/ui/Config";
+import { ClientDNAPage } from "../../components/ui/ClientDNA";
 
 // Importar componentes financeiros
 import { FinancialDashboard } from "../financeiro/pages/VisaoGeral";
@@ -84,20 +85,21 @@ const App = () => (
       <Route path="audit" element={<AuditLogs />} />
       <Route path="cockpit" element={<CockpitDoDoNo />} />
       <Route path="approvals" element={<AuditoriaAprovacoes />} />
-      
+      <Route path="dna" element={<ClientDNAPage />} />
+
       {/* Rotas Financeiras */}
       <Route path="financeiro/visao-geral" element={<FinancialDashboard />} />
       <Route path="financeiro/contas-receber" element={<FinancialProcessList />} />
       <Route path="financeiro/comissoes" element={<Comissoes />} />
       <Route path="financeiro/pagamentos" element={<PagamentosAdmin />} />
       <Route path="financeiro/relatorios" element={<Relatorios />} />
-      
+
       {/* Rotas Jurídicas */}
       <Route path="juridico" element={<JuridicoDashboard />} />
       <Route path="juridico/processos" element={<JuridicoProcessos />} />
-      <Route path="juridico/analise" element={<ProcessQueue onSelectProcess={() => {}} />} />
+      <Route path="juridico/analise" element={<ProcessQueue onSelectProcess={() => { }} />} />
       <Route path="juridico/tarefas" element={<JuridicoTarefas />} />
-      
+
       <Route path="configuracoes" element={<Config />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

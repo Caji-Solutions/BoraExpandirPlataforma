@@ -5,6 +5,7 @@ import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { Document as ClientDocument, RequiredDocument } from '../types'
 import { cn, formatDate, formatFileSize } from '../lib/utils'
+import { FormsDeclarationsCard } from './FormsDeclarationsCard'
 
 interface FamilyMember {
   id: string
@@ -17,6 +18,7 @@ interface FamilyFolderCardProps {
   member: FamilyMember
   documents: ClientDocument[]
   requiredDocuments: RequiredDocument[]
+  processoId?: string
   isExpanded: boolean
   onToggle: () => void
   onOpenUploadModal: () => void  // New prop to open initial upload modal
@@ -82,6 +84,7 @@ export function FamilyFolderCard({
   member,
   documents,
   requiredDocuments,
+  processoId,
   isExpanded,
   onToggle,
   onOpenUploadModal,
@@ -90,9 +93,11 @@ export function FamilyFolderCard({
 }: FamilyFolderCardProps) {
   const [uploadingType, setUploadingType] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
-  
+
   // Modal States
   const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [showPdfWarning, setShowPdfWarning] = useState(false)
+  const [pendingInputId, setPendingInputId] = useState<string | null>(null)
   const [pendingUpload, setPendingUpload] = useState<{
     file: File
     documentType: string
@@ -109,21 +114,21 @@ export function FamilyFolderCard({
   // Determine the stage of a document
   const getDocStage = (doc: ClientDocument) => {
     const status = doc.status?.toLowerCase();
-    
+
     if (status === 'rejected') return 'rejected';
-    
+
     // Se está em qualquer sub-etapa de apostilamento ou aprovado sem apostila
     if (status?.includes('apostille') || (status === 'approved' && !doc.isApostilled)) {
-        return 'apostille';
+      return 'apostille';
     }
-    
+
     // Se está em qualquer sub-etapa de tradução ou aprovado com apostila mas sem tradução
     if (status?.includes('translation') || (status === 'approved' && doc.isApostilled && !doc.isTranslated)) {
-        return 'translation';
+      return 'translation';
     }
-    
+
     if (status === 'approved' && doc.isApostilled && doc.isTranslated) {
-        return 'completed';
+      return 'completed';
     }
 
     return 'analyzing';
@@ -133,68 +138,68 @@ export function FamilyFolderCard({
     return memberDocs
       .filter(doc => getDocStage(doc) === stageId)
       .map(doc => {
-         const reqDoc = requiredDocuments.find(r => r.type === doc.type)
-         return {
-             type: doc.type,
-             name: reqDoc ? reqDoc.name : (doc.fileName || doc.type),
-             description: reqDoc?.description,
-             _document: doc,
-             required: !!reqDoc
-         }
-    })
+        const reqDoc = requiredDocuments.find(r => r.type === doc.type)
+        return {
+          type: doc.type,
+          name: reqDoc ? reqDoc.name : (doc.fileName || doc.type),
+          description: reqDoc?.description,
+          _document: doc,
+          required: !!reqDoc
+        }
+      })
   }
 
   // Calculate pending documents (required but not uploaded)
   const pendingDocs = useMemo(() => {
-      const uploadedTypes = new Set(memberDocs.map(d => d.type))
-      return requiredDocuments
-        .filter(req => !uploadedTypes.has(req.type))
-        .map(req => ({
-          ...req,
-          required: true
-        }))
+    const uploadedTypes = new Set(memberDocs.map(d => d.type))
+    return requiredDocuments
+      .filter(req => !uploadedTypes.has(req.type))
+      .map(req => ({
+        ...req,
+        required: true
+      }))
   }, [memberDocs, requiredDocuments])
 
   // Calculate stats for the three main categories
   const stats = useMemo(() => {
-      const s = {
-          rejected: 0,
-          analyzing: 0,      // Documents under legal/juridico review
-          apostille: 0,
-          translation: 0,
-          completed: 0,      // Fully processed (approved + apostilled + translated)
-          waitingAction: 0   // Documents waiting for client action (upload)
+    const s = {
+      rejected: 0,
+      analyzing: 0,      // Documents under legal/juridico review
+      apostille: 0,
+      translation: 0,
+      completed: 0,      // Fully processed (approved + apostilled + translated)
+      waitingAction: 0   // Documents waiting for client action (upload)
+    }
+
+    memberDocs.forEach(doc => {
+      const statusLower = doc.status?.toLowerCase() || '';
+
+      // Em Análise: Any "analyzing" status
+      if (statusLower === 'analyzing' || statusLower === 'analyzing_apostille' || statusLower === 'analyzing_translation') {
+        s.analyzing++;
       }
-      
-      memberDocs.forEach(doc => {
-          const statusLower = doc.status?.toLowerCase() || '';
-          
-          // Em Análise: Any "analyzing" status
-          if (statusLower === 'analyzing' || statusLower === 'analyzing_apostille' || statusLower === 'analyzing_translation') {
-              s.analyzing++;
-          }
-          // Concluídos: Fully approved AND apostilled AND translated
-          else if (statusLower === 'approved' && doc.isApostilled && doc.isTranslated) {
-              s.completed++;
-          }
-          // Aguardam Ação: Rejected or waiting for upload
-          else if (statusLower === 'rejected') {
-              s.rejected++;
-              s.waitingAction++;
-          }
-          else if (statusLower === 'waiting_apostille' || statusLower === 'waiting_translation') {
-              s.waitingAction++;
-          }
-          // Stages for internal tracking
-          const stage = getDocStage(doc);
-          if (stage === 'apostille') s.apostille++;
-          if (stage === 'translation') s.translation++;
-      })
-      
-      // Add pending (missing) docs to waitingAction
-      s.waitingAction += pendingDocs.length;
-      
-      return s
+      // Concluídos: Fully approved AND apostilled AND translated
+      else if (statusLower === 'approved' && doc.isApostilled && doc.isTranslated) {
+        s.completed++;
+      }
+      // Aguardam Ação: Rejected or waiting for upload
+      else if (statusLower === 'rejected') {
+        s.rejected++;
+        s.waitingAction++;
+      }
+      else if (statusLower === 'waiting_apostille' || statusLower === 'waiting_translation') {
+        s.waitingAction++;
+      }
+      // Stages for internal tracking
+      const stage = getDocStage(doc);
+      if (stage === 'apostille') s.apostille++;
+      if (stage === 'translation') s.translation++;
+    })
+
+    // Add pending (missing) docs to waitingAction
+    s.waitingAction += pendingDocs.length;
+
+    return s
   }, [memberDocs, pendingDocs])
 
   const hasSentDocuments = memberDocs.length > 0
@@ -203,38 +208,74 @@ export function FamilyFolderCard({
 
 
   const getDocumentName = (type: string) => {
-      const doc = requiredDocuments.find(r => r.type === type)
-      return doc ? doc.name : type
+    const doc = requiredDocuments.find(r => r.type === type)
+    return doc ? doc.name : type
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
     const file = e.target.files?.[0]
     if (!file) return
 
+    // Validate PDF
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      setUploadError('Apenas arquivos PDF são aceitos. Por favor, selecione um arquivo .pdf')
+      setShowConfirmModal(true)
+      e.target.value = ''
+      return
+    }
+
     setPendingUpload({
-        file,
-        documentType: type,
-        documentName: getDocumentName(type),
-        documentoId: memberDocs.find(d => d.type === type)?.id
+      file,
+      documentType: type,
+      documentName: getDocumentName(type),
+      documentoId: memberDocs.find(d => d.type === type)?.id
     })
     setShowConfirmModal(true)
     setUploadError(null)
-    
+
     e.target.value = ''
+  }
+
+  // Handle upload button click - show PDF warning first
+  const handleUploadClick = (inputId: string) => {
+    setPendingInputId(inputId)
+    setShowPdfWarning(true)
+  }
+
+  // Confirm PDF warning and open file picker
+  const handleConfirmPdfWarning = () => {
+    setShowPdfWarning(false)
+    if (pendingInputId) {
+      document.getElementById(pendingInputId)?.click()
+      setPendingInputId(null)
+    }
+  }
+
+  // Cancel PDF warning
+  const handleCancelPdfWarning = () => {
+    setShowPdfWarning(false)
+    setPendingInputId(null)
   }
 
   const handleDrop = (e: React.DragEvent, type: string) => {
     e.preventDefault()
     setDragOver(null)
-    
+
     const file = e.dataTransfer.files[0]
     if (!file) return
 
+    // Validate PDF
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      setUploadError('Apenas arquivos PDF são aceitos. Por favor, selecione um arquivo .pdf')
+      setShowConfirmModal(true)
+      return
+    }
+
     setPendingUpload({
-        file,
-        documentType: type,
-        documentName: getDocumentName(type),
-        documentoId: memberDocs.find(d => d.type === type)?.id
+      file,
+      documentType: type,
+      documentName: getDocumentName(type),
+      documentoId: memberDocs.find(d => d.type === type)?.id
     })
     setShowConfirmModal(true)
     setUploadError(null)
@@ -248,10 +289,10 @@ export function FamilyFolderCard({
       setUploadError(null)
       // We set uploadingType just for compatibility if needed elsewhere, 
       // but the modal now blocks interaction so it's less critical.
-      setUploadingType(pendingUpload.documentType) 
-      
+      setUploadingType(pendingUpload.documentType)
+
       await onUpload(pendingUpload.file, pendingUpload.documentType, member.id, pendingUpload.documentoId)
-      
+
       // Success
       setShowConfirmModal(false)
       setPendingUpload(null)
@@ -265,9 +306,9 @@ export function FamilyFolderCard({
   }
 
   const handleCancelUpload = () => {
-      setShowConfirmModal(false)
-      setPendingUpload(null)
-      setUploadError(null)
+    setShowConfirmModal(false)
+    setPendingUpload(null)
+    setUploadError(null)
   }
 
   // Handle card click - now always toggles
@@ -283,130 +324,130 @@ export function FamilyFolderCard({
 
   return (
     <>
-    <Card
-      className={cn(
-        "transition-all duration-300 border-2",
-        isExpanded ? "overflow-visible" : "overflow-hidden",
-        hasRejected ? 'border-red-200 dark:border-red-800' : 'border-gray-200 dark:border-gray-700',
-        isExpanded && 'shadow-lg'
-      )}
-    >
-      {/* Header - Always visible */}
-      <div
+      <Card
         className={cn(
-          "sticky top-0 z-10 p-4 cursor-pointer transition-colors border-b backdrop-blur-sm",
-          !hasSentDocuments 
-            ? 'bg-gray-50/95 dark:bg-gray-900/90' 
-            : hasRejected 
-              ? 'bg-red-50/95 dark:bg-red-900/90' 
-              : 'bg-white/95 dark:bg-gray-800/95',
-          "hover:bg-gray-50 dark:hover:bg-gray-700/50"
+          "transition-all duration-300 border-2",
+          isExpanded ? "overflow-visible" : "overflow-hidden",
+          hasRejected ? 'border-red-200 dark:border-red-800' : 'border-gray-200 dark:border-gray-700',
+          isExpanded && 'shadow-lg'
         )}
-        onClick={handleCardClick}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {/* Folder Icon */}
-            <div className={cn(
-              "p-3 rounded-xl",
-              !hasSentDocuments 
-                ? 'bg-gray-200 dark:bg-gray-700'
-                : hasRejected 
-                  ? 'bg-red-100 dark:bg-red-900/30' 
-                  : 'bg-blue-50 dark:bg-blue-900/20'
-            )}>
-              <Folder className={cn(
-                "h-8 w-8",
-                !hasSentDocuments 
-                  ? 'text-gray-400'
-                  : hasRejected 
-                    ? 'text-red-500' 
-                    : 'text-blue-500'
-              )} />
-            </div>
-
-            {/* Member Info */}
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{member.name}</h3>
-                {member.isTitular && (
-                  <Badge variant="default" className="text-[10px] px-2 py-0.5 bg-blue-600 hover:bg-blue-700">
-                    Titular
-                  </Badge>
-                )}
-                {!hasSentDocuments && (
-                  <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
-                    Pendente envio
-                  </Badge>
-                )}
-                {hasRejected && (
-                  <Badge variant="destructive" className="text-[10px] px-2 py-0.5">
-                    Ação Necessária
-                  </Badge>
-                )}
-              </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{member.type}</p>
-            </div>
-          </div>
-
-          {/* Stats + Expand Icon */}
-          <div className="flex items-center gap-6">
-            {/* Mini Stats - Only show if has documents */}
-            {hasSentDocuments && (
-              <div className="hidden sm:flex items-center gap-4 text-sm">
-                {stats.rejected > 0 && (
-                  <>
-                    <div className="flex flex-col items-center">
-                      <span className="font-bold text-red-600">{stats.rejected}</span>
-                      <span className="text-[10px] text-gray-400">Rejeitados</span>
-                    </div>
-                    <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
-                  </>
-                )}
-                <div className="flex flex-col items-center">
-                  <span className="font-bold text-amber-600">{stats.waitingAction}</span>
-                  <span className="text-[10px] text-gray-400">Aguardam Ação</span>
-                </div>
-                <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
-                <div className="flex flex-col items-center">
-                  <span className="font-bold text-blue-600">{stats.analyzing}</span>
-                  <span className="text-[10px] text-gray-400">Em Análise</span>
-                </div>
-                <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
-                <div className="flex flex-col items-center">
-                  <span className="font-bold text-green-600">{stats.completed}</span>
-                  <span className="text-[10px] text-gray-400">Concluídos</span>
-                </div>
+        {/* Header - Always visible */}
+        <div
+          className={cn(
+            "sticky top-0 z-10 p-4 cursor-pointer transition-colors border-b backdrop-blur-sm",
+            !hasSentDocuments
+              ? 'bg-gray-50/95 dark:bg-gray-900/90'
+              : hasRejected
+                ? 'bg-red-50/95 dark:bg-red-900/90'
+                : 'bg-white/95 dark:bg-gray-800/95',
+            "hover:bg-gray-50 dark:hover:bg-gray-700/50"
+          )}
+          onClick={handleCardClick}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {/* Folder Icon */}
+              <div className={cn(
+                "p-3 rounded-xl",
+                !hasSentDocuments
+                  ? 'bg-gray-200 dark:bg-gray-700'
+                  : hasRejected
+                    ? 'bg-red-100 dark:bg-red-900/30'
+                    : 'bg-blue-50 dark:bg-blue-900/20'
+              )}>
+                <Folder className={cn(
+                  "h-8 w-8",
+                  !hasSentDocuments
+                    ? 'text-gray-400'
+                    : hasRejected
+                      ? 'text-red-500'
+                      : 'text-blue-500'
+                )} />
               </div>
 
-            )}
+              {/* Member Info */}
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{member.name}</h3>
+                  {member.isTitular && (
+                    <Badge variant="default" className="text-[10px] px-2 py-0.5 bg-blue-600 hover:bg-blue-700">
+                      Titular
+                    </Badge>
+                  )}
+                  {!hasSentDocuments && (
+                    <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
+                      Pendente envio
+                    </Badge>
+                  )}
+                  {hasRejected && (
+                    <Badge variant="destructive" className="text-[10px] px-2 py-0.5">
+                      Ação Necessária
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{member.type}</p>
+              </div>
+            </div>
 
-            {/* Icon - Upload for new, Expand for existing */}
-            <div className={cn(
-              "p-2 rounded-full transition-colors",
-              !hasSentDocuments 
-                ? 'bg-blue-100 dark:bg-blue-900/30'
-                : isExpanded 
-                  ? 'bg-blue-100 dark:bg-blue-900/30' 
-                  : 'bg-gray-100 dark:bg-gray-700'
-            )}>
-              {!hasSentDocuments ? (
-                <Upload className="h-5 w-5 text-blue-600" />
-              ) : isExpanded ? (
-                <ChevronUp className="h-5 w-5 text-blue-600" />
-              ) : (
-                <ChevronDown className="h-5 w-5 text-gray-400" />
+            {/* Stats + Expand Icon */}
+            <div className="flex items-center gap-6">
+              {/* Mini Stats - Only show if has documents */}
+              {hasSentDocuments && (
+                <div className="hidden sm:flex items-center gap-4 text-sm">
+                  {stats.rejected > 0 && (
+                    <>
+                      <div className="flex flex-col items-center">
+                        <span className="font-bold text-red-600">{stats.rejected}</span>
+                        <span className="text-[10px] text-gray-400">Rejeitados</span>
+                      </div>
+                      <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
+                    </>
+                  )}
+                  <div className="flex flex-col items-center">
+                    <span className="font-bold text-amber-600">{stats.waitingAction}</span>
+                    <span className="text-[10px] text-gray-400">Aguardam Ação</span>
+                  </div>
+                  <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
+                  <div className="flex flex-col items-center">
+                    <span className="font-bold text-blue-600">{stats.analyzing}</span>
+                    <span className="text-[10px] text-gray-400">Em Análise</span>
+                  </div>
+                  <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
+                  <div className="flex flex-col items-center">
+                    <span className="font-bold text-green-600">{stats.completed}</span>
+                    <span className="text-[10px] text-gray-400">Concluídos</span>
+                  </div>
+                </div>
+
               )}
+
+              {/* Icon - Upload for new, Expand for existing */}
+              <div className={cn(
+                "p-2 rounded-full transition-colors",
+                !hasSentDocuments
+                  ? 'bg-blue-100 dark:bg-blue-900/30'
+                  : isExpanded
+                    ? 'bg-blue-100 dark:bg-blue-900/30'
+                    : 'bg-gray-100 dark:bg-gray-700'
+              )}>
+                {!hasSentDocuments ? (
+                  <Upload className="h-5 w-5 text-blue-600" />
+                ) : isExpanded ? (
+                  <ChevronUp className="h-5 w-5 text-blue-600" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-gray-400" />
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Expanded Content - Timeline - Only if has documents */}
-      <div className={cn(
-        "overflow-hidden transition-all duration-300",
-        isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
-      )}>
+        {/* Expanded Content - Timeline - Only if has documents */}
+        <div className={cn(
+          "overflow-hidden transition-all duration-300",
+          isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+        )}>
           <div className="border-t border-gray-200 dark:border-gray-700 p-6 bg-gray-50/50 dark:bg-gray-900/20 space-y-8">
             {/* Rejected Documents Header - Outside Timeline */}
             {stats.rejected > 0 && (
@@ -417,13 +458,13 @@ export function FamilyFolderCard({
                   </Badge>
                   <p className="text-xs text-gray-500 italic">Corrija os documentos abaixo para prosseguir</p>
                 </div>
-                
+
                 <div className="grid gap-3">
                   {getDocumentsForStage('rejected').map((item: any, idx: number) => {
                     const doc = item._document
                     const inputId = `file-${member.id}-${item.type}-rejected`
                     const isUploading = uploadingType === item.type
-                    
+
                     return (
                       <div
                         key={'rejected-' + item.type + idx}
@@ -440,26 +481,26 @@ export function FamilyFolderCard({
                                   {item.name}
                                 </span>
                               </div>
-                              
+
                               <div className="flex items-center gap-1.5 ml-2">
-                                <Badge 
-                                  variant="default" 
+                                <Badge
+                                  variant="default"
                                   className={cn(
                                     "text-[10px] px-1.5 py-0 border-none text-white flex items-center gap-1",
-                                    doc?.isApostilled 
-                                      ? "bg-green-600 hover:bg-green-700" 
+                                    doc?.isApostilled
+                                      ? "bg-green-600 hover:bg-green-700"
                                       : "bg-gray-300"
                                   )}
                                 >
                                   <CheckCircle className={cn("h-3 w-3", doc?.isApostilled ? "opacity-100" : "opacity-50")} />
                                   Apostilado
                                 </Badge>
-                                <Badge 
-                                  variant="default" 
+                                <Badge
+                                  variant="default"
                                   className={cn(
                                     "text-[10px] px-1.5 py-0 border-none text-white flex items-center gap-1",
-                                    doc?.isTranslated 
-                                      ? "bg-green-600 hover:bg-green-700" 
+                                    doc?.isTranslated
+                                      ? "bg-green-600 hover:bg-green-700"
                                       : "bg-gray-300"
                                   )}
                                 >
@@ -491,13 +532,14 @@ export function FamilyFolderCard({
                               type="file"
                               id={inputId}
                               className="hidden"
+                              accept=".pdf,application/pdf"
                               onChange={(e) => handleFileSelect(e, item.type)}
                               disabled={isUploading}
                             />
                             <Button
                               size="sm"
                               className="h-9 px-4 text-xs font-bold gap-2 bg-red-600 hover:bg-red-700 text-white shadow-sm"
-                              onClick={() => document.getElementById(inputId)?.click()}
+                              onClick={() => handleUploadClick(inputId)}
                               disabled={isUploading}
                             >
                               {isUploading ? (
@@ -507,14 +549,14 @@ export function FamilyFolderCard({
                               )}
                               REENVIAR DOCUMENTO
                             </Button>
-                       
+
                           </div>
                         </div>
                       </div>
                     )
                   })}
                 </div>
-                
+
                 {/* Visual Separator */}
                 <div className="relative py-4">
                   <div className="absolute inset-0 flex items-center" aria-hidden="true">
@@ -538,12 +580,12 @@ export function FamilyFolderCard({
                   </Badge>
                   <p className="text-xs text-gray-500 italic">Envie os documentos abaixo para iniciar o processo</p>
                 </div>
-                
+
                 <div className="grid gap-3">
                   {pendingDocs.map((item: any, idx: number) => {
                     const inputId = `file-${member.id}-${item.type}-pending`
                     const isUploading = uploadingType === item.type
-                    
+
                     return (
                       <div
                         key={'pending-' + item.type + idx}
@@ -574,13 +616,14 @@ export function FamilyFolderCard({
                               type="file"
                               id={inputId}
                               className="hidden"
+                              accept=".pdf,application/pdf"
                               onChange={(e) => handleFileSelect(e, item.type)}
                               disabled={isUploading}
                             />
                             <Button
                               size="sm"
                               className="h-9 px-4 text-xs font-bold gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                              onClick={() => document.getElementById(inputId)?.click()}
+                              onClick={() => handleUploadClick(inputId)}
                               disabled={isUploading}
                             >
                               {isUploading ? (
@@ -596,7 +639,7 @@ export function FamilyFolderCard({
                     )
                   })}
                 </div>
-                
+
                 {/* Visual Separator if there are other stages */}
                 {visibleStages.length > 0 && (
                   <div className="relative py-4">
@@ -686,24 +729,24 @@ export function FamilyFolderCard({
                                         </div>
 
                                         <div className="flex items-center gap-1.5">
-                                          <Badge 
-                                            variant="default" 
+                                          <Badge
+                                            variant="default"
                                             className={cn(
                                               "text-[9px] px-1 py-0 border-none text-white flex items-center gap-1",
-                                              doc?.isApostilled 
-                                                ? "bg-green-600 hover:bg-green-700" 
+                                              doc?.isApostilled
+                                                ? "bg-green-600 hover:bg-green-700"
                                                 : "bg-gray-300"
                                             )}
                                           >
                                             <CheckCircle className={cn("h-2.5 w-2.5", doc?.isApostilled ? "opacity-100" : "opacity-50")} />
                                             Apostilado
                                           </Badge>
-                                          <Badge 
-                                            variant="default" 
+                                          <Badge
+                                            variant="default"
                                             className={cn(
                                               "text-[9px] px-1 py-0 border-none text-white flex items-center gap-1",
-                                              doc?.isTranslated 
-                                                ? "bg-green-600 hover:bg-green-700" 
+                                              doc?.isTranslated
+                                                ? "bg-green-600 hover:bg-green-700"
                                                 : "bg-gray-300"
                                             )}
                                           >
@@ -741,6 +784,7 @@ export function FamilyFolderCard({
                                         type="file"
                                         id={inputId}
                                         className="hidden"
+                                        accept=".pdf,application/pdf"
                                         onChange={(e) => handleFileSelect(e, item.type)}
                                         disabled={isUploading}
                                       />
@@ -750,7 +794,7 @@ export function FamilyFolderCard({
                                         <Button
                                           size="sm"
                                           className="h-8 text-xs gap-1.5 bg-red-600 hover:bg-red-700 text-white"
-                                          onClick={() => document.getElementById(inputId)?.click()}
+                                          onClick={() => handleUploadClick(inputId)}
                                           disabled={isUploading}
                                         >
                                           {isUploading ? (
@@ -769,7 +813,7 @@ export function FamilyFolderCard({
                                             <Button
                                               size="sm"
                                               className="h-8 text-xs bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
-                                              onClick={() => document.getElementById(inputId)?.click()}
+                                              onClick={() => handleUploadClick(inputId)}
                                               disabled={isUploading}
                                             >
                                               <Upload className="h-3 w-3" />
@@ -791,7 +835,7 @@ export function FamilyFolderCard({
                                             <Button
                                               size="sm"
                                               className="h-8 text-xs bg-purple-600 hover:bg-purple-700 text-white gap-1.5"
-                                              onClick={() => document.getElementById(inputId)?.click()}
+                                              onClick={() => handleUploadClick(inputId)}
                                               disabled={isUploading}
                                             >
                                               <Upload className="h-3 w-3" />
@@ -851,133 +895,217 @@ export function FamilyFolderCard({
           </div>
         </div>
 
-    </Card>
-    
-    {/* Modal de Confirmação de Upload */}
-    {showConfirmModal && pendingUpload && (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center">
-        {/* Backdrop */}
-        <div 
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={!isUploading ? handleCancelUpload : undefined}
-        />
-        
-        {/* Modal Content */}
-        <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border border-gray-200 dark:border-gray-700 animate-in fade-in zoom-in duration-200">
-          
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-md">
-                {isUploading ? (
-                  <Loader2 className="h-6 w-6 text-white animate-spin" />
-                ) : (
-                  <Upload className="h-6 w-6 text-white" />
-                )}
-              </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-white text-xl">
-                  {isUploading ? 'Enviando Documento...' : 'Confirmar Envio'}
-                </h3>
-                <p className="text-blue-100 text-sm mt-1">
-                  {isUploading ? 'Aguarde enquanto processamos seu arquivo' : 'Verifique os detalhes antes de enviar'}
-                </p>
-              </div>
-            </div>
-          </div>
+        {/* Formulários e Declarações Section */}
+        {processoId && (
+          <FormsDeclarationsCard
+            memberId={member.id}
+            memberName={member.name}
+            processoId={processoId}
+          />
+        )}
 
-          {/* Body */}
-          <div className="p-6 space-y-5">
-            
-            {/* Campo/Documento Alvo */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Documento Solicitado
-              </label>
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 flex items-center gap-3">
-                <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                <div>
-                  <p className="font-semibold text-blue-900 dark:text-blue-100">
-                    {pendingUpload.documentName}
-                  </p>
-                  <p className="text-xs text-blue-600 dark:text-blue-300 mt-0.5">
-                    Para: {member.name}
+      </Card>
+
+      {/* Modal de Confirmação de Upload */}
+      {showConfirmModal && pendingUpload && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={!isUploading ? handleCancelUpload : undefined}
+          />
+
+          {/* Modal Content */}
+          <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border border-gray-200 dark:border-gray-700 animate-in fade-in zoom-in duration-200">
+
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-md">
+                  {isUploading ? (
+                    <Loader2 className="h-6 w-6 text-white animate-spin" />
+                  ) : (
+                    <Upload className="h-6 w-6 text-white" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-white text-xl">
+                    {isUploading ? 'Enviando Documento...' : 'Confirmar Envio'}
+                  </h3>
+                  <p className="text-blue-100 text-sm mt-1">
+                    {isUploading ? 'Aguarde enquanto processamos seu arquivo' : 'Verifique os detalhes antes de enviar'}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Arquivo Selecionado */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Arquivo Selecionado
-              </label>
-              <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-200 dark:border-gray-600 flex items-center gap-4">
-                <div className="h-10 w-10 bg-white dark:bg-gray-800 rounded-lg flex items-center justify-center shadow-sm border border-gray-100 dark:border-gray-700">
-                   <span className="text-xs font-bold text-gray-500 uppercase">
-                     {pendingUpload.file.name.split('.').pop()}
-                   </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 dark:text-white truncate" title={pendingUpload.file.name}>
-                    {pendingUpload.file.name}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {formatFileSize(pendingUpload.file.size)}
-                  </p>
+            {/* Body */}
+            <div className="p-6 space-y-5">
+
+              {/* Campo/Documento Alvo */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Documento Solicitado
+                </label>
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 flex items-center gap-3">
+                  <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <div>
+                    <p className="font-semibold text-blue-900 dark:text-blue-100">
+                      {pendingUpload.documentName}
+                    </p>
+                    <p className="text-xs text-blue-600 dark:text-blue-300 mt-0.5">
+                      Para: {member.name}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Alert/Warning Area */}
-            {uploadError ? (
-               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-start gap-3">
-                 <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
-                 <p className="text-sm text-red-700 dark:text-red-300">
-                   {uploadError}
-                 </p>
-               </div>
-            ) : (
-              <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 rounded-lg p-3 flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 shrink-0" />
-                <p className="text-xs text-amber-800 dark:text-amber-300">
-                  Certifique-se que o arquivo está legível e completo. Arquivos ilegíveis podem atrasar seu processo.
-                </p>
+              {/* Arquivo Selecionado */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Arquivo Selecionado
+                </label>
+                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-200 dark:border-gray-600 flex items-center gap-4">
+                  <div className="h-10 w-10 bg-white dark:bg-gray-800 rounded-lg flex items-center justify-center shadow-sm border border-gray-100 dark:border-gray-700">
+                    <span className="text-xs font-bold text-gray-500 uppercase">
+                      {pendingUpload.file.name.split('.').pop()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 dark:text-white truncate" title={pendingUpload.file.name}>
+                      {pendingUpload.file.name}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {formatFileSize(pendingUpload.file.size)}
+                    </p>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
 
-          {/* Footer Actions */}
-          <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={handleCancelUpload}
-              disabled={isUploading}
-              className="border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleConfirmUpload}
-              disabled={isUploading}
-              className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200 dark:shadow-none min-w-[140px]"
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Enviando...
-                </>
+              {/* Alert/Warning Area */}
+              {uploadError ? (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
+                  <p className="text-sm text-red-700 dark:text-red-300">
+                    {uploadError}
+                  </p>
+                </div>
               ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Confirmar Envio
-                </>
+                <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 rounded-lg p-3 flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 shrink-0" />
+                  <p className="text-xs text-amber-800 dark:text-amber-300">
+                    Certifique-se que o arquivo está legível e completo. Arquivos ilegíveis podem atrasar seu processo.
+                  </p>
+                </div>
               )}
-            </Button>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={handleCancelUpload}
+                disabled={isUploading}
+                className="border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleConfirmUpload}
+                disabled={isUploading}
+                className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200 dark:shadow-none min-w-[140px]"
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Confirmar Envio
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
+
+      {/* PDF Warning Modal */}
+      {showPdfWarning && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={handleCancelPdfWarning}
+          />
+
+          {/* Modal */}
+          <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6">
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 rounded-full bg-white/20 flex items-center justify-center">
+                  <FileText className="h-7 w-7 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">
+                    Formato de Arquivo
+                  </h3>
+                  <p className="text-blue-100 text-sm mt-1">
+                    Informação importante
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-amber-900 dark:text-amber-100">
+                      Somente arquivos PDF são aceitos!
+                    </p>
+                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                      Por favor, certifique-se de que seu documento está no formato <span className="font-bold">.PDF</span> antes de enviar.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="mb-2">Dicas para digitalizar seu documento:</p>
+                <ul className="list-disc list-inside space-y-1 text-xs">
+                  <li>Use um aplicativo de scanner no celular (ex: CamScanner, Adobe Scan)</li>
+                  <li>Certifique-se de que o documento está legível</li>
+                  <li>Salve o arquivo em formato PDF</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={handleCancelPdfWarning}
+                className="border-gray-300 dark:border-gray-600"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleConfirmPdfWarning}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Entendi, Selecionar PDF
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

@@ -159,7 +159,7 @@ export function TraducaoModal({
                                                             id={`upload-trans-${doc.id}`}
                                                             className="hidden"
                                                             onChange={(e) => handleFileUpload(e, doc.id)}
-                                                            accept=".pdf,.doc,.docx"
+                                                            accept=".pdf,application/pdf"
                                                         />
                                                         <Button
                                                             size="sm"

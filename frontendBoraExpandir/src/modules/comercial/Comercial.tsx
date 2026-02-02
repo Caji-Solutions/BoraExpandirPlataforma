@@ -14,13 +14,14 @@ import GanhosPage from './Ganhos'
 import ProximosAgendamentosCard from './components/ProximosAgendamentosCard'
 import CadastroRapidoLeadCard from './components/CadastroRapidoLeadCard'
 import { Config } from '../../components/ui/Config'
-import { Plus, Home, Users, FileText, CreditCard, AlertCircle, PenTool, CheckCircle, Calendar, Settings, Search, Filter, X, DollarSign } from 'lucide-react'
+import { Plus, Home, Users, FileText, CreditCard, AlertCircle, PenTool, CheckCircle, Calendar, Settings, Search, Filter, X, DollarSign, Dna } from 'lucide-react'
+import { ClientDNAPage } from '../../components/ui/ClientDNA'
 import { TimeRangeFilter, filterByTimeRange, type TimeRange } from '../../components/ui/TimeRangeFilter'
 import { SortControl, sortData, type SortDirection, type SortOption } from '../../components/ui/SortControl'
-import type { 
-  Cliente, 
-  ClienteFormData, 
-  Contrato, 
+import type {
+  Cliente,
+  ClienteFormData,
+  Contrato,
   ContratoFormData,
   Requerimento,
   RequerimentoFormData,
@@ -34,9 +35,9 @@ import Toast, { useToast, ToastContainer } from '../../components/ui/Toast'
 import { Badge } from '../../components/ui/Badge'
 
 // Componentes de página
-function DashboardPage({ 
-  clientes, 
-  contratos, 
+function DashboardPage({
+  clientes,
+  contratos,
   requerimentos,
   agendamentos,
   onShowCadastroCliente,
@@ -101,12 +102,12 @@ function DashboardPage({
   )
 }
 
-function ClientesPage({ 
-  clientes, 
-  onShowCadastroCliente 
-}: { 
+function ClientesPage({
+  clientes,
+  onShowCadastroCliente
+}: {
   clientes: Cliente[]
-  onShowCadastroCliente: () => void 
+  onShowCadastroCliente: () => void
 }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [timeRange, setTimeRange] = useState<TimeRange>('current_month')
@@ -167,11 +168,10 @@ function ClientesPage({
         <div className="flex gap-2">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-colors ${
-              showFilters
-                ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500 text-emerald-700 dark:text-emerald-300'
-                : 'bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-700'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-colors ${showFilters
+              ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500 text-emerald-700 dark:text-emerald-300'
+              : 'bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-700'
+              }`}
           >
             {showFilters ? (
               <>
@@ -185,7 +185,7 @@ function ClientesPage({
               </>
             )}
           </button>
-          
+
           <button
             onClick={onShowCadastroCliente}
             className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors whitespace-nowrap"
@@ -258,11 +258,11 @@ function ClientesPage({
   )
 }
 
-function ContratosPage({ 
-  contratos, 
+function ContratosPage({
+  contratos,
   onShowGeracaoContrato,
   onSetContratoParaAssinar
-}: { 
+}: {
   contratos: Contrato[]
   onShowGeracaoContrato: () => void
   onSetContratoParaAssinar: (contrato: Contrato) => void
@@ -303,9 +303,9 @@ function ContratosPage({
                       </span>
                       <Badge variant={
                         contrato.status === 'assinado' ? 'success' :
-                        contrato.status === 'aguardando_assinatura' ? 'warning' :
-                        contrato.status === 'rascunho' ? 'secondary' :
-                        'destructive'
+                          contrato.status === 'aguardando_assinatura' ? 'warning' :
+                            contrato.status === 'rascunho' ? 'secondary' :
+                              'destructive'
                       }>
                         {contrato.status}
                       </Badge>
@@ -330,10 +330,10 @@ function ContratosPage({
 }
 
 
-function RequerimentosPage({ 
-  requerimentos, 
-  onShowRequerimento 
-}: { 
+function RequerimentosPage({
+  requerimentos,
+  onShowRequerimento
+}: {
   requerimentos: Requerimento[]
   onShowRequerimento: () => void
 }) {
@@ -361,8 +361,8 @@ function RequerimentosPage({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {requerimentos.map(req => (
-            <div 
-              key={req.id} 
+            <div
+              key={req.id}
               className="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 hover:shadow-md transition-shadow flex flex-col"
             >
               {/* Header com Badge */}
@@ -370,24 +370,22 @@ function RequerimentosPage({
                 <div className="flex-1">
                   <Badge variant={
                     req.status === 'aprovado' ? 'success' :
-                    req.status === 'pendente' ? 'warning' :
-                    'destructive'
+                      req.status === 'pendente' ? 'warning' :
+                        'destructive'
                   }>
                     {req.status}
                   </Badge>
                 </div>
-                <div className={`p-2 rounded-lg ${
-                  req.tipo === 'aprovacao_contrato' ? 'bg-blue-50 dark:bg-blue-500/10' :
+                <div className={`p-2 rounded-lg ${req.tipo === 'aprovacao_contrato' ? 'bg-blue-50 dark:bg-blue-500/10' :
                   req.tipo === 'ajuste_valor' ? 'bg-purple-50 dark:bg-purple-500/10' :
-                  req.tipo === 'cancelamento' ? 'bg-red-50 dark:bg-red-500/10' :
-                  'bg-gray-50 dark:bg-gray-500/10'
-                }`}>
-                  <AlertCircle className={`h-5 w-5 ${
-                    req.tipo === 'aprovacao_contrato' ? 'text-blue-600 dark:text-blue-400' :
+                    req.tipo === 'cancelamento' ? 'bg-red-50 dark:bg-red-500/10' :
+                      'bg-gray-50 dark:bg-gray-500/10'
+                  }`}>
+                  <AlertCircle className={`h-5 w-5 ${req.tipo === 'aprovacao_contrato' ? 'text-blue-600 dark:text-blue-400' :
                     req.tipo === 'ajuste_valor' ? 'text-purple-600 dark:text-purple-400' :
-                    req.tipo === 'cancelamento' ? 'text-red-600 dark:text-red-400' :
-                    'text-gray-600 dark:text-gray-400'
-                  }`} />
+                      req.tipo === 'cancelamento' ? 'text-red-600 dark:text-red-400' :
+                        'text-gray-600 dark:text-gray-400'
+                    }`} />
                 </div>
               </div>
 
@@ -438,7 +436,7 @@ function RequerimentosPage({
 }
 
 export default function Comercial() {
-  
+
   // Modals
   const [showCadastroCliente, setShowCadastroCliente] = useState(false)
   const [showGeracaoContrato, setShowGeracaoContrato] = useState(false)
@@ -561,7 +559,7 @@ export default function Comercial() {
     },
   ])
   const [leads, setLeads] = useState<Lead[]>([])
-  
+
   // Mock agendamentos
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([
     {
@@ -709,9 +707,9 @@ export default function Comercial() {
   const handleAssinarContrato = async (contratoId: string, assinadoPor: string, tipo: 'cliente' | 'empresa') => {
     // TODO: Integrar com backend para salvar assinatura digital
     console.log('Assinando contrato:', { contratoId, assinadoPor, tipo })
-    
-    setContratos(prev => prev.map(c => 
-      c.id === contratoId 
+
+    setContratos(prev => prev.map(c =>
+      c.id === contratoId
         ? { ...c, status: 'assinado' as const }
         : c
     ))
@@ -736,6 +734,7 @@ export default function Comercial() {
       label: 'Menu Principal',
       items: [
         { label: 'Dashboard', to: '/comercial', icon: Home },
+        { label: 'DNA do Cliente', to: '/comercial/dna', icon: Dna },
         { label: 'Agendamento', to: '/comercial/agendamento', icon: Calendar },
         { label: 'Meus Agendamentos', to: '/comercial/meus-agendamentos', icon: Calendar },
         { label: 'Clientes', to: '/comercial/clientes', icon: Users },
@@ -752,7 +751,7 @@ export default function Comercial() {
 
   const handleShowGeracaoContrato = () => {
     console.log('Iniciando criação de contrato...')
-    console.log(toast.info('hahahah',10))
+    console.log(toast.info('hahahah', 10))
     toast.info('Iniciando criação de contrato...', 10)
     setShowGeracaoContrato(true)
   }
@@ -775,10 +774,10 @@ export default function Comercial() {
 
       <main className="md:ml-64 p-4 md:p-8 pt-16 md:pt-8">
         <Routes>
-          <Route 
-            path="/" 
+          <Route
+            path="/"
             element={
-              <DashboardPage 
+              <DashboardPage
                 clientes={clientes}
                 contratos={contratos}
                 requerimentos={requerimentos}
@@ -787,57 +786,58 @@ export default function Comercial() {
                 onSaveLead={handleSaveLead}
                 leads={leads}
               />
-            } 
+            }
           />
-          <Route 
-            path="/agendamento" 
+          <Route
+            path="/agendamento"
             element={<Comercial1 />}
           />
-          <Route 
-            path="/meus-agendamentos" 
+          <Route
+            path="/meus-agendamentos"
             element={<AgendamentosPage agendamentos={agendamentos} />}
           />
-          
-          <Route 
-            path="/clientes" 
+
+          <Route
+            path="/clientes"
             element={
-              <ClientesPage 
+              <ClientesPage
                 clientes={clientes}
                 onShowCadastroCliente={() => setShowCadastroCliente(true)}
               />
-            } 
+            }
           />
-          <Route 
-            path="/leads" 
+          <Route
+            path="/leads"
             element={<LeadsPage />}
           />
-          <Route 
-            path="/ganhos" 
+          <Route
+            path="/ganhos"
             element={<GanhosPage />}
           />
-          <Route 
-            path="/contratos" 
+          <Route
+            path="/contratos"
             element={
-              <ContratosPage 
+              <ContratosPage
                 contratos={contratos}
                 onShowGeracaoContrato={() => setShowGeracaoContrato(true)}
                 onSetContratoParaAssinar={setContratoParaAssinar}
               />
-            } 
+            }
           />
-          <Route 
-            path="/requerimentos" 
+          <Route
+            path="/requerimentos"
             element={
-              <RequerimentosPage 
+              <RequerimentosPage
                 requerimentos={requerimentos}
                 onShowRequerimento={() => setShowRequerimento(true)}
               />
-            } 
+            }
           />
-          <Route 
-            path="/configuracoes" 
+          <Route
+            path="/configuracoes"
             element={<Config />}
           />
+          <Route path="/dna" element={<ClientDNAPage />} />
           <Route path="*" element={<Navigate to="/comercial" replace />} />
         </Routes>
       </main>

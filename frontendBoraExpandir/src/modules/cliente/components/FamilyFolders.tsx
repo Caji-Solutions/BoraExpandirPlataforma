@@ -14,6 +14,7 @@ interface FamilyMember {
 interface FamilyFoldersProps {
     clienteId: string
     clientName: string
+    processoId?: string
     members: FamilyMember[]
     documents: ClientDocument[]
     requiredDocuments: RequiredDocument[]
@@ -23,21 +24,22 @@ interface FamilyFoldersProps {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
-export function FamilyFolders({ 
+export function FamilyFolders({
     clienteId,
     clientName,
-    members: initialMembers, 
-    documents, 
-    requiredDocuments, 
+    processoId,
+    members: initialMembers,
+    documents,
+    requiredDocuments,
     onUpload,
-    onDelete 
+    onDelete
 }: FamilyFoldersProps) {
     // Track which card is expanded - ONLY ONE allowed at a time
     const [expandedCardId, setExpandedCardId] = useState<string | null>(null)
-    
+
     // Track which member has the upload modal open
     const [uploadModalMember, setUploadModalMember] = useState<FamilyMember | null>(null)
-    
+
     // Enriched members with fetched data
     const [members, setMembers] = useState<FamilyMember[]>(initialMembers)
 
@@ -49,18 +51,18 @@ export function FamilyFolders({
             completed: 0,      // Concluídos
             total: 0           // Total required
         }
-        
+
         members.forEach(member => {
             const memberDocs = documents.filter(d => d.memberId === member.id)
             const uploadedTypes = new Set(memberDocs.map(d => d.type))
-            
+
             // Count pending (not uploaded) docs
             const pendingCount = requiredDocuments.filter(req => !uploadedTypes.has(req.type)).length
             stats.waitingAction += pendingCount
-            
+
             memberDocs.forEach(doc => {
                 const statusLower = doc.status?.toLowerCase() || ''
-                
+
                 if (statusLower === 'analyzing' || statusLower === 'analyzing_apostille' || statusLower === 'analyzing_translation') {
                     stats.analyzing++
                 } else if (statusLower === 'approved' && doc.isApostilled && doc.isTranslated) {
@@ -69,10 +71,10 @@ export function FamilyFolders({
                     stats.waitingAction++
                 }
             })
-            
+
             stats.total += requiredDocuments.length
         })
-        
+
         return stats
     }, [members, documents, requiredDocuments])
 
@@ -82,7 +84,7 @@ export function FamilyFolders({
             try {
                 const dependentesRes = await fetch(`${API_BASE_URL}/cliente/${clienteId}/dependentes`)
                 const dependentesData = dependentesRes.ok ? await dependentesRes.json() : { data: [] }
-                
+
                 // Build family members list
                 const familyMembers: FamilyMember[] = []
 
@@ -169,6 +171,7 @@ export function FamilyFolders({
                         member={member}
                         documents={documents}
                         requiredDocuments={requiredDocuments}
+                        processoId={processoId}
                         isExpanded={expandedCardId === member.id}
                         onToggle={() => toggleCard(member.id)}
                         onOpenUploadModal={() => openUploadModal(member)}
