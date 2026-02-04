@@ -397,6 +397,75 @@ class JuridicoController {
             })
         }
     }
+
+    // GET /juridico/formularios-status/:clienteId/:membroId? - Get formulários with response status
+    async getFormulariosComRespostas(req: any, res: any) {
+        try {
+            const { clienteId, membroId } = req.params
+
+            if (!clienteId) {
+                return res.status(400).json({ message: 'clienteId é obrigatório' })
+            }
+
+            const formularios = await JuridicoRepository.getFormulariosWithResponses(clienteId, membroId)
+
+            return res.status(200).json({
+                message: 'Formulários com status recuperados com sucesso',
+                data: formularios
+            })
+        } catch (error: any) {
+            console.error('Erro ao buscar formulários com status:', error)
+            return res.status(500).json({
+                message: 'Erro ao buscar formulários com status',
+                error: error.message
+            })
+        }
+    }
+
+    // PATCH /juridico/formulario-cliente/:id/status - Update formulario_cliente status (approve/reject)
+    async updateFormularioClienteStatus(req: any, res: any) {
+        try {
+            const { id } = req.params
+            const { status, motivoRejeicao } = req.body
+
+            if (!id) {
+                return res.status(400).json({ message: 'id é obrigatório' })
+            }
+
+            if (!status || !['pendente', 'aprovado', 'rejeitado'].includes(status)) {
+                return res.status(400).json({ 
+                    message: 'status é obrigatório e deve ser: pendente, aprovado ou rejeitado' 
+                })
+            }
+
+            if (status === 'rejeitado' && !motivoRejeicao) {
+                return res.status(400).json({ 
+                    message: 'motivoRejeicao é obrigatório quando status é rejeitado' 
+                })
+            }
+
+            const formulario = await JuridicoRepository.updateFormularioClienteStatus(
+                id, 
+                status, 
+                motivoRejeicao
+            )
+
+            return res.status(200).json({
+                message: status === 'aprovado' 
+                    ? 'Formulário aprovado com sucesso' 
+                    : status === 'rejeitado' 
+                    ? 'Formulário rejeitado com sucesso' 
+                    : 'Status do formulário atualizado com sucesso',
+                data: formulario
+            })
+        } catch (error: any) {
+            console.error('Erro ao atualizar status do formulário cliente:', error)
+            return res.status(500).json({
+                message: 'Erro ao atualizar status do formulário',
+                error: error.message
+            })
+        }
+    }
 }
 
 export default new JuridicoController()

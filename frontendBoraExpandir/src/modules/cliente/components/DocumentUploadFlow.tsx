@@ -1,5 +1,6 @@
 import { FamilyFolders } from './FamilyFolders'
 import { Document as ClientDocument, RequiredDocument } from '../types'
+import { compressFile } from '../../../utils/compressFile'
 
 interface DocumentUploadFlowProps {
     clienteId: string
@@ -28,8 +29,11 @@ export function DocumentUploadFlow({
 }: DocumentUploadFlowProps) {
 
     const handleUpload = async (file: File, documentType: string, memberId: string, documentoId?: string) => {
+        // Comprimir arquivo antes do upload
+        const compressedFile = await compressFile(file)
+
         const formData = new FormData()
-        formData.append('file', file)
+        formData.append('file', compressedFile)
         formData.append('clienteId', clienteId)
         formData.append('documentType', documentType)
         formData.append('memberId', memberId)

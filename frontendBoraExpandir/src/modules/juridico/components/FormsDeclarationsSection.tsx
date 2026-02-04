@@ -15,6 +15,7 @@ import {
 import { Button } from './ui/button'
 import { Badge } from '../../../components/ui/Badge'
 import { formatFileSize } from '../../cliente/lib/utils'
+import { compressFile } from '../../../utils/compressFile'
 
 interface FormDeclaration {
     id: string
@@ -125,8 +126,11 @@ export function FormsDeclarationsSection({
         setUploadError(null)
 
         try {
+            // Comprimir arquivo antes do upload
+            const compressedFile = await compressFile(selectedFile)
+
             const formData = new FormData()
-            formData.append('file', selectedFile)
+            formData.append('file', compressedFile)
             formData.append('processoId', processoId)
             formData.append('clienteId', clienteId)
             formData.append('memberId', selectedMemberId)

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { X, Upload, AlertTriangle } from 'lucide-react'
 import type { TraducaoItem } from '../types'
+import { compressFile } from '../../../utils/compressFile'
 
 interface DeliveryModalProps {
   traducao: TraducaoItem | null
@@ -44,7 +45,9 @@ export default function DeliveryModal({ traducao, onClose, onSubmit }: DeliveryM
     if (!arquivo || !revisada) return
     setUploading(true)
     try {
-      await onSubmit(traducao.id, arquivo)
+      // Comprimir arquivo antes do upload
+      const compressedArquivo = await compressFile(arquivo)
+      await onSubmit(traducao.id, compressedArquivo)
       // Resetar estados
       setArquivo(null)
       setRevisada(false)

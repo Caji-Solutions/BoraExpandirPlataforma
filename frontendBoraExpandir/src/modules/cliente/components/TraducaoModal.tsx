@@ -6,6 +6,7 @@ import { ApprovedDocument, TranslatedDocument } from '../types'
 import { FileText, Download, Send, CheckCircle, Upload, X, File } from 'lucide-react'
 import { Badge } from './ui/badge'
 import { formatDate } from '../lib/utils'
+import { compressFile } from '../../../utils/compressFile'
 
 interface TraducaoModalProps {
     isOpen: boolean
@@ -54,11 +55,13 @@ export function TraducaoModal({
         setSelectedDocs(prev => prev.includes(docId) ? prev.filter(id => id !== docId) : [...prev, docId])
     }
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, docId: string) => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, docId: string) => {
         const file = e.target.files?.[0]
         if (file) {
             setUploadingDocId(docId)
-            onUploadTranslation(file, docId, targetLanguage)
+            // Comprimir arquivo antes do upload
+            const compressedFile = await compressFile(file)
+            onUploadTranslation(compressedFile, docId, targetLanguage)
             setUploadingDocId(null)
             e.target.value = ''
         }

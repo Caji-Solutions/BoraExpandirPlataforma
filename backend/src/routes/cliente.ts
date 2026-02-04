@@ -53,6 +53,7 @@ cliente.delete('/processo/:processoId/formularios/:formularioId', ClienteControl
 
 // Client Form Response Route
 cliente.post('/formularios/:formularioId/response', upload.single('file'), ClienteController.uploadFormularioResponse.bind(ClienteController))
+cliente.get('/:clienteId/formulario-responses', ClienteController.getFormularioResponses.bind(ClienteController))
 
 export default cliente
 

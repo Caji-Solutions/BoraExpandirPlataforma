@@ -9,6 +9,7 @@ interface FamilyMember {
     name: string
     type: string
     isTitular?: boolean
+    clienteId?: string
 }
 
 interface FamilyFoldersProps {
@@ -93,7 +94,8 @@ export function FamilyFolders({
                     id: clienteId,
                     name: clientName,
                     type: 'Titular',
-                    isTitular: true
+                    isTitular: true,
+                    clienteId: clienteId
                 })
 
                 // Add dependentes
@@ -102,7 +104,8 @@ export function FamilyFolders({
                         id: dep.id,
                         name: dep.nome_completo || dep.name || 'Dependente',
                         type: dep.parentesco ? (dep.parentesco.charAt(0).toUpperCase() + dep.parentesco.slice(1)) : 'Dependente',
-                        isTitular: false
+                        isTitular: false,
+                        clienteId: clienteId
                     }))
                     familyMembers.push(...dependentes)
                 }

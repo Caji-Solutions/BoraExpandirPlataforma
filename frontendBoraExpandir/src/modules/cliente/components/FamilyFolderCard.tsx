@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Folder, ChevronDown, ChevronUp, Upload, FileText, CheckCircle, AlertCircle, Clock, Trash2, Loader2 } from 'lucide-react'
 import { Card } from './ui/card'
 import { Button } from './ui/button'
@@ -6,12 +6,15 @@ import { Badge } from './ui/badge'
 import { Document as ClientDocument, RequiredDocument } from '../types'
 import { cn, formatDate, formatFileSize } from '../lib/utils'
 import { FormsDeclarationsCard } from './FormsDeclarationsCard'
+import { compressFile } from '../../../utils/compressFile'
+import { clienteService } from '../services/clienteService'
 
 interface FamilyMember {
   id: string
   name: string
   type: string
   isTitular?: boolean
+  clienteId?: string
 }
 
 interface FamilyFolderCardProps {
@@ -106,9 +109,43 @@ export function FamilyFolderCard({
   } | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  
+  // Estado para armazenar IDs de formulários já enviados
+  const [sentFormularioIds, setSentFormularioIds] = useState<Set<string>>(new Set())
 
   // Filter documents for this member
   const memberDocs = useMemo(() => documents.filter(d => d.memberId === member.id), [documents, member.id])
+
+  // Buscar formulários já enviados no carregamento
+  useEffect(() => {
+    const fetchSentForms = async () => {
+      try {
+        console.log('[DEBUG] Buscando formulários enviados para o cliente:', member.clienteId || member.id)
+        console.log('[DEBUG] Buscando formulários enviados para o cliente:', member.clienteId || member.id)
+        const responses = await clienteService.getFormularioResponses(member.clienteId || member.id)
+        
+        // Filtrar pelas respostas que pertencem especificamente a este membro
+        // Importante: Para o titular (main client), as respostas no banco podem ter membro_id nulo
+        const memberResponses = responses.filter((r: any) => {
+            if (member.isTitular) {
+                return r.membro_id === member.id || r.membro_id === null;
+            }
+            return r.membro_id === member.id;
+        })
+        console.log(`[DEBUG] IDs enviados pelo membro ${member.id}:`, memberResponses.map((r: any) => r.formulario_juridico_id))
+
+        // Extrair IDs dos formulários jurídicos associados
+        const ids = new Set<string>(memberResponses.map((r: any) => r.formulario_juridico_id as string))
+        setSentFormularioIds(ids)
+      } catch (error) {
+        console.error('Erro ao buscar formulários enviados:', error)
+      }
+    }
+
+    if (isExpanded) {
+      fetchSentForms()
+    }
+  }, [member.id, member.clienteId, isExpanded])
 
 
   // Determine the stage of a document
@@ -317,8 +354,11 @@ export function FamilyFolderCard({
       setIsUploading(true)
       setUploadError(null)
 
+      // Comprimir arquivo antes do upload
+      const compressedFile = await compressFile(file)
+
       const formData = new FormData()
-      formData.append('file', file)
+      formData.append('file', compressedFile)
 
       const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
       const response = await fetch(`${API_BASE_URL}/cliente/formularios/${formularioId}/response`, {
@@ -619,6 +659,10 @@ export function FamilyFolderCard({
                   {pendingDocs.map((item: any, idx: number) => {
                     const inputId = `file-${member.id}-${item.type}-pending`
                     const isUploading = uploadingType === item.type
+                    
+                    // Verificar se já existe um documento deste tipo no banco
+                    const existingDoc = memberDocs.find(d => d.type === item.type)
+                    const wasAlreadySent = !!existingDoc
 
                     return (
                       <div
@@ -632,15 +676,25 @@ export function FamilyFolderCard({
                                 <Upload className="h-5 w-5 text-gray-500" />
                               </div>
                               <div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-bold text-sm text-gray-900 dark:text-white truncate">
                                     {item.name}
                                   </span>
                                   {item.required && (
                                     <Badge variant="secondary" className="text-[10px] h-5">Obrigatório</Badge>
                                   )}
+                                  {wasAlreadySent && (
+                                    <Badge className="text-[10px] h-5 bg-orange-500 hover:bg-orange-600 text-white">
+                                      📄 Já Enviado
+                                    </Badge>
+                                  )}
                                 </div>
                                 <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
+                                {wasAlreadySent && (
+                                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 font-medium">
+                                    ⚠️ Este documento será substituído ao enviar novamente
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -935,6 +989,8 @@ export function FamilyFolderCard({
             memberId={member.id}
             memberName={member.name}
             processoId={processoId}
+            clienteId={member.clienteId}
+            isTitular={member.isTitular}
             onUpload={handleFormResponseUpload}
           />
         )}
@@ -1025,6 +1081,16 @@ export function FamilyFolderCard({
                     {uploadError}
                   </p>
                 </div>
+              ) : pendingUpload.documentoId ? (
+                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400 shrink-0" />
+                  <div className="text-sm text-orange-800 dark:text-orange-300">
+                    <p className="font-semibold mb-1">⚠️ Atenção: Documento Já Enviado</p>
+                    <p className="text-xs">
+                      Um documento deste tipo já foi enviado anteriormente. Ao confirmar, o arquivo antigo será substituído pelo novo.
+                    </p>
+                  </div>
+                </div>
               ) : (
                 <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 rounded-lg p-3 flex items-start gap-3">
                   <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 shrink-0" />
@@ -1058,7 +1124,7 @@ export function FamilyFolderCard({
                 ) : (
                   <>
                     <Upload className="h-4 w-4 mr-2" />
-                    Confirmar Envio
+                    {pendingUpload.documentoId ? 'Substituir Documento' : 'Confirmar Envio'}
                   </>
                 )}
               </Button>

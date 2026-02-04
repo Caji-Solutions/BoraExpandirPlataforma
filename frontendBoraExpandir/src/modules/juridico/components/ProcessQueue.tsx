@@ -290,6 +290,8 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
             <ProcessAnalysis
                 clientName={selectedFolder.clientName}
                 memberName={selectedMember.name}
+                clienteId={selectedFolder.clientId}
+                membroId={selectedMember.id !== selectedFolder.clientId ? selectedMember.id : undefined}
                 documents={memberDocs}
                 onBack={() => setSelectedMember(null)}
                 onUpdateDocument={async (id, updates) => {

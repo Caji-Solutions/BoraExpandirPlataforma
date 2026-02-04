@@ -464,6 +464,112 @@ class JuridicoRepository {
             throw deleteError
         }
     }
+
+    // Get formulários with response status (waiting or received)
+    async getFormulariosWithResponses(clienteId: string, membroId?: string): Promise<any[]> {
+        // 1. Fetch all formularios_juridico for this client/member
+        let query = supabase
+            .from('formularios_juridico')
+            .select('*')
+            .eq('cliente_id', clienteId)
+            .order('criado_em', { ascending: false })
+
+        if (membroId) {
+            query = query.eq('membro_id', membroId)
+        }
+
+        const { data: formularios, error } = await query
+
+        if (error) {
+            console.error('Erro ao buscar formulários jurídico:', error)
+            throw error
+        }
+
+        if (!formularios || formularios.length === 0) {
+            return []
+        }
+
+        // 2. For each formulário, check if there's a response in formularios_cliente
+        const formularioIds = formularios.map(f => f.id)
+
+        const { data: respostas, error: respostasError } = await supabase
+            .from('formularios_cliente')
+            .select('*')
+            .in('formulario_juridico_id', formularioIds)
+
+        if (respostasError) {
+            console.error('Erro ao buscar respostas de formulários:', respostasError)
+            // Continue without responses if there's an error
+        }
+
+        // Create a map of formularioId -> response
+        const respostasMap: Record<string, any> = {}
+        if (respostas) {
+            respostas.forEach(r => {
+                respostasMap[r.formulario_juridico_id] = r
+            })
+        }
+
+        // 3. Map formulários with their status
+        return formularios.map(f => {
+            const resposta = respostasMap[f.id]
+            return {
+                id: f.id,
+                name: f.nome_original?.replace(/\.[^/.]+$/, '') || 'Formulário',
+                fileName: f.nome_original,
+                fileSize: f.tamanho,
+                uploadDate: f.criado_em,
+                memberId: f.membro_id,
+                downloadUrl: f.public_url,
+                funcionarioId: f.funcionario_juridico_id,
+                // Response status
+                status: resposta ? 'received' : 'waiting',
+                // Response approval status (pendente/aprovado/rejeitado)
+                responseStatus: resposta?.status || null,
+                motivoRejeicao: resposta?.motivo_rejeicao || null,
+                // Response data (if exists)
+                response: resposta ? {
+                    id: resposta.id,
+                    fileName: resposta.nome_original,
+                    downloadUrl: resposta.public_url,
+                    uploadDate: resposta.criado_em
+                } : null
+            }
+        })
+    }
+
+    // Update formulario_cliente status (approve/reject)
+    async updateFormularioClienteStatus(
+        formularioClienteId: string, 
+        status: 'pendente' | 'aprovado' | 'rejeitado', 
+        motivoRejeicao?: string
+    ): Promise<any> {
+        const updateData: any = {
+            status,
+            atualizado_em: new Date().toISOString()
+        }
+
+        // Only set motivo_rejeicao if rejecting
+        if (status === 'rejeitado' && motivoRejeicao) {
+            updateData.motivo_rejeicao = motivoRejeicao
+        } else if (status !== 'rejeitado') {
+            updateData.motivo_rejeicao = null
+        }
+
+        const { data, error } = await supabase
+            .from('formularios_cliente')
+            .update(updateData)
+            .eq('id', formularioClienteId)
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro ao atualizar status do formulário cliente:', error)
+            throw error
+        }
+
+        return data
+    }
 }
 
 export default new JuridicoRepository()

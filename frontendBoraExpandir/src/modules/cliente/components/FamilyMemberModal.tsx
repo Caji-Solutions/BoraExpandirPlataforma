@@ -10,6 +10,7 @@ import { Label } from '../../juridico/components/ui/label'
 import { Textarea } from '../../juridico/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../juridico/components/ui/select'
 import { DialogFooter } from './ui/dialog'
+import { compressFile } from '../../../utils/compressFile'
 
 interface FamilyMemberModalProps {
     isOpen: boolean
@@ -170,8 +171,11 @@ export function FamilyMemberModal({
             // Set optimistic state
             setOptimisticDocs(prev => ({ ...prev, [type]: tempDoc }))
 
+            // Comprimir arquivo antes do upload
+            const compressedFile = await compressFile(file)
+
             const docId = memberDocs.find(d => d.type === type)?.id
-            await onUpload(file, type, member.id, docId)
+            await onUpload(compressedFile, type, member.id, docId)
 
             // Note: We don't clear optimistic doc here immediately because we wait for props to update.
             // If we clear it now, there might be a flicker if props haven't updated yet.

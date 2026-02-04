@@ -195,6 +195,51 @@ export async function getClientesByResponsavel(responsavelId: string): Promise<C
   return result.data;
 }
 
+/**
+ * Busca formulários com status de resposta (waiting/received)
+ */
+export async function getFormulariosWithStatus(clienteId: string, membroId?: string): Promise<any[]> {
+  const url = membroId 
+    ? `${API_BASE_URL}/juridico/formularios-status/${clienteId}/${membroId}`
+    : `${API_BASE_URL}/juridico/formularios-status/${clienteId}`;
+  
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error('Erro ao buscar formulários com status');
+  }
+
+  const result = await response.json();
+  return result.data || [];
+}
+
+/**
+ * Atualiza o status do formulário do cliente (aprovar/rejeitar)
+ */
+export async function updateFormularioClienteStatus(
+  formularioClienteId: string, 
+  status: 'pendente' | 'aprovado' | 'rejeitado', 
+  motivoRejeicao?: string
+): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/juridico/formulario-cliente/${formularioClienteId}/status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      status,
+      motivoRejeicao
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Erro ao atualizar status do formulário');
+  }
+
+  return response.json();
+}
+
 export default {
   getProcessos,
   getProcessosByResponsavel,
@@ -209,6 +254,8 @@ export default {
   getDocumentosByProcesso,
   getDependentes,
   updateDocumentStatus,
+  getFormulariosWithStatus,
+  updateFormularioClienteStatus,
 };
 
 /**

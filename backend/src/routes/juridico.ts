@@ -82,8 +82,15 @@ juridico.post('/formularios', upload.single('file'), JuridicoController.uploadFo
 // Buscar documentos enviados para um cliente
 juridico.get('/formularios/:clienteId', JuridicoController.getFormulariosJuridico.bind(JuridicoController))
 
+// Buscar formulários com status de resposta (waiting/received)
+juridico.get('/formularios-status/:clienteId/:membroId?', JuridicoController.getFormulariosComRespostas.bind(JuridicoController))
+
 // Deletar documento
 juridico.delete('/formularios/:formularioId', JuridicoController.deleteFormularioJuridico.bind(JuridicoController))
 
+// Atualizar status do formulário do cliente (aprovar/rejeitar)
+juridico.patch('/formulario-cliente/:id/status', JuridicoController.updateFormularioClienteStatus.bind(JuridicoController))
+
 export default juridico
+
 

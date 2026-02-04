@@ -634,6 +634,30 @@ class ClienteController {
       })
     }
   }
+
+  // GET /cliente/:clienteId/formulario-responses
+  async getFormularioResponses(req: any, res: any) {
+    try {
+      const { clienteId } = req.params
+
+      if (!clienteId) {
+        return res.status(400).json({ message: 'clienteId é obrigatório' })
+      }
+
+      const responses = await ClienteRepository.getFormularioClienteResponsesByCliente(clienteId)
+
+      return res.status(200).json({
+        message: 'Respostas de formulários recuperadas com sucesso',
+        data: responses
+      })
+    } catch (error: any) {
+      console.error('Erro ao buscar respostas de formulários:', error)
+      return res.status(500).json({
+        message: 'Erro ao buscar respostas de formulários',
+        error: error.message
+      })
+    }
+  }
 }
 
 export default new ClienteController()

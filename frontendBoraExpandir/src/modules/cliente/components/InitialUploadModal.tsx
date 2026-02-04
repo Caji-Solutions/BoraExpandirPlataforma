@@ -5,6 +5,7 @@ import { Badge } from './ui/badge'
 import { RequiredDocument } from '../types'
 import { Upload, FileText, CheckCircle, X, Loader2, AlertCircle } from 'lucide-react'
 import { cn, formatFileSize } from '../lib/utils'
+import { compressFile } from '../../../utils/compressFile'
 
 interface InitialUploadModalProps {
     isOpen: boolean
@@ -130,7 +131,9 @@ export function InitialUploadModal({
             })
 
             try {
-                await onUpload(fileData.file, docType, member.id)
+                // Comprimir arquivo antes do upload
+                const compressedFile = await compressFile(fileData.file)
+                await onUpload(compressedFile, docType, member.id)
 
                 // Mark as success
                 setUploadedFiles(prev => {
