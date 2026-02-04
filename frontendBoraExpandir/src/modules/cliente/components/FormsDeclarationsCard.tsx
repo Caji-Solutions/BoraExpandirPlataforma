@@ -14,6 +14,7 @@ import { Badge } from './ui/badge'
 import { formatDate, formatFileSize } from '../lib/utils'
 import { compressFile } from '../../../utils/compressFile'
 import { clienteService } from '../services/clienteService'
+import { UploadConfirmModal } from './UploadConfirmModal'
 
 interface FormDeclaration {
     id: string
@@ -54,6 +55,17 @@ export function FormsDeclarationsCard({
     const [isLoading, setIsLoading] = useState(false)
     const [selectedFormId, setSelectedFormId] = useState<string | null>(null)
     const [sentFormsMap, setSentFormsMap] = useState<Map<string, any>>(new Map())
+    
+    // Upload Confirmation State
+    const [showConfirmModal, setShowConfirmModal] = useState(false)
+    const [isUploadingFile, setIsUploadingFile] = useState(false)
+    const [uploadError, setUploadError] = useState<string | null>(null)
+    const [pendingUpload, setPendingUpload] = useState<{
+        file: File;
+        formularioId: string;
+        documentName: string;
+        isReplacement?: boolean;
+    } | null>(null)
 
     // Fetch forms for this member AND check which ones were already sent
     useEffect(() => {
@@ -133,18 +145,55 @@ export function FormsDeclarationsCard({
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, formularioId: string) => {
         const file = e.target.files?.[0]
         if (file && onUpload) {
-            // Comprimir arquivo antes do upload
-            const compressedFile = await compressFile(file)
-            await onUpload(compressedFile, formularioId)
-            e.target.value = '' // Reset input
+            const form = forms.find(f => f.id === formularioId)
+            const sentResponse = sentFormsMap.get(formularioId)
             
-            // Refresh sent forms to update status immediately (optimistic update could be added too)
-            // For now, let's just force a re-fetch of sent status if possible, 
-            // or manually update the map if we knew the response structure here.
-            // Simplest way: The parent component usually triggers a refresh or we can re-fetch here if needed.
-            // But since onUpload is a prop, we might not have control to re-fetch easily unless passed.
-            // Assuming the parent handles the upload and maybe we should re-fetch sent forms?
-            // Let's implement a refetch after short delay or assume user accepts the "sent" state.
+            setPendingUpload({
+                file,
+                formularioId,
+                documentName: form?.name || 'Formulário',
+                isReplacement: !!sentResponse
+            })
+            setShowConfirmModal(true)
+            setUploadError(null)
+            
+            e.target.value = '' // Reset input
+        }
+    }
+
+    const handleConfirmUpload = async () => {
+        if (!pendingUpload || !onUpload) return
+
+        setIsUploadingFile(true)
+        setUploadError(null)
+
+        try {
+            // 1. Comprimir
+            const compressedFile = await compressFile(pendingUpload.file)
+            
+            // 2. Upload
+            await onUpload(compressedFile, pendingUpload.formularioId)
+
+            // 3. Optimistic update
+            setSentFormsMap(prev => {
+                const newMap = new Map(prev)
+                newMap.set(pendingUpload.formularioId, {
+                    formulario_juridico_id: pendingUpload.formularioId,
+                    status: 'pendente',
+                    motivo_rejeicao: null,
+                    membro_id: memberId
+                })
+                return newMap
+            })
+
+            // 4. Close
+            setShowConfirmModal(false)
+            setPendingUpload(null)
+        } catch (error: any) {
+            console.error('Erro no upload do formulário:', error)
+            setUploadError(error.message || 'Falha ao enviar o arquivo. Tente novamente.')
+        } finally {
+            setIsUploadingFile(false)
         }
     }
 
@@ -315,6 +364,23 @@ export function FormsDeclarationsCard({
                         })
                     )}
                 </div>
+            )}
+
+            {/* Confirmation Modal */}
+            {pendingUpload && (
+                <UploadConfirmModal
+                    isOpen={showConfirmModal}
+                    onClose={() => setShowConfirmModal(false)}
+                    onConfirm={handleConfirmUpload}
+                    isUploading={isUploadingFile}
+                    uploadError={uploadError}
+                    pendingUpload={{
+                        file: pendingUpload.file,
+                        documentName: pendingUpload.documentName,
+                        isReplacement: pendingUpload.isReplacement,
+                        targetName: memberName
+                    }}
+                />
             )}
         </div>
     )

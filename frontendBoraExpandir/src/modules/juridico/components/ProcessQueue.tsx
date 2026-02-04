@@ -301,7 +301,7 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                         await juridicoService.updateDocumentStatus(
                             id,
                             newStatus || '',
-                            updates.status === 'rejected' ? 'Rejeitado pelo jurídico' : undefined
+                            updates.rejectionReason
                         );
 
                         // Update local list

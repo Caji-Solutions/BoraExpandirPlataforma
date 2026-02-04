@@ -64,6 +64,7 @@ export interface JuridicoDocument {
   url: string;
   status: 'analyzing' | 'rejected' | 'waiting_apostille' | 'analyzing_apostille' | 'waiting_translation' | 'analyzing_translation' | 'approved';
   currentStage: AnalysisStage;
+  rejectionReason?: string;
   // ... rest of interface
   uploadDate: string;
   history: {
@@ -156,8 +157,7 @@ export function ProcessAnalysis({
     onUpdateDocument(selectedDoc.id, {
         status: 'rejected',
         currentStage: 'initial_analysis',
-        // In a real app we would save the rejection reason in history or a field
-        // reason: finalReason
+        rejectionReason: finalReason
     });
     setRejectModalOpen(false);
     setRejectionReason('');

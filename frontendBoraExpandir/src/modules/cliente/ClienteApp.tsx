@@ -490,25 +490,10 @@ export function ClienteApp() {
                 familyMembers={familyMembers}
                 documents={documents}
                 requiredDocuments={mockRequiredDocuments}
-                onUploadSuccess={(data) => {
+                onUploadSuccess={async (data) => {
                   console.log('Upload concluído:', data)
-                  // Atualizar lista de documentos após upload bem-sucedido
-                  const newDocument: Document = {
-                    id: Date.now().toString(),
-                    clientId: mockClient.id,
-                    name: mockRequiredDocuments.find(req => req.type === data.documentType)?.name || 'Documento',
-                    type: data.documentType,
-                    status: 'analyzing',
-                    uploadDate: new Date(),
-                    fileName: data.fileName,
-                    fileUrl: data.publicUrl,
-                  }
-                  setDocuments(prev => {
-                    // Remove any existing document of the same type/member
-                    // Now better filter by id or type+member
-                    const filtered = prev.filter(doc => !(doc.type === data.documentType && doc.memberId === data.memberId))
-                    return [...filtered, newDocument]
-                  })
+                  // Recarregar documentos do backend para obter o estado real
+                  await fetchDocuments()
                 }}
                 onDelete={async (documentId) => {
                   try {

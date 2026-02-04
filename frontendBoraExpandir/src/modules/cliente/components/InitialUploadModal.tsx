@@ -6,6 +6,7 @@ import { RequiredDocument } from '../types'
 import { Upload, FileText, CheckCircle, X, Loader2, AlertCircle } from 'lucide-react'
 import { cn, formatFileSize } from '../lib/utils'
 import { compressFile } from '../../../utils/compressFile'
+import { UploadConfirmModal } from './UploadConfirmModal'
 
 interface InitialUploadModalProps {
     isOpen: boolean
@@ -36,6 +37,14 @@ export function InitialUploadModal({
     const [pendingInputId, setPendingInputId] = useState<string | null>(null)
     const [pdfError, setPdfError] = useState<string | null>(null)
 
+    const [showConfirmModal, setShowConfirmModal] = useState(false)
+    const [uploadError, setUploadError] = useState<string | null>(null)
+    const [pendingUpload, setPendingUpload] = useState<{
+        file: File
+        documentType: string
+        documentName: string
+    } | null>(null)
+
     // Count required docs
     const requiredCount = requiredDocuments.filter(d => d.required).length
     const uploadedRequiredCount = Array.from(uploadedFiles.values()).filter(
@@ -54,12 +63,12 @@ export function InitialUploadModal({
             return
         }
 
-        setPdfError(null)
-        setUploadedFiles(prev => {
-            const next = new Map(prev)
-            next.set(docType, { type: docType, file, status: 'pending' })
-            return next
+        setPendingUpload({
+            file,
+            documentType: docType,
+            documentName: requiredDocuments.find(d => d.type === docType)?.name || docType
         })
+        setShowConfirmModal(true)
         e.target.value = ''
     }
 
@@ -77,11 +86,12 @@ export function InitialUploadModal({
         }
 
         setPdfError(null)
-        setUploadedFiles(prev => {
-            const next = new Map(prev)
-            next.set(docType, { type: docType, file, status: 'pending' })
-            return next
+        setPendingUpload({
+            file,
+            documentType: docType,
+            documentName: requiredDocuments.find(d => d.type === docType)?.name || docType
         })
+        setShowConfirmModal(true)
     }
 
     // Handle upload button click - show PDF warning first
@@ -113,8 +123,25 @@ export function InitialUploadModal({
         })
     }
 
-    const handleSubmitAll = async () => {
+    const handleConfirmSelection = () => {
+        if (!pendingUpload) return
+
+        setUploadedFiles(prev => {
+            const next = new Map(prev)
+            next.set(pendingUpload.documentType, { 
+                type: pendingUpload.documentType, 
+                file: pendingUpload.file, 
+                status: 'pending' 
+            })
+            return next
+        })
+        setPendingUpload(null)
+        setShowConfirmModal(false)
+    }
+
+    const handleConfirmSubmit = async () => {
         setIsSubmitting(true)
+        setUploadError(null)
 
         // Get all pending files
         const pendingFiles = Array.from(uploadedFiles.entries()).filter(
@@ -142,6 +169,7 @@ export function InitialUploadModal({
                     return next
                 })
             } catch (error: any) {
+                console.error(`Erro ao enviar ${docType}:`, error)
                 // Mark as error
                 setUploadedFiles(prev => {
                     const next = new Map(prev)
@@ -156,8 +184,13 @@ export function InitialUploadModal({
         // Check if all successful
         const allSuccess = Array.from(uploadedFiles.values()).every(f => f.status === 'success')
         if (allSuccess && uploadedFiles.size === requiredDocuments.length) {
+            setShowConfirmModal(false)
             onClose()
         }
+    }
+
+    const handleSubmitAll = async () => {
+        await handleConfirmSubmit()
     }
 
     const getFileForType = (type: string) => uploadedFiles.get(type)
@@ -353,11 +386,31 @@ export function InitialUploadModal({
                 </div>
             </DialogContent>
 
+            {/* Confirmation Modal using standard component */}
+            {pendingUpload && (
+                <UploadConfirmModal
+                    isOpen={showConfirmModal}
+                    onClose={() => {
+                        setShowConfirmModal(false)
+                        setPendingUpload(null)
+                    }}
+                    onConfirm={handleConfirmSelection}
+                    isUploading={false}
+                    uploadError={uploadError}
+                    pendingUpload={{
+                        file: pendingUpload.file,
+                        documentName: pendingUpload.documentName,
+                        targetName: member.name
+                        // isReplacement is not needed here as it's initial upload list addition
+                    }}
+                />
+            )}
+
             {/* PDF Warning Modal */}
             {showPdfWarning && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center">
+                <div className="fixed inset-0 z-[120] flex items-center justify-center">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleCancelPdfWarning} />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+                    <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden border border-gray-200 dark:border-gray-700">
                         <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6">
                             <div className="flex items-center gap-4">
                                 <div className="h-14 w-14 rounded-full bg-white/20 flex items-center justify-center">
