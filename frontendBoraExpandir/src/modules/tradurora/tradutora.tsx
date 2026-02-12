@@ -88,13 +88,19 @@ export default function Tradutora() {
         documentoNome: item.nome_original,
         clienteNome: item.clientes?.nome || 'N/A',
         parIdiomas: { origem: 'PT', destino: 'IT' }, // Default for now
-        status: 'pendente',
+        status: 
+          item.status === 'ANALYZING_TRANSLATION' ? ('aprovado' as const) :
+          item.status === 'WAITING_QUOTE_APPROVAL' ? ('respondido' as const) : 
+          ('pendente' as const),
         storagePath: item.storage_path,
         publicUrl: item.public_url,
         documentoId: item.id,
         created_at: item.criado_em,
         updated_at: item.atualizado_em,
         prazoDesejado: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Default 7 days from now
+        valorOrcamento: item.orcamento?.valor_orcamento,
+        prazoEntrega: item.orcamento?.prazo_entrega,
+        observacoes: item.orcamento?.observacoes,
       }))
 
       setOrcamentos([...mappedOrcamentos])

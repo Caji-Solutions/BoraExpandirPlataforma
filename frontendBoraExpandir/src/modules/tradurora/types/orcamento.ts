@@ -14,7 +14,7 @@ export interface OrcamentoItem {
   numeroPalavras?: number
   prazoDesejado: string
   observacoes?: string
-  status: 'pendente' | 'respondido' | 'aceito' | 'recusado'
+  status: 'pendente' | 'respondido' | 'aprovado' | 'recusado'
   valorOrcamento?: number
   prazoEntrega?: string
   created_at: string

@@ -361,18 +361,35 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
   const handleSuccessAgendamento = (responseData: any) => {
     setShowConfirmacao(false)
-    console.log(responseData)
+  
     
-    let finalPaymentLink = responseData.checkoutUrl || `https://pay.example.com/${agendamentoPreview?.id}`
+    // Tenta obter o link de várias formas possíveis para garantir compatibilidade
+    // Prioridade máxima para o que vier no responseData direto ou dentro de .data
+    const backendLink = 
+      responseData.checkoutUrl || 
+      responseData.data?.checkoutUrl || 
+      responseData.paymentLink || 
+      responseData.data?.paymentLink ||
+      responseData.url ||
+      responseData.data?.url;
+
+    console.log('DEBUG COMERCIAL1: Link detectado (backendLink):', backendLink)
+
+    // Garante que o link tenha protocolo se não for vazio
+    let finalPaymentLink = backendLink || `https://FALLBACK-ERROR-${Date.now()}.com`
+    if (backendLink && !backendLink.startsWith('http')) {
+      finalPaymentLink = `https://${backendLink}`
+    }
+    console.log('DEBUG COMERCIAL1: Link final (finalPaymentLink):', finalPaymentLink)
+  
+
     const resumoTexto = `Oi ${agendamentoPayload.nome}! Seu agendamento está marcado para ${agendamentoPreview?.data} às ${agendamentoPreview?.hora} (${agendamentoPayload.duracao_minutos} min) - ${agendamentoPayload.produto_nome}.`
 
     setAgendamentos([...agendamentos, agendamentoPreview!])
 
     if (isClientView) {
-      setPaymentLink(finalPaymentLink)
-      setShareMessage(resumoTexto)
-      setShowModalPagamento(true)
-      window.open(finalPaymentLink, '_blank')
+      console.log('Redirecionando cliente para:', finalPaymentLink)
+      window.location.href = finalPaymentLink
     } else {
       setPaymentLink(finalPaymentLink)
       setShareMessage(`${resumoTexto} Link de pagamento: ${finalPaymentLink}`)

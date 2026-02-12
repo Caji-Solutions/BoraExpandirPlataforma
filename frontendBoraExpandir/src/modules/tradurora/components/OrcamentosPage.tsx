@@ -15,12 +15,12 @@ const statusConfig: Record<OrcamentoItem['status'], { variant: 'default' | 'seco
     label: 'Pendente',
   },
   respondido: {
-    variant: 'default',
-    label: 'Respondido',
-  },
-  aceito: {
     variant: 'success',
-    label: 'Aceito',
+    label: 'Já Respondido',
+  },
+  aprovado: {
+    variant: 'success',
+    label: 'Aprovado',
   },
   recusado: {
     variant: 'destructive',
@@ -80,21 +80,21 @@ export default function OrcamentosPage({ orcamentos, onResponderOrcamento }: Orc
           onClick={() => setFilter('respondido')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
             filter === 'respondido'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 dark:bg-neutral-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-600'
-          }`}
-        >
-          Respondidos
-        </button>
-        <button
-          onClick={() => setFilter('aceito')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-            filter === 'aceito'
               ? 'bg-green-600 text-white'
               : 'bg-gray-100 dark:bg-neutral-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-600'
           }`}
         >
-          Aceitos
+          Já Respondidos
+        </button>
+        <button
+          onClick={() => setFilter('aprovado')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+            filter === 'aprovado'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-100 dark:bg-neutral-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-600'
+          }`}
+        >
+          Aprovados
         </button>
       </div>
 

@@ -46,23 +46,22 @@ export function ClientOrcamentoModal({
   }
 
   const handlePayment = async () => {
+    if (!orcamento?.id) return
+
     try {
       setIsProcessing(true)
-      // Simulação de pagamento/aprovação
-      // Em uma implementação real, isso redirecionaria para o Stripe ou abriria um checkout
-      console.log('Iniciando pagamento para o documento:', documentoId)
+      // Chamar o serviço real para aprovar o orçamento no banco
+      await traducoesService.aprovarOrcamento(orcamento.id, documentoId)
       
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      alert('Simulação: Pagamento realizado com sucesso!')
+      alert('Orçamento aprovado e pagamento confirmado com sucesso!')
       
       if (onPaymentSuccess) {
         onPaymentSuccess()
       }
       onClose()
-    } catch (err) {
-      console.error('Erro no processamento:', err)
-      alert('Erro ao processar pagamento.')
+    } catch (err: any) {
+      console.error('Erro ao aprovar orçamento:', err)
+      alert(err.message || 'Erro ao processar aprovação do orçamento.')
     } finally {
       setIsProcessing(false)
     }

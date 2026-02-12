@@ -84,6 +84,7 @@ export function ClienteApp() {
           fileUrl: doc.public_url,
           fileName: doc.nome_arquivo,
           fileSize: doc.tamanho,
+          updatedAt: doc.atualizado_em ? new Date(doc.atualizado_em) : undefined,
         }
       })
 
@@ -544,7 +545,7 @@ export function ClienteApp() {
               />
             }
           />
-          <Route path="configuracoes" element={<Config client={mockClient} />} />
+          <Route path="configuracoes" element={<Config client={mockClient} documents={documents} onRefresh={fetchDocuments} />} />
         </Routes>
       </main>
 

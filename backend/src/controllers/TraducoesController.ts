@@ -2,14 +2,14 @@ import { Request, Response } from 'express'
 import TraducoesRepository from '../repositories/TraducoesRepository'
 
 class TraducoesController {
-  async getOrcamentosPendentes(req: Request, res: Response) {
+  async getOrcamentos(req: Request, res: Response) {
     try {
-      const orcamentos = await TraducoesRepository.getOrcamentosPendentes()
+      const orcamentos = await TraducoesRepository.getOrcamentos()
       console.log(orcamentos)
       return res.status(200).json(orcamentos)
     } catch (error) {
-      console.error('[TraducoesController.getOrcamentosPendentes] Error:', error)
-      return res.status(500).json({ error: 'Erro ao buscar orçamentos pendentes' })
+      console.error('[TraducoesController.getOrcamentos] Error:', error)
+      return res.status(500).json({ error: 'Erro ao buscar orçamentos' })
     }
   }
 
@@ -48,6 +48,24 @@ class TraducoesController {
     } catch (error) {
       console.error('[TraducoesController.getOrcamentoByDocumento] Error:', error)
       return res.status(500).json({ error: 'Erro ao buscar orçamento' })
+    }
+  }
+
+  async aprovarOrcamento(req: Request, res: Response) {
+    try {
+      const { id } = req.params
+      const { documentoId } = req.body
+
+      if (!id || !documentoId) {
+        return res.status(400).json({ error: 'Parâmetros orcamentoId ou documentoId ausentes' })
+      }
+
+      await TraducoesRepository.aprovarOrcamento(id, documentoId)
+
+      return res.status(200).json({ message: 'Orçamento aprovado com sucesso' })
+    } catch (error) {
+      console.error('[TraducoesController.aprovarOrcamento] Error:', error)
+      return res.status(500).json({ error: 'Erro ao aprovar orçamento' })
     }
   }
 }

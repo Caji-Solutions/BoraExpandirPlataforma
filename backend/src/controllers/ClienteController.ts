@@ -661,6 +661,40 @@ class ClienteController {
     }
   }
 
+  // POST /cliente/profile-photo
+  async uploadProfilePhoto(req: any, res: any) {
+    try {
+      const { clienteId } = req.body
+      const file = req.file
+
+      if (!file) {
+        return res.status(400).json({ message: 'Nenhum arquivo enviado' })
+      }
+
+      if (!clienteId) {
+        return res.status(400).json({ message: 'clienteId é obrigatório' })
+      }
+
+      const result = await ClienteRepository.upsertProfilePhoto({
+        clienteId,
+        fileBuffer: file.buffer,
+        contentType: file.mimetype,
+        fileName: file.originalname
+      })
+
+      return res.status(200).json({
+        message: 'Foto de perfil atualizada com sucesso',
+        data: result
+      })
+    } catch (error: any) {
+      console.error('Erro ao atualizar foto de perfil:', error)
+      return res.status(500).json({
+        message: 'Erro ao atualizar foto de perfil',
+        error: error.message
+      })
+    }
+  }
+
   // GET /cliente/clientes
   async getAllClientes(req: any, res: any) {
     try {

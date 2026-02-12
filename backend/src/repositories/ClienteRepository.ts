@@ -579,6 +579,88 @@ class ClienteRepository {
 
         return data || []
     }
+
+    // ========== PROFILE PHOTO ==========
+
+    async upsertProfilePhoto(params: {
+        clienteId: string
+        fileBuffer: Buffer
+        contentType: string
+        fileName: string
+    }): Promise<any> {
+        const BUCKET = 'profile-photos'
+        const documentType = 'profile_photo'
+        
+        // 1. Upload file to Supabase Storage
+        // Path structure: clienteId/profile_timestamp.ext to avoid cache issues or just profile.ext
+        const filePath = `${params.clienteId}/avatar`
+
+        const { data: storageData, error: storageError } = await supabase.storage
+            .from(BUCKET)
+            .upload(filePath, params.fileBuffer, {
+                contentType: params.contentType,
+                upsert: true
+            })
+
+        if (storageError) {
+            console.error('Erro ao fazer upload da foto de perfil:', storageError)
+            throw storageError
+        }
+
+        const { data: urlData } = supabase.storage
+            .from(BUCKET)
+            .getPublicUrl(filePath)
+
+        const publicUrl = urlData.publicUrl
+
+        // 2. Upsert Documento record
+        // Check if exists
+        const { data: existingDoc, error: fetchError } = await supabase
+            .from('documentos')
+            .select('id')
+            .eq('cliente_id', params.clienteId)
+            .eq('tipo', documentType)
+            .single()
+
+        if (existingDoc) {
+             // Update
+             const { data: updatedDoc, error: updateError } = await supabase
+                .from('documentos')
+                .update({
+                    nome_arquivo: params.fileName,
+                    storage_path: filePath, // Should be path (e.g. "clientId/profile.jpg")
+                    public_url: publicUrl,
+                    content_type: params.contentType,
+                    atualizado_em: new Date().toISOString()
+                })
+                .eq('id', existingDoc.id)
+                .select()
+                .single()
+            
+            if (updateError) throw updateError
+            return updatedDoc
+        } else {
+            // Create
+            const { data: newDoc, error: createError } = await supabase
+                .from('documentos')
+                .insert([{
+                    cliente_id: params.clienteId,
+                    tipo: documentType,
+                    nome_original: params.fileName,
+                    nome_arquivo: params.fileName,
+                    storage_path: filePath,
+                    public_url: publicUrl,
+                    content_type: params.contentType,
+                    status: 'APPROVED', // Profile photos don't need analysis?
+                    atualizado_em: new Date().toISOString()
+                }])
+                .select()
+                .single()
+
+            if (createError) throw createError
+            return newDoc
+        }
+    }
 }
 
 export default new ClienteRepository()

@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react'
-import { X, FileText, Calendar, DollarSign, Send, Info } from 'lucide-react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
+import { X, FileText, Calendar, DollarSign, Send } from 'lucide-react'
 import type { OrcamentoItem, OrcamentoFormData } from '../types/orcamento'
 import { Badge } from '../../../components/ui/Badge'
-import { calcularValorComMarkup, getMarkupPercentual, getDataPrazoPadrao } from '../../../services/comissaoService'
+import { getDataPrazoPadrao } from '../../../services/comissaoService'
 
 interface OrcamentoModalProps {
   orcamento: OrcamentoItem | null
@@ -51,9 +51,9 @@ export default function OrcamentoModal({ orcamento, onClose, onSubmit }: Orcamen
     documentoId: orcamento?.documentoId || '',
   })
   
-  // Estado para exibição da data no formato brasileiro
-  const [prazoDisplay, setPrazoDisplay] = useState(() => formatarDataBR(getDataPrazoPadrao(5)))
   const [submitting, setSubmitting] = useState(false)
+  const [prazoDisplay, setPrazoDisplay] = useState(() => formatarDataBR(getDataPrazoPadrao(5)))
+  const dateInputRef = useRef<HTMLInputElement>(null)
 
   // Atualiza o documentoId no form quando mudar o orçamento selecionado
   useEffect(() => {
@@ -65,13 +65,6 @@ export default function OrcamentoModal({ orcamento, onClose, onSubmit }: Orcamen
     }
   }, [orcamento])
 
-  // Calcula valor com markup da plataforma
-  const valorComMarkup = useMemo(() => {
-    if (formData.valorOrcamento > 0) {
-      return calcularValorComMarkup(formData.valorOrcamento)
-    }
-    return null
-  }, [formData.valorOrcamento])
 
   if (!orcamento) return null
 
@@ -80,17 +73,28 @@ export default function OrcamentoModal({ orcamento, onClose, onSubmit }: Orcamen
     setFormData(prev => ({ ...prev, [name]: name === 'valorOrcamento' ? parseFloat(value) || 0 : value }))
   }
 
-  // Handler especial para o campo de data
-  const handleDataChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handler para o campo de data visível (texto com máscara)
+  const handleTextDataChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const valorMascarado = aplicarMascaraData(e.target.value)
     setPrazoDisplay(valorMascarado)
     
-    // Se tiver 10 caracteres (dd/mm/yyyy), converte para ISO
     if (valorMascarado.length === 10) {
       const dataISO = parseDataBR(valorMascarado)
-      setFormData(prev => ({ ...prev, prazoEntrega: dataISO }))
+      if (dataISO) {
+        setFormData(prev => ({ ...prev, prazoEntrega: dataISO }))
+      }
     }
   }
+
+  // Handler para o input de data oculto (calendário)
+  const handleCalendarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const dataISO = e.target.value
+    if (dataISO) {
+      setFormData(prev => ({ ...prev, prazoEntrega: dataISO }))
+      setPrazoDisplay(formatarDataBR(dataISO))
+    }
+  }
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -207,59 +211,37 @@ export default function OrcamentoModal({ orcamento, onClose, onSubmit }: Orcamen
                 className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               
-              {/* Legenda com valor final ao cliente */}
-              {valorComMarkup && (
-                <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
-                        Valor para o cliente (com markup de {valorComMarkup.percentualMarkup}%)
-                      </p>
-                      <div className="mt-2 space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-amber-700 dark:text-amber-400">Seu valor:</span>
-                          <span className="font-medium text-amber-900 dark:text-amber-200">
-                            R$ {valorComMarkup.valorTradutor.toFixed(2).replace('.', ',')}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-amber-700 dark:text-amber-400">+ Markup da plataforma:</span>
-                          <span className="font-medium text-amber-900 dark:text-amber-200">
-                            R$ {valorComMarkup.valorMarkup.toFixed(2).replace('.', ',')}
-                          </span>
-                        </div>
-                        <div className="h-px bg-amber-200 dark:bg-amber-500/30 my-1" />
-                        <div className="flex justify-between">
-                          <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">Valor final ao cliente:</span>
-                          <span className="text-lg font-bold text-amber-900 dark:text-amber-100">
-                            R$ {valorComMarkup.valorFinalCliente.toFixed(2).replace('.', ',')}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
-            <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <div 
+              className="group relative"
+            >
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 group-hover:text-blue-600 transition-colors">
                 <Calendar className="h-4 w-4" />
                 Prazo de Entrega
               </label>
-              <input
-                type="text"
-                name="prazoEntrega"
-                value={prazoDisplay}
-                onChange={handleDataChange}
-                required
-                placeholder="dd/mm/yyyy"
-                maxLength={10}
-                className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div 
+                className="relative cursor-pointer"
+                onClick={() => dateInputRef.current?.showPicker()}
+              >
+                <input
+                  type="text"
+                  value={prazoDisplay}
+                  onChange={handleTextDataChange}
+                  placeholder="dd/mm/yyyy"
+                  maxLength={10}
+                  className="w-full px-4 py-2 border border-gray-200 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                />
+                <input
+                  ref={dateInputRef}
+                  type="date"
+                  tabIndex={-1}
+                  onChange={handleCalendarChange}
+                  className="absolute opacity-0 pointer-events-none inset-0 p-0 m-0 w-full h-full"
+                />
+              </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Formato: dd/mm/yyyy
+                Clique para abrir o calendário ou digite dd/mm/yyyy
               </p>
             </div>
 

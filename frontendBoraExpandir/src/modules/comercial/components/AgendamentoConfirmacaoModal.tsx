@@ -56,12 +56,14 @@ export const AgendamentoConfirmacaoModal: React.FC<AgendamentoConfirmacaoModalPr
     }
 
     if (!backendUrl) {
+      console.warn('DEBUG MODAL: BACKEND_URL NÃO ENCONTRADO! Usando fallback mock local.')
       setTimeout(() => {
         setIsLoading(false)
         const mockResponse = {
           success: true,
-          paymentLink: `https://pay.${selectedPlatform}.com/mock_${Date.now()}`
+          checkoutUrl: `https://pay.MOCK-FALLBACK-${selectedPlatform}.com/mock_${Date.now()}`
         }
+        console.log('DEBUG MODAL: Enviando resposta mock:', mockResponse)
         onSuccess(mockResponse)
       }, 1000)
       return
@@ -90,6 +92,7 @@ export const AgendamentoConfirmacaoModal: React.FC<AgendamentoConfirmacaoModalPr
             stripe_specific_flag: true // Exemplo de campo específico
           }),
         })
+        console.log('DEBUG MODAL: Resposta JSON bruta do backend:', response)
       } else {
         throw new Error('Plataforma não suportada')
       }
@@ -111,6 +114,7 @@ export const AgendamentoConfirmacaoModal: React.FC<AgendamentoConfirmacaoModalPr
       }
 
       const responseData = await response.json().catch(() => ({}))
+      console.log('DEBUG MODAL: Resposta JSON bruta do backend:', responseData)
       setIsLoading(false)
       onSuccess(responseData)
     } catch (err) {

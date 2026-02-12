@@ -1,12 +1,12 @@
 import { supabase } from '../config/SupabaseClient'
 
 class TraducoesRepository {
-  async getOrcamentosPendentes() {
-    // 1. Buscar os documentos com status WAITING_TRANSLATION_QUOTE
+  async getOrcamentos() {
+    // 1. Buscar os documentos com status WAITING_TRANSLATION_QUOTE ou WAITING_QUOTE_APPROVAL
     const { data: documentos, error: docError } = await supabase
       .from('documentos')
       .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id')
-      .eq('status', 'WAITING_TRANSLATION_QUOTE')
+      .in('status', ['WAITING_TRANSLATION_QUOTE', 'WAITING_QUOTE_APPROVAL', 'ANALYZING_TRANSLATION'])
       .order('criado_em', { ascending: false })
 
     if (docError) {
@@ -16,25 +16,43 @@ class TraducoesRepository {
 
     if (!documentos || documentos.length === 0) return []
 
-    // 2. Coletar IDs únicos de clientes
+    // 2. Coletar IDs únicos de clientes e documentos
     const clienteIds = [...new Set(documentos.map(d => d.cliente_id))]
+    const documentoIds = documentos.map(d => d.id)
 
-    // 3. Buscar dados dos clientes
-    const { data: clientes, error: cliError } = await supabase
-      .from('clientes')
-      .select('id, nome, email, whatsapp')
-      .in('id', clienteIds)
+    // 3. Buscar dados dos clientes e orçamentos em paralelo
+    const [clientesRes, orcamentosRes] = await Promise.all([
+      supabase
+        .from('clientes')
+        .select('id, nome, email, whatsapp')
+        .in('id', clienteIds),
+      supabase
+        .from('orcamentos')
+        .select('*')
+        .in('documento_id', documentoIds)
+        .order('criado_em', { ascending: false })
+    ])
 
-    if (cliError) {
-      console.error('Erro ao buscar clientes dos documentos:', cliError)
-      // Se falhar ao carregar clientes, ainda retornamos os documentos mas sem os dados do cliente
-      return documentos.map(doc => ({ ...doc, clientes: null }))
+    if (clientesRes.error) {
+      console.error('Erro ao buscar clientes dos documentos:', clientesRes.error)
     }
+    
+    if (orcamentosRes.error) {
+      console.error('Erro ao buscar orçamentos dos documentos:', orcamentosRes.error)
+    }
+
+    const clientes = clientesRes.data || []
+    const orcamentos = orcamentosRes.data || []
+
     // 4. Mesclar os dados
-    return documentos.map(doc => ({
-      ...doc,
-      clientes: clientes.find(c => c.id === doc.cliente_id) || null
-    }))
+    return documentos.map(doc => {
+      const orcamento = orcamentos.find(o => o.documento_id === doc.id)
+      return {
+        ...doc,
+        clientes: clientes.find(c => c.id === doc.cliente_id) || null,
+        orcamento: orcamento || null
+      }
+    })
   }
 
   async saveOrcamento(dados: {
@@ -95,6 +113,33 @@ class TraducoesRepository {
     }
 
     return data || null
+  }
+
+  async aprovarOrcamento(orcamentoId: string, documentoId: string) {
+    // 1. Atualizar o status do orçamento para 'aprovado'
+    const { error: orcError } = await supabase
+      .from('orcamentos')
+      .update({ status: 'aprovado' })
+      .eq('id', orcamentoId)
+
+    if (orcError) {
+      console.error('Erro ao aprovar orçamento:', orcError)
+      throw orcError
+    }
+
+    // 2. Atualizar o status do documento para 'ANALYZING_TRANSLATION'
+    // Isso indica que o pagamento foi "confirmado" (simulado) e a tradução está em andamento/análise
+    const { error: docError } = await supabase
+      .from('documentos')
+      .update({ status: 'ANALYZING_TRANSLATION' })
+      .eq('id', documentoId)
+
+    if (docError) {
+      console.error('Erro ao atualizar status do documento após aprovação:', docError)
+      throw docError
+    }
+
+    return true
   }
 }
 

@@ -58,6 +58,28 @@ class TraducoesService {
       throw error
     }
   }
+
+  async aprovarOrcamento(orcamentoId: string, documentoId: string) {
+    try {
+      const response = await fetch(`${API_URL}/traducoes/orcamentos/${orcamentoId}/aprovar`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ documentoId })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Erro ao aprovar orçamento')
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('TraducoesService.aprovarOrcamento error:', error)
+      throw error
+    }
+  }
 }
 
 export const traducoesService = new TraducoesService()

@@ -71,6 +71,7 @@ export interface Document {
   fileUrl?: string;
   fileName?: string;
   fileSize?: number;
+  updatedAt?: Date;
 }
 
 export interface ProcessStep {

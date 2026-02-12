@@ -1,21 +1,17 @@
-import { useState, useEffect } from 'react'
-import { Sun, Moon, User, Mail, Phone, MapPin, Fingerprint, Save, Loader2, Edit2, X } from 'lucide-react'
-import { Client } from '../../modules/cliente/types'
-import { useSearchParams } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { User, Mail, Phone, Fingerprint, Save, Loader2, Edit2, X, Camera } from 'lucide-react'
+import { Client, Document } from '../../modules/cliente/types'
 
 interface ConfigProps {
   onClose?: () => void
   client?: Client
+  documents?: Document[]
+  onRefresh?: () => Promise<void>
 }
 
-export function Config({ onClose, client }: ConfigProps) {
-  const [searchParams] = useSearchParams()
-  const initialTab = searchParams.get('tab') === 'meus-dados' ? 'meus-dados' : 'tema'
-  const [activeTab, setActiveTab] = useState<'tema' | 'meus-dados'>(initialTab)
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+export function Config({ onClose, client, documents = [], onRefresh }: ConfigProps) {
 
   // Form state
-  // Edit mode state
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
@@ -23,6 +19,10 @@ export function Config({ onClose, client }: ConfigProps) {
   })
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  
+  // Profile Photo state
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Initialize form data when client loads
   useEffect(() => {
@@ -33,6 +33,12 @@ export function Config({ onClose, client }: ConfigProps) {
       })
     }
   }, [client])
+
+  // Find profile photo
+  const profilePhotoDoc = documents.find(d => d.type === 'profile_photo')
+  const profilePhotoUrl = profilePhotoDoc?.fileUrl 
+    ? `${profilePhotoDoc.fileUrl}?t=${profilePhotoDoc.updatedAt ? new Date(profilePhotoDoc.updatedAt).getTime() : new Date(profilePhotoDoc.uploadDate).getTime()}` 
+    : null
 
   const handleEdit = () => {
     // Reset form data to current values before editing
@@ -56,63 +62,71 @@ export function Config({ onClose, client }: ConfigProps) {
     }
   }
 
-  // Carregar tema salvo ao montar
+  // Enforce light mode
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-      applyTheme(savedTheme)
-    } else {
-      // Se não tem tema salvo, garantir que está em modo claro
-      applyTheme('light')
-    }
+    applyTheme('light')
   }, [])
 
-  // Atualizar aba se a URL mudar
-  useEffect(() => {
-    const tab = searchParams.get('tab')
-    if (tab === 'meus-dados') {
-      setActiveTab('meus-dados')
-    }
-  }, [searchParams])
-
-  // Aplicar tema ao documento
+  // Apply theme to document
   const applyTheme = (newTheme: 'light' | 'dark') => {
     const html = document.documentElement
-
-    // Remove qualquer classe de tema antiga
     html.classList.remove('light', 'dark')
-
-    // Adiciona a nova classe
-    if (newTheme === 'dark') {
-      html.classList.add('dark')
-      html.style.colorScheme = 'dark'
-    } else {
-      html.classList.remove('dark')
-      html.style.colorScheme = 'light'
-    }
-
-    // Salva no localStorage
-    localStorage.setItem('theme', newTheme)
-
-    // Force re-render
+    html.classList.remove('dark')
+    html.style.colorScheme = 'light'
+    localStorage.setItem('theme', 'light')
     window.dispatchEvent(new Event('themechange'))
-  }
-
-  // Alternar tema
-  const toggleTheme = (newTheme: 'light' | 'dark') => {
-    setTheme(newTheme)
-    applyTheme(newTheme)
   }
 
   const handleSave = async () => {
     setIsSaving(true)
-    // Simulate API call
+    // Simulate API call for data update (not implemented in backend yet for basic data)
     await new Promise(resolve => setTimeout(resolve, 1000))
     setIsSaving(false)
     setSaveSuccess(true)
     setIsEditing(false)
     setTimeout(() => setSaveSuccess(false), 3000)
+  }
+
+  const handlePhotoClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !client) return
+
+    setIsUploadingPhoto(true)
+    
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('clienteId', client.id)
+
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+      const response = await fetch(`${API_BASE_URL}/cliente/profile-photo`, {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error('Erro ao enviar foto')
+      }
+
+      // Refresh data
+      if (onRefresh) {
+        await onRefresh()
+      }
+      
+    } catch (error) {
+      console.error('Erro no upload da foto:', error)
+      alert('Erro ao atualizar foto de perfil')
+    } finally {
+      setIsUploadingPhoto(false)
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
   }
 
   return (
@@ -127,135 +141,8 @@ export function Config({ onClose, client }: ConfigProps) {
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex space-x-4 mb-6 border-b border-gray-200 dark:border-neutral-700">
-        <button
-          onClick={() => setActiveTab('tema')}
-          className={`pb-4 px-2 font-medium transition-colors relative ${activeTab === 'tema'
-              ? 'text-blue-600 dark:text-blue-400'
-              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-            }`}
-        >
-          Aparência
-          {activeTab === 'tema' && (
-            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 dark:bg-blue-400" />
-          )}
-        </button>
-        {client && (
-          <button
-            onClick={() => setActiveTab('meus-dados')}
-            className={`pb-4 px-2 font-medium transition-colors relative ${activeTab === 'meus-dados'
-                ? 'text-blue-600 dark:text-blue-400'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-          >
-            Meus Dados
-            {activeTab === 'meus-dados' && (
-              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 dark:bg-blue-400" />
-            )}
-          </button>
-        )}
-      </div>
-
       <div className="grid gap-6">
-        {activeTab === 'tema' && (
-          <div className="bg-white dark:bg-neutral-800 rounded-2xl border border-gray-200 dark:border-neutral-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Tema do Sistema
-            </h2>
-
-            {/* Theme Toggle */}
-            <div className="space-y-3">
-              {/* Light Theme Button */}
-              <button
-                onClick={() => toggleTheme('light')}
-                className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${theme === 'light'
-                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10'
-                    : 'border-gray-200 dark:border-neutral-600 bg-gray-50 dark:bg-neutral-700'
-                  }`}
-              >
-                <div className="p-3 rounded-lg bg-yellow-100 dark:bg-yellow-500/20">
-                  <Sun className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    Claro
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Tema claro com tons brancos
-                  </p>
-                </div>
-                {theme === 'light' && (
-                  <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
-                    <svg
-                      className="w-3 h-3 text-white"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                )}
-              </button>
-
-              {/* Dark Theme Button */}
-              <button
-                onClick={() => toggleTheme('dark')}
-                className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${theme === 'dark'
-                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10'
-                    : 'border-gray-200 dark:border-neutral-600 bg-gray-50 dark:bg-neutral-700'
-                  }`}
-              >
-                <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-500/20">
-                  <Moon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    Escuro
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Tema escuro com tons suaves
-                  </p>
-                </div>
-                {theme === 'dark' && (
-                  <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
-                    <svg
-                      className="w-3 h-3 text-white"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                )}
-              </button>
-            </div>
-
-            <div className="mt-6 p-4 rounded-lg bg-gray-100 dark:bg-neutral-700">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                Pré-visualização:
-              </p>
-              <div
-                className={`p-4 rounded-lg text-center font-medium transition-colors ${theme === 'light'
-                    ? 'bg-white text-gray-900'
-                    : 'bg-neutral-800 text-white'
-                  }`}
-              >
-                {theme === 'light' ? '☀️ Modo Claro' : '🌙 Modo Escuro'}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'meus-dados' && client && (
+        {client && (
           <div className="bg-white dark:bg-neutral-800 rounded-2xl border border-gray-200 dark:border-neutral-700 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -275,14 +162,41 @@ export function Config({ onClose, client }: ConfigProps) {
             <div className="flex flex-col md:flex-row gap-8">
               {/* Avatar Section */}
               <div className="flex flex-col items-center space-y-4">
-                <div className="w-32 h-32 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center border-4 border-white dark:border-neutral-700 shadow-lg relative">
-                  <User className="w-16 h-16 text-blue-600 dark:text-blue-400" />
-                  {isEditing && (
-                    <div className="absolute bottom-0 right-0 p-2 bg-blue-600 rounded-full text-white cursor-pointer hover:bg-blue-700 border-2 border-white dark:border-neutral-800">
-                      <Edit2 className="w-4 h-4" />
+                <div className="relative group">
+                  <div className="w-32 h-32 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center border-4 border-white dark:border-neutral-700 shadow-lg overflow-hidden relative">
+                    {profilePhotoUrl ? (
+                        <img src={profilePhotoUrl} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                        <User className="w-16 h-16 text-blue-600 dark:text-blue-400" />
+                    )}
+                    
+                    {/* Upload Overlay */}
+                    <div 
+                        onClick={handlePhotoClick}
+                        className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    >
+                        <Camera className="w-8 h-8 text-white" />
                     </div>
-                  )}
+
+                    {isUploadingPhoto && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
+                            <Loader2 className="w-8 h-8 text-white animate-spin" />
+                        </div>
+                    )}
+                  </div>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handlePhotoChange} 
+                    accept="image/*" 
+                    className="hidden" 
+                  />
+                  {/* Small edit icon badge - keep it or remove since we have hover effect? Keeping for affordance */}
+                  <div className="absolute bottom-1 right-1 p-2 bg-blue-600 rounded-full text-white cursor-pointer hover:bg-blue-700 border-2 border-white dark:border-neutral-800 pointer-events-none">
+                      <Camera className="w-4 h-4" />
+                  </div>
                 </div>
+                
                 <div className="text-center">
                   <p className="font-medium text-gray-900 dark:text-white">{client.name}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Cliente</p>
@@ -315,15 +229,7 @@ export function Config({ onClose, client }: ConfigProps) {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      Tipo de Serviço
-                    </label>
-                    <div className="p-3 bg-gray-100 dark:bg-neutral-900/50 rounded-lg text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-neutral-700 cursor-not-allowed">
-                      {client.serviceType}
-                    </div>
-                  </div>
+                  {/* REMOVED SERVICE TYPE FIELD */}
 
                   {/* Editable Fields */}
                   <div className="space-y-2">
@@ -405,7 +311,7 @@ export function Config({ onClose, client }: ConfigProps) {
 
             <div className="mt-8 pt-6 border-t border-gray-100 dark:border-neutral-700">
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Para alterar nome ou tipo de serviço, entre em contato com o suporte.
+                Para alterar nome ou dados críticos, entre em contato com o suporte.
               </p>
             </div>
           </div>
