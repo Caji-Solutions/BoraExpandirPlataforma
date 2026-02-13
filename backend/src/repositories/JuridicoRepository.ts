@@ -8,7 +8,6 @@ interface FuncionarioJuridico {
     telefone: string | null
 }
 
-// Interface do cliente com responsável
 interface ClienteComResponsavel {
     id: string
     nome: string
@@ -20,6 +19,16 @@ interface ClienteComResponsavel {
     created_at: string
     updated_at: string
     responsavel_juridico?: FuncionarioJuridico | null
+}
+
+interface SolicitarDocumentoParams {
+    clienteId: string
+    tipo: string
+    processoId?: string
+    membroId?: string
+    notificar?: boolean
+    prazo?: number
+    criadorId?: string // ID do funcionário que está fazendo a solicitação
 }
 
 class JuridicoRepository {
@@ -647,6 +656,83 @@ class JuridicoRepository {
             console.error('Erro ao deletar nota jurídica:', error)
             throw error
         }
+    }
+
+    // Solicitar um documento (criar registro pendente)
+    async solicitarDocumento(params: SolicitarDocumentoParams): Promise<any> {
+        console.log('========== SOLICITAR DOCUMENTO REPO DEBUG ==========')
+        console.log('Params:', {
+            clienteId: params.clienteId,
+            tipo: params.tipo,
+            processoId: params.processoId,
+            membroId: params.membroId,
+            notificar: params.notificar,
+            notificarType: typeof params.notificar,
+            prazo: params.prazo
+        })
+
+        // 1. Criar o documento
+        console.log('Tentando criar registro em documentos...')
+        const { data: doc, error: docError } = await supabase
+            .from('documentos')
+            .insert([{
+                cliente_id: params.clienteId,
+                tipo: params.tipo,
+                processo_id: params.processoId || null,
+                dependente_id: params.membroId || null,
+                status: 'PENDING',
+                nome_original: params.tipo,
+                nome_arquivo: params.tipo,
+                storage_path: 'pending',
+                criado_em: new Date().toISOString(),
+                atualizado_em: new Date().toISOString()
+            }])
+            .select()
+            .single()
+
+        if (docError) {
+            console.error('Erro ao solicitar documento no repositório:', docError)
+            throw docError
+        }
+        console.log('Documento criado com sucesso:', doc.id)
+
+        // 2. Criar notificação se solicitado
+        if (params.notificar === true || (params.notificar as any) === 'true') {
+            console.log('Notificar é true, tentando criar notificação para o cliente...')
+            
+            const prazoDias = params.prazo || 7
+            const dataPrazo = new Date()
+            dataPrazo.setDate(dataPrazo.getDate() + prazoDias)
+
+            const notificacaoData = {
+                cliente_id: params.clienteId,
+                criador_id: params.criadorId, // Adicionando quem criou a solicitação
+                titulo: params.tipo,
+                mensagem: `A equipe jurídica solicitou o seguinte documento: ${params.tipo}. Por favor, realize o envio o quanto antes.`,
+                lida: false,
+                data_prazo: dataPrazo.toISOString(),
+                criado_em: new Date().toISOString()
+            }
+            
+            console.log('Dados da notificação (cliente_id):', notificacaoData)
+
+            const { data: notif, error: notifError } = await supabase
+                .from('notificacoes')
+                .insert([notificacaoData])
+                .select()
+
+            if (notifError) {
+                console.error('Erro ao criar notificação (FK violada?):', notifError)
+                // Não travamos o processo se a notificação falhar
+            } else {
+                console.log('Notificação criada com sucesso:', notif)
+            }
+        } else {
+            console.log('Notificar está desmarcado ou não é true/boolean.')
+        }
+        
+        console.log('=====================================================')
+        return doc
     }
 }
 

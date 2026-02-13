@@ -561,6 +561,43 @@ class JuridicoController {
             })
         }
     }
+
+    // POST /juridico/documentos/solicitar - Solicitar documento
+    async solicitarDocumento(req: any, res: any) {
+        try {
+            const { clienteId, tipo, processoId, membroId, notificar, prazo } = req.body
+
+            if (!clienteId || !tipo) {
+                return res.status(400).json({ 
+                    message: 'clienteId e tipo são obrigatórios' 
+                })
+            }
+
+            // TODO: Pegar do middleware de auth
+            const criadorId = req.body.criadorId || this.MOCKED_FUNCIONARIO_JURIDICO_ID
+
+            const documento = await JuridicoRepository.solicitarDocumento({
+                clienteId,
+                tipo,
+                processoId,
+                membroId,
+                notificar,
+                prazo,
+                criadorId
+            })
+
+            return res.status(201).json({
+                message: 'Solicitação de documento criada com sucesso',
+                data: documento
+            })
+        } catch (error: any) {
+            console.error('Erro ao solicitar documento no controller:', error)
+            return res.status(500).json({
+                message: 'Erro ao solicitar documento',
+                error: error.message
+            })
+        }
+    }
 }
 
 export default new JuridicoController()

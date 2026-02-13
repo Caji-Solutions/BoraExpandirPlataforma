@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
-import { FileText, User, ChevronRight, Folder, ChevronLeft } from "lucide-react";
+import { FileText, User, ChevronRight, Folder, ChevronLeft, Search } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from '../../../components/ui/Badge';
 import { Card } from "../../cliente/components/ui/card";
 import { ProcessAnalysis, JuridicoDocument, AnalysisStage } from './ProcessAnalysis';
 import juridicoService, { Processo } from '../services/juridicoService';
 import { FormsDeclarationsSection } from './FormsDeclarationsSection';
+import { ProcessMemberCard } from './ProcessMemberCard';
 
 
 export interface Process {
@@ -48,6 +49,11 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
     const [selectedMember, setSelectedMember] = useState<{ name: string, id?: string } | null>(null);
     const [loading, setLoading] = useState(false);
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filters, setFilters] = useState({
+        status: 'todos',
+        serviceType: 'todos'
+    });
 
     // Helper function to map Backend Process to Frontend Process View
     const mapProcessoToView = (p: Processo): Process => {
@@ -141,6 +147,23 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
         }
         fetchData();
     }, [selectedFolder]);
+
+    const serviceTypes = useMemo(() => {
+        return Array.from(new Set(processes.map(p => p.serviceType)));
+    }, [processes]);
+
+    const filteredProcesses = useMemo(() => {
+        return processes.filter(p => {
+            const matchesSearch = 
+                p.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                p.id.toLowerCase().includes(searchTerm.toLowerCase());
+            
+            const matchesStatus = filters.status === 'todos' || p.status === filters.status;
+            const matchesService = filters.serviceType === 'todos' || p.serviceType === filters.serviceType;
+            
+            return matchesSearch && matchesStatus && matchesService;
+        });
+    }, [processes, searchTerm, filters]);
 
 
 
@@ -351,50 +374,29 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                     </Button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {members.length > 0 ? members.map((member: any, idx: number) => (
-                        <Card
-                            key={idx}
-                            className="p-6 cursor-pointer hover:shadow-md transition-all border-l-4 border-l-blue-500 group relative overflow-hidden"
-                            onClick={() => setSelectedMember(member)}
-                        >
+                {/* Header for Member List */}
+                <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+                    <div className="grid grid-cols-12 gap-4 px-6 py-4 border-b bg-muted/30 text-[10px] uppercase font-bold text-muted-foreground tracking-widest text-center">
+                        <div className="col-span-4 text-left px-12">Membro do Processo</div>
+                        <div className="col-span-2">Parentesco</div>
+                        <div className="col-span-4">Status dos Documentos</div>
+                        <div className="col-span-2">Ações</div>
+                    </div>
 
-
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-                                    <User className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                                </div>
-                                <Badge variant="outline">{member.type}</Badge>
+                    <div className="divide-y divide-border">
+                        {members.length > 0 ? members.map((member: any, idx: number) => (
+                            <ProcessMemberCard 
+                                key={idx}
+                                member={member}
+                                onClick={() => setSelectedMember(member)}
+                            />
+                        )) : (
+                            <div className="py-12 text-center text-muted-foreground">
+                                <User className="h-12 w-12 mx-auto mb-4 opacity-10" />
+                                <p>Nenhum documento encontrado para este processo.</p>
                             </div>
-
-                            <h3 className="text-lg font-bold mb-1">{member.name}</h3>
-                            <p className="text-sm text-gray-500 mb-4">{member.docs} Documentos no total</p>
-
-                            <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                                <div className="bg-amber-50 dark:bg-amber-900/10 p-2 rounded-lg border border-amber-100 dark:border-amber-900/20">
-                                    <span className="block font-bold text-amber-600 text-lg">{member.waitingAction}</span>
-                                    <span className="text-gray-500 text-[10px]">Aguardam</span>
-                                </div>
-                                <div className="bg-blue-50 dark:bg-blue-900/10 p-2 rounded-lg border border-blue-100 dark:border-blue-900/20">
-                                    <span className="block font-bold text-blue-600 text-lg">{member.analyzing}</span>
-                                    <span className="text-gray-500 text-[10px]">Análise</span>
-                                </div>
-                                <div className="bg-green-50 dark:bg-green-900/10 p-2 rounded-lg border border-green-100 dark:border-green-900/20">
-                                    <span className="block font-bold text-green-600 text-lg">{member.completed}</span>
-                                    <span className="text-gray-500 text-[10px]">Concluídos</span>
-                                </div>
-                            </div>
-
-                            <Button className="w-full mt-4 bg-gray-50 text-gray-700 hover:bg-blue-50 hover:text-blue-700 border-none justify-between group-hover:translate-x-1 transition-all">
-                                Ver Documentos
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                        </Card>
-                    )) : (
-                        <div className="col-span-full py-12 text-center text-muted-foreground">
-                            Nenhum documento encontrado para este processo.
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
 
                 {/* Formulários e Declarações - Fixed Bottom Section */}
@@ -418,78 +420,151 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
     }
 
     return (
-        <div className="space-y-6 p-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Fila de Trabalho</h1>
-                    <p className="text-muted-foreground mt-1">
-                        Processos aguardando revisão jurídica
-                    </p>
-                </div>
-                <div className="flex gap-3">
-                    {loading && <span className="text-sm text-muted-foreground animate-pulse">Carregando...</span>}
-                    <Badge variant="outline" className="text-base px-4 py-2">
-                        {processes.length} processos
-                    </Badge>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {processes.map((process) => (
-                    <Card
-                        key={process.id}
-                        className="group relative cursor-pointer hover:shadow-lg transition-all duration-300 border-t-4 border-t-primary overflow-visible"
-                        onClick={() => setSelectedFolder(process)}
-                    >
-                        <div className="p-6">
-                            <StatusBadge status={process.status} />
-
-                            <div className="mb-6 mt-2">
-                                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                    <Folder className="h-6 w-6 text-primary" />
-                                </div>
-                                <h3 className="font-bold text-lg leading-tight mb-1">{process.clientName}</h3>
-                                <p className="text-sm text-muted-foreground">{process.serviceType}</p>
-                                <p className="text-xs text-muted-foreground mt-1 font-mono">ID: {process.clientId.substring(0, 8)}...</p>
-                            </div>
-
-                            <div className="space-y-3 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="text-muted-foreground flex items-center gap-1.5">
-                                        <FileText className="w-3.5 h-3.5" /> Total
-                                    </span>
-                                    <span className="font-medium">{process.documentsTotal} docs</span>
-                                </div>
-
-                                <div className="h-px bg-gray-200 dark:bg-gray-700" />
-
-                                <div className="grid grid-cols-3 gap-2 text-xs text-center">
-                                    <div>
-                                        <span className="block text-amber-600 font-bold text-lg">{process.documentsPending}</span>
-                                        <span className="text-muted-foreground text-[10px]">Aguardam</span>
-                                    </div>
-                                    <div>
-                                        <span className="block text-blue-600 font-bold text-lg">{process.documentsAnalyzing}</span>
-                                        <span className="text-muted-foreground text-[10px]">Análise</span>
-                                    </div>
-                                    <div>
-                                        <span className="block text-green-600 font-bold text-lg">{process.documentsApproved}</span>
-                                        <span className="text-muted-foreground text-[10px]">Concluídos</span>
-                                    </div>
-                                </div>
-                            </div>
-
-
-                        </div>
-
-                        <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-500" />
-                    </Card>
-                ))}
-                {!loading && processes.length === 0 && (
-                    <div className="col-span-full py-12 text-center text-muted-foreground">
-                        Nenhum processo encontrado na fila.
+        <div className="p-8">
+            <div className="max-w-7xl mx-auto space-y-8">
+                {/* Header Section */}
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl font-bold text-foreground tracking-tight">Fila de Trabalho</h1>
+                        <p className="text-muted-foreground mt-1">Gestão de processos e acompanhamento jurídico</p>
                     </div>
-                )}
+                    <div className="flex gap-3">
+                        {loading && <span className="text-sm text-muted-foreground animate-pulse self-center">Carregando...</span>}
+                        <Badge variant="outline" className="text-sm px-4 py-2 bg-background shadow-sm border-gray-200">
+                            {filteredProcesses.length} processos
+                        </Badge>
+                    </div>
+                </div>
+
+                {/* Filters and Search - Matching Client Aesthetic */}
+                <div className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Status do Processo</label>
+                            <select
+                                value={filters.status}
+                                onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
+                                className="w-full bg-muted/30 border border-border px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer appearance-none"
+                            >
+                                <option value="todos">Todos os Status</option>
+                                <option value="new">Novo</option>
+                                <option value="pending_client">Pendente</option>
+                                <option value="ready">Pronto</option>
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Tipo de Serviço</label>
+                            <select
+                                value={filters.serviceType}
+                                onChange={e => setFilters(f => ({ ...f, serviceType: e.target.value }))}
+                                className="w-full bg-muted/30 border border-border px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer appearance-none"
+                            >
+                                <option value="todos">Todos os Serviços</option>
+                                {serviceTypes.map(type => (
+                                    <option key={type} value={type}>{type}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground opacity-50" />
+                        <input
+                            type="text"
+                            placeholder="Buscar por nome do cliente ou ID..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-12 pr-4 py-3.5 bg-muted/50 border-2 border-transparent focus:border-primary/20 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/5 shadow-inner text-base"
+                        />
+                        {(searchTerm || filters.status !== 'todos' || filters.serviceType !== 'todos') && (
+                            <button 
+                                onClick={() => {
+                                    setSearchTerm('')
+                                    setFilters({ status: 'todos', serviceType: 'todos' })
+                                }}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-primary hover:underline"
+                            >
+                                Limpar Busca
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Process List - Table Header */}
+                <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+                    <div className="grid grid-cols-12 gap-4 px-6 py-4 border-b bg-muted/30 text-[10px] uppercase font-bold text-muted-foreground tracking-widest text-center">
+                        <div className="col-span-1">ID</div>
+                        <div className="col-span-3 text-left">Cliente</div>
+                        <div className="col-span-2">Serviço</div>
+                        <div className="col-span-3">Documentos</div>
+                        <div className="col-span-1">Status</div>
+                        <div className="col-span-2">Ações</div>
+                    </div>
+
+                    <div className="divide-y divide-border">
+                        {filteredProcesses.map((process) => (
+                            <div
+                                key={process.id}
+                                className="grid grid-cols-12 gap-4 px-6 py-4 items-center transition-colors hover:bg-muted/30 cursor-pointer group"
+                                onClick={() => setSelectedFolder(process)}
+                            >
+                                <div className="col-span-1 text-center">
+                                    <span className="text-xs font-mono text-muted-foreground">{process.clientId.substring(0, 4)}...</span>
+                                </div>
+                                <div className="col-span-3 flex items-center gap-3 text-left">
+                                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                                        <Folder className="h-4 w-4 text-primary" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="text-sm font-semibold text-foreground">{process.clientName}</div>
+                                        <div className="text-[10px] text-muted-foreground font-mono">ID: {process.clientId}</div>
+                                    </div>
+                                </div>
+                                <div className="col-span-2 text-center text-xs font-medium">
+                                    {process.serviceType}
+                                </div>
+                                <div className="col-span-3">
+                                    <div className="grid grid-cols-3 gap-2 text-[10px] text-center">
+                                        <div className="bg-amber-50/50 dark:bg-amber-900/10 p-1 rounded border border-amber-100/50">
+                                            <span className="block font-bold text-amber-600 text-sm">{process.documentsPending}</span>
+                                            <span className="text-muted-foreground uppercase opacity-70">Aguardam</span>
+                                        </div>
+                                        <div className="bg-blue-50/50 dark:bg-blue-900/10 p-1 rounded border border-blue-100/50">
+                                            <span className="block font-bold text-blue-600 text-sm">{process.documentsAnalyzing}</span>
+                                            <span className="text-muted-foreground uppercase opacity-70">Análise</span>
+                                        </div>
+                                        <div className="bg-green-50/50 dark:bg-green-900/10 p-1 rounded border border-green-100/50">
+                                            <span className="block font-bold text-green-600 text-sm">{process.documentsApproved}</span>
+                                            <span className="text-muted-foreground uppercase opacity-70">Feito</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="col-span-1 text-center">
+                                    {/* Minimalist Status Indicator */}
+                                    <div className={`w-3 h-3 rounded-full mx-auto ${
+                                        process.status === 'ready' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 
+                                        process.status === 'new' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]' : 
+                                        'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'
+                                    }`} />
+                                </div>
+                                <div className="col-span-2 flex justify-center">
+                                    <Button 
+                                        size="sm"
+                                        className="bg-primary text-primary-foreground hover:bg-primary/90 text-[10px] font-bold h-8 px-4 rounded-xl shadow-sm group-hover:scale-105 transition-all"
+                                    >
+                                        Acessar Processo
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                        {filteredProcesses.length === 0 && (
+                            <div className="py-12 text-center text-muted-foreground">
+                                <Search className="h-12 w-12 mx-auto mb-4 opacity-10" />
+                                <p>Nenhum processo encontrado na fila.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );

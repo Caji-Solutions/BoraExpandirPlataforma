@@ -713,6 +713,30 @@ class ClienteController {
       })
     }
   }
+
+  // GET /cliente/:clienteId/notificacoes
+  async getNotificacoes(req: any, res: any) {
+    try {
+      const { clienteId } = req.params
+
+      if (!clienteId) {
+        return res.status(400).json({ message: 'clienteId é obrigatório' })
+      }
+
+      const notificacoes = await ClienteRepository.getNotificacoes(clienteId)
+
+      return res.status(200).json({
+        message: 'Notificações recuperadas com sucesso',
+        data: notificacoes
+      })
+    } catch (error: any) {
+      console.error('Erro ao buscar notificações:', error)
+      return res.status(500).json({
+        message: 'Erro ao buscar notificações',
+        error: error.message
+      })
+    }
+  }
 }
 
 export default new ClienteController()

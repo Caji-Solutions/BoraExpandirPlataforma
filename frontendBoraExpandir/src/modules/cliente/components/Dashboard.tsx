@@ -20,7 +20,8 @@ import { formatDate, formatDateSimple } from '../lib/utils'
 import { AppointmentReminder } from './AppointmentReminder'
 import { ReminderCard } from './ReminderCard'
 import { CountdownTimer } from './CountdownTimer'
-import { mockReminders, mockPendingActions } from '../lib/mock-data'
+import { clienteService } from '../services/clienteService'
+import { useEffect, useState, useMemo } from 'react'
 
 interface DashboardProps {
   client: Client
@@ -30,16 +31,27 @@ interface DashboardProps {
 
 export function Dashboard({ client, documents, process }: DashboardProps) {
   const totalDocuments = documents.length
+  
+  // Refined Status Filtering Logic
   const approvedDocuments = documents.filter(doc => doc.status === 'approved').length
-  const pendingDocuments = documents.filter(doc => doc.status === 'pending').length
+  
   const rejectedDocuments = documents.filter(doc => doc.status === 'rejected').length
-  const analyzingDocuments = documents.filter(doc => doc.status === 'analyzing').length
+  
+  const analyzingDocuments = documents.filter(doc => 
+    doc.status.toLowerCase().includes('analyzing')
+  ).length
+  
+  const pendingDocuments = documents.filter(doc => 
+    doc.status === 'pending' || 
+    doc.status === 'sent_for_apostille' || 
+    doc.status.toLowerCase().includes('waiting')
+  ).length
 
   const completedSteps = process?.steps?.filter(step => step.status === 'completed').length || 0
   const totalSteps = process?.steps?.length || 0
   const progressPercentage = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0
 
-  const recentDocuments = documents
+  const recentDocuments = [...documents]
     .sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime())
     .slice(0, 3)
 
@@ -47,7 +59,7 @@ export function Dashboard({ client, documents, process }: DashboardProps) {
     {
       title: 'Documentos Rejeitados',
       value: rejectedDocuments.toString(),
-      description: 'Necessitam correção',
+      description: rejectedDocuments > 0 ? 'Necessitam correção' : 'Nenhuma rejeição',
       icon: XCircle,
       color: 'text-red-600 dark:text-red-400',
       bgColor: 'bg-red-100 dark:bg-red-900/30',
@@ -86,17 +98,52 @@ export function Dashboard({ client, documents, process }: DashboardProps) {
     location: "Online - WhatsApp/Zoom"
   }
 
-  // Convert Pending Actions to Reminders
-  const pendingActionReminders: import('../types').Reminder[] = mockPendingActions.map(action => ({
-    id: `pending-${action.id}`,
-    title: action.title,
-    message: `${action.description} (Vence em: ${formatDateSimple(action.deadline)})`,
-    date: action.deadline,
-    type: (action.priority === 'high' ? 'urgent' : 'warning') as 'urgent' | 'warning',
-    actionLink: '/juridico'
-  }))
+  const [notifications, setNotifications] = useState<import('../types').Notification[]>([])
+  const [isLoadingNotifs, setIsLoadingNotifs] = useState(false)
 
-  const legalReminders = [...pendingActionReminders, ...mockReminders.legal]
+  useEffect(() => {
+    const fetchNotifs = async () => {
+      try {
+        setIsLoadingNotifs(true)
+        const data = await clienteService.getNotificacoes(client.id)
+        setNotifications(data)
+      } catch (error) {
+        console.error('Erro ao buscar notificações:', error)
+      } finally {
+        setIsLoadingNotifs(false)
+      }
+    }
+
+    if (client.id) {
+      fetchNotifs()
+    }
+  }, [client.id])
+
+  // Map backend notifications to dashboard actions/reminders
+  const realPendingActions = useMemo(() => {
+    return notifications
+      .filter(n => (n.data_prazo || (n as any).deadline) && !n.lida && !n.read)
+      .map(n => ({
+        id: n.id,
+        title: n.titulo || n.title || 'Ação Necessária',
+        description: n.mensagem || n.message || '',
+        deadline: new Date((n.data_prazo || (n as any).deadline) as string),
+        priority: 'high' as const
+      }))
+  }, [notifications])
+
+  const pendingActionReminders = useMemo(() => {
+    return realPendingActions.map(action => ({
+      id: `pending-${action.id}`,
+      title: action.title,
+      message: `${action.description} (Vence em: ${formatDateSimple(action.deadline)})`,
+      date: action.deadline,
+      type: 'urgent' as const,
+      actionLink: '/juridico'
+    }))
+  }, [realPendingActions])
+
+  const legalReminders = useMemo(() => [...pendingActionReminders], [pendingActionReminders])
 
   return (
     <div className="space-y-8">
@@ -123,46 +170,29 @@ export function Dashboard({ client, documents, process }: DashboardProps) {
       </div>
 
       {/* Reminders Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-
-
-
-        {/* Appointment Reminder - Restored */}
-        <AppointmentReminder
-          appointmentDate={nextAppointment.date}
-          appointmentTime={nextAppointment.time}
-          service={nextAppointment.service}
-          location={nextAppointment.location}
-        />
-
-        {/* Administrative/Financial Reminders */}
-        <ReminderCard
-          title="Administrativo/Financeiro"
-          type="admin"
-          reminders={mockReminders.admin}
-        />
-
-
-
-        {/* Legal Reminders */}
-        <ReminderCard
-          title="Jurídico"
-          type="legal"
-          reminders={legalReminders}
-        />
-
-        {/* Commercial Reminders */}
-        <ReminderCard
-          title="Comercial"
-          type="commercial"
-          reminders={mockReminders.commercial}
-        />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Only show categories that have real reminders */}
+        {legalReminders.length > 0 && (
+          <ReminderCard
+            title="Jurídico"
+            type="legal"
+            reminders={legalReminders}
+          />
+        )}
+        
+        {/* Placeholder for future real data integration without mocks */}
+        {legalReminders.length === 0 && (
+          <div className="col-span-full text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
+            <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+            <p className="text-gray-500 dark:text-gray-400">Nenhum lembrete ou ação pendente no momento.</p>
+          </div>
+        )}
       </div>
 
       {/* Required Actions Countdown Section */}
-      {mockPendingActions.length > 0 && (
+      {realPendingActions.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {mockPendingActions.map(action => (
+          {realPendingActions.map(action => (
             <Card key={action.id} className="border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10">
               <CardHeader className="pb-2">
                 <CardTitle className="text-red-700 dark:text-red-400 flex items-center space-x-2 text-lg">
@@ -183,7 +213,7 @@ export function Dashboard({ client, documents, process }: DashboardProps) {
 
       {/* Stats Grid */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">Documentos</h1>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">Status dos Documentos</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat, index) => {
             const Icon = stat.icon
@@ -250,7 +280,9 @@ export function Dashboard({ client, documents, process }: DashboardProps) {
                 </div>
               ))
               ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum passo definido para este processo.</p>
+                <div className="text-center py-4">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum passo do processo disponível.</p>
+                </div>
               )}
             </div>
           </CardContent>
@@ -284,15 +316,16 @@ export function Dashboard({ client, documents, process }: DashboardProps) {
                       variant={
                         doc.status === 'approved' ? 'success' :
                           doc.status === 'rejected' ? 'destructive' :
-                            doc.status === 'analyzing' ? 'default' :
+                            doc.status.toLowerCase().includes('analyzing') ? 'default' :
                               'warning'
                       }
                       className="text-xs"
                     >
                       {doc.status === 'pending' ? 'Pendente' :
-                        doc.status === 'analyzing' ? 'Análise' :
+                        doc.status.toLowerCase().includes('analyzing') ? 'Análise' :
                           doc.status === 'approved' ? 'Aprovado' :
-                            'Rejeitado'}
+                            doc.status === 'rejected' ? 'Rejeitado' : 
+                              doc.status.replace('_', ' ')}
                     </Badge>
                   </div>
                 ))

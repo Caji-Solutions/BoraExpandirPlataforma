@@ -661,6 +661,22 @@ class ClienteRepository {
             return newDoc
         }
     }
+
+    async getNotificacoes(clienteId: string): Promise<any[]> {
+        // Buscamos notificações vinculadas ao ID do cliente
+        const { data, error } = await supabase
+            .from('notificacoes')
+            .select('*')
+            .eq('cliente_id', clienteId)
+            .order('criado_em', { ascending: false })
+
+        if (error) {
+            console.error('Erro ao buscar notificações do cliente:', error)
+            throw error
+        }
+
+        return data || []
+    }
 }
 
 export default new ClienteRepository()

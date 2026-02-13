@@ -27,5 +27,16 @@ export const clienteService = {
     }
 
     return response.json();
+  },
+
+  async getNotificacoes(clienteId: string) {
+    const response = await fetch(`${API_BASE_URL}/cliente/${clienteId}/notificacoes`);
+    
+    if (!response.ok) {
+      throw new Error('Falha ao buscar notificações');
+    }
+    
+    const result = await response.json();
+    return result.data || [];
   }
 };

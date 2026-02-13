@@ -15,6 +15,8 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ClientDNAData, ClientNote, CATEGORIAS_LIST, formatDate } from './ClientDNA'
+import { ProcessAction } from '../../modules/juridico/components/ProcessAction'
+import { DocumentRequestModal } from '../../modules/juridico/components/DocumentRequestModal'
 
 export function DNAClientDetailView({
     client,
@@ -29,6 +31,7 @@ export function DNAClientDetailView({
     const [notes, setNotes] = useState<ClientNote[]>([])
     const [loadingNotes, setLoadingNotes] = useState(false)
     const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set([client.categoria]))
+    const [isDocModalOpen, setIsDocModalOpen] = useState(false)
 
     const fetchNotes = useCallback(async () => {
         try {
@@ -113,7 +116,7 @@ export function DNAClientDetailView({
         <div className="p-8">
             <div className="max-w-6xl mx-auto space-y-8">
                 {/* Header */}
-                <div className="flex items-center justify-between bg-card p-6 border border-border rounded-2xl shadow-sm">
+                <div className="bg-card p-6 border border-border rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="flex items-center gap-5">
                         <button
                             onClick={onBack}
@@ -131,7 +134,7 @@ export function DNAClientDetailView({
                                     {client.priority}
                                 </span>
                             </div>
-                            <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                            <div className="flex flex-wrap items-center gap-y-2 gap-x-4 mt-2 text-sm text-muted-foreground">
                                 <span className="flex items-center gap-1.5"><Mail className="h-4 w-4" /> {client.email}</span>
                                 <span className="flex items-center gap-1.5"><Phone className="h-4 w-4" /> {client.telefone}</span>
                                 <div className="flex items-center gap-2 bg-muted px-2 py-0.5 rounded font-mono text-xs">
@@ -141,6 +144,28 @@ export function DNAClientDetailView({
                                     </button>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4 border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-6">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Assessoria</span>
+                            <span className="text-sm font-bold text-primary">{client.tipoAssessoria}</span>
+                        </div>
+                        <div className="w-px h-8 bg-border hidden sm:block" />
+                        <div className="flex flex-col">
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Previsão</span>
+                            <span className="text-sm font-bold">{formatDate(client.previsaoChegada)}</span>
+                        </div>
+                        <div className="w-px h-8 bg-border hidden sm:block" />
+                        <div className="flex flex-col">
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Contrato</span>
+                            <span className={cn(
+                                "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase mt-0.5",
+                                client.contratoAtivo ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"
+                            )}>
+                                {client.contratoAtivo ? 'Vigente' : 'Inativo'}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -274,51 +299,23 @@ export function DNAClientDetailView({
 
                     {/* Coluna Direita: Informações Extras */}
                     <div className="lg:col-span-4 space-y-6">
-                        <div className="bg-card border border-border rounded-2xl p-6 space-y-6 shadow-sm">
-                            <div>
-                                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4">Informações do Serviço</h3>
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center py-2 border-b border-border/50">
-                                        <span className="text-xs text-muted-foreground">Tipo de Assessoria</span>
-                                        <span className="text-sm font-bold text-primary">{client.tipoAssessoria}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2 border-b border-border/50">
-                                        <span className="text-xs text-muted-foreground">Previsão de Chegada</span>
-                                        <span className="text-sm font-bold">{formatDate(client.previsaoChegada)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2 border-b border-border/50">
-                                        <span className="text-xs text-muted-foreground">Contrato</span>
-                                        <span className={cn(
-                                            "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase",
-                                            client.contratoAtivo ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"
-                                        )}>
-                                            {client.contratoAtivo ? 'Vigente' : 'Inativo'}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="p-4 bg-muted/50 rounded-xl border border-border">
-                                <h4 className="text-xs font-bold text-foreground mb-3 flex items-center gap-2">
-                                    <AlertCircle className="h-4 w-4 text-amber-500" />
-                                    Ações Recomendadas
-                                </h4>
-                                <div className="space-y-2">
-                                    <button className="w-full text-left p-3 text-xs bg-card hover:bg-muted border border-border rounded-lg transition-colors flex justify-between items-center group">
-                                        Solicitar Documentos
-                                        <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </button>
-                                    <button className="w-full text-left p-3 text-xs bg-card hover:bg-muted border border-border rounded-lg transition-colors flex justify-between items-center group">
-                                        Agendar Consultoria
-                                        <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </button>
-                                </div>
-                            </div>
+                        <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+                            <ProcessAction 
+                                clienteId={client.true_id || client.id}
+                                processoId={client.processo_id}
+                                onActionClick={(action) => {
+                                    if (action === 'solicitar_documentos') {
+                                        setIsDocModalOpen(true)
+                                    } else {
+                                        console.log('Action triggered:', action)
+                                    }
+                                }}
+                            />
                         </div>
 
                         {/* Notas Gerais (sem etapa) */}
                         <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-                            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4">Notas Gerais</h3>
+                            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4">Post-it</h3>
                             <div className="space-y-3">
                                 {notes.filter(n => !n.stageId).length === 0 ? (
                                     <p className="text-xs text-muted-foreground text-center py-4 italic">Nenhuma nota geral</p>
@@ -338,6 +335,13 @@ export function DNAClientDetailView({
                     </div>
                 </div>
             </div>
+
+            <DocumentRequestModal 
+                isOpen={isDocModalOpen}
+                onOpenChange={setIsDocModalOpen}
+                clienteId={client.true_id || client.id}
+                processoId={client.processo_id}
+            />
         </div>
     )
 }

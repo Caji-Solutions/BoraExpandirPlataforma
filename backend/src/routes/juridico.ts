@@ -72,6 +72,14 @@ juridico.post('/atribuir-responsavel', JuridicoController.atribuirResponsavel.bi
 
 juridico.get('/estatisticas', JuridicoController.getEstatisticas.bind(JuridicoController))
 
+
+
+// =============================================
+// ROTAS DE SOLICITAÇÕES
+// =============================================
+
+juridico.post('/documentos/solicitar', JuridicoController.solicitarDocumento.bind(JuridicoController))
+
 // =============================================
 // ROTAS DE FORMULÁRIOS DO JURÍDICO (enviados para clientes)
 // =============================================

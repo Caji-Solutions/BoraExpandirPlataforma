@@ -182,6 +182,8 @@ export function FamilyFolderCard({
       return 'completed';
     }
 
+    if (status === 'pending') return 'requested_pending';
+
     return 'analyzing';
   }
 
@@ -200,15 +202,35 @@ export function FamilyFolderCard({
       })
   }
 
-  // Calculate pending documents (required but not uploaded)
+  // Calculate pending documents (required but not uploaded + requested by juridico)
   const pendingDocs = useMemo(() => {
-    const uploadedTypes = new Set(memberDocs.map(d => d.type))
-    return requiredDocuments
+    const uploadedTypes = new Set(memberDocs.filter(d => d.status?.toLowerCase() !== 'pending').map(d => d.type))
+    
+    // 1. Missing required documents
+    const missing = requiredDocuments
       .filter(req => !uploadedTypes.has(req.type))
       .map(req => ({
         ...req,
-        required: true
+        required: true,
+        _isRequested: false
       }))
+
+    // 2. Documents requested by Juridico (status = pending)
+    const requested = memberDocs
+      .filter(d => d.status?.toLowerCase() === 'pending')
+      .map(doc => {
+        const reqDoc = requiredDocuments.find(r => r.type === doc.type)
+        return {
+          type: doc.type,
+          name: reqDoc ? reqDoc.name : doc.name, // Use mapped name if available
+          description: reqDoc?.description || 'Documento solicitado pela equipe jurídica.',
+          required: reqDoc?.required || false,
+          _document: doc,
+          _isRequested: true
+        }
+      })
+
+    return [...missing, ...requested]
   }, [memberDocs, requiredDocuments])
 
   // Calculate stats for the three main categories
@@ -731,19 +753,24 @@ export function FamilyFolderCard({
                               <div>
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-bold text-sm text-gray-900 dark:text-white truncate">
-                                    {item.name}
+                                    {item._isRequested ? `Pendente: ${item.name}` : item.name}
                                   </span>
                                   {item.required && (
                                     <Badge variant="secondary" className="text-[10px] h-5">Obrigatório</Badge>
                                   )}
-                                  {wasAlreadySent && (
+                                  {item._isRequested && (
+                                    <Badge className="text-[10px] h-5 bg-amber-500 hover:bg-amber-600 text-white">
+                                      ⚠️ Solicitado
+                                    </Badge>
+                                  )}
+                                  {wasAlreadySent && !item._isRequested && (
                                     <Badge className="text-[10px] h-5 bg-orange-500 hover:bg-orange-600 text-white">
                                       📄 Já Enviado
                                     </Badge>
                                   )}
                                 </div>
                                 <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
-                                {wasAlreadySent && (
+                                {wasAlreadySent && !item._isRequested && (
                                   <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 font-medium">
                                     ⚠️ Este documento será substituído ao enviar novamente
                                   </p>

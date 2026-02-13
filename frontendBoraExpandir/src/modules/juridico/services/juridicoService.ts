@@ -240,24 +240,6 @@ export async function updateFormularioClienteStatus(
   return response.json();
 }
 
-export default {
-  getProcessos,
-  getProcessosByResponsavel,
-  getProcessosVagos,
-  atribuirResponsavel,
-  removerResponsavel,
-  getFuncionariosJuridico,
-  getClientesVagos,
-  getAllClientesComResponsavel,
-  getClientesByResponsavel,
-  getDocumentosCliente,
-  getDocumentosByProcesso,
-  getDependentes,
-  updateDocumentStatus,
-  getFormulariosWithStatus,
-  updateFormularioClienteStatus,
-};
-
 /**
  * Busca documentos de um cliente específico
  */
@@ -297,7 +279,7 @@ export async function getDependentes(clienteId: string): Promise<any[]> {
   }
 
   const result = await response.json();
-  return result.data || []; // The response structure from ClienteApp seems to be { data: [...] }
+  return result.data || [];
 }
 
 /**
@@ -325,3 +307,47 @@ export async function updateDocumentStatus(
 
   return response.json();
 }
+
+/**
+ * Solicita um novo documento (cria registro pendente no banco)
+ */
+export async function requestDocument(payload: {
+  clienteId: string;
+  tipo: string;
+  processoId?: string;
+  notificar?: boolean;
+  prazo?: number;
+}): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/juridico/documentos/solicitar`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error('Erro ao solicitar documento');
+  }
+
+  return response.json();
+}
+
+export default {
+    getProcessos,
+    getProcessosByResponsavel,
+    getProcessosVagos,
+    atribuirResponsavel,
+    removerResponsavel,
+    getFuncionariosJuridico,
+    getClientesVagos,
+    getAllClientesComResponsavel,
+    getClientesByResponsavel,
+    getFormulariosWithStatus,
+    updateFormularioClienteStatus,
+    getDocumentosCliente,
+    getDocumentosByProcesso,
+    getDependentes,
+    updateDocumentStatus,
+    requestDocument
+};

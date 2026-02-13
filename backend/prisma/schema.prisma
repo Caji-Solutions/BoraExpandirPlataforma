@@ -34,8 +34,10 @@ model Usuario {
 
 model Notificacao {
   id        String   @id @default(uuid()) // Gerado pelo Prisma
+  titulo    String
   mensagem  String
   lida      Boolean  @default(false)
+  dataPrazo DateTime? @map("data_prazo")
   criadoEm  DateTime @default(now()) @map("criado_em")
 
   usuarioId String   @db.Uuid @map("usuario_id")

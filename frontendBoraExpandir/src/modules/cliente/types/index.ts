@@ -94,12 +94,22 @@ export interface Process {
 
 export interface Notification {
   id: string;
-  clientId: string;
-  type: 'info' | 'warning' | 'error' | 'success';
-  title: string;
-  message: string;
-  read: boolean;
-  createdAt: Date;
+  // legacy/frontend fields
+  clientId?: string;
+  type?: 'info' | 'success' | 'warning' | 'error';
+  title?: string;
+  message?: string;
+  read?: boolean;
+  createdAt?: Date | string;
+  
+  // backend fields (snake_case)
+  usuario_id?: string;
+  cliente_id?: string;
+  titulo?: string;
+  mensagem?: string;
+  lida?: boolean;
+  data_prazo?: string;
+  criado_em?: string;
 }
 
 export interface RequiredDocument {

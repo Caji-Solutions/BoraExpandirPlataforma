@@ -27,6 +27,7 @@ import { TaskModule } from "../shared/components/TaskModule";
 const mockJuridicoData: ProcessData[] = [
   {
     id: "1",
+    clienteId: "1",
     status: "Preparando",
     fase: 1,
     processo: 1,
@@ -40,6 +41,7 @@ const mockJuridicoData: ProcessData[] = [
   },
   {
     id: "2",
+    clienteId: "2",
     status: "Análise",
     fase: 2,
     processo: 2,

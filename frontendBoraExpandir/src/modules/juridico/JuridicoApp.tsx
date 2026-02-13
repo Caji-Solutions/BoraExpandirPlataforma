@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Home, FolderOpen, FileSearch, CheckSquare, Settings, Users, FileStack, Dna } from "lucide-react";
 import { Sidebar } from "../../components/ui/Sidebar";
@@ -10,6 +10,7 @@ import { Config } from "../../components/ui/Config";
 import { DelegacaoDocumentos } from "./components/DelegacaoDocumentos";
 import { EquipeJuridica } from "./components/EquipeJuridica";
 import { ClientDNAPage } from "../../components/ui/ClientDNA";
+import juridicoService, { Processo } from "./services/juridicoService";
 
 import { ProcessTable, ProcessData } from "./components/ProcessTable";
 
@@ -24,6 +25,7 @@ const USUARIO_LOGADO = {
 const mockJuridicoData: ProcessData[] = [
   {
     id: "1",
+    clienteId: "1",
     status: "pendente",
     fase: 1,
     processo: 1,
@@ -37,6 +39,7 @@ const mockJuridicoData: ProcessData[] = [
   },
   {
     id: "2",
+    clienteId: "2",
     status: "pendente",
     fase: 2,
     processo: 2,
@@ -50,12 +53,67 @@ const mockJuridicoData: ProcessData[] = [
   }
 ];
 
-const MeusProcessos = () => (
-  <div className="p-8">
-    <h1 className="text-3xl font-bold mb-6">Meus Processos</h1>
-    <ProcessTable data={mockJuridicoData} />
-  </div>
-);
+const MeusProcessos = () => {
+  const [processes, setProcesses] = useState<ProcessData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchMyProcesses = async () => {
+      try {
+        setLoading(true);
+        // Simulated Lawyer ID for Carlos Lima
+        const LAWER_ID = '41f21e5c-dd93-4592-9470-e043badc3a18';
+        const data = await juridicoService.getProcessosByResponsavel(LAWER_ID);
+        
+        const mapped: ProcessData[] = data.map((p: Processo) => ({
+          id: p.id,
+          clienteId: p.cliente_id,
+          status: p.status,
+          fase: p.etapa_atual,
+          processo: parseInt(p.id.split('-')[0]) || 0, // Fallback for numeric process field
+          cliente: { nome: p.clientes?.nome || 'Cliente Desconhecido' },
+          servico: p.tipo_servico,
+          tipo: 'Processo Jurídico',
+          dataProtocolo: p.created_at ? new Date(p.created_at).toLocaleDateString() : 'N/A',
+          valorAcao: '---', // Not available in Processo interface
+          observacao: p.observacoes || ''
+        }));
+        
+        setProcesses(mapped);
+      } catch (err) {
+        console.error("Failed to fetch personal processes", err);
+        setError("Não foi possível carregar seus processos.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMyProcesses();
+  }, []);
+
+  if (loading) return (
+    <div className="p-8 text-center animate-pulse">
+      <p className="text-muted-foreground">Carregando seus processos...</p>
+    </div>
+  );
+
+  if (error) return (
+    <div className="p-8 text-center text-red-500">
+      <p>{error}</p>
+    </div>
+  );
+
+  return (
+    <div className="p-8 max-w-7xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Meus Processos</h1>
+        <p className="text-muted-foreground">Gestão dos seus casos em andamento</p>
+      </div>
+      <ProcessTable data={processes} />
+    </div>
+  );
+};
 
 import { TaskModule } from "../shared/components/TaskModule";
 

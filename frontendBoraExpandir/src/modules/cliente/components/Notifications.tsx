@@ -58,7 +58,7 @@ export function Notifications({
     : notifications
 
   const sortedNotifications = [...filteredNotifications].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    (a, b) => new Date(b.createdAt || b.criado_em || 0).getTime() - new Date(a.createdAt || a.criado_em || 0).getTime()
   )
 
   return (
@@ -120,7 +120,7 @@ export function Notifications({
           </Card>
         ) : (
           sortedNotifications.map((notification) => {
-            const config = notificationConfig[notification.type]
+            const config = notificationConfig[notification.type || 'info']
             const NotificationIcon = config.icon
 
             return (
@@ -142,10 +142,10 @@ export function Notifications({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-1">
                           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            {notification.title}
+                            {notification.title || notification.titulo}
                           </h3>
                           <Badge variant={config.badge} className="text-xs">
-                            {notification.type === 'info' ? 'Info' :
+                            {(notification.type || 'info') === 'info' ? 'Info' :
                              notification.type === 'success' ? 'Sucesso' :
                              notification.type === 'warning' ? 'Aviso' :
                              'Erro'}
@@ -155,11 +155,11 @@ export function Notifications({
                           )}
                         </div>
                         
-                        <p className="text-gray-700 dark:text-gray-300 mb-3">{notification.message}</p>
+                        <p className="text-gray-700 dark:text-gray-300 mb-3">{notification.message || notification.mensagem}</p>
                         
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-gray-500 dark:text-gray-400">
-                            {formatDate(notification.createdAt)}
+                            {formatDate((notification.createdAt || notification.criado_em) as any)}
                           </span>
                           
                           <div className="flex items-center space-x-2">
