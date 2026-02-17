@@ -116,7 +116,7 @@ export function ClientOrcamentoModal({
   const calculateTotal = () => {
     return Array.from(selectedDocIds).reduce((acc, id) => {
       const budget = allBudgets[id]
-      if (budget) return acc + budget.valor_orcamento
+      if (budget) return acc + (budget.preco_atualizado || budget.valor_orcamento)
       const mockValue = tipo === 'apostila' ? 180 : 250
       return acc + mockValue
     }, 0)
@@ -306,7 +306,7 @@ export function ClientOrcamentoModal({
                         <div className="text-right">
                           {budget ? (
                             <span className="text-sm font-bold text-gray-900 dark:text-white">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(budget.valor_orcamento)}
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(budget.preco_atualizado || budget.valor_orcamento)}
                             </span>
                           ) : (
                             <div className="flex flex-col items-end">

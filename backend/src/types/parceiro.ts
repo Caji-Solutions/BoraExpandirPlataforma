@@ -24,4 +24,5 @@ export interface ClienteDTO {
   status?: 'cadastrado' | 'em_conversa' | 'proposta_enviada' | 'fechado_pago'
   stage?: 'formularios' | 'aguardando_consultoria' | 'clientes_c2' | 'aguardando_assessoria' | 'assessoria_andamento' | 'assessoria_finalizada' | 'cancelado'
   previsao_chegada?: string
+  foto_perfil?: string
 }

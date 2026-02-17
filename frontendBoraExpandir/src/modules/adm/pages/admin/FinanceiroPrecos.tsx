@@ -119,7 +119,7 @@ export default function FinanceiroPrecos() {
                <div>
                   <p className="text-blue-100 text-sm font-medium">Traduções Pendentes</p>
                   <h3 className="text-3xl font-black mt-1">
-                    {orcamentos.filter(o => o.status === 'WAITING_ADM_APPROVAL').length}
+                    {orcamentos.filter(o => o.orcamento?.status === 'em_analise').length}
                   </h3>
                </div>
                <div className="p-3 bg-white/20 rounded-xl">
@@ -172,7 +172,7 @@ export default function FinanceiroPrecos() {
                   </td>
                 </tr>
               ) : filteredDocs.map((doc) => {
-                const isWaiting = doc.status === 'WAITING_ADM_APPROVAL'
+                const isWaiting = doc.orcamento?.status === 'em_analise'
                 const basePrice = doc.orcamento?.valor_orcamento || 0
                 const markup = editingMarkups[doc.id] || 0
                 const finalPrice = calculateFinalPrice(basePrice, markup)

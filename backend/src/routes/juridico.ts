@@ -52,6 +52,9 @@ juridico.get('/processos/vagos', JuridicoController.getProcessosVagos.bind(Jurid
 // Lista processos de um responsável específico
 juridico.get('/processos/por-responsavel/:responsavelId', JuridicoController.getProcessosByResponsavel.bind(JuridicoController))
 
+// Atualizar etapa do processo
+juridico.patch('/processo/:processoId/etapa', JuridicoController.updateEtapaProcesso.bind(JuridicoController))
+
 // =============================================
 // ROTAS DE CLIENTES
 // =============================================

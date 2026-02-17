@@ -598,6 +598,35 @@ class JuridicoController {
             })
         }
     }
+
+    // PATCH /juridico/processo/:processoId/etapa - Atualizar etapa do processo
+    async updateEtapaProcesso(req: any, res: any) {
+        try {
+            const { processoId } = req.params
+            const { etapa } = req.body
+
+            if (!processoId) {
+                return res.status(400).json({ message: 'processoId é obrigatório' })
+            }
+
+            if (etapa === undefined || isNaN(parseInt(etapa))) {
+                return res.status(400).json({ message: 'etapa válida é obrigatória' })
+            }
+
+            const processo = await JuridicoRepository.updateEtapaProcesso(processoId, parseInt(etapa))
+
+            return res.status(200).json({
+                message: 'Etapa do processo atualizada com sucesso',
+                data: processo
+            })
+        } catch (error: any) {
+            console.error('Erro ao atualizar etapa do processo:', error)
+            return res.status(500).json({ 
+                message: 'Erro ao atualizar etapa do processo', 
+                error: error.message 
+            })
+        }
+    }
 }
 
 export default new JuridicoController()

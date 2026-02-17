@@ -89,8 +89,8 @@ export default function Tradutora() {
         clienteNome: item.clientes?.nome || 'N/A',
         parIdiomas: { origem: 'PT', destino: 'IT' }, // Default for now
         status: 
-          item.status === 'ANALYZING_TRANSLATION' ? ('aprovado' as const) :
-          item.status === 'WAITING_QUOTE_APPROVAL' ? ('respondido' as const) : 
+          item.status === 'disponivel' ? ('aprovado' as const) :
+          item.status === 'WAITING_QUOTE_APPROVAL' || item.status === 'em_analise' ? ('respondido' as const) : 
           ('pendente' as const),
         storagePath: item.storage_path,
         publicUrl: item.public_url,

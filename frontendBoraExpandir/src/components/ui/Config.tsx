@@ -34,11 +34,8 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
     }
   }, [client])
 
-  // Find profile photo
-  const profilePhotoDoc = documents.find(d => d.type === 'profile_photo')
-  const profilePhotoUrl = profilePhotoDoc?.fileUrl 
-    ? `${profilePhotoDoc.fileUrl}?t=${profilePhotoDoc.updatedAt ? new Date(profilePhotoDoc.updatedAt).getTime() : new Date(profilePhotoDoc.uploadDate).getTime()}` 
-    : null
+  // Get profile photo
+  const profilePhotoUrl = client?.avatarUrl || null
 
   const handleEdit = () => {
     // Reset form data to current values before editing

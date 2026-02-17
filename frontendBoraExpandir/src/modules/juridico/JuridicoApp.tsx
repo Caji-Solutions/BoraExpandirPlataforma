@@ -53,67 +53,69 @@ const mockJuridicoData: ProcessData[] = [
   }
 ];
 
-const MeusProcessos = () => {
-  const [processes, setProcesses] = useState<ProcessData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const MeusProcessos = () => {
+    const [processes, setProcesses] = useState<ProcessData[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchMyProcesses = async () => {
-      try {
-        setLoading(true);
-        // Simulated Lawyer ID for Carlos Lima
-        const LAWER_ID = '41f21e5c-dd93-4592-9470-e043badc3a18';
-        const data = await juridicoService.getProcessosByResponsavel(LAWER_ID);
-        
-        const mapped: ProcessData[] = data.map((p: Processo) => ({
-          id: p.id,
-          clienteId: p.cliente_id,
-          status: p.status,
-          fase: p.etapa_atual,
-          processo: parseInt(p.id.split('-')[0]) || 0, // Fallback for numeric process field
-          cliente: { nome: p.clientes?.nome || 'Cliente Desconhecido' },
-          servico: p.tipo_servico,
-          tipo: 'Processo Jurídico',
-          dataProtocolo: p.created_at ? new Date(p.created_at).toLocaleDateString() : 'N/A',
-          valorAcao: '---', // Not available in Processo interface
-          observacao: p.observacoes || ''
-        }));
-        
-        setProcesses(mapped);
-      } catch (err) {
-        console.error("Failed to fetch personal processes", err);
-        setError("Não foi possível carregar seus processos.");
-      } finally {
-        setLoading(false);
-      }
-    };
+    useEffect(() => {
+      const fetchMyProcesses = async () => {
+        try {
+          setLoading(true);
+          // Simulated Lawyer ID for Carlos Lima
+          const LAWER_ID = '41f21e5c-dd93-4592-9470-e043badc3a18';
+          const data = await juridicoService.getProcessosByResponsavel(LAWER_ID);
+          
+          const mapped: ProcessData[] = data.map((p: Processo) => ({
+            id: p.id,
+            clienteId: p.cliente_id,
+            status: p.status,
+            fase: p.etapa_atual,
+            processo: parseInt(p.id.split('-')[0]) || 0,
+            cliente: { nome: p.clientes?.nome || 'Cliente Desconhecido' },
+            servico: p.tipo_servico,
+            tipo: 'Processo Jurídico',
+            dataProtocolo: p.created_at ? new Date(p.created_at).toLocaleDateString() : 'N/A',
+            valorAcao: '---',
+            observacao: p.observacoes || ''
+          }));
+          
+          setProcesses(mapped);
+        } catch (err) {
+          console.error("Failed to fetch personal processes", err);
+          setError("Não foi possível carregar seus processos.");
+        } finally {
+          setLoading(false);
+        }
+      };
 
-    fetchMyProcesses();
-  }, []);
+      fetchMyProcesses();
+    }, []);
 
-  if (loading) return (
-    <div className="p-8 text-center animate-pulse">
-      <p className="text-muted-foreground">Carregando seus processos...</p>
-    </div>
-  );
-
-  if (error) return (
-    <div className="p-8 text-center text-red-500">
-      <p>{error}</p>
-    </div>
-  );
-
-  return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Meus Processos</h1>
-        <p className="text-muted-foreground">Gestão dos seus casos em andamento</p>
+    if (loading) return (
+      <div className="p-8 text-center animate-pulse">
+        <p className="text-muted-foreground">Carregando seus processos...</p>
       </div>
-      <ProcessTable data={processes} />
-    </div>
-  );
-};
+    );
+
+    if (error) return (
+      <div className="p-8 text-center text-red-500">
+        <p>{error}</p>
+      </div>
+    );
+
+    return (
+      <div className="p-8 max-w-7xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Meus Processos</h1>
+          <p className="text-muted-foreground">Gestão dos seus casos em andamento</p>
+        </div>
+        <ProcessTable 
+          data={processes} 
+        />
+      </div>
+    );
+  };
 
 import { TaskModule } from "../shared/components/TaskModule";
 
@@ -128,10 +130,6 @@ const Tarefas = () => (
 
 
 const Index = () => {
-  const [selectedProcess, setSelectedProcess] = useState<{
-    clientName: string;
-    visaType: string;
-  } | null>(null);
 
   // Configuração da sidebar seguindo o padrão do projeto
   // Itens exclusivos para supervisor são adicionados condicionalmente
@@ -166,40 +164,15 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Sidebar groups={sidebarGroups} />
 
-      <main className="ml-64 p-6">
+      <main className="ml-64 p-6 text-foreground">
 
-
-        {selectedProcess && (
-          <div className="border-b bg-muted/30 p-4 -m-6 mb-6">
-            <button
-              onClick={() => setSelectedProcess(null)}
-              className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-2"
-            >
-              ← Voltar para Fila de Análise
-            </button>
-          </div>
-        )}
-
-        {selectedProcess ? (
-          <ReviewPanel
-            clientName={selectedProcess.clientName}
-            visaType={selectedProcess.visaType}
-          />
-        ) : (
-          <Routes>
+        <Routes>
             <Route index element={<Dashboard />} />
             <Route path="processos" element={<MeusProcessos />} />
             <Route
               path="analise"
               element={
-                <ProcessQueue
-                  onSelectProcess={(process) =>
-                    setSelectedProcess({
-                      clientName: process.clientName,
-                      visaType: process.serviceType,
-                    })
-                  }
-                />
+                <ProcessQueue />
               }
             />
             <Route path="tarefas" element={<Tarefas />} />
@@ -217,7 +190,6 @@ const Index = () => {
 
             <Route path="*" element={<Navigate to="." replace />} />
           </Routes>
-        )}
       </main>
     </div>
   );

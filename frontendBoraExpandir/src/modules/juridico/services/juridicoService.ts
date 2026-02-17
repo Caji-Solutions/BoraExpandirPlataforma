@@ -333,6 +333,25 @@ export async function requestDocument(payload: {
   return response.json();
 }
 
+/**
+ * Atualiza a etapa (fase) de um processo
+ */
+export async function updateProcessEtapa(processoId: string, etapa: number): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/juridico/processo/${processoId}/etapa`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ etapa }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Erro ao atualizar etapa do processo');
+  }
+
+  return response.json();
+}
+
 export default {
     getProcessos,
     getProcessosByResponsavel,
@@ -349,5 +368,6 @@ export default {
     getDocumentosByProcesso,
     getDependentes,
     updateDocumentStatus,
-    requestDocument
+    requestDocument,
+    updateProcessEtapa
 };

@@ -1,5 +1,5 @@
-import React from 'react';
-import { FileText, ExternalLink, ClipboardCheck } from 'lucide-react';
+import { FileText, ExternalLink, ClipboardCheck, FilePlus, Eye, GitBranch } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface ProcessActionProps {
     clienteId: string;
@@ -12,7 +12,19 @@ export function ProcessAction({
     processoId,
     onActionClick
 }: ProcessActionProps) {
+    const navigate = useNavigate();
+
     const handleAction = (action: string) => {
+        if (action === 'ver_processo' && processoId) {
+            navigate(`/juridico/processos?expand=${processoId}`);
+            return;
+        }
+
+        if (action === 'ver_documentos' && processoId) {
+            navigate(`/juridico/analise?processoId=${processoId}`);
+            return;
+        }
+
         if (onActionClick) {
             onActionClick(action, { clienteId, processoId });
         }
@@ -52,14 +64,40 @@ export function ProcessAction({
                 </button>
 
                 <button 
-                    onClick={() => handleAction('agendar_consultoria')}
+                    onClick={() => handleAction('solicitar_formulario')}
                     className="w-full text-left p-3 text-xs bg-card hover:bg-muted border border-border rounded-xl transition-all flex justify-between items-center group shadow-sm hover:shadow-md"
                 >
                     <div className="flex items-center gap-2">
                         <div className="p-1.5 bg-amber-100 rounded-lg text-amber-600 transition-colors group-hover:bg-amber-600 group-hover:text-white">
-                            <ExternalLink className="h-3.5 w-3.5" />
+                            <FilePlus className="h-3.5 w-3.5" />
                         </div>
-                        <span className="font-semibold">Agendar Consultoria</span>
+                        <span className="font-semibold">Solicitar Formulário</span>
+                    </div>
+                    <ExternalLink className="h-3 w-3 opacity-30 group-hover:opacity-100 transition-opacity" />
+                </button>
+
+                <button 
+                    onClick={() => handleAction('ver_documentos')}
+                    className="w-full text-left p-3 text-xs bg-card hover:bg-muted border border-border rounded-xl transition-all flex justify-between items-center group shadow-sm hover:shadow-md"
+                >
+                    <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-green-100 rounded-lg text-green-600 transition-colors group-hover:bg-green-600 group-hover:text-white">
+                            <Eye className="h-3.5 w-3.5" />
+                        </div>
+                        <span className="font-semibold">Ver Documentos</span>
+                    </div>
+                    <ExternalLink className="h-3 w-3 opacity-30 group-hover:opacity-100 transition-opacity" />
+                </button>
+
+                <button 
+                    onClick={() => handleAction('ver_processo')}
+                    className="w-full text-left p-3 text-xs bg-card hover:bg-muted border border-border rounded-xl transition-all flex justify-between items-center group shadow-sm hover:shadow-md"
+                >
+                    <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-slate-100 rounded-lg text-slate-600 transition-colors group-hover:bg-slate-600 group-hover:text-white">
+                            <GitBranch className="h-3.5 w-3.5" />
+                        </div>
+                        <span className="font-semibold">Ver Processo</span>
                     </div>
                     <ExternalLink className="h-3 w-3 opacity-30 group-hover:opacity-100 transition-opacity" />
                 </button>

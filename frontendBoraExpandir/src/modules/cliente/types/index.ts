@@ -9,6 +9,7 @@ export interface Client {
   isPartner?: boolean;
   isClient?: boolean;
   createdAt: Date;
+  avatarUrl?: string;
 }
 
 export interface Referral {

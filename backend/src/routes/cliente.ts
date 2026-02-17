@@ -39,6 +39,7 @@ cliente.get('/clientesbyparceiro/:parceiroId', ClienteController.getByParceiro.b
 cliente.get('/clientes', ClienteController.getAllClientes.bind(ClienteController))
 
 // Rotas de documentos
+cliente.get('/:clienteId', ClienteController.getCliente.bind(ClienteController))
 cliente.get('/:clienteId/documentos-requeridos', ClienteController.getDocumentosRequeridos.bind(ClienteController))
 cliente.get('/:clienteId/dependentes', ClienteController.getDependentes.bind(ClienteController))
 cliente.get('/:clienteId/processos', ClienteController.getProcessos.bind(ClienteController))

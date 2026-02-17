@@ -141,7 +141,7 @@ export function TranslationQuoteModal({
                   <span className="text-xs text-gray-400 uppercase tracking-widest font-medium">Valor da Tradução</span>
                   <span className="text-4xl font-black text-gray-900 dark:text-white">
                     {allBudgets[documentoId] 
-                      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(allBudgets[documentoId].valor_orcamento)
+                      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(allBudgets[documentoId].preco_atualizado || allBudgets[documentoId].valor_orcamento)
                       : 'Sob consulta'}
                   </span>
                 </div>

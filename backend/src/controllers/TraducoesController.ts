@@ -104,8 +104,8 @@ class TraducoesController {
       const lineItems = []
       for (const docId of documentoIds) {
         const orcamento = await TraducoesRepository.getOrcamentoByDocumento(docId)
-        if (orcamento && (orcamento.valor_orcamento > 0 || orcamento.valor_final > 0)) {
-          const finalAmount = orcamento.valor_final || orcamento.valor_orcamento
+        if (orcamento && (orcamento.valor_orcamento > 0 || orcamento.preco_atualizado > 0)) {
+          const finalAmount = orcamento.preco_atualizado || orcamento.valor_orcamento
           lineItems.push({
             name: `Serviço para documento ID ${docId}`,
             amount: Math.round(Number(finalAmount) * 100), // centavos

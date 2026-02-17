@@ -68,6 +68,20 @@ class ClienteRepository {
         return cliente
     }
 
+    async getClienteById(id: string) {
+        const { data, error } = await supabase
+            .from('clientes')
+            .select('*')
+            .eq('id', id)
+            .single()
+
+        if (error) {
+            console.error('Erro ao buscar cliente por ID:', error)
+            throw error
+        }
+        return data
+    }
+
     async getClientByParceiroId(parceiroId: string) {
         // Ajuste o nome da coluna conforme seu schema (ex.: parceiro_id)
         const { data, error } = await supabase
@@ -567,7 +581,8 @@ class ClienteRepository {
                     id,
                     tipo_servico,
                     status,
-                    etapa_atual
+                    etapa_atual,
+                    responsavel_id
                 )
             `)
             .order('created_at', { ascending: false })
@@ -613,53 +628,23 @@ class ClienteRepository {
 
         const publicUrl = urlData.publicUrl
 
-        // 2. Upsert Documento record
-        // Check if exists
-        const { data: existingDoc, error: fetchError } = await supabase
-            .from('documentos')
-            .select('id')
-            .eq('cliente_id', params.clienteId)
-            .eq('tipo', documentType)
+        // 2. Update Cliente record with the new photo URL
+        const { data: updatedCliente, error: updateError } = await supabase
+            .from('clientes')
+            .update({
+                foto_perfil: publicUrl,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', params.clienteId)
+            .select()
             .single()
 
-        if (existingDoc) {
-             // Update
-             const { data: updatedDoc, error: updateError } = await supabase
-                .from('documentos')
-                .update({
-                    nome_arquivo: params.fileName,
-                    storage_path: filePath, // Should be path (e.g. "clientId/profile.jpg")
-                    public_url: publicUrl,
-                    content_type: params.contentType,
-                    atualizado_em: new Date().toISOString()
-                })
-                .eq('id', existingDoc.id)
-                .select()
-                .single()
-            
-            if (updateError) throw updateError
-            return updatedDoc
-        } else {
-            // Create
-            const { data: newDoc, error: createError } = await supabase
-                .from('documentos')
-                .insert([{
-                    cliente_id: params.clienteId,
-                    tipo: documentType,
-                    nome_original: params.fileName,
-                    nome_arquivo: params.fileName,
-                    storage_path: filePath,
-                    public_url: publicUrl,
-                    content_type: params.contentType,
-                    status: 'APPROVED', // Profile photos don't need analysis?
-                    atualizado_em: new Date().toISOString()
-                }])
-                .select()
-                .single()
-
-            if (createError) throw createError
-            return newDoc
+        if (updateError) {
+            console.error('Erro ao atualizar foto_perfil no cliente:', updateError)
+            throw updateError
         }
+
+        return updatedCliente
     }
 
     async getNotificacoes(clienteId: string): Promise<any[]> {

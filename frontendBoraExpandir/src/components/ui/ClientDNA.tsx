@@ -92,25 +92,33 @@ export function ClientDNAPage() {
             const result = await response.json()
 
             if (result.data) {
-                const mappedClientes: ClientDNAData[] = result.data.map((item: any) => {
-                    const firstProcess = item.processos && item.processos.length > 0 ? item.processos[0] : null
+                const LAWER_ID = '41f21e5c-dd93-4592-9470-e043badc3a18';
+                
+                const mappedClientes: ClientDNAData[] = result.data
+                    .filter((item: any) => {
+                        // Filtra apenas clientes que possuem processos atribuídos ao advogado logado
+                        return item.processos && item.processos.some((p: any) => p.responsavel_id === LAWER_ID);
+                    })
+                    .map((item: any) => {
+                        // Encontra o processo específico deste advogado (ou o primeiro caso tenha múltiplos)
+                        const userProcess = item.processos.find((p: any) => p.responsavel_id === LAWER_ID) || item.processos[0];
 
-                    return {
-                        id: item.client_id || item.id,
-                        true_id: item.id,
-                        processo_id: firstProcess?.id,
-                        nome: item.nome || 'Sem nome',
-                        email: item.email || 'Sem e-mail',
-                        telefone: item.whatsapp || '',
-                        tipoAssessoria: firstProcess?.tipo_servico || 'Assessoria',
-                        contratoAtivo: item.status !== 'cancelado',
-                        categoria: firstProcess?.status || item.stage || (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status || 'formularios')),
-                        previsaoChegada: item.previsao_chegada || '',
-                        priority: 'medium',
-                        notes: [],
-                        historico: []
-                    }
-                })
+                        return {
+                            id: item.client_id || item.id,
+                            true_id: item.id,
+                            processo_id: userProcess?.id,
+                            nome: item.nome || 'Sem nome',
+                            email: item.email || 'Sem e-mail',
+                            telefone: item.whatsapp || '',
+                            tipoAssessoria: userProcess?.tipo_servico || 'Assessoria',
+                            contratoAtivo: item.status !== 'cancelado',
+                            categoria: userProcess?.status || item.stage || (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status || 'formularios')),
+                            previsaoChegada: item.previsao_chegada || '',
+                            priority: 'medium',
+                            notes: [],
+                            historico: []
+                        }
+                    })
                 setClientes(mappedClientes)
             }
             setError(null)

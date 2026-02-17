@@ -135,6 +135,30 @@ class ClienteController {
     }
   }
 
+  // GET /cliente/:clienteId
+  async getCliente(req: any, res: any) {
+    try {
+      const { clienteId } = req.params
+
+      if (!clienteId) {
+        return res.status(400).json({ message: 'clienteId é obrigatório' })
+      }
+
+      const cliente = await ClienteRepository.getClienteById(clienteId)
+
+      return res.status(200).json({
+        message: 'Cliente recuperado com sucesso',
+        data: cliente
+      })
+    } catch (error: any) {
+      console.error('Erro ao buscar cliente:', error)
+      return res.status(500).json({
+        message: 'Erro ao buscar cliente',
+        error: error.message
+      })
+    }
+  }
+
   async register(req: any, res: any) {
     try {
 
@@ -382,7 +406,8 @@ class ClienteController {
       const validStatuses = [
         'PENDING', 'ANALYZING', 'WAITING_APOSTILLE', 'ANALYZING_APOSTILLE',
         'WAITING_TRANSLATION', 'ANALYZING_TRANSLATION', 'WAITING_TRANSLATION_QUOTE', 
-        'WAITING_ADM_APPROVAL', 'WAITING_QUOTE_APPROVAL', 'APPROVED', 'REJECTED'
+        'WAITING_ADM_APPROVAL', 'WAITING_QUOTE_APPROVAL', 'APPROVED', 'REJECTED',
+        'solicitado', 'em_analise', 'disponivel'
       ];
 
       if (!status || !validStatuses.includes(status)) {

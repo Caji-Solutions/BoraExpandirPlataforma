@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   ArrowLeft, 
   Download, 
@@ -56,6 +56,7 @@ export interface FormularioWithStatus {
 
 // Tipos para o fluxo de análise
 export type AnalysisStage = 'initial_analysis' | 'apostille_check' | 'translation_check' | 'completed';
+export type TabType = 'documentos' | 'formularios' | 'pendentes' | 'aprovados' | 'analise' | 'espera';
 
 export interface JuridicoDocument {
   id: string;
@@ -100,8 +101,8 @@ export function ProcessAnalysis({
   onBack,
   onUpdateDocument 
 }: ProcessAnalysisProps) {
-  // Tab state: 'documents' or 'forms'
-  const [activeTab, setActiveTab] = useState<'documents' | 'forms'>('documents');
+  // Tab state: 'documentos' | 'formularios' | 'pendentes' | 'aprovados' | 'analise' | 'espera'
+  const [activeTab, setActiveTab] = useState<TabType>('documentos');
   
   // Formulários com status
   const [formularios, setFormularios] = useState<FormularioWithStatus[]>([]);
@@ -120,9 +121,40 @@ export function ProcessAnalysis({
   const selectedDoc = initialDocs.find(d => d.id === selectedDocId) || initialDocs[0];
   const selectedForm = formularios.find(f => f.id === selectedFormId);
 
+  // Filtragem unificada
+  const filteredItems = useMemo(() => {
+    if (activeTab === 'formularios') return formularios;
+    
+    return initialDocs.filter(doc => {
+      switch(activeTab) {
+        case 'documentos': return true;
+        case 'pendentes': return doc.status === 'rejected';
+        case 'aprovados': return doc.status === 'approved';
+        case 'analise': return ['analyzing', 'analyzing_apostille', 'analyzing_translation'].includes(doc.status);
+        case 'espera': return ['waiting_apostille', 'waiting_translation'].includes(doc.status);
+        default: return true;
+      }
+    });
+  }, [activeTab, initialDocs, formularios]);
+
+  // Efeito para garantir seleção ao trocar de aba
+  useEffect(() => {
+    if (filteredItems.length > 0) {
+      if (activeTab === 'formularios') {
+        if (!selectedFormId || !filteredItems.find(f => f.id === selectedFormId)) {
+          setSelectedFormId(filteredItems[0].id);
+        }
+      } else {
+        if (!selectedDocId || !filteredItems.find(d => d.id === selectedDocId)) {
+          setSelectedDocId(filteredItems[0].id);
+        }
+      }
+    }
+  }, [filteredItems, activeTab]);
+
   // Fetch formulários when tab changes to 'forms'
   useEffect(() => {
-    if (activeTab === 'forms' && clienteId) {
+    if (activeTab === 'formularios' && clienteId) {
       const fetchFormularios = async () => {
         setFormulariosLoading(true);
         try {
@@ -227,165 +259,176 @@ export function ProcessAnalysis({
 
   return (
     <>
-    <div className="flex flex-col h-[calc(100vh-3rem)] border rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-900 shadow-sm">
-      {/* Top Navigation */}
-      <div className="h-14 border-b bg-white dark:bg-gray-800 flex items-center px-4 justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onBack}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-lg font-bold text-gray-900 dark:text-white">
-              {memberName}
-            </h1>
-            <p className="text-xs text-gray-500">
-              Processo de {clientName}
-            </p>
+    <div className="flex flex-col h-[calc(100vh-3rem)] border rounded-2xl overflow-hidden bg-white dark:bg-gray-900 shadow-xl">
+      {/* Header Premium com Abas */}
+      <div className="bg-white dark:bg-gray-800 border-b shrink-0 shadow-sm z-20">
+        <div className="h-20 flex items-center px-8 justify-between">
+          <div className="flex items-center gap-6">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={onBack} 
+              className="h-11 w-11 rounded-2xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-primary hover:text-primary transition-all shadow-sm"
+            >
+              <ArrowLeft className="h-6 w-6" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter">
+                {clientName}
+              </h1>
+              <div className="flex items-center gap-3 mt-1 text-gray-500">
+                <Badge variant="outline" className="text-[9px] font-black uppercase tracking-[0.2em] border-primary/20 bg-primary/5 text-primary py-0.5">
+                  Fila de Análise Jurídica
+                </Badge>
+                <div className="w-1 h-1 rounded-full bg-gray-300" />
+                <p className="text-xs font-bold tracking-tight">
+                  {memberName}
+                </p>
+              </div>
+            </div>
           </div>
+          <div className="flex items-center gap-2">
+            <Badge className="bg-primary text-white font-bold px-3 py-1">
+              {filteredItems.length} {activeTab === 'formularios' ? 'Formulários' : 'Documentos'}
+            </Badge>
+          </div>
+        </div>
+
+        {/* Barra de Abas de Filtragem */}
+        <div className="px-8 flex gap-1 overflow-x-auto no-scrollbar border-t bg-gray-50/30 dark:bg-gray-900/10">
+          {[
+            { id: 'documentos', label: 'Documentos', icon: FileText },
+            { id: 'formularios', label: 'Formulários', icon: ClipboardList },
+            { id: 'pendentes', label: 'Documentos Pendentes', icon: AlertCircle },
+            { id: 'aprovados', label: 'Documentos Aprovados', icon: CheckCircle2 },
+            { id: 'analise', label: 'Em Análise', icon: Eye },
+            { id: 'espera', label: 'Em Espera', icon: Clock },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as TabType)}
+                className={cn(
+                  "flex items-center gap-2.5 px-6 py-4 font-black text-[10px] uppercase tracking-widest transition-all relative border-b-2",
+                  isActive 
+                    ? "text-primary border-primary bg-primary/5" 
+                    : "text-gray-400 border-transparent hover:text-gray-600 hover:bg-gray-100/50"
+                )}
+              >
+                <Icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-gray-400")} />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar - Document/Forms List */}
-        <div className="w-80 border-r bg-white dark:bg-gray-800 flex flex-col shrink-0">
-          {/* Tabs Header */}
-          <div className="p-2 border-b flex gap-1">
-            <button
-              onClick={() => setActiveTab('documents')}
-              className={cn(
-                "flex-1 px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all",
-                activeTab === 'documents'
-                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                  : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
-              )}
-            >
-              <FileText className="h-4 w-4" />
-              Documentos
-              <span className={cn(
-                "px-1.5 py-0.5 text-xs rounded-full",
-                activeTab === 'documents' ? "bg-blue-200 text-blue-800" : "bg-gray-200 text-gray-600"
-              )}>
-                {initialDocs.length}
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveTab('forms')}
-              className={cn(
-                "flex-1 px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all",
-                activeTab === 'forms'
-                  ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
-                  : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
-              )}
-            >
-              <ClipboardList className="h-4 w-4" />
-              Formulários
-              {formularios.length > 0 && (
-                <span className={cn(
-                  "px-1.5 py-0.5 text-xs rounded-full",
-                  activeTab === 'forms' ? "bg-purple-200 text-purple-800" : "bg-gray-200 text-gray-600"
-                )}>
-                  {formularios.length}
-                </span>
-              )}
-            </button>
+        {/* Sidebar - Lista Filtrada */}
+        <div className="w-85 border-r bg-white dark:bg-gray-800 flex flex-col shrink-0 shadow-lg z-10">
+          <div className="p-4 border-b bg-gray-50/50 dark:bg-gray-900/20">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                {activeTab === 'formularios' ? 'Formulários do Processo' : 'Documentos para Revisão'}
+              </h3>
+            </div>
           </div>
           
           <ScrollArea className="flex-1">
-            {activeTab === 'documents' ? (
-              /* Documents List */
-              <div className="p-3 space-y-2">
-                {initialDocs.map(doc => (
-                  <div 
-                    key={doc.id}
-                    onClick={() => setSelectedDocId(doc.id)}
-                    className={cn(
-                      "p-3 rounded-lg cursor-pointer transition-all border text-sm",
-                      selectedDocId === doc.id 
-                        ? "bg-blue-50 border-blue-200 shadow-sm ring-1 ring-blue-200 dark:bg-blue-900/20 dark:border-blue-800" 
-                        : "hover:bg-gray-50 border-transparent hover:border-gray-200 dark:hover:bg-gray-700/50"
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      <FileText className={cn(
-                        "h-5 w-5 mt-0.5",
-                        selectedDocId === doc.id ? "text-blue-600" : "text-gray-400"
-                      )} />
-                      <div className="flex-1 min-w-0">
-                        <p className={cn(
-                          "font-medium truncate",
-                          selectedDocId === doc.id ? "text-blue-900 dark:text-blue-100" : "text-gray-700 dark:text-gray-300"
-                        )}>
-                          {doc.name}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1 capitalize">
-                          Status: {doc.status.replace('_', ' ')}
-                        </p>
-                      </div>
-                    </div>
+            <div className="p-4 space-y-3">
+              {formulariosLoading && activeTab === 'formularios' ? (
+                <div className="flex flex-col items-center justify-center py-20 space-y-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary opacity-50" />
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Carregando...</p>
+                </div>
+              ) : filteredItems.length === 0 ? (
+                <div className="text-center py-20 px-8">
+                  <div className="h-16 w-16 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-dashed border-gray-200">
+                    <FileText className="h-8 w-8 text-gray-200" />
                   </div>
-                ))}
-              </div>
-            ) : (
-              /* Forms List */
-              <div className="p-3 space-y-2">
-                {formulariosLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
-                  </div>
-                ) : formularios.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400 text-sm">
-                    Nenhum formulário enviado
-                  </div>
-                ) : (
-                  formularios.map(form => (
+                  <p className="text-xs font-black text-gray-300 uppercase tracking-widest">Nenhum item nesta categoria</p>
+                </div>
+              ) : (
+                filteredItems.map(item => {
+                  const isSelected = activeTab === 'formularios' ? selectedFormId === item.id : selectedDocId === item.id;
+                  const isReceived = 'status' in item && item.status === 'received';
+                  const isApproved = 'status' in item && item.status === 'approved';
+                  
+                  return (
                     <div 
-                      key={form.id}
-                      onClick={() => setSelectedFormId(form.id)}
+                      key={item.id}
+                      onClick={() => activeTab === 'formularios' ? setSelectedFormId(item.id) : setSelectedDocId(item.id)}
                       className={cn(
-                        "p-3 rounded-lg cursor-pointer transition-all border text-sm",
-                        selectedFormId === form.id 
-                          ? "bg-purple-50 border-purple-200 shadow-sm ring-1 ring-purple-200 dark:bg-purple-900/20 dark:border-purple-800" 
-                          : "hover:bg-gray-50 border-transparent hover:border-gray-200 dark:hover:bg-gray-700/50"
+                        "p-5 rounded-2xl cursor-pointer transition-all border-2 group relative overflow-hidden",
+                        isSelected 
+                          ? "bg-primary/5 border-primary shadow-xl ring-1 ring-primary/10" 
+                          : isApproved
+                            ? "bg-green-50 border-green-500/50 dark:bg-green-900/20 dark:border-green-600/50 shadow-md"
+                            : "bg-white border-gray-100 hover:border-gray-200 dark:bg-gray-800 dark:border-gray-700/50 shadow-sm"
                       )}
                     >
-                      <div className="flex items-start gap-3">
-                        <ClipboardList className={cn(
-                          "h-5 w-5 mt-0.5",
-                          selectedFormId === form.id ? "text-purple-600" : "text-gray-400"
-                        )} />
+                      {isSelected && <div className="absolute top-0 left-0 w-1.5 h-full bg-primary" />}
+                      {isApproved && !isSelected && (
+                        <div className="absolute top-0 left-0 w-2.5 h-full bg-green-500 shadow-[2px_0_10px_rgba(34,197,94,0.3)]" />
+                      )}
+                      
+                      <div className="flex items-start gap-5">
+                        <div className={cn(
+                          "h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 transition-all relative",
+                          isSelected 
+                            ? "bg-primary text-white shadow-lg shadow-primary/30" 
+                            : isApproved
+                              ? "bg-green-600 text-white shadow-lg shadow-green-500/40"
+                              : "bg-gray-50 text-gray-400 group-hover:bg-primary/10 group-hover:text-primary"
+                        )}>
+                          {activeTab === 'formularios' ? <ClipboardList className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
+                          {isApproved && !isSelected && (
+                            <div className="absolute -top-1 -right-1 bg-white dark:bg-gray-900 rounded-full p-0.5 shadow-sm">
+                              <CheckCircle2 className="h-4 w-4 text-green-600" />
+                            </div>
+                          )}
+                        </div>
                         <div className="flex-1 min-w-0">
                           <p className={cn(
-                            "font-medium truncate",
-                            selectedFormId === form.id ? "text-purple-900 dark:text-purple-100" : "text-gray-700 dark:text-gray-300"
+                            "font-black text-sm truncate leading-tight tracking-tight",
+                            isSelected ? "text-gray-900 dark:text-white" : 
+                            isApproved ? "text-green-900 dark:text-green-100" :
+                            "text-gray-600 dark:text-gray-300"
                           )}>
-                            {form.name}
+                            {item.name}
                           </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            {form.status === 'waiting' ? (
-                              <Badge variant="warning" className="text-[10px] px-1.5 py-0.5 flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                Aguardando
+                          <div className="mt-2.5 flex flex-wrap gap-2">
+                            {activeTab === 'formularios' ? (
+                              <Badge variant={isReceived ? "success" : "warning"} className="text-[10px] font-black uppercase tracking-wider py-0 px-2 flex items-center gap-1">
+                                {isReceived ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                {isReceived ? 'Recebido' : 'Aguardando'}
                               </Badge>
                             ) : (
-                              <Badge variant="success" className="text-[10px] px-1.5 py-0.5 flex items-center gap-1">
-                                <CheckCircle2 className="h-3 w-3" />
-                                Recebido
+                              <Badge variant={isApproved ? "success" : "outline"} className={cn(
+                                "text-[9px] font-black uppercase tracking-wider py-0 px-2 border-2",
+                                isApproved ? "bg-green-600 text-white border-transparent" :
+                                (item as JuridicoDocument).status === 'rejected' ? "border-red-500/30 text-red-600" :
+                                "border-gray-200 text-gray-500"
+                              )}>
+                                {isApproved ? 'Aprovado' : (item as JuridicoDocument).status.replace('_', ' ')}
                               </Badge>
                             )}
                           </div>
                         </div>
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
-            )}
+                  );
+                })
+              )}
+            </div>
           </ScrollArea>
         </div>
 
-        {/* Main Content - Review Area */}
-        <div className="flex-1 flex flex-col min-w-0 bg-gray-100 dark:bg-gray-900/50">
-          {activeTab === 'documents' ? (
+        {/* Área de Revisão Principal */}
+        <div className="flex-1 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900/50">
+          {activeTab !== 'formularios' ? (
             /* Documents Review */
             selectedDoc ? (
               <>

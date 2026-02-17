@@ -18,7 +18,7 @@ import {
   mockTranslatedDocuments,
   mockPendingActions,
 } from './lib/mock-data'
-import { Document, Notification, ApprovedDocument, TranslatedDocument, Process } from './types'
+import { Client, Document, Notification, ApprovedDocument, TranslatedDocument, Process } from './types'
 import { Apostilamento } from './components/Apostilamento'
 import { DocumentUploadFlow } from './components/DocumentUploadFlow'
 import { Home, FileText, Upload, GitBranch, Bell, Languages, Users, Calendar, Settings, Stamp } from 'lucide-react'
@@ -28,6 +28,7 @@ import { RequiredActionModal } from './components/RequiredActionModal'
 export function ClienteApp() {
   const location = useLocation()
   const navigate = useNavigate()
+  const [client, setClient] = useState<Client>(mockClient)
   const [documents, setDocuments] = useState<Document[]>([])
   const [familyMembers, setFamilyMembers] = useState<{id: string, name: string, email?: string, type: string}[]>([])
   const [processo, setProcesso] = useState<Process | null>(null)
@@ -47,7 +48,7 @@ export function ClienteApp() {
 
   const fetchDocuments = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/cliente/${mockClient.id}/documentos`)
+      const response = await fetch(`${API_BASE_URL}/cliente/${client.id}/documentos`)
       if (!response.ok) throw new Error('Falha ao buscar documentos')
       
       const result = await response.json()
@@ -57,7 +58,7 @@ export function ClienteApp() {
       const mappedDocs: Document[] = apiDocs.map((doc: any) => {
         // Infer memberId from storage_path
         // New Path format: processoId/memberId/docType/file
-        let memberId = mockClient.id // Default to main client
+        let memberId = client.id // Default to main client
         
         if (doc.dependente_id) {
           memberId = doc.dependente_id
@@ -89,13 +90,33 @@ export function ClienteApp() {
       })
 
       // Combine with mocks if API returns empty? Or just use API?
-      // User wants to see their uploads.
       setDocuments(mappedDocs)
 
     } catch (error) {
       console.error('Erro ao buscar documentos:', error)
-      // Fallback to mocks on error?
-      // setDocuments(mockDocuments) 
+    }
+  }
+
+  const fetchClientData = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/cliente/${mockClient.id}`)
+      if (response.ok) {
+        const result = await response.json()
+        if (result.data) {
+          const apiCliente = result.data
+          setClient({
+            ...mockClient, // Fallback to mock fields if not in DB
+            id: apiCliente.id,
+            name: apiCliente.nome,
+            email: apiCliente.email,
+            phone: apiCliente.whatsapp,
+            avatarUrl: apiCliente.foto_perfil,
+            createdAt: new Date(apiCliente.created_at)
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados do cliente:', error)
     }
   }
 
@@ -103,6 +124,9 @@ export function ClienteApp() {
     const fetchInitialData = async () => {
       setIsLoading(true)
       try {
+        // Fetch client
+        await fetchClientData()
+
         // Fetch processos
         const processosRes = await fetch(`${API_BASE_URL}/cliente/${mockClient.id}/processos`)
         if (processosRes.ok) {
@@ -127,7 +151,6 @@ export function ClienteApp() {
         const dependentesRes = await fetch(`${API_BASE_URL}/cliente/${mockClient.id}/dependentes`)
         if (dependentesRes.ok) {
           const dependentesData = await dependentesRes.json()
-          console.log('Dependentes API Response:', dependentesData) // DEBUG
           
           // Map dependentes to family members format
           const members = (dependentesData.data || []).map((dep: any) => ({
@@ -414,9 +437,9 @@ export function ClienteApp() {
         )}
         <main className="md:ml-64 p-4 md:p-8 pt-16 md:pt-8">
           <Routes>
-            <Route index element={<PartnerDashboard client={mockClient} onBecomeClient={handleBecomeClient} />} />
+            <Route index element={<PartnerDashboard client={client} onBecomeClient={handleBecomeClient} />} />
             <Route path="parceiro" element={<Parceiro />} />
-            <Route path="agendamento" element={<ClienteAgendamento client={mockClient} />} />
+            <Route path="agendamento" element={<ClienteAgendamento client={client} />} />
             <Route path="configuracoes" element={<Config />} />
           </Routes>
         </main>
@@ -470,7 +493,7 @@ export function ClienteApp() {
             index
             element={
               <Dashboard
-                client={mockClient}
+                client={client}
                 documents={documents}
                 process={processo}
               />
@@ -480,13 +503,13 @@ export function ClienteApp() {
             path="processo"
             element={<ProcessTimeline process={processo!} />}
           />
-          <Route path="agendamento" element={<ClienteAgendamento client={mockClient} />} />
+          <Route path="agendamento" element={<ClienteAgendamento client={client} />} />
           <Route
             path="upload"
             element={
               <DocumentUploadFlow
-                clienteId={mockClient.id}
-                clientName={mockClient.name}
+                clienteId={client.id}
+                clientName={client.name}
                 processoId={processo?.id || ''}
                 processType={processo?.serviceType}
                 familyMembers={familyMembers}
@@ -512,7 +535,7 @@ export function ClienteApp() {
             path="apostilamento"
             element={
               <Apostilamento
-                client={mockClient}
+                client={client}
                 documents={documents}
                 onSendForApostille={handleSendForApostille}
               />
@@ -546,7 +569,7 @@ export function ClienteApp() {
               />
             }
           />
-          <Route path="configuracoes" element={<Config client={mockClient} documents={documents} onRefresh={fetchDocuments} />} />
+          <Route path="configuracoes" element={<Config client={client} documents={documents} onRefresh={async () => { await fetchDocuments(); await fetchClientData(); }} />} />
         </Routes>
       </main>
 

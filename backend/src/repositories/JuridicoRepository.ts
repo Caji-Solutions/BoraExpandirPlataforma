@@ -200,6 +200,26 @@ class JuridicoRepository {
         return data
     }
 
+    // Atualizar etapa do processo
+    async updateEtapaProcesso(processoId: string, etapa: number): Promise<any> {
+        const { data, error } = await supabase
+            .from('processos')
+            .update({
+                etapa_atual: etapa,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', processoId)
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro ao atualizar etapa do processo:', error)
+            throw error
+        }
+
+        return data
+    }
+
     // Buscar clientes por responsável jurídico
     async getClientesByResponsavel(responsavelId: string): Promise<any[]> {
         const { data, error } = await supabase

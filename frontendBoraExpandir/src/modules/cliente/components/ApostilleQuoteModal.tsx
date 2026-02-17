@@ -100,7 +100,7 @@ export function ApostilleQuoteModal({
   const calculateTotal = () => {
     return Array.from(selectedDocIds).reduce((acc, id) => {
       const budget = allBudgets[id]
-      if (budget) return acc + budget.valor_orcamento
+      if (budget) return acc + (budget.preco_atualizado)
       return acc + 180 // Valor estimado para apostila
     }, 0)
   }
@@ -217,7 +217,7 @@ export function ApostilleQuoteModal({
                         <div className="text-right">
                           <span className="text-sm font-bold text-gray-900 dark:text-white">
                             {budget 
-                              ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(budget.valor_orcamento)
+                              ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(budget.preco_atualizado || budget.valor_orcamento)
                               : <span className="text-gray-400">R$ 180,00 (Est.)</span>}
                           </span>
                         </div>

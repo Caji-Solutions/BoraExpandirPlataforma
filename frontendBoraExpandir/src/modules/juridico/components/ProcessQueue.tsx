@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom';
 import { FileText, User, ChevronRight, Folder, ChevronLeft, Search } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from '../../../components/ui/Badge';
@@ -42,6 +43,7 @@ interface ProcessQueueProps {
 }
 
 export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
+    const [searchParams] = useSearchParams();
     const [processes, setProcesses] = useState<Process[]>([]);
     const [selectedFolder, setSelectedFolder] = useState<Process | null>(null);
     const [selectedFolderDocs, setSelectedFolderDocs] = useState<any[]>([]); // Raw backend documents
@@ -120,6 +122,15 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                 const data = await juridicoService.getProcessosByResponsavel(LAWYER_ID);
                 const mapped = data.map(mapProcessoToView);
                 setProcesses(mapped);
+
+                // Auto-select process from URL
+                const processId = searchParams.get('processoId');
+                if (processId) {
+                    const process = mapped.find(p => p.id === processId);
+                    if (process) {
+                        setSelectedFolder(process);
+                    }
+                }
             } catch (error) {
                 console.error("Failed to fetch processes", error);
             } finally {
@@ -127,7 +138,7 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
             }
         };
         fetchProcesses();
-    }, []);
+    }, [searchParams]);
 
     // Fetch Documents and Dependents when Folder Selected
     useEffect(() => {

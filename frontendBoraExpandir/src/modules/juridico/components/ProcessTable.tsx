@@ -1,17 +1,18 @@
 import React from 'react';
-import { Eye, Settings2 } from "lucide-react";
+import { useSearchParams } from 'react-router-dom';
+import { 
+    ChevronLeft, 
+    ChevronRight, 
+    ChevronDown,
+    ChevronUp,
+    CheckCircle2, 
+    Circle,
+    Info
+} from "lucide-react";
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from "./ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "./ui/table";
-import { ScrollArea, ScrollBar } from "./ui/scroll-area";
+import juridicoService from "../services/juridicoService";
+import { toast } from "./ui/sonner";
 
 export interface ProcessData {
     id: string;
@@ -36,183 +37,186 @@ interface ProcessTableProps {
     onRowClick?: (process: ProcessData) => void;
 }
 
-function getStatusBadge(status: string) {
-    const statusLower = status.toLowerCase();
-    
-    // Mapeamento de status comuns
-    if (statusLower.includes('concluído') || statusLower.includes('aprovado') || statusLower.includes('finalizado')) {
-        return <Badge variant="success">{status}</Badge>;
-    }
-    if (statusLower.includes('pendente') || statusLower.includes('aguardando') || statusLower.includes('em andamento')) {
-        return <Badge variant="warning">{status}</Badge>;
-    }
-    if (statusLower.includes('cancelado') || statusLower.includes('rejeitado') || statusLower.includes('atrasado')) {
-        return <Badge variant="destructive">{status}</Badge>;
-    }
-    
-    // Status padrão - azul da marca
-    return <Badge variant="default">{status}</Badge>;
-}
+export function ProcessTable({ data }: ProcessTableProps) {
+    const [expandedId, setExpandedId] = React.useState<string | null>(null);
+    const [localData, setLocalData] = React.useState<ProcessData[]>(data);
+    const [searchParams] = useSearchParams();
 
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "./ui/dialog";
-import { ProcessAction } from "./ProcessAction";
-import { DocumentRequestModal } from "./DocumentRequestModal";
+    React.useEffect(() => {
+        setLocalData(data);
+        
+        // Auto-expand card if ID is in URL
+        const expandId = searchParams.get('expand');
+        if (expandId) {
+            setExpandedId(expandId);
+        }
+    }, [data, searchParams]);
 
-export function ProcessTable({ data, onRowClick }: ProcessTableProps) {
-    const [actionProcess, setActionProcess] = React.useState<ProcessData | null>(null);
-    const [docRequestProcess, setDocRequestProcess] = React.useState<ProcessData | null>(null);
+    const handleUpdateEtapa = async (processId: string, currentFase: number, delta: number) => {
+        const novaEtapa = currentFase + delta;
+        if (novaEtapa < 1 || novaEtapa > 4) return;
+
+        try {
+            await juridicoService.updateProcessEtapa(processId, novaEtapa);
+            setLocalData(prev => prev.map(p => 
+                p.id === processId ? { ...p, fase: novaEtapa } : p
+            ));
+            toast.success("Etapa atualizada com sucesso");
+        } catch (error) {
+            toast.error("Erro ao atualizar etapa");
+        }
+    }
+
+    const phases = [
+        { id: 1, label: "Iniciado" },
+        { id: 2, label: "Documentação" },
+        { id: 3, label: "Consultoria" },
+        { id: 4, label: "Imigração" }
+    ];
 
     return (
-        <>
-            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-                {/* Header row matching list style */}
-                <div className="grid grid-cols-12 gap-4 px-6 py-4 border-b bg-muted/30 text-[10px] uppercase font-bold text-muted-foreground tracking-widest text-center">
-                    <div className="col-span-1">ID</div>
-                    <div className="col-span-3 text-left">Cliente</div>
-                    <div className="col-span-3">Serviço</div>
-                    <div className="col-span-2">Data Protocolo</div>
-                    <div className="col-span-1">Status</div>
-                    <div className="col-span-2 text-right px-4">Ações</div>
-                </div>
-
-                <div className="divide-y divide-border">
-                    {data.map((row) => (
-                        <div
-                            key={row.id}
-                            className="grid grid-cols-12 gap-4 px-6 py-4 items-center transition-colors hover:bg-muted/30 cursor-pointer group"
-                            onClick={() => onRowClick?.(row)}
+        <div className="space-y-4">
+            {localData.map((row) => {
+                const isExpanded = expandedId === row.id;
+                
+                return (
+                    <div 
+                        key={row.id}
+                        className={`bg-card border border-border rounded-2xl overflow-hidden shadow-sm transition-all duration-300 ${isExpanded ? 'ring-2 ring-primary/20 shadow-md' : 'hover:shadow-md'}`}
+                    >
+                        {/* Card Header (Visible initially) */}
+                        <div 
+                            className="grid grid-cols-12 gap-4 px-6 py-5 items-center cursor-pointer group"
+                            onClick={() => setExpandedId(isExpanded ? null : row.id)}
                         >
-                            <div className="col-span-1 text-center">
-                                <span className="text-xs font-mono text-muted-foreground">{row.id.substring(0, 4)}</span>
+                            <div className="col-span-1 text-center font-mono text-xs text-muted-foreground bg-muted/30 py-1 rounded-md">
+                                #{row.id.substring(0, 4)}
                             </div>
                             
-                            <div className="col-span-3 flex items-center gap-3 text-left">
-                                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                    <span className="text-primary text-[10px] font-bold">
+                            <div className="col-span-4 flex items-center gap-3 text-left">
+                                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                                    <span className="text-primary text-xs font-bold">
                                         {row.cliente.nome.charAt(0)}
                                     </span>
                                 </div>
                                 <div className="min-w-0">
-                                    <div className="text-sm font-semibold text-foreground truncate">{row.cliente.nome}</div>
-                                    <div className="text-[10px] text-muted-foreground">{row.tipo}</div>
+                                    <div className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-all">
+                                        {row.cliente.nome}
+                                    </div>
+                                    <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{row.servico}</div>
                                 </div>
                             </div>
 
-                            <div className="col-span-3 text-center text-xs font-medium text-foreground truncate">
-                                {row.servico}
+                            <div className="col-span-3 text-center">
+                                <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase ${
+                                    row.status.toLowerCase().includes('conclu') ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                    row.status.toLowerCase().includes('pendente') ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                                    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                }`}>
+                                    {row.status}
+                                </span>
                             </div>
 
-                            <div className="col-span-2 text-center text-xs text-muted-foreground">
-                                {row.dataProtocolo || '---'}
+                            <div className="col-span-3 flex flex-col items-center justify-center gap-1">
+                                <div className="flex gap-1">
+                                    {phases.map((p) => (
+                                        <div 
+                                            key={p.id} 
+                                            className={`w-4 h-1 rounded-full ${row.fase >= p.id ? 'bg-primary' : 'bg-muted'}`}
+                                        />
+                                    ))}
+                                </div>
+                                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">
+                                    Fase {row.fase}: {phases.find(p => p.id === row.fase)?.label}
+                                </span>
                             </div>
 
-                            <div className="col-span-1 flex justify-center">
-                                {/* Minimalist dot indicator or simplified badge */}
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full ${
-                                        row.status.toLowerCase().includes('conclu') ? 'bg-green-500' :
-                                        row.status.toLowerCase().includes('pendente') ? 'bg-amber-500' :
-                                        'bg-blue-500'
-                                    }`} />
-                                    <span className="text-[10px] font-medium text-muted-foreground truncate max-w-[60px] uppercase">
-                                        {row.status}
-                                    </span>
+                            <div className="col-span-1 flex justify-end">
+                                <div className="p-1 rounded-full bg-muted/50 group-hover:bg-primary/10 transition-colors">
+                                    {isExpanded ? <ChevronUp className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
                                 </div>
                             </div>
+                        </div>
 
-                            <div className="col-span-2 flex justify-end">
-                                <Button 
-                                    size="sm" 
-                                    variant="outline"
-                                    className="h-8 px-4 text-[10px] font-bold rounded-xl bg-background border-gray-200 hover:bg-gray-50 flex items-center gap-2"
-                                    onClick={(e: React.MouseEvent) => {
-                                        e.stopPropagation();
-                                        setActionProcess(row);
-                                    }}
-                                >
-                                    <Settings2 className="h-3 w-3" />
-                                    Ações
-                                </Button>
+                        {/* Expanded Content (Status & Navigation) */}
+                        {isExpanded && (
+                            <div className="px-6 pb-6 pt-2 bg-muted/10 border-t border-border/50 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <div className="max-w-3xl mx-auto py-4 space-y-8">
+                                    <div className="flex justify-between items-center bg-background p-4 rounded-xl border border-border shadow-sm">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-primary/10 rounded-lg">
+                                                <Info className="h-4 w-4 text-primary" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Controle de Etapas</h3>
+                                                <p className="text-[10px] text-muted-foreground/70 font-medium">Gerencie o progresso do processo jurídico</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex gap-2">
+                                            <Button 
+                                                size="sm" 
+                                                variant="outline" 
+                                                className="h-9 rounded-xl text-[10px] font-bold bg-background hover:bg-muted"
+                                                disabled={row.fase <= 1}
+                                                onClick={() => handleUpdateEtapa(row.id, row.fase, -1)}
+                                            >
+                                                <ChevronLeft className="h-3 w-3 mr-1" /> Retroceder
+                                            </Button>
+                                            <Button 
+                                                size="sm" 
+                                                className="h-9 rounded-xl text-[10px] font-bold shadow-lg shadow-primary/20 transition-transform active:scale-95"
+                                                disabled={row.fase >= 4}
+                                                onClick={() => handleUpdateEtapa(row.id, row.fase, 1)}
+                                            >
+                                                Avançar <ChevronRight className="h-3 w-3 ml-1" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="relative flex justify-between px-6 pt-2">
+                                        <div className="absolute top-[21px] left-10 right-10 h-0.5 bg-muted -z-0" />
+                                        
+                                        {phases.map((phase) => {
+                                            const isActive = row.fase === phase.id;
+                                            const isCompleted = row.fase > phase.id;
+                                            
+                                            return (
+                                                <div key={phase.id} className="flex flex-col items-center gap-3 group relative z-10">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 border-2 ${
+                                                        isActive ? 'border-primary bg-background ring-8 ring-primary/5 shadow-xl scale-110' : 
+                                                        isCompleted ? 'border-primary bg-primary text-white' : 
+                                                        'border-border bg-background text-muted-foreground'
+                                                    }`}>
+                                                        {isCompleted ? <CheckCircle2 className="h-5 w-5" /> : 
+                                                         isActive ? <Circle className="h-5 w-5 fill-primary text-primary animate-pulse" /> :
+                                                         <span className="text-xs font-bold">{phase.id}</span>}
+                                                    </div>
+                                                    <span className={`text-[9px] font-black uppercase tracking-widest transition-colors duration-300 ${
+                                                        isActive ? 'text-primary' : 'text-muted-foreground'
+                                                    }`}>
+                                                        {phase.label}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                    {data.length === 0 && (
-                        <div className="py-12 text-center text-muted-foreground">
-                            <p className="text-sm">Nenhum processo encontrado na fila.</p>
-                        </div>
-                    )}
+                        )}
+                    </div>
+                );
+            })}
+            
+            {localData.length === 0 && (
+                <div className="bg-muted/30 border-2 border-dashed border-border rounded-2xl py-20 text-center">
+                    <div className="h-12 w-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Info className="h-6 w-6 text-muted-foreground opacity-50" />
+                    </div>
+                    <p className="text-sm font-medium text-muted-foreground tracking-tight">Capa de processo vazia</p>
+                    <p className="text-[10px] text-muted-foreground/60 uppercase font-black mt-1">Nenhum processo jurídico atribuído</p>
                 </div>
-            </div>
-
-            {/* Modal de Ações Preparado */}
-            <Dialog open={!!actionProcess} onOpenChange={(open) => !open && setActionProcess(null)}>
-                <DialogContent className="sm:max-w-[500px] p-0 border-none bg-transparent shadow-none">
-                    <DialogHeader className="sr-only">
-                        <DialogTitle>Ações do Processo</DialogTitle>
-                    </DialogHeader>
-                    {actionProcess && (
-                        <div className="bg-background rounded-3xl overflow-hidden shadow-2xl border border-border">
-                            <div className="p-6 bg-muted/30 border-b border-border flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                        <Settings2 className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div>
-                                        <h2 className="text-lg font-bold text-foreground">Ações: {actionProcess.cliente.nome}</h2>
-                                        <p className="text-xs text-muted-foreground">Gerencie o processo ID: {actionProcess.id.substring(0, 8)}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="p-6 space-y-6">
-                                {/* Informações do Serviço restauradas aqui, já que saíram do componente genérico */}
-                                <div className="bg-muted/50 rounded-2xl p-4 border border-border space-y-3">
-                                    <div className="flex justify-between items-center text-xs">
-                                        <span className="text-muted-foreground font-medium uppercase tracking-wider">Serviço</span>
-                                        <span className="font-bold text-primary">{actionProcess.servico}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-xs">
-                                        <span className="text-muted-foreground font-medium uppercase tracking-wider">Protocolo</span>
-                                        <span className="font-bold">{actionProcess.dataProtocolo || '---'}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-xs">
-                                        <span className="text-muted-foreground font-medium uppercase tracking-wider">Status Atual</span>
-                                        <Badge variant="outline" className="text-[10px] uppercase font-bold text-blue-600 bg-blue-50 border-blue-200">
-                                            {actionProcess.status}
-                                        </Badge>
-                                    </div>
-                                </div>
-
-                                <ProcessAction 
-                                    clienteId={actionProcess.clienteId} 
-                                    processoId={actionProcess.id}
-                                    onActionClick={(action) => {
-                                        if (action === 'solicitar_documentos') {
-                                            setDocRequestProcess(actionProcess);
-                                            setActionProcess(null);
-                                        } else {
-                                            console.log(`Executing ${action} for ${actionProcess.id}`);
-                                            setActionProcess(null);
-                                        }
-                                    }}
-                                />
-                            </div>
-                        </div>
-                    )}
-                </DialogContent>
-            </Dialog>
-
-            <DocumentRequestModal 
-                isOpen={!!docRequestProcess}
-                onOpenChange={(open) => !open && setDocRequestProcess(null)}
-                clienteId={docRequestProcess?.clienteId || ''}
-                processoId={docRequestProcess?.id}
-            />
-        </>
+            )}
+        </div>
     );
 }

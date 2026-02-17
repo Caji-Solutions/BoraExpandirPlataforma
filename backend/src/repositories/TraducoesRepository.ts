@@ -6,7 +6,7 @@ class TraducoesRepository {
     const { data: documentos, error: docError } = await supabase
       .from('documentos')
       .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id')
-      .in('status', ['WAITING_TRANSLATION_QUOTE', 'WAITING_QUOTE_APPROVAL', 'ANALYZING_TRANSLATION'])
+      .in('status', ['solicitado', 'WAITING_TRANSLATION_QUOTE', 'em_analise', 'disponivel'])
       .order('criado_em', { ascending: false })
 
     if (docError) {
@@ -28,7 +28,7 @@ class TraducoesRepository {
         .in('id', clienteIds),
       supabase
         .from('orcamentos')
-        .select('*, porcentagem_markup, valor_final')
+        .select('*, porcentagem, preco_atualizado')
         .in('documento_id', documentoIds)
         .order('criado_em', { ascending: false })
     ])
@@ -69,7 +69,7 @@ class TraducoesRepository {
         valor_orcamento: dados.valorOrcamento,
         prazo_entrega: dados.prazoEntrega,
         observacoes: dados.observacoes,
-        status: 'respondido'
+        status: 'em_analise' // Visível apenas para o Admin inicialmente
       }])
       .select()
       .single()
@@ -77,20 +77,6 @@ class TraducoesRepository {
     if (orcError) {
       console.error('Erro ao salvar orçamento:', orcError)
       throw orcError
-    }
-
-    // 2. Atualizar o status do documento para WAITING_ADM_APPROVAL
-    // O orçamento foi respondido pelo tradutor, mas o ADM ainda precisa aprovar/marcar
-    const { error: docError } = await supabase
-      .from('documentos')
-      .update({ status: 'WAITING_ADM_APPROVAL' })
-      .eq('id', dados.documentoId)
-
-    if (docError) {
-      console.error('Erro ao atualizar status do documento:', docError)
-      // Note: we might want to rollback the budget insert if this fails, 
-      // but Supabase doesn't easily support cross-table transactions via JS client without RPC.
-      throw docError
     }
 
     return orcamento
@@ -101,7 +87,7 @@ class TraducoesRepository {
       .from('orcamentos')
       .select('*')
       .eq('documento_id', documentoId)
-      .eq('status', 'respondido') // We only want the active/recent quote
+      .eq('status', 'disponivel') // Cliente só vê se estiver disponível
       .order('criado_em', { ascending: false })
       .limit(1)
       .single()
@@ -123,9 +109,9 @@ class TraducoesRepository {
     const { data: orcamento, error: orcError } = await supabase
       .from('orcamentos')
       .update({
-        porcentagem_markup: dados.porcentagemMarkup,
-        valor_final: dados.valorFinal,
-        status: 'aprovado' // Agora está disponível para o cliente
+        porcentagem: dados.porcentagemMarkup,
+        preco_atualizado: dados.valorFinal,
+        status: 'disponivel' // Agora está disponível para o cliente
       })
       .eq('id', orcamentoId)
       .select()
@@ -139,7 +125,7 @@ class TraducoesRepository {
     // 2. Liberar para o cliente pagar
     const { error: docError } = await supabase
       .from('documentos')
-      .update({ status: 'WAITING_QUOTE_APPROVAL' })
+      .update({ status: 'WAITING_QUOTE_APPROVAL' }) 
       .eq('id', dados.documentoId)
 
     if (docError) {
