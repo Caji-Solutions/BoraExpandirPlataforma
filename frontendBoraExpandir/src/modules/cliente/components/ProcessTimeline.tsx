@@ -7,6 +7,8 @@ import { cn, formatDate } from '../lib/utils'
 
 interface ProcessTimelineProps {
   process: Process
+  requerimentos?: any[]
+  familyMembers?: { id: string, name: string, type: string }[]
 }
 
 const stepIcons = {
@@ -45,12 +47,15 @@ const stepLabels = {
   analyzing: 'Em Análise',
 }
 
-export function ProcessTimeline({ process }: ProcessTimelineProps) {
-  // Simulação de lógica baseada em documentos
-  // Em uma implementação real, process teria um mapeamento dos status dos documentos
-  const completedSteps = process.steps.filter(step => step.status === 'completed').length
-  const totalSteps = process.steps.length
-  const progressPercentage = (completedSteps / totalSteps) * 100
+export function ProcessTimeline({ process, requerimentos = [], familyMembers = [] }: ProcessTimelineProps) {
+  if (!process) return <div className="p-8 text-center text-gray-500">Carregando processo...</div>
+
+  const pendingRequerimentos = requerimentos.filter(r => r.status === 'pendente')
+  const hasPendingReq = pendingRequerimentos.length > 0
+
+  const completedSteps = process.steps?.filter(step => step.status === 'completed').length || 0
+  const totalSteps = process.steps?.length || 0
+  const progressPercentage = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0
 
   return (
     <div className="space-y-6">
@@ -89,21 +94,29 @@ export function ProcessTimeline({ process }: ProcessTimelineProps) {
             <div key={step.id} className="relative">
               {/* Connection line */}
               {!isLast && (
-                <div className="absolute left-6 top-12 w-0.5 h-16 bg-gray-200 dark:bg-gray-700" />
+                <div className={cn(
+                  "absolute left-6 top-12 w-0.5 h-16 transition-colors duration-200",
+                  (isActive && hasPendingReq) ? "bg-red-500" : "bg-gray-200 dark:bg-gray-700"
+                )} />
               )}
 
               <Card className={cn(
                 "relative transition-all duration-200",
                 isActive && "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900",
+                isActive && hasPendingReq && "ring-red-500",
                 step.status === 'completed' && "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
               )}>
                 <CardContent className="p-6">
                   <div className="flex items-start space-x-4">
                     <div className={cn(
                       "flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center",
-                      stepBgColors[step.status] || 'bg-gray-100'
+                      isActive && hasPendingReq ? 'bg-red-100' : (stepBgColors[step.status] || 'bg-gray-100')
                     )}>
-                      <StepIcon className={cn("h-6 w-6", stepColors[step.status] || 'text-gray-400')} />
+                      {isActive && hasPendingReq ? (
+                        <AlertCircle className="h-6 w-6 text-red-600" />
+                      ) : (
+                        <StepIcon className={cn("h-6 w-6", stepColors[step.status] || 'text-gray-400')} />
+                      )}
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -114,6 +127,7 @@ export function ProcessTimeline({ process }: ProcessTimelineProps) {
                         <div className="flex items-center space-x-2">
                           <Badge
                             variant={
+                              (isActive && hasPendingReq) ? 'destructive' :
                               step.status === 'completed' ? 'success' :
                               (step.status === 'in_progress' || step.status === 'analyzing') ? 'default' :
                               step.status === 'rejected' ? 'destructive' :
@@ -121,7 +135,7 @@ export function ProcessTimeline({ process }: ProcessTimelineProps) {
                               'secondary'
                             }
                           >
-                            {stepLabels[step.status] || step.status}
+                            {(isActive && hasPendingReq) ? 'Bloqueado' : (stepLabels[step.status] || step.status)}
                           </Badge>
                           {isActive && (
                             <Badge variant="outline">
@@ -135,13 +149,61 @@ export function ProcessTimeline({ process }: ProcessTimelineProps) {
                         <p className="text-gray-600 dark:text-gray-400 mt-2">{step.description}</p>
                       )}
 
+                      {/* Alerta de Requerimento Pendente */}
+                      {isActive && hasPendingReq && (
+                        <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl">
+                          <div className="flex items-start space-x-3">
+                            <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                            <div className="flex-1">
+                              <p className="text-sm font-bold text-red-700 dark:text-red-400">
+                                ATENÇÃO: Requerimento Pendente
+                              </p>
+                              <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                                O processo está bloqueado até que os seguintes documentos sejam enviados:
+                              </p>
+
+                              <div className="mt-3 space-y-3">
+                                {pendingRequerimentos.map((req) => (
+                                  <div key={req.id} className="bg-white dark:bg-neutral-800 p-3 rounded-lg border border-red-100 dark:border-red-900/40 shadow-sm">
+                                    <p className="text-xs font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-1">
+                                      <FileText className="w-3 h-3" />
+                                      {req.tipo}
+                                    </p>
+                                    
+                                    <div className="space-y-1.5">
+                                      {req.documentos && req.documentos.length > 0 ? (
+                                        req.documentos.filter((d: any) => d.status === 'PENDING').map((doc: any) => {
+                                          const member = familyMembers.find(m => m.id === (doc.dependente_id || doc.cliente_id))
+                                          return (
+                                            <div key={doc.id} className="flex items-center justify-between text-xs p-1.5 rounded bg-gray-50 dark:bg-neutral-900/50">
+                                              <span className="text-gray-700 dark:text-gray-300 font-medium">
+                                                {doc.tipo}
+                                              </span>
+                                              <Badge variant="outline" className="text-[10px] py-0 h-4">
+                                                {member?.name || 'Titular'}
+                                              </Badge>
+                                            </div>
+                                          )
+                                        })
+                                      ) : (
+                                        <p className="text-[10px] text-gray-500 italic">Nenhum documento específico listado</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {step.completedAt && (
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                           Concluído em {formatDate(step.completedAt)}
                         </p>
                       )}
 
-                      {(step.status === 'in_progress' || step.status === 'analyzing') && (
+                      {(step.status === 'in_progress' || step.status === 'analyzing') && !(isActive && hasPendingReq) && (
                         <div className="mt-3">
                           <div className="flex items-center space-x-2">
                             <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
@@ -166,6 +228,15 @@ export function ProcessTimeline({ process }: ProcessTimelineProps) {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Linha vermelha antes da próxima etapa */}
+              {isActive && hasPendingReq && !isLast && (
+                 <div className="flex justify-center -my-2 relative z-10">
+                    <div className="bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg border-2 border-white dark:border-gray-900">
+                        Bloqueio de Etapa
+                    </div>
+                 </div>
+              )}
             </div>
           )
         })}

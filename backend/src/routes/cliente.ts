@@ -58,6 +58,8 @@ cliente.delete('/processo/:processoId/formularios/:formularioId', ClienteControl
 cliente.post('/formularios/:formularioId/response', upload.single('file'), ClienteController.uploadFormularioResponse.bind(ClienteController))
 cliente.get('/:clienteId/formulario-responses', ClienteController.getFormularioResponses.bind(ClienteController))
 cliente.get('/:clienteId/notificacoes', ClienteController.getNotificacoes.bind(ClienteController))
+cliente.patch('/notificacoes/:notificacaoId/status', ClienteController.updateNotificacaoStatus.bind(ClienteController))
+cliente.post('/:clienteId/notificacoes/read-all', ClienteController.markAllNotificacoesAsRead.bind(ClienteController))
 cliente.get('/:clienteId/requerimentos', ClienteController.getRequerimentosByCliente.bind(ClienteController))
 
 export default cliente

@@ -3,7 +3,6 @@
 import { X, CheckCircle, Clock, AlertTriangle } from 'lucide-react'
 import { Notification } from '../types'
 import { formatDate } from '../lib/utils'
-import { CountdownTimer } from './CountdownTimer'
 import { Badge } from './ui/badge'
 
 interface RequestedActionsModalProps {
@@ -25,18 +24,8 @@ export function RequestedActionsModal({ isOpen, onClose, notifications }: Reques
         return null
     }
 
-    const expiredActions = notifications.filter(n => {
-        const deadline = getDeadline(n)
-        const isRead = n.lida || n.read
-        // Expired if deadline exists, is in past, and NOT read/completed
-        return deadline && deadline < now && !isRead
-    })
-
-    const realizedActions = notifications.filter(n => {
-        const isRead = n.lida || n.read
-        // Realized if it is read/completed (assuming read = action taken for now, based on context)
-        return isRead
-    })
+    const pendingActions = notifications.filter(n => !(n.lida || n.read))
+    const realizedActions = notifications.filter(n => n.lida || n.read)
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -68,30 +57,36 @@ export function RequestedActionsModal({ isOpen, onClose, notifications }: Reques
                         <div className="space-y-4">
                             <h3 className="font-semibold text-lg flex items-center gap-2 text-red-600 dark:text-red-400 mb-4">
                                 <AlertTriangle className="w-5 h-5" />
-                                Ações Expiradas / Pendentes
+                                Ações Pendentes
                             </h3>
 
-                            {expiredActions.length === 0 ? (
+                            {pendingActions.length === 0 ? (
                                 <div className="text-center py-8 bg-white dark:bg-neutral-800 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
-                                    <p className="text-gray-400 text-sm">Nenhuma ação expirada</p>
+                                    <p className="text-gray-400 text-sm">Nenhuma ação pendente</p>
                                 </div>
                             ) : (
-                                expiredActions.map((action) => {
+                                pendingActions.map((action: Notification) => {
                                     const deadline = getDeadline(action)
+                                    const isExpired = deadline && deadline < now
                                     return (
                                         <div
                                             key={action.id}
-                                            className="bg-white dark:bg-neutral-800 p-4 rounded-xl border border-red-200 dark:border-red-900/50 shadow-sm relative overflow-hidden"
+                                            className={`bg-white dark:bg-neutral-800 p-4 rounded-xl border shadow-sm relative overflow-hidden ${
+                                                isExpired ? 'border-red-200 dark:border-red-900/50' : 'border-gray-200 dark:border-gray-700'
+                                            }`}
                                         >
-                                            <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+                                            <div className={`absolute top-0 left-0 w-1 h-full ${isExpired ? 'bg-red-500' : 'bg-yellow-500'}`}></div>
 
                                             <div className="ml-2">
                                                 <div className="flex justify-between items-start mb-2">
                                                     <h4 className="font-bold text-gray-900 dark:text-white">
                                                         {action.titulo || action.title || 'Solicitação'}
                                                     </h4>
-                                                    <Badge variant="destructive" className="uppercase text-[10px]">
-                                                        Expirado
+                                                    <Badge 
+                                                        variant={isExpired ? "destructive" : "secondary"} 
+                                                        className={`uppercase text-[10px] ${!isExpired ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : ''}`}
+                                                    >
+                                                        {isExpired ? 'Expirado' : 'Pendente'}
                                                     </Badge>
                                                 </div>
 
@@ -99,13 +94,18 @@ export function RequestedActionsModal({ isOpen, onClose, notifications }: Reques
                                                     {action.mensagem || action.message}
                                                 </p>
 
-                                                <div className="bg-red-50 dark:bg-red-900/10 rounded-lg p-3 border border-red-100 dark:border-red-900/30">
-                                                    <p className="text-xs text-red-600 dark:text-red-400 font-medium mb-1">
+                                                <div className={`${isExpired ? 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30' : 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-100 dark:border-yellow-900/30'} rounded-lg p-3 border`}>
+                                                    <p className={`text-xs ${isExpired ? 'text-red-600 dark:text-red-400' : 'text-yellow-700 dark:text-yellow-500'} font-medium mb-1`}>
                                                         Prazo limite: {deadline ? formatDate(deadline) : 'N/A'}
                                                     </p>
-                                                    {deadline && (
-                                                        <div className="text-red-600 font-bold">
+                                                    {deadline && isExpired && (
+                                                        <div className="text-red-600 font-bold text-xs mt-1">
                                                             Prazo Expirado
+                                                        </div>
+                                                    )}
+                                                    {deadline && !isExpired && (
+                                                         <div className="text-yellow-600 font-medium text-xs mt-1">
+                                                            Aguardando ação
                                                         </div>
                                                     )}
                                                 </div>

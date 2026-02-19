@@ -26,7 +26,12 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
-import { getFormulariosWithStatus, updateFormularioClienteStatus } from '../services/juridicoService';
+import { 
+    getFormulariosWithStatus, 
+    updateFormularioClienteStatus,
+    getRequerimentosByCliente,
+    updateRequerimentoStatus 
+} from '../services/juridicoService';
 import { ReviewActionButtons } from './ReviewActionButtons';
 import { RejectModal } from './RejectModal';
 
@@ -56,14 +61,14 @@ export interface FormularioWithStatus {
 
 // Tipos para o fluxo de análise
 export type AnalysisStage = 'initial_analysis' | 'apostille_check' | 'translation_check' | 'completed';
-export type TabType = 'documentos' | 'formularios' | 'pendentes' | 'aprovados' | 'analise' | 'espera';
+export type TabType = 'documentos' | 'formularios' | 'requerimentos' | 'pendentes' | 'analise' | 'espera' | 'aprovados';
 
 export interface JuridicoDocument {
   id: string;
   name: string;
   type: string;
   url: string;
-  status: 'analyzing' | 'rejected' | 'waiting_apostille' | 'analyzing_apostille' | 'waiting_translation' | 'analyzing_translation' | 'approved';
+  status: 'pending' | 'analyzing' | 'rejected' | 'waiting_apostille' | 'analyzing_apostille' | 'waiting_translation' | 'analyzing_translation' | 'approved';
   currentStage: AnalysisStage;
   rejectionReason?: string;
   // ... rest of interface
@@ -101,15 +106,24 @@ export function ProcessAnalysis({
   onBack,
   onUpdateDocument 
 }: ProcessAnalysisProps) {
-  // Tab state: 'documentos' | 'formularios' | 'pendentes' | 'aprovados' | 'analise' | 'espera'
+  // Tab state
   const [activeTab, setActiveTab] = useState<TabType>('documentos');
   
-  // Formulários com status
+  // Requerimentos
+  const [requerimentos, setRequerimentos] = useState<any[]>([]);
+  const [requerimentosLoading, setRequerimentosLoading] = useState(false);
+  const [selectedReqId, setSelectedReqId] = useState<string | null>(null);
+
+  // Formulários
   const [formularios, setFormularios] = useState<FormularioWithStatus[]>([]);
   const [formulariosLoading, setFormulariosLoading] = useState(false);
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
-  
-  const [selectedDocId, setSelectedDocId] = useState<string>(initialDocs[0]?.id);
+
+  // Selection state
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedItemType, setSelectedItemType] = useState<'documento' | 'formulario' | 'requerimento' | null>(null);
+
+  // Documentos
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState<string>('');
   const [customReason, setCustomReason] = useState<string>('');
@@ -118,41 +132,81 @@ export function ProcessAnalysis({
   const [formRejectModalOpen, setFormRejectModalOpen] = useState(false);
   const [isUpdatingFormStatus, setIsUpdatingFormStatus] = useState(false);
   
-  const selectedDoc = initialDocs.find(d => d.id === selectedDocId) || initialDocs[0];
-  const selectedForm = formularios.find(f => f.id === selectedFormId);
+  const selectedDoc = useMemo(() => initialDocs.find(d => d.id === selectedId), [initialDocs, selectedId]);
+  const selectedForm = useMemo(() => formularios.find(f => f.id === selectedId), [formularios, selectedId]);
+  const selectedReq = useMemo(() => requerimentos.find(r => r.id === selectedId), [requerimentos, selectedId]);
 
   // Filtragem unificada
   const filteredItems = useMemo(() => {
-    if (activeTab === 'formularios') return formularios;
+    const allDocs = initialDocs.map(d => ({ ...d, itemType: 'documento' as const }));
+    const allForms = formularios.map(f => ({ ...f, itemType: 'formulario' as const }));
+    const allReqs = requerimentos.map(r => ({ ...r, itemType: 'requerimento' as const }));
+
+    if (activeTab === 'documentos') return allDocs;
+    if (activeTab === 'formularios') return allForms;
+    if (activeTab === 'requerimentos') return allReqs;
     
-    return initialDocs.filter(doc => {
-      switch(activeTab) {
-        case 'documentos': return true;
-        case 'pendentes': return doc.status === 'rejected';
-        case 'aprovados': return doc.status === 'approved';
-        case 'analise': return ['analyzing', 'analyzing_apostille', 'analyzing_translation'].includes(doc.status);
-        case 'espera': return ['waiting_apostille', 'waiting_translation'].includes(doc.status);
-        default: return true;
+    // Combine all for status-based tabs
+    const combined = [...allDocs, ...allForms, ...allReqs];
+
+    return combined.filter((item: any) => {
+      const type = item.itemType;
+      
+      if (type === 'documento') {
+        const doc = item as JuridicoDocument;
+        switch(activeTab) {
+          case 'pendentes': return (!doc.url || doc.status === 'pending');
+          case 'analise': return ['analyzing', 'analyzing_apostille', 'analyzing_translation'].includes(doc.status);
+          case 'espera': return ['waiting_apostille', 'waiting_translation', 'rejected'].includes(doc.status);
+          case 'aprovados': return doc.status === 'approved';
+          default: return false;
+        }
+      } 
+      
+      if (type === 'formulario') {
+        const form = item as FormularioWithStatus;
+        switch(activeTab) {
+          case 'pendentes': return form.status === 'waiting';
+          case 'analise': return form.status === 'received' && (!form.responseStatus || form.responseStatus === 'pendente');
+          case 'espera': return form.responseStatus === 'rejeitado';
+          case 'aprovados': return form.responseStatus === 'aprovado';
+          default: return false;
+        }
       }
+
+      if (type === 'requerimento') {
+        const req = item;
+        const status = (req.status || '').toLowerCase();
+        switch(activeTab) {
+          case 'pendentes': return status === 'pendente' && (!req.documentos || req.documentos.length === 0);
+          case 'analise': return status === 'em_analise' || (status === 'pendente' && req.documentos?.length > 0);
+          case 'espera': return status === 'aguardando_cliente' || status === 'rejeitado';
+          case 'aprovados': return status === 'aprovado' || status === 'concluido';
+          default: return false;
+        }
+      }
+
+      return false;
     });
-  }, [activeTab, initialDocs, formularios]);
+  }, [activeTab, initialDocs, formularios, requerimentos]);
 
   // Efeito para garantir seleção ao trocar de aba
   useEffect(() => {
     if (filteredItems.length > 0) {
-      if (activeTab === 'formularios') {
-        if (!selectedFormId || !filteredItems.find(f => f.id === selectedFormId)) {
-          setSelectedFormId(filteredItems[0].id);
-        }
-      } else {
-        if (!selectedDocId || !filteredItems.find(d => d.id === selectedDocId)) {
-          setSelectedDocId(filteredItems[0].id);
-        }
+      // Se nada selecionado ou o selecionado não está na lista filtrada, seleciona o primeiro
+      const currentExists = filteredItems.find(item => item.id === selectedId);
+      if (!selectedId || !currentExists) {
+        const first = filteredItems[0];
+        setSelectedId(first.id);
+        setSelectedItemType(first.itemType || (activeTab === 'documentos' ? 'documento' : activeTab === 'formularios' ? 'formulario' : 'requerimento'));
       }
+    } else {
+        setSelectedId(null);
+        setSelectedItemType(null);
     }
   }, [filteredItems, activeTab]);
 
-  // Fetch formulários when tab changes to 'forms'
+  // Fetch items when tab changes
   useEffect(() => {
     if (activeTab === 'formularios' && clienteId) {
       const fetchFormularios = async () => {
@@ -160,9 +214,6 @@ export function ProcessAnalysis({
         try {
           const data = await getFormulariosWithStatus(clienteId, membroId);
           setFormularios(data);
-          if (data.length > 0 && !selectedFormId) {
-            setSelectedFormId(data[0].id);
-          }
         } catch (error) {
           console.error('Erro ao buscar formulários:', error);
         } finally {
@@ -170,6 +221,21 @@ export function ProcessAnalysis({
         }
       };
       fetchFormularios();
+    }
+    
+    if (activeTab === 'requerimentos' && clienteId) {
+        const fetchRequerimentos = async () => {
+          setRequerimentosLoading(true);
+          try {
+            const data = await getRequerimentosByCliente(clienteId, membroId);
+            setRequerimentos(data);
+          } catch (error) {
+            console.error('Erro ao buscar requerimentos:', error);
+          } finally {
+            setRequerimentosLoading(false);
+          }
+        };
+        fetchRequerimentos();
     }
   }, [activeTab, clienteId, membroId]);
 
@@ -196,6 +262,23 @@ export function ProcessAnalysis({
     setCustomReason('');
   };
 
+  const [isUpdatingReqStatus, setIsUpdatingReqStatus] = useState(false);
+
+  const handleUpdateRequerimento = async (status: string, reason?: string) => {
+    if (!selectedReq) return;
+    setIsUpdatingReqStatus(true);
+    try {
+      await updateRequerimentoStatus(selectedReq.id, status, reason);
+      // Update local state
+      setRequerimentos(prev => prev.map(r => 
+        r.id === selectedReq.id ? { ...r, status: status, observacoes: reason || r.observacoes } : r
+      ));
+    } catch (error) {
+      console.error('Erro ao atualizar requerimento:', error);
+    } finally {
+      setIsUpdatingReqStatus(false);
+    }
+  };
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
@@ -260,68 +343,66 @@ export function ProcessAnalysis({
   return (
     <>
     <div className="flex flex-col h-[calc(100vh-3rem)] border rounded-2xl overflow-hidden bg-white dark:bg-gray-900 shadow-xl">
-      {/* Header Premium com Abas */}
+      {/* Header Unificado Premium */}
       <div className="bg-white dark:bg-gray-800 border-b shrink-0 shadow-sm z-20">
-        <div className="h-20 flex items-center px-8 justify-between">
-          <div className="flex items-center gap-6">
+        <div className="h-16 flex items-center px-6 justify-between gap-8">
+          {/* Lado Esquerdo: Nome e Voltar */}
+          <div className="flex items-center gap-4 shrink-0">
             <Button 
               variant="outline" 
               size="icon" 
               onClick={onBack} 
-              className="h-11 w-11 rounded-2xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-primary hover:text-primary transition-all shadow-sm"
+              className="h-9 w-9 rounded-xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-primary hover:text-primary transition-all shadow-sm"
             >
-              <ArrowLeft className="h-6 w-6" />
+              <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div>
-              <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter">
+            <div className="min-w-0">
+              <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tighter truncate leading-none">
                 {clientName}
               </h1>
-              <div className="flex items-center gap-3 mt-1 text-gray-500">
-                <Badge variant="outline" className="text-[9px] font-black uppercase tracking-[0.2em] border-primary/20 bg-primary/5 text-primary py-0.5">
-                  Fila de Análise Jurídica
-                </Badge>
-                <div className="w-1 h-1 rounded-full bg-gray-300" />
-                <p className="text-xs font-bold tracking-tight">
-                  {memberName}
-                </p>
-              </div>
+              <p className="text-[10px] font-bold text-gray-400 tracking-tight truncate mt-0.5">
+                {memberName}
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge className="bg-primary text-white font-bold px-3 py-1">
-              {filteredItems.length} {activeTab === 'formularios' ? 'Formulários' : 'Documentos'}
-            </Badge>
-          </div>
-        </div>
 
-        {/* Barra de Abas de Filtragem */}
-        <div className="px-8 flex gap-1 overflow-x-auto no-scrollbar border-t bg-gray-50/30 dark:bg-gray-900/10">
-          {[
-            { id: 'documentos', label: 'Documentos', icon: FileText },
-            { id: 'formularios', label: 'Formulários', icon: ClipboardList },
-            { id: 'pendentes', label: 'Documentos Pendentes', icon: AlertCircle },
-            { id: 'aprovados', label: 'Documentos Aprovados', icon: CheckCircle2 },
-            { id: 'analise', label: 'Em Análise', icon: Eye },
-            { id: 'espera', label: 'Em Espera', icon: Clock },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as TabType)}
-                className={cn(
-                  "flex items-center gap-2.5 px-6 py-4 font-black text-[10px] uppercase tracking-widest transition-all relative border-b-2",
-                  isActive 
-                    ? "text-primary border-primary bg-primary/5" 
-                    : "text-gray-400 border-transparent hover:text-gray-600 hover:bg-gray-100/50"
-                )}
-              >
-                <Icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-gray-400")} />
-                {tab.label}
-              </button>
-            );
-          })}
+          {/* Centro/Direita: Seletores (Abas) */}
+          <div className="flex-1 flex items-center justify-end overflow-x-auto no-scrollbar gap-1">
+            {[
+              { id: 'documentos', label: 'Docs', icon: FileText },
+              { id: 'formularios', label: 'Forms', icon: ClipboardList },
+              { id: 'requerimentos', label: 'Reqs', icon: Send },
+              { id: 'pendentes', label: 'Pendentes', icon: AlertCircle },
+              { id: 'analise', label: 'Análise', icon: Eye },
+              { id: 'espera', label: 'Espera', icon: Clock },
+              { id: 'aprovados', label: 'Ok', icon: CheckCircle2 },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as TabType)}
+                  className={cn(
+                    "flex items-center gap-2 px-4 h-10 font-black text-[9px] uppercase tracking-widest transition-all rounded-xl",
+                    isActive 
+                      ? "text-primary bg-primary/10" 
+                      : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                  )}
+                >
+                  <Icon className={cn("h-3.5 w-3.5", isActive ? "text-primary" : "text-gray-400")} />
+                  <span className="hidden xl:inline">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Contador Rápido */}
+          <div className="hidden lg:flex items-center pl-4 border-l border-gray-100 shrink-0">
+             <Badge className="bg-primary/10 text-primary border-none font-black text-[10px] px-3 py-1 rounded-lg">
+                {filteredItems.length}
+             </Badge>
+          </div>
         </div>
       </div>
 
@@ -331,14 +412,16 @@ export function ProcessAnalysis({
           <div className="p-4 border-b bg-gray-50/50 dark:bg-gray-900/20">
             <div className="flex items-center justify-between">
               <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                {activeTab === 'formularios' ? 'Formulários do Processo' : 'Documentos para Revisão'}
+                {activeTab === 'formularios' ? 'Formulários do Processo' : 
+                 activeTab === 'requerimentos' ? 'Requerimentos' :
+                 'Documentos para Revisão'}
               </h3>
             </div>
           </div>
           
           <ScrollArea className="flex-1">
             <div className="p-4 space-y-3">
-              {formulariosLoading && activeTab === 'formularios' ? (
+              {(formulariosLoading && activeTab === 'formularios') || (requerimentosLoading && activeTab === 'requerimentos') ? (
                 <div className="flex flex-col items-center justify-center py-20 space-y-3">
                   <Loader2 className="h-8 w-8 animate-spin text-primary opacity-50" />
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Carregando...</p>
@@ -352,14 +435,21 @@ export function ProcessAnalysis({
                 </div>
               ) : (
                 filteredItems.map(item => {
-                  const isSelected = activeTab === 'formularios' ? selectedFormId === item.id : selectedDocId === item.id;
-                  const isReceived = 'status' in item && item.status === 'received';
-                  const isApproved = 'status' in item && item.status === 'approved';
+                  const isSelected = selectedId === item.id;
+                  const type = item.itemType || 
+                              (activeTab === 'formularios' ? 'formulario' : 
+                               activeTab === 'requerimentos' ? 'requerimento' : 'documento');
+                  
+                  const isReceived = type === 'formulario' && item.status === 'received';
+                  const isApproved = (item.status === 'approved' || item.status === 'aprovado' || item.status === 'CONCLUIDO');
                   
                   return (
                     <div 
                       key={item.id}
-                      onClick={() => activeTab === 'formularios' ? setSelectedFormId(item.id) : setSelectedDocId(item.id)}
+                      onClick={() => {
+                        setSelectedId(item.id);
+                        setSelectedItemType(type);
+                      }}
                       className={cn(
                         "p-5 rounded-2xl cursor-pointer transition-all border-2 group relative overflow-hidden",
                         isSelected 
@@ -383,7 +473,9 @@ export function ProcessAnalysis({
                               ? "bg-green-600 text-white shadow-lg shadow-green-500/40"
                               : "bg-gray-50 text-gray-400 group-hover:bg-primary/10 group-hover:text-primary"
                         )}>
-                          {activeTab === 'formularios' ? <ClipboardList className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
+                          {type === 'formulario' ? <ClipboardList className="h-6 w-6" /> : 
+                           type === 'requerimento' ? <Send className="h-6 w-6" /> :
+                           <FileText className="h-6 w-6" />}
                           {isApproved && !isSelected && (
                             <div className="absolute -top-1 -right-1 bg-white dark:bg-gray-900 rounded-full p-0.5 shadow-sm">
                               <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -397,14 +489,18 @@ export function ProcessAnalysis({
                             isApproved ? "text-green-900 dark:text-green-100" :
                             "text-gray-600 dark:text-gray-300"
                           )}>
-                            {item.name}
+                            {item.name || item.tipo}
                           </p>
                           <div className="mt-2.5 flex flex-wrap gap-2">
-                            {activeTab === 'formularios' ? (
+                            {type === 'formulario' ? (
                               <Badge variant={isReceived ? "success" : "warning"} className="text-[10px] font-black uppercase tracking-wider py-0 px-2 flex items-center gap-1">
                                 {isReceived ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                 {isReceived ? 'Recebido' : 'Aguardando'}
                               </Badge>
+                            ) : type === 'requerimento' ? (
+                                <Badge variant={isApproved ? "success" : "warning"} className="text-[10px] font-black uppercase tracking-wider py-0 px-2 flex items-center gap-1">
+                                    {isApproved ? 'Concluído' : item.status}
+                                </Badge>
                             ) : (
                               <Badge variant={isApproved ? "success" : "outline"} className={cn(
                                 "text-[9px] font-black uppercase tracking-wider py-0 px-2 border-2",
@@ -428,7 +524,69 @@ export function ProcessAnalysis({
 
         {/* Área de Revisão Principal */}
         <div className="flex-1 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900/50">
-          {activeTab !== 'formularios' ? (
+          {selectedItemType === 'requerimento' ? (
+            /* Requirements Review */
+            selectedReq ? (
+                <div className="flex-1 p-8 space-y-6 overflow-y-auto">
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl border shadow-sm space-y-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <Badge className="mb-2 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200">REQUERIMENTO</Badge>
+                                <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{selectedReq.tipo}</h2>
+                                <p className="text-sm text-gray-500 mt-1">Solicitado em {new Date(selectedReq.created_at || selectedReq.createdAt).toLocaleDateString()}</p>
+                            </div>
+                            <Badge variant={selectedReq.status === 'aprovado' || selectedReq.status === 'CONCLUIDO' ? 'success' : 'warning'} className="text-xs font-bold px-4 py-1">
+                                {selectedReq.status.toUpperCase()}
+                            </Badge>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Observações</Label>
+                                <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border text-sm text-gray-600 min-h-[100px]">
+                                    {selectedReq.observacoes || 'Sem observações.'}
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Documentos Relacionados</Label>
+                                <div className="space-y-2">
+                                    {selectedReq.documentos && selectedReq.documentos.length > 0 ? selectedReq.documentos.map((doc: any) => (
+                                        <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border text-xs">
+                                            <span className="font-bold">{doc.tipo}</span>
+                                            <Badge variant={doc.status === 'APPROVED' ? 'success' : 'outline'}>{doc.status}</Badge>
+                                        </div>
+                                    )) : (
+                                        <p className="text-xs text-gray-400 italic py-4 text-center border border-dashed rounded-xl">Nenhum documento vinculado ainda.</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="pt-6 border-t flex gap-4">
+                             <Button 
+                                onClick={() => handleUpdateRequerimento('aprovado')}
+                                disabled={isUpdatingReqStatus || selectedReq.status === 'aprovado' || selectedReq.status === 'CONCLUIDO'}
+                                className="flex-1 h-12 bg-green-600 hover:bg-green-700 text-white font-bold rounded-2xl shadow-lg shadow-green-600/20"
+                             >
+                                {isUpdatingReqStatus ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Aprovar Requerimento'}
+                             </Button>
+                             <Button 
+                                onClick={() => handleUpdateRequerimento('rejeitado')}
+                                disabled={isUpdatingReqStatus || selectedReq.status === 'aprovado' || selectedReq.status === 'CONCLUIDO'}
+                                variant="outline" 
+                                className="flex-1 h-12 border-2 font-bold rounded-2xl"
+                             >
+                                Rejeitar / Solicitar Ajuste
+                             </Button>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="flex-1 flex items-center justify-center text-gray-400">
+                    Selecione um requerimento para visualizar
+                </div>
+            )
+          ) : selectedItemType === 'documento' ? (
             /* Documents Review */
             selectedDoc ? (
               <>
@@ -484,13 +642,25 @@ export function ProcessAnalysis({
                   </div>
                 </div>
 
-                {/* Document Preview (Mock) */}
-                <div className="flex-1 p-6 overflow-hidden flex items-center justify-center">
-                  <div className="w-full h-full max-w-4xl bg-white dark:bg-gray-800 shadow-xl rounded-xl border flex flex-col items-center justify-center text-gray-400">
-                      <FileText className="h-24 w-24 mb-4 opacity-20" />
-                      <p>Visualização do Documento</p>
-                      <p className="text-sm opacity-60">(Integração com visualizador de PDF aqui)</p>
-                  </div>
+                {/* Document Preview */}
+                <div className="flex-1 p-6 overflow-hidden flex items-center justify-center bg-gray-100 dark:bg-gray-950">
+                  {selectedDoc.url ? (
+                    <div className="w-full h-full max-w-5xl bg-white dark:bg-gray-800 shadow-2xl rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                      <iframe 
+                        src={selectedDoc.url} 
+                        className="w-full h-full border-none"
+                        title={selectedDoc.name}
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-full max-w-4xl bg-white dark:bg-gray-800 shadow-xl rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center text-gray-400 p-12 text-center">
+                        <div className="h-20 w-20 rounded-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center mb-6">
+                          <XOctagon className="h-10 w-10 text-gray-300" />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Documento Indisponível</h3>
+                        <p className="text-sm max-w-xs">O cliente ainda não realizou o upload deste documento ou o link de visualização expirou.</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions Footer */}
@@ -578,60 +748,32 @@ export function ProcessAnalysis({
                 </div>
 
                 {/* Form Preview */}
-                <div className="flex-1 p-6 overflow-hidden flex items-center justify-center">
-                  <div className="w-full h-full max-w-4xl bg-white dark:bg-gray-800 shadow-xl rounded-xl border flex flex-col items-center justify-center text-gray-400">
-                    {selectedForm.status === 'waiting' ? (
-                      <>
-                        <Clock className="h-24 w-24 mb-4 opacity-20" />
-                        <p className="text-lg font-medium">Aguardando Resposta do Cliente</p>
-                        <p className="text-sm opacity-60 mt-2">O cliente ainda não enviou o formulário preenchido</p>
-                      </>
-                    ) : selectedForm.responseStatus === 'aprovado' ? (
-                      <>
-                        <CheckCircle className="h-24 w-24 mb-4 opacity-20 text-green-400" />
-                        <p className="text-lg font-medium text-green-600">Formulário Aprovado</p>
-                        <p className="text-sm opacity-60 mt-2">
-                          Recebido em {new Date(selectedForm.response!.uploadDate).toLocaleDateString()}
-                        </p>
-                        <Button className="mt-4 bg-green-600 hover:bg-green-700" asChild>
-                          <a href={selectedForm.response!.downloadUrl} target="_blank" rel="noopener noreferrer">
-                            <Download className="h-4 w-4 mr-2" />
-                            Visualizar Resposta
-                          </a>
-                        </Button>
-                      </>
-                    ) : selectedForm.responseStatus === 'rejeitado' ? (
-                      <>
-                        <XOctagon className="h-24 w-24 mb-4 opacity-20 text-red-400" />
-                        <p className="text-lg font-medium text-red-600">Formulário Rejeitado</p>
-                        {selectedForm.motivoRejeicao && (
-                          <p className="text-sm text-red-500 mt-2">
-                            Motivo: {selectedForm.motivoRejeicao}
-                          </p>
-                        )}
-                        <Button className="mt-4 bg-red-600 hover:bg-red-700" asChild>
-                          <a href={selectedForm.response!.downloadUrl} target="_blank" rel="noopener noreferrer">
-                            <Download className="h-4 w-4 mr-2" />
-                            Visualizar Resposta
-                          </a>
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <ClipboardList className="h-24 w-24 mb-4 opacity-20 text-purple-400" />
-                        <p className="text-lg font-medium text-purple-600">Resposta Recebida</p>
-                        <p className="text-sm opacity-60 mt-2">
-                          Recebido em {new Date(selectedForm.response!.uploadDate).toLocaleDateString()}
-                        </p>
-                        <Button className="mt-4 bg-purple-600 hover:bg-purple-700" asChild>
-                          <a href={selectedForm.response!.downloadUrl} target="_blank" rel="noopener noreferrer">
-                            <Download className="h-4 w-4 mr-2" />
-                            Visualizar Resposta
-                          </a>
-                        </Button>
-                      </>
-                    )}
-                  </div>
+                <div className="flex-1 p-6 overflow-hidden flex items-center justify-center bg-gray-100 dark:bg-gray-950">
+                  {selectedForm.status === 'waiting' ? (
+                    <div className="w-full h-full max-w-4xl bg-white dark:bg-gray-800 shadow-xl rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center text-gray-400 p-12 text-center">
+                        <div className="h-20 w-20 rounded-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center mb-6">
+                          <Clock className="h-10 w-10 text-gray-300" />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Aguardando Resposta</h3>
+                        <p className="text-sm max-w-xs">O cliente ainda não enviou este formulário preenchido.</p>
+                    </div>
+                  ) : selectedForm.response ? (
+                    <div className="w-full h-full max-w-5xl bg-white dark:bg-gray-800 shadow-2xl rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                      <iframe 
+                        src={selectedForm.response.downloadUrl} 
+                        className="w-full h-full border-none"
+                        title={selectedForm.name}
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-full max-w-4xl bg-white dark:bg-gray-800 shadow-xl rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center text-gray-400 p-12 text-center">
+                        <div className="h-20 w-20 rounded-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center mb-6">
+                          <XOctagon className="h-10 w-10 text-gray-300" />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Documento Indisponível</h3>
+                        <p className="text-sm max-w-xs">O formulário foi marcado como recebido mas o arquivo não foi encontrado.</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Form Action Buttons - only show when response received and not yet approved/rejected */}

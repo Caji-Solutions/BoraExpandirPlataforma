@@ -8,7 +8,7 @@ import { cn, formatDate } from '../lib/utils'
 
 interface NotificationsProps {
   notifications: Notification[]
-  onMarkAsRead: (notificationId: string) => void
+  onMarkAsRead: (notificationId: string, lida: boolean) => void
   onMarkAllAsRead: () => void
   onDismiss: (notificationId: string) => void
 }
@@ -163,16 +163,14 @@ export function Notifications({
                           </span>
                           
                           <div className="flex items-center space-x-2">
-                            {!notification.read && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => onMarkAsRead(notification.id)}
-                                className="text-xs"
-                              >
-                                Marcar como Lida
-                              </Button>
-                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onMarkAsRead(notification.id, !notification.read)}
+                              className="text-xs"
+                            >
+                              {notification.read ? 'Marcar como não lida' : 'Marcar como lida'}
+                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"

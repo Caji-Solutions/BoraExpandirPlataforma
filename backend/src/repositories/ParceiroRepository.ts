@@ -36,23 +36,50 @@ class ParceiroRepository {
     }
 
     static async findById(id: string): Promise<Parceiro | null> {
-        const { data, error } = await supabase
-            .from('parceiros')
+        // 1. Tenta buscar na tabela de parceiros (para parceiros independentes via UUID)
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+        
+        if (isUuid) {
+            const { data: parceiro, error: pError } = await supabase
+                .from('parceiros')
+                .select('*')
+                .eq('id', id)
+                .single()
+
+            if (!pError && parceiro) {
+                return {
+                    id: parceiro.id,
+                    nome: parceiro.nome,
+                    email: parceiro.email,
+                    telefone: parceiro.telefone ?? undefined,
+                    documento: parceiro.documento ?? undefined,
+                    criadoEm: new Date(parceiro.created_at),
+                    atualizadoEm: new Date(parceiro.updated_at),
+                }
+            }
+        }
+
+        // 2. Busca na tabela de clientes pela coluna client_id (que já contém o prefixo, ex: 'be7136')
+        // Usamos ilike para ser insensível a maiúsculas/minúsculas por segurança
+        const { data: cliente, error: cliError } = await supabase
+            .from('clientes')
             .select('*')
-            .eq('id', id)
+            .ilike('client_id', id)
             .single()
 
-        if (error || !data) return null
-
-        return {
-            id: data.id,
-            nome: data.nome,
-            email: data.email,
-            telefone: data.telefone ?? undefined,
-            documento: data.documento ?? undefined,
-            criadoEm: new Date(data.created_at),
-            atualizadoEm: new Date(data.updated_at),
+        if (!cliError && cliente) {
+            return {
+                id: cliente.id, // O ID real continua sendo o UUID do cliente
+                nome: cliente.nome,
+                email: cliente.email,
+                telefone: cliente.whatsapp ?? undefined,
+                documento: undefined,
+                criadoEm: new Date(cliente.created_at),
+                atualizadoEm: new Date(cliente.updated_at),
+            }
         }
+
+        return null
     }
 
     static async update(id: string, data: Partial<RegisterParceiroDTO>): Promise<Parceiro | null> {

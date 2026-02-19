@@ -171,17 +171,51 @@ export function ProcessTable({ data }: ProcessTableProps) {
                                             </Button>
                                             <Button 
                                                 size="sm" 
-                                                className="h-9 rounded-xl text-[10px] font-bold shadow-lg shadow-primary/20 transition-transform active:scale-95"
-                                                disabled={row.fase >= 4}
+                                                className={`h-9 rounded-xl text-[10px] font-bold shadow-lg transition-transform active:scale-95 ${row.hasRequirement ? 'bg-muted text-muted-foreground' : 'shadow-primary/20'}`}
+                                                disabled={row.fase >= 4 || row.hasRequirement}
                                                 onClick={() => handleUpdateEtapa(row.id, row.fase, 1)}
                                             >
                                                 Avançar <ChevronRight className="h-3 w-3 ml-1" />
                                             </Button>
+                                            {row.hasRequirement && (
+                                                <div className="absolute -bottom-1 right-0 text-[7px] text-red-500 font-bold uppercase tracking-tighter">
+                                                    Bloqueado por Requerimento
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     
                                     <div className="relative flex justify-between px-6 pt-2">
                                         <div className="absolute top-[21px] left-10 right-10 h-0.5 bg-muted -z-0" />
+                                        
+                                        {row.hasRequirement && row.fase < 4 && (
+                                            (() => {
+                                                const dotStep = 100 / 3;
+                                                const dotLeft = ((row.fase - 1) * dotStep) + (dotStep / 2);
+                                                const lineLeft = ((row.fase - 1) * dotStep) + (dotStep / 4); // Ajustado para começar um pouco após o círculo da etapa
+                                                
+                                                return (
+                                                    <>
+                                                        {/* Linha vermelha de bloqueio */}
+                                                        <div 
+                                                            className="absolute top-[21px] h-0.5 bg-red-400 dark:bg-red-600 -z-0 transition-all duration-500" 
+                                                            style={{ 
+                                                                left: `calc(1.5rem + (100% - 3rem) * ${lineLeft / 100})`,
+                                                                right: '1.5rem' 
+                                                            }}
+                                                        />
+                                                        {/* Bolinha vermelha de bloqueio */}
+                                                        <div 
+                                                            className="absolute top-[17px] w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)] z-20 animate-pulse border-2 border-background transition-all duration-500" 
+                                                            style={{ 
+                                                                left: `calc(1.5rem + (100% - 3rem) * ${dotLeft / 100})`,
+                                                                transform: 'translateX(-50%)'
+                                                            }}
+                                                        />
+                                                    </>
+                                                );
+                                            })()
+                                        )}
                                         
                                         {phases.map((phase) => {
                                             const isActive = row.fase === phase.id;

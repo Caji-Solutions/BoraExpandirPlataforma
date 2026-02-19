@@ -32,6 +32,7 @@ interface FamilyFolderCardProps {
   onToggle: () => void
   onOpenUploadModal: () => void  // New prop to open initial upload modal
   onUpload: (file: File, documentType: string, memberId: string, documentoId?: string) => Promise<void>
+  requerimentos?: any[]
   onDelete: (documentId: string) => void
   onRefresh?: () => void
 }
@@ -99,6 +100,7 @@ export function FamilyFolderCard({
   onToggle,
   onOpenUploadModal,
   onUpload,
+  requerimentos,
   onDelete,
   onRefresh
 }: FamilyFolderCardProps) {
@@ -285,8 +287,17 @@ export function FamilyFolderCard({
     return s
   }, [memberDocs, pendingDocs])
 
+  // Calculate if this specific member has any pending requirement
+  const hasPendingRequirement = useMemo(() => {
+    if (!requerimentos) return false
+    return requerimentos.some(req => 
+      req.status === 'pendente' && 
+      req.documentos?.some((doc: any) => (doc.dependente_id || doc.cliente_id) === member.id && doc.status === 'PENDING')
+    )
+  }, [requerimentos, member.id])
+
   const hasSentDocuments = memberDocs.length > 0
-  const hasRejected = stats.rejected > 0
+  const hasRejected = stats.rejected > 0 || hasPendingRequirement
   const hasPending = pendingDocs.length > 0
 
 
@@ -504,8 +515,8 @@ export function FamilyFolderCard({
         className={cn(
           "transition-all duration-300 border-2",
           isExpanded ? "overflow-visible" : "overflow-hidden",
-          hasRejected ? 'border-red-200 dark:border-red-800' : 'border-gray-200 dark:border-gray-700',
-          isExpanded && 'shadow-lg'
+          hasRejected ? 'border-red-500 dark:border-red-600 shadow-lg shadow-red-500/10' : 'border-gray-200 dark:border-gray-700',
+          isExpanded && !hasRejected && 'shadow-lg'
         )}
       >
         {/* Header - Always visible */}
@@ -1201,6 +1212,8 @@ export function FamilyFolderCard({
             <RequirementsCard
               clienteId={member.clienteId || member.id}
               processoId={processoId}
+              membroId={member.id}
+              initialRequirements={requerimentos}
             />
           </div>
         )}

@@ -20,6 +20,7 @@ interface FamilyFoldersProps {
     members: FamilyMember[]
     documents: ClientDocument[]
     requiredDocuments: RequiredDocument[]
+    requerimentos?: any[]
     onUpload: (file: File, documentType: string, memberId: string, documentoId?: string) => Promise<void>
     onDelete: (documentId: string) => void
 }
@@ -33,6 +34,7 @@ export function FamilyFolders({
     members: initialMembers,
     documents,
     requiredDocuments,
+    requerimentos = [],
     onUpload,
     onDelete
 }: FamilyFoldersProps) {
@@ -175,6 +177,7 @@ export function FamilyFolders({
                         member={member}
                         documents={documents}
                         requiredDocuments={requiredDocuments}
+                        requerimentos={requerimentos}
                         processoId={processoId}
                         isExpanded={expandedCardId === member.id}
                         onToggle={() => toggleCard(member.id)}

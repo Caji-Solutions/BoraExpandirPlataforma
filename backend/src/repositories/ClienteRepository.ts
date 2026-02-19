@@ -663,6 +663,37 @@ class ClienteRepository {
 
         return data || []
     }
+
+    async updateNotificacaoStatus(notificacaoId: string, lida: boolean): Promise<any> {
+        const { data, error } = await supabase
+            .from('notificacoes')
+            .update({ lida })
+            .eq('id', notificacaoId)
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro ao atualizar status da notificação:', error)
+            throw error
+        }
+
+        return data
+    }
+
+    async markAllNotificacoesAsRead(clienteId: string): Promise<any> {
+        const { data, error } = await supabase
+            .from('notificacoes')
+            .update({ lida: true })
+            .eq('cliente_id', clienteId)
+            .eq('lida', false)
+
+        if (error) {
+            console.error('Erro ao marcar todas notificações como lidas:', error)
+            throw error
+        }
+
+        return data
+    }
 }
 
 export default new ClienteRepository()

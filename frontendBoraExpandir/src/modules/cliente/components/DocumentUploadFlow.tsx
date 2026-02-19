@@ -10,6 +10,7 @@ interface DocumentUploadFlowProps {
     familyMembers: { id: string, name: string, type: string }[]
     documents: ClientDocument[]
     requiredDocuments: RequiredDocument[]
+    requerimentos?: any[]
     onUploadSuccess?: (data: any) => void
     onDelete: (documentId: string) => void
 }
@@ -24,6 +25,7 @@ export function DocumentUploadFlow({
     familyMembers,
     documents,
     requiredDocuments,
+    requerimentos = [],
     onUploadSuccess,
     onDelete
 }: DocumentUploadFlowProps) {
@@ -85,6 +87,7 @@ export function DocumentUploadFlow({
                 members={familyMembers}
                 documents={documents}
                 requiredDocuments={requiredDocuments}
+                requerimentos={requerimentos}
                 onUpload={handleUpload}
                 onDelete={onDelete}
             />

@@ -379,6 +379,64 @@ export async function updateProcessEtapa(processoId: string, etapa: number): Pro
   return response.json();
 }
 
+/**
+ * Busca requerimentos de um processo específico
+ */
+export async function getRequerimentosByProcesso(processoId: string): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/juridico/requerimentos/processo/${processoId}`);
+
+  if (!response.ok) {
+    throw new Error('Erro ao buscar requerimentos do processo');
+  }
+
+  const result = await response.json();
+  return result.data || [];
+}
+
+/**
+ * Busca requerimentos de um cliente específico
+ */
+export async function getRequerimentosByCliente(clienteId: string, membroId?: string): Promise<any[]> {
+  const url = membroId 
+    ? `${API_BASE_URL}/juridico/requerimentos/cliente/${clienteId}/${membroId}`
+    : `${API_BASE_URL}/juridico/requerimentos/cliente/${clienteId}`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error('Erro ao buscar requerimentos do cliente');
+  }
+
+  const result = await response.json();
+  return result.data || [];
+}
+
+/**
+ * Atualiza o status de um requerimento
+ */
+export async function updateRequerimentoStatus(
+  requerimentoId: string, 
+  status: string, 
+  observacoes?: string
+): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/juridico/requerimentos/${requerimentoId}/status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      status,
+      observacoes
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Erro ao atualizar status do requerimento');
+  }
+
+  return response.json();
+}
+
 export default {
     getProcessos,
     getProcessosByResponsavel,
@@ -397,5 +455,8 @@ export default {
     updateDocumentStatus,
     requestDocument,
     requestRequirement,
-    updateProcessEtapa
+    updateProcessEtapa,
+    getRequerimentosByProcesso,
+    getRequerimentosByCliente,
+    updateRequerimentoStatus
 };

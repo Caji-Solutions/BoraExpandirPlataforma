@@ -104,14 +104,6 @@ export function ReminderCard({ title, type, reminders }: ReminderCardProps) {
                                 </div>
                             </div>
                         </div>
-                        {currentReminder.actionLink && (
-                            <Link
-                                to={currentReminder.actionLink}
-                                className="mt-3 flex items-center justify-end text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
-                            >
-                                Ver detalhes <ArrowRight className="h-3 w-3 ml-1" />
-                            </Link>
-                        )}
                     </div>
                 ) : (
                     <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-sm">

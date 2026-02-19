@@ -13,14 +13,25 @@ const statusConfig = {
 
 
 
-export default function Parceiro() {
+import { Client } from '../types';
+
+interface ParceiroProps {
+  client: Client;
+}
+
+export default function Parceiro({ client }: ParceiroProps) {
   const metrics = useMemo(() => mockPartnerMetrics, []);
+
+  // O ID agora vem da coluna client_id (mapeado para client.clientId no frontend)
+  // Se por acaso não estiver preenchido, usamos o id padrão (UUID)
+  const displayId = client.clientId || client.id;
+  const referralLink = `${window.location.origin}/r/${displayId}`;
 
   const [copied, setCopied] = useState(false);
 
   const handleCopyLink = () => {
-    if (metrics.referralLink) {
-      navigator.clipboard.writeText(metrics.referralLink);
+    if (referralLink) {
+      navigator.clipboard.writeText(referralLink);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -32,9 +43,14 @@ export default function Parceiro() {
       <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-700/50 rounded-lg p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Seu Link de Indicação</h2>
         <div className="flex items-center gap-2">
-          <code className="flex-1 bg-white dark:bg-neutral-900 px-4 py-2 rounded border border-gray-200 dark:border-neutral-700 text-gray-800 dark:text-gray-200 text-sm overflow-hidden">
-            {metrics.referralLink}
-          </code>
+          <a 
+            href={referralLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 bg-white dark:bg-neutral-900 px-4 py-2 rounded border border-gray-200 dark:border-neutral-700 text-blue-600 dark:text-blue-400 text-sm overflow-hidden hover:underline"
+          >
+            {referralLink}
+          </a>
           <button
             onClick={handleCopyLink}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"

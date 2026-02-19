@@ -49,5 +49,33 @@ export const clienteService = {
     
     const result = await response.json();
     return result.data || [];
+  },
+
+  async updateNotificacaoStatus(notificacaoId: string, lida: boolean) {
+    const response = await fetch(`${API_BASE_URL}/cliente/notificacoes/${notificacaoId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ lida }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Falha ao atualizar status da notificação');
+    }
+
+    return response.json();
+  },
+
+  async markAllNotificacoesAsRead(clienteId: string) {
+    const response = await fetch(`${API_BASE_URL}/cliente/${clienteId}/notificacoes/read-all`, {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      throw new Error('Falha ao marcar notificações como lidas');
+    }
+
+    return response.json();
   }
 };

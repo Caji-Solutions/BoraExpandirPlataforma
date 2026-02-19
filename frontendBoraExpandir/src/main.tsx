@@ -23,6 +23,7 @@ function TelaIndicadoWrapper() {
 
   useEffect(() => {
     if (!partnerId) return
+    
     fetch(`${import.meta.env.VITE_BACKEND_URL}/parceiro/parceirobyid/${partnerId}`)
       .then(res => res.json())
       .then(data => {
@@ -70,6 +71,7 @@ function AppRouter() {
         <Route path="/adm/*" element={<AdmApp />} />
         <Route path="/parceiro/cadastro" element={<CadastroParceiro />} />
         <Route path="/indicado/:partnerId" element={<TelaIndicadoWrapper />} />
+        <Route path="/r/:partnerId" element={<TelaIndicadoWrapper />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

@@ -24,7 +24,7 @@ import { DocumentUploadFlow } from './components/DocumentUploadFlow'
 import { Home, FileText, Upload, GitBranch, Bell, Languages, Users, Calendar, Settings, Stamp } from 'lucide-react'
 import { Config } from '../../components/ui/Config'
 import { RequiredActionModal } from './components/RequiredActionModal'
-import { Requerimentos } from './components/Requerimentos'
+import { clienteService } from './services/clienteService'
 
 export function ClienteApp() {
   const location = useLocation()
@@ -99,6 +99,9 @@ export function ClienteApp() {
     }
   }
 
+
+  const [notifications, setNotifications] = useState<Notification[]>([])
+
   const fetchRequerimentos = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/cliente/${mockClient.id}/requerimentos`)
@@ -109,6 +112,28 @@ export function ClienteApp() {
       console.error('Erro ao buscar requerimentos:', error)
     }
   }
+
+  const fetchNotificacoes = async () => {
+    try {
+      const result = await clienteService.getNotificacoes(mockClient.id)
+      const backendNotifs = result.map((n: any) => ({
+        id: n.id,
+        clientId: n.cliente_id,
+        type: n.tipo || 'info', // Map backend 'tipo' or default
+        title: n.titulo,
+        message: n.mensagem,
+        read: n.lida,
+        data_prazo: n.data_prazo,
+        createdAt: new Date(n.criado_em)
+      }))
+
+      // Combine with pending action notifications (logic-based)
+      setNotifications(backendNotifs)
+    } catch (error) {
+      console.error('Erro ao buscar notificações:', error)
+    }
+  }
+
 
   const fetchClientData = async () => {
     try {
@@ -124,6 +149,7 @@ export function ClienteApp() {
             email: apiCliente.email,
             phone: apiCliente.whatsapp,
             avatarUrl: apiCliente.foto_perfil,
+            clientId: apiCliente.client_id,
             createdAt: new Date(apiCliente.created_at)
           })
         }
@@ -213,6 +239,9 @@ export function ClienteApp() {
 
         // Fetch requerimentos
         await fetchRequerimentos()
+
+        // Fetch notificações
+        await fetchNotificacoes()
       } catch (error) {
         console.error('Erro ao buscar dados iniciais:', error)
         setFamilyMembers([{ id: mockClient.id, name: mockClient.name, type: 'Titular' }])
@@ -224,39 +253,16 @@ export function ClienteApp() {
     fetchInitialData()
   }, [])
 
-  // Create notifications from pending actions
-  const pendingActionNotifications: Notification[] = mockPendingActions.map(action => ({
-    id: `pending-notif-${action.id}`,
-    clientId: mockClient.id,
-    type: action.priority === 'high' ? 'warning' : 'info',
-    title: `Ação Necessária: ${action.title}`,
-    message: action.description,
-    read: false,
-    createdAt: new Date(),
-  }))
-
-  const [notifications, setNotifications] = useState<Notification[]>([...pendingActionNotifications, ...mockNotifications])
-
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
   const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [approvedDocuments, setApprovedDocuments] = useState<ApprovedDocument[]>(mockApprovedDocuments)
-  const [translatedDocuments, setTranslatedDocuments] = useState<TranslatedDocument[]>(mockTranslatedDocuments)
+  const [approvedDocuments, setApprovedDocuments] = useState<ApprovedDocument[]>([])
+  const [translatedDocuments, setTranslatedDocuments] = useState<TranslatedDocument[]>([])
   const [isRequiredModalOpen, setIsRequiredModalOpen] = useState(false)
 
   const unreadNotifications = notifications.filter(n => !n.read).length
   const isPartnerOnly = !!mockClient.isPartner && mockClient.isClient === false
 
-  useEffect(() => {
-    // Check if user has already acknowledged pending actions
-    const hasAcknowledged = localStorage.getItem('acknowledgedPendingActions')
-
-    // Check if there are new actions (in a real app, we might compare IDs or timestamps)
-    // For now, if we have actions and haven't acknowledged, show modal
-    if (mockPendingActions.length > 0 && !hasAcknowledged) {
-      setIsRequiredModalOpen(true)
-    }
-  }, [])
 
   const handleCloseRequiredModal = () => {
     setIsRequiredModalOpen(false)
@@ -304,20 +310,37 @@ export function ClienteApp() {
     setDocuments(prev => prev.filter(doc => doc.id !== documentId))
   }
 
-  const handleMarkAsRead = (notificationId: string) => {
-    setNotifications(prev =>
-      prev.map(notification =>
-        notification.id === notificationId
-          ? { ...notification, read: true }
-          : notification
+  const handleMarkAsRead = async (notificationId: string, lida: boolean = true) => {
+    try {
+      // Optimistic update
+      setNotifications(prev =>
+        prev.map(notification =>
+          notification.id === notificationId
+            ? { ...notification, read: lida }
+            : notification
+        )
       )
-    )
+
+      // Se for uma notificação do backend (UUID), atualiza no banco
+      if (notificationId.length > 20) { // IDs de mock são curtos ou numéricos
+         await clienteService.updateNotificacaoStatus(notificationId, lida)
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar status da notificação:', error)
+    }
   }
 
-  const handleMarkAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notification => ({ ...notification, read: true }))
-    )
+  const handleMarkAllAsRead = async () => {
+    try {
+      // Optimistic update
+      setNotifications(prev =>
+        prev.map(notification => ({ ...notification, read: true }))
+      )
+
+      await clienteService.markAllNotificacoesAsRead(mockClient.id)
+    } catch (error) {
+      console.error('Erro ao marcar todas como lidas:', error)
+    }
   }
 
   const handleDismissNotification = (notificationId: string) => {
@@ -442,7 +465,6 @@ export function ClienteApp() {
           { label: 'Meu Processo', to: '/cliente/processo', icon: GitBranch },
           { label: 'Agendamento', to: '/cliente/agendamento', icon: Calendar },
           { label: 'Documentos', to: '/cliente/upload', icon: FileText },
-          { label: 'Requerimentos', to: '/cliente/requerimentos', icon: Stamp },
           { label: 'Parceiro', to: '/cliente/parceiro', icon: Users },
 
           {
@@ -484,7 +506,7 @@ export function ClienteApp() {
         <main className="md:ml-64 p-4 md:p-8 pt-16 md:pt-8">
           <Routes>
             <Route index element={<PartnerDashboard client={client} onBecomeClient={handleBecomeClient} />} />
-            <Route path="parceiro" element={<Parceiro />} />
+            <Route path="parceiro" element={<Parceiro client={client} />} />
             <Route path="agendamento" element={<ClienteAgendamento client={client} />} />
             <Route path="configuracoes" element={<Config />} />
           </Routes>
@@ -543,12 +565,13 @@ export function ClienteApp() {
                 documents={documents}
                 process={processo}
                 requerimentos={requerimentos}
+                notifications={notifications}
               />
             }
           />
           <Route
             path="processo"
-            element={<ProcessTimeline process={processo!} />}
+            element={<ProcessTimeline process={processo!} requerimentos={requerimentos} familyMembers={familyMembers} />}
           />
           <Route path="agendamento" element={<ClienteAgendamento client={client} />} />
           <Route
@@ -562,6 +585,7 @@ export function ClienteApp() {
                 familyMembers={familyMembers}
                 documents={documents}
                 requiredDocuments={mockRequiredDocuments}
+                requerimentos={requerimentos}
                 onUploadSuccess={async (data) => {
                   console.log('Upload concluído:', data)
                   // Recarregar documentos do backend para obter o estado real
@@ -589,10 +613,6 @@ export function ClienteApp() {
             }
           />
           <Route
-            path="requerimentos"
-            element={<Requerimentos clienteId={client.id} />}
-          />
-          <Route
             path="traducao"
             element={
               <Traducao
@@ -606,7 +626,7 @@ export function ClienteApp() {
           <Route
             path="parceiro"
             element={
-              <Parceiro />
+              <Parceiro client={client} />
             }
           />
           <Route
@@ -633,7 +653,13 @@ export function ClienteApp() {
       <RequiredActionModal
         isOpen={isRequiredModalOpen}
         onClose={handleCloseRequiredModal}
-        actions={mockPendingActions}
+        actions={notifications.filter(n => !n.read).map(n => ({
+          id: n.id,
+          title: n.titulo || n.title || 'Solicitação',
+          description: n.mensagem || n.message || '',
+          deadline: new Date(new Date(n.criado_em || n.createdAt || Date.now()).getTime() + 7 * 24 * 60 * 60 * 1000),
+          priority: 'high'
+        }))}
       />
     </div>
   )

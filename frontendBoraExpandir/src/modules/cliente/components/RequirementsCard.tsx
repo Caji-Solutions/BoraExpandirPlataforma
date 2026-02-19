@@ -10,7 +10,7 @@ import {
     FileText
 } from 'lucide-react'
 import { Badge } from './ui/badge'
-import { formatDate } from '../lib/utils'
+import { cn, formatDate } from '../lib/utils'
 import { clienteService } from '../services/clienteService'
 
 interface Requerimento {
@@ -26,24 +26,53 @@ interface Requerimento {
 interface RequirementsCardProps {
     clienteId: string
     processoId?: string
+    membroId?: string
+    initialRequirements?: any[]
 }
 
 export function RequirementsCard({
     clienteId,
-    processoId
+    processoId,
+    membroId,
+    initialRequirements
 }: RequirementsCardProps) {
     const [isExpanded, setIsExpanded] = useState(false)
     const [requirements, setRequirements] = useState<Requerimento[]>([])
     const [isLoading, setIsLoading] = useState(false)
 
     useEffect(() => {
+        const processRequirements = (data: any[]) => {
+            let filtered = data
+            if (membroId) {
+                filtered = data.filter((req: Requerimento) => 
+                    req.documentos?.some(doc => (doc.dependente_id || doc.cliente_id) === membroId) ||
+                    // If it's a general requirement (no docs yet or strictly linked to member)
+                    (req as any).membro_id === membroId
+                ).map((req: Requerimento) => ({
+                    ...req,
+                    documentos: req.documentos?.filter(doc => (doc.dependente_id || doc.cliente_id) === membroId)
+                }))
+            }
+            setRequirements(filtered)
+            
+            // Auto-expand if there are pending requirements for this member
+            if (filtered.some(r => r.status === 'pendente')) {
+                setIsExpanded(true)
+            }
+        }
+
+        if (initialRequirements) {
+            processRequirements(initialRequirements)
+            return
+        }
+
         const fetchRequirements = async () => {
             if (!clienteId) return
 
             setIsLoading(true)
             try {
                 const data = await clienteService.getRequerimentos(clienteId)
-                setRequirements(data)
+                processRequirements(data)
             } catch (error) {
                 console.error('Erro ao buscar requerimentos:', error)
             } finally {
@@ -51,10 +80,8 @@ export function RequirementsCard({
             }
         }
 
-        if (isExpanded) {
-            fetchRequirements()
-        }
-    }, [clienteId, isExpanded])
+        fetchRequirements()
+    }, [clienteId, membroId, initialRequirements])
 
     const getStatusBadge = (status: string) => {
         switch (status.toLowerCase()) {
@@ -82,12 +109,19 @@ export function RequirementsCard({
         }
     }
 
+    const hasPending = requirements.some(r => r.status === 'pendente')
+
     return (
         <div className="mt-4 first:mt-0">
             {/* Header */}
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full flex items-center justify-between p-4 bg-white dark:bg-gray-800 border border-border rounded-2xl hover:border-blue-500/30 transition-all group"
+                className={cn(
+                    "w-full flex items-center justify-between p-4 bg-white dark:bg-gray-800 border rounded-2xl transition-all group",
+                    hasPending 
+                        ? "border-red-500 shadow-sm shadow-red-500/10 hover:border-red-600" 
+                        : "border-border hover:border-blue-500/30"
+                )}
             >
                 <div className="flex items-center gap-4">
                     <div className="p-2.5 bg-blue-50 dark:bg-blue-900/30 rounded-xl group-hover:scale-110 transition-transform">

@@ -32,7 +32,6 @@ export default function LeadCapturePage({ partnerName, partnerId, partnerAvatarU
 		if (!nome.trim() || !email.trim() || !whats.trim()) return;
 		setLoading(true);
 		try {
-			/*
 			// Salvar lead no backend
 			const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/cliente/register`, {
 				method: 'POST',
@@ -42,11 +41,13 @@ export default function LeadCapturePage({ partnerName, partnerId, partnerAvatarU
 					email,
 					whatsapp: whats,
 					parceiro_id: partnerId,
+                    status: 'prospect'
 				}),
 			});
+
 			if (!res.ok) {
 				console.error('Erro ao salvar lead:', await res.text());
-			}*/
+			}
 			// Redirecionar para WhatsApp
 			const digits = whats.replace(/\D/g, "");
 			const msg = encodeURIComponent(`Olá, sou ${nome}, vim indicado por ${partnerName}.`);
@@ -60,8 +61,8 @@ export default function LeadCapturePage({ partnerName, partnerId, partnerAvatarU
 			console.log('User Agent:', navigator.userAgent);
 			console.log('Is Mobile:', isMobile);
 			console.log('WhatsApp URL:', waUrl);
-			 // Abrir em nova aba
-            window.open(waUrl, '_blank');
+			 // Redirecionar na mesma aba para evitar bloqueio de popup em mobile
+            window.location.href = waUrl;
 		} finally {
 			setLoading(false);
 		}

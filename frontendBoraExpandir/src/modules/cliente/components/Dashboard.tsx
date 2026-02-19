@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Badge } from './ui/badge'
 import { Progress } from './ui/progress'
+import { Button } from './ui/button'
 import {
   FileText,
   CheckCircle,
@@ -31,13 +32,20 @@ interface DashboardProps {
   documents: Document[]
   process: Process | null
   requerimentos?: any[]
+  notifications?: import('../types').Notification[]
 }
 
-export function Dashboard({ client, documents, process, requerimentos = [] }: DashboardProps) {
-  const pendingRequerimentos = requerimentos.filter(r => 
-    r.status === 'pendente' || r.status === 'em_analise'
-  )
+export function Dashboard({ client, documents, process, requerimentos = [], notifications: propNotifications }: DashboardProps) {
+  const [notifications, setNotifications] = useState<import('../types').Notification[]>([])
+  const [realRequerimentos, setRealRequerimentos] = useState<any[]>([])
+  const [isLoadingData, setIsLoadingData] = useState(false)
+  const [showRequestedActionsModal, setShowRequestedActionsModal] = useState(false)
+
   const totalDocuments = documents.length
+  const allRequerimentos = [...(requerimentos || []), ...realRequerimentos]
+  // Filter unique requirements by ID if they might overlap
+  const uniqueRequerimentos = Array.from(new Map(allRequerimentos.map(item => [item.id, item])).values())
+  const pendingRequerimentos = uniqueRequerimentos.filter(r => r.status === 'pendente')
 
   // Refined Status Filtering Logic
   const approvedDocuments = documents.filter(doc => doc.status === 'approved').length
@@ -105,52 +113,101 @@ export function Dashboard({ client, documents, process, requerimentos = [] }: Da
     location: "Online - WhatsApp/Zoom"
   }
 
-  const [notifications, setNotifications] = useState<import('../types').Notification[]>([])
-  const [isLoadingNotifs, setIsLoadingNotifs] = useState(false)
-  const [showRequestedActionsModal, setShowRequestedActionsModal] = useState(false)
 
   useEffect(() => {
-    const fetchNotifs = async () => {
+    if (propNotifications && propNotifications.length > 0) {
+      setNotifications(propNotifications)
+      return
+    }
+
+    const fetchDashboardData = async () => {
       try {
-        setIsLoadingNotifs(true)
-        const data = await clienteService.getNotificacoes(client.id)
-        setNotifications(data)
+        setIsLoadingData(true)
+        // Fetch notifications and requirements in parallel
+        const [notifs, reqs] = await Promise.all([
+          clienteService.getNotificacoes(client.id),
+          clienteService.getRequerimentos(client.id)
+        ])
+        setNotifications(notifs)
+        setRealRequerimentos(reqs)
       } catch (error) {
-        console.error('Erro ao buscar notificações:', error)
+        console.error('Erro ao buscar dados do dashboard:', error)
       } finally {
-        setIsLoadingNotifs(false)
+        setIsLoadingData(false)
       }
     }
 
     if (client.id) {
-      fetchNotifs()
+      fetchDashboardData()
     }
-  }, [client.id])
+  }, [client.id, propNotifications])
 
   // Map backend notifications to dashboard actions/reminders
   const realPendingActions = useMemo(() => {
     return notifications
-      .filter(n => (n.data_prazo || (n as any).deadline) && !n.lida && !n.read)
-      .map(n => ({
-        id: n.id,
-        title: n.titulo || n.title || 'Ação Necessária',
-        description: n.mensagem || n.message || '',
-        deadline: new Date((n.data_prazo || (n as any).deadline) as string),
-        priority: 'high' as const
-      }))
-      .filter(action => action.deadline >= new Date()) // Hide expired actions from main dashboard
+      .filter(n => !n.lida && !n.read) // Must be unread
+      .map(n => {
+        const hasDeadline = !!(n.data_prazo || (n as any).deadline)
+        const createdAt = n.criado_em || n.createdAt || new Date()
+        const defaultDeadline = new Date(new Date(createdAt).getTime() + 7 * 24 * 60 * 60 * 1000)
+        
+        return {
+          id: n.id,
+          title: n.titulo || n.title || 'Ação Necessária',
+          description: n.mensagem || n.message || '',
+          deadline: hasDeadline ? new Date((n.data_prazo || (n as any).deadline) as string) : defaultDeadline,
+          priority: (n.type === 'error' || n.type === 'warning' || hasDeadline) ? 'high' as const : 'medium' as const,
+          type: n.type || 'info'
+        }
+      })
+      .filter(action => !action.deadline || action.deadline >= new Date())
   }, [notifications])
 
   const pendingActionReminders = useMemo(() => {
-    return realPendingActions.map(action => ({
-      id: `pending-${action.id}`,
+    const reminders = realPendingActions.map(action => ({
+      id: `notif-${action.id}`,
       title: action.title,
-      message: `${action.description} (Vence em: ${formatDateSimple(action.deadline)})`,
-      date: action.deadline,
-      type: 'urgent' as const,
-      actionLink: '/juridico'
+      message: action.deadline 
+        ? `${action.description} (Prazo: ${formatDateSimple(action.deadline)})`
+        : action.description,
+      date: action.deadline || new Date(),
+      type: action.type === 'error' ? 'urgent' as const : 'warning' as const,
+      actionLink: '/cliente/notificacoes'
     }))
-  }, [realPendingActions])
+
+    // Add pending documents as reminders
+    const docReminders = documents
+      .filter(doc => doc.status === 'pending' || doc.status === 'rejected')
+      .map(doc => ({
+        id: `doc-${doc.id}`,
+        title: doc.status === 'rejected' ? 'Documento Rejeitado' : 'Envio Pendente',
+        message: doc.status === 'rejected' 
+          ? `O documento "${doc.name}" foi rejeitado e precisa ser reenviado.`
+          : `O documento "${doc.name}" ainda não foi enviado.`,
+        date: doc.updatedAt || doc.uploadDate || new Date(),
+        type: doc.status === 'rejected' ? 'urgent' as const : 'warning' as const,
+        actionLink: '/cliente/upload'
+      }))
+
+    // Add pending requirements as reminders
+    const reqReminders = uniqueRequerimentos
+      .filter(r => r.status === 'pendente')
+      .map(r => ({
+        id: `req-${r.id}`,
+        title: 'Requerimento Pendente',
+        message: `O requerimento de "${r.tipo}" está aguardando sua ação.`,
+        date: r.created_at || new Date(),
+        type: 'urgent' as const,
+        actionLink: '/cliente/processo'
+      }))
+
+    return [...reminders, ...docReminders, ...reqReminders].sort((a, b) => {
+      // Prioritize urgent
+      if (a.type === 'urgent' && b.type !== 'urgent') return -1
+      if (a.type !== 'urgent' && b.type === 'urgent') return 1
+      return new Date(b.date).getTime() - new Date(a.date).getTime()
+    })
+  }, [realPendingActions, documents, uniqueRequerimentos])
 
   const [showRequiredActionModal, setShowRequiredActionModal] = useState(false)
 
@@ -182,33 +239,6 @@ export function Dashboard({ client, documents, process, requerimentos = [] }: Da
 
   return (
     <div className="space-y-8">
-      {/* Requirement Alert Banner */}
-      {pendingRequerimentos.length > 0 && (
-        <div className="animate-in fade-in slide-in-from-top duration-500">
-          <Link to="/cliente/requerimentos" className="block transform transition-all hover:scale-[1.01] active:scale-[0.99]">
-            <div className="bg-red-600 border border-red-500 rounded-2xl p-4 md:p-5 text-white shadow-lg flex items-center justify-between group overflow-hidden relative">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform">
-                <AlertTriangle className="h-24 w-24" />
-              </div>
-              <div className="flex items-center gap-4 relative z-10">
-                <div className="bg-white/20 p-3 rounded-xl animate-pulse">
-                  <Stamp className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold">Ação Necessária em Requerimentos</h3>
-                  <p className="text-red-100 text-sm opacity-90">
-                    Você possui {pendingRequerimentos.length === 1 ? '1 requerimento que necessita' : `${pendingRequerimentos.length} requerimentos que necessitam`} de sua atenção.
-                  </p>
-                </div>
-              </div>
-              <div className="hidden md:flex items-center gap-2 bg-white/20 px-4 py-2 rounded-xl font-bold text-sm backdrop-blur-sm group-hover:bg-white text-white group-hover:text-red-600 transition-all">
-                Ver Requerimentos
-                <TrendingUp className="h-4 w-4 rotate-90" />
-              </div>
-            </div>
-          </Link>
-        </div>
-      )}
 
       {/* Welcome Section */}
       <div className="flex justify-center mb-8">
@@ -242,6 +272,34 @@ export function Dashboard({ client, documents, process, requerimentos = [] }: Da
           </div>
         </div>
       </div>
+
+      {/* Requirement Alert Banner */}
+      {pendingRequerimentos.length > 0 && (
+        <div className="animate-in fade-in slide-in-from-top duration-500">
+          <Card className="bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full">
+                  <Stamp className="h-6 w-6 text-red-600 dark:text-red-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-red-800 dark:text-red-300">
+                    Ação Necessária: Requerimento Pendente
+                  </h3>
+                  <p className="text-red-700 dark:text-red-400 mt-1">
+                    Você possui {pendingRequerimentos.length} {pendingRequerimentos.length === 1 ? 'requerimento' : 'requerimentos'} em aberto que {pendingRequerimentos.length === 1 ? 'precisa' : 'precisan'} ser regularizados.
+                  </p>
+                </div>
+                <Link to="/cliente/processo">
+                  <Button variant="destructive" size="sm" className="shadow-lg shadow-red-500/30">
+                    Ver Requerimentos
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
       {/* Reminders Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Only show categories that have real reminders */}
