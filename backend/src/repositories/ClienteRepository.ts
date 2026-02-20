@@ -1,3 +1,4 @@
+import NotificationService from '../services/NotificationService'
 import { supabase } from '../config/SupabaseClient'
 import type { ClienteDTO } from '../types/parceiro';
 
@@ -649,50 +650,15 @@ class ClienteRepository {
     }
 
     async getNotificacoes(clienteId: string): Promise<any[]> {
-        // Buscamos notificações vinculadas ao ID do cliente
-        const { data, error } = await supabase
-            .from('notificacoes')
-            .select('*')
-            .eq('cliente_id', clienteId)
-            .order('criado_em', { ascending: false })
-
-        if (error) {
-            console.error('Erro ao buscar notificações do cliente:', error)
-            throw error
-        }
-
-        return data || []
+        return NotificationService.getNotificationsByCliente(clienteId);
     }
 
     async updateNotificacaoStatus(notificacaoId: string, lida: boolean): Promise<any> {
-        const { data, error } = await supabase
-            .from('notificacoes')
-            .update({ lida })
-            .eq('id', notificacaoId)
-            .select()
-            .single()
-
-        if (error) {
-            console.error('Erro ao atualizar status da notificação:', error)
-            throw error
-        }
-
-        return data
+        return NotificationService.updateStatus(notificacaoId, lida);
     }
 
     async markAllNotificacoesAsRead(clienteId: string): Promise<any> {
-        const { data, error } = await supabase
-            .from('notificacoes')
-            .update({ lida: true })
-            .eq('cliente_id', clienteId)
-            .eq('lida', false)
-
-        if (error) {
-            console.error('Erro ao marcar todas notificações como lidas:', error)
-            throw error
-        }
-
-        return data
+        return NotificationService.markAllAsRead(clienteId);
     }
 }
 

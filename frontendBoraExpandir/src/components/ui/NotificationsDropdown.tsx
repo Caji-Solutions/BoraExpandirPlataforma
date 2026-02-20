@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import {
   Bell,
@@ -9,6 +9,8 @@ import {
   AlertCircle,
   CheckCircle,
 } from 'lucide-react'
+import { clienteService } from '../../modules/cliente/services/clienteService'
+import { mockClient } from '../../modules/cliente/lib/mock-data'
 
 // Interface e dados de notificações
 interface Notificacao {
@@ -21,59 +23,7 @@ interface Notificacao {
   lida: boolean
 }
 
-const mockNotificacoes: Notificacao[] = [
-  {
-    id: '1',
-    tipo: 'vencido',
-    titulo: 'Encontros Vencidos',
-    descricao: '3 pagamentos de clientes estão vencidos há mais de 30 dias',
-    valor: 24000,
-    data: '2026-01-07',
-    lida: false,
-  },
-  {
-    id: '2',
-    tipo: 'urgente',
-    titulo: 'Comissões Pendentes',
-    descricao: 'Existem comissões aguardando aprovação para pagamento',
-    valor: 8750,
-    data: '2026-01-06',
-    lida: false,
-  },
-  {
-    id: '3',
-    tipo: 'vencido',
-    titulo: 'Fatura Vencida - Empresa ABC',
-    descricao: 'Fatura #2024-0892 vencida há 15 dias',
-    valor: 5500,
-    data: '2026-01-05',
-    lida: false,
-  },
-  {
-    id: '4',
-    tipo: 'aviso',
-    titulo: 'Meta de Vendas',
-    descricao: 'A meta de vendas está em 45% - acelere a prospecção',
-    data: '2026-01-05',
-    lida: false,
-  },
-  {
-    id: '5',
-    tipo: 'urgente',
-    titulo: 'Vendedores Abaixo da Meta',
-    descricao: '2 vendedores estão abaixo da meta - considere contato motivacional',
-    data: '2026-01-04',
-    lida: true,
-  },
-  {
-    id: '6',
-    tipo: 'info',
-    titulo: 'Relatório Mensal Disponível',
-    descricao: 'O relatório financeiro de dezembro está pronto para download',
-    data: '2026-01-03',
-    lida: true,
-  },
-]
+
 
 // Configuração visual por tipo
 const tipoConfig = {
@@ -109,24 +59,89 @@ const tipoConfig = {
 
 export function NotificationsDropdown() {
   const [isOpen, setIsOpen] = useState(false)
-  const [notificacoes, setNotificacoes] = useState(mockNotificacoes)
+  const [notificacoes, setNotificacoes] = useState<Notificacao[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [filter, setFilter] = useState<'unread' | 'read'>('unread')
+
+  const fetchNotificacoes = async () => {
+    try {
+      setIsLoading(true)
+      const data = await clienteService.getNotificacoes(mockClient.id)
+      
+      const mapped = data.map((n: any) => {
+        const isRead = n.lida === true || String(n.lida) === 'true' || n.lida === 1;
+        
+        // Map backend types to local UI types
+        let tipo: 'vencido' | 'urgente' | 'aviso' | 'info' = 'info'
+        if (n.tipo === 'error') tipo = 'vencido'
+        else if (n.tipo === 'warning') tipo = 'urgente'
+        else if (n.tipo === 'success') tipo = 'aviso'
+
+        return {
+          id: n.id,
+          tipo: tipo,
+          titulo: n.titulo,
+          descricao: n.mensagem,
+          data: n.criado_em || new Date().toISOString(),
+          lida: isRead
+        }
+      })
+      
+      setNotificacoes(mapped)
+    } catch (error) {
+      console.error('Erro ao buscar notificações no dropdown:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchNotificacoes()
+  }, [])
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchNotificacoes()
+    }
+  }, [isOpen])
 
   const naoLidas = notificacoes.filter(n => !n.lida).length
+  const lidasCount = notificacoes.filter(n => n.lida).length
   const vencidos = notificacoes.filter(n => n.tipo === 'vencido').length
   const urgentes = notificacoes.filter(n => n.tipo === 'urgente').length
 
-  const marcarTodasComoLidas = () => {
-    setNotificacoes(prev => prev.map(n => ({ ...n, lida: true })))
+  const filteredNotificacoes = notificacoes
+    .filter(n => filter === 'unread' ? !n.lida : n.lida)
+    .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+
+  const marcarTodasComoLidas = async () => {
+    try {
+      // Optimistic update
+      setNotificacoes(prev => prev.map(n => ({ ...n, lida: true })))
+      await clienteService.markAllNotificacoesAsRead(mockClient.id)
+    } catch (error) {
+      console.error('Erro ao marcar todas como lidas:', error)
+    }
   }
 
   const dispensarNotificacao = (id: string) => {
+    // Para dispensar, geralmente precisaríamos de um endpoint de delete
+    // Por enquanto, apenas removemos da UI
     setNotificacoes(prev => prev.filter(n => n.id !== id))
   }
 
-  const marcarComoLida = (id: string) => {
-    setNotificacoes(prev => prev.map(n => 
-      n.id === id ? { ...n, lida: true } : n
-    ))
+  const marcarComoLida = async (id: string, currentStatus: boolean) => {
+    if (currentStatus) return // Já está lida
+
+    try {
+      // Optimistic update
+      setNotificacoes(prev => prev.map(n => 
+        n.id === id ? { ...n, lida: true } : n
+      ))
+      await clienteService.updateNotificacaoStatus(id, true)
+    } catch (error) {
+      console.error('Erro ao marcar como lida:', error)
+    }
   }
 
   return (
@@ -147,8 +162,8 @@ export function NotificationsDropdown() {
           
           {/* Badge de contagem */}
           {naoLidas > 0 && (
-            <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-xs font-bold text-white bg-red-500 rounded-full animate-pulse">
-              {naoLidas > 9 ? '9+' : naoLidas}
+            <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-[20px] px-1 text-[10px] font-bold text-white bg-red-600 rounded-full ring-2 ring-white shadow-sm animate-pulse">
+              {naoLidas > 99 ? '99+' : naoLidas}
             </span>
           )}
         </button>
@@ -192,26 +207,72 @@ export function NotificationsDropdown() {
             </div>
           </div>
 
+          {/* Tabs para Filtragem */}
+          <div className="flex border-b border-gray-100 bg-gray-50/50">
+            <button
+              onClick={() => setFilter('unread')}
+              className={`flex-1 py-3 text-sm font-semibold transition-all relative ${
+                filter === 'unread' 
+                ? 'text-red-600' 
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'
+              }`}
+            >
+              Não Lidas
+              {naoLidas > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-red-100 text-red-600 rounded-full">
+                  {naoLidas}
+                </span>
+              )}
+              {filter === 'unread' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500" />
+              )}
+            </button>
+            <button
+              onClick={() => setFilter('read')}
+              className={`flex-1 py-3 text-sm font-semibold transition-all relative ${
+                filter === 'read' 
+                ? 'text-red-600' 
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'
+              }`}
+            >
+              Lidas
+              {lidasCount > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 text-[10px] bg-gray-200 text-gray-600 rounded-full">
+                  {lidasCount}
+                </span>
+              )}
+              {filter === 'read' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500" />
+              )}
+            </button>
+          </div>
+
           {/* Lista de Notificações */}
           <div className="overflow-y-auto max-h-[50vh] bg-white">
-            {notificacoes.length === 0 ? (
-              <div className="p-8 text-center bg-white">
-                <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-                <p className="text-gray-600 font-medium">Tudo em dia!</p>
-                <p className="text-sm text-gray-500">Nenhuma notificação pendente</p>
+            {isLoading ? (
+              <div className="p-12 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto" />
+                <p className="mt-4 text-gray-500 text-sm">Carregando...</p>
+              </div>
+            ) : filteredNotificacoes.length === 0 ? (
+              <div className="p-12 text-center bg-white">
+                <CheckCircle className="h-12 w-12 text-gray-200 dark:text-gray-800 mx-auto mb-3" />
+                <p className="text-gray-600 font-medium">Nenhuma notificação</p>
+                <p className="text-sm text-gray-500">
+                  {filter === 'unread' ? 'Você leu todas as mensagens!' : 'Sua aba de lidas está vazia.'}
+                </p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
-                {notificacoes.map((notificacao) => {
-                  const config = tipoConfig[notificacao.tipo]
+                {filteredNotificacoes.map((notificacao) => {
+                  const config = tipoConfig[notificacao.tipo as keyof typeof tipoConfig]
                   const IconComponent = config.icon
 
                   return (
                     <div 
                       key={notificacao.id}
-                      onClick={() => marcarComoLida(notificacao.id)}
-                      className={`p-4 cursor-pointer transition-colors bg-white hover:bg-gray-50 ${
-                        !notificacao.lida ? 'bg-blue-50' : ''
+                      className={`p-4 transition-colors bg-white hover:bg-gray-50 ${
+                        !notificacao.lida ? 'bg-blue-50/50' : ''
                       }`}
                     >
                       <div className="flex items-start gap-3">

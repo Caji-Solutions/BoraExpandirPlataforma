@@ -48,9 +48,9 @@ export function ClienteApp() {
       .replace(/\s+/g, '_');
   }
 
-  const fetchDocuments = async () => {
+  const fetchDocuments = async (clientId: string = client.id) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/cliente/${client.id}/documentos`)
+      const response = await fetch(`${API_BASE_URL}/cliente/${clientId}/documentos`)
       if (!response.ok) throw new Error('Falha ao buscar documentos')
 
       const result = await response.json()
@@ -60,14 +60,12 @@ export function ClienteApp() {
       const mappedDocs: Document[] = apiDocs.map((doc: any) => {
         // Infer memberId from storage_path
         // New Path format: processoId/memberId/docType/file
-        let memberId = client.id // Default to main client
+        let memberId = clientId // Use the passed clientId as default
 
         if (doc.dependente_id) {
           memberId = doc.dependente_id
         } else if (doc.storage_path) {
           const parts = doc.storage_path.split('/')
-          // parts[0] is processoId (or sem_processo)
-          // parts[1] is memberId (UUID)
           if (parts.length >= 2) {
             memberId = parts[1]
           }
@@ -91,9 +89,7 @@ export function ClienteApp() {
         }
       })
 
-      // Combine with mocks if API returns empty? Or just use API?
       setDocuments(mappedDocs)
-
     } catch (error) {
       console.error('Erro ao buscar documentos:', error)
     }
@@ -102,9 +98,9 @@ export function ClienteApp() {
 
   const [notifications, setNotifications] = useState<Notification[]>([])
 
-  const fetchRequerimentos = async () => {
+  const fetchRequerimentos = async (clientId: string = client.id) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/cliente/${mockClient.id}/requerimentos`)
+      const response = await fetch(`${API_BASE_URL}/cliente/${clientId}/requerimentos`)
       if (!response.ok) throw new Error('Falha ao buscar requerimentos')
       const result = await response.json()
       setRequerimentos(result.data || [])
@@ -112,38 +108,41 @@ export function ClienteApp() {
       console.error('Erro ao buscar requerimentos:', error)
     }
   }
-
-  const fetchNotificacoes = async () => {
+  const fetchNotificacoes = async (clientId: string = client.id) => {
     try {
-      const result = await clienteService.getNotificacoes(mockClient.id)
-      const backendNotifs = result.map((n: any) => ({
-        id: n.id,
-        clientId: n.cliente_id,
-        type: n.tipo || 'info', // Map backend 'tipo' or default
-        title: n.titulo,
-        message: n.mensagem,
-        read: n.lida,
-        data_prazo: n.data_prazo,
-        createdAt: new Date(n.criado_em)
-      }))
+      const result = await clienteService.getNotificacoes(clientId)
+      const backendNotifs = result.map((n: any) => {
+        // Garantir que lida seja um booleano real (converte 1, 'true', etc)
+        const isRead = n.lida === true || String(n.lida) === 'true' || n.lida === 1;
+        
+        return {
+          id: n.id,
+          clientId: n.cliente_id,
+          type: n.tipo || 'info',
+          title: n.titulo,
+          message: n.mensagem,
+          read: isRead,
+          lida: isRead,
+          data_prazo: n.data_prazo,
+          createdAt: n.criado_em ? new Date(n.criado_em) : new Date()
+        }
+      })
 
-      // Combine with pending action notifications (logic-based)
       setNotifications(backendNotifs)
     } catch (error) {
       console.error('Erro ao buscar notificações:', error)
     }
   }
 
-
-  const fetchClientData = async () => {
+  const fetchClientData = async (clientId: string = mockClient.id) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/cliente/${mockClient.id}`)
+      const response = await fetch(`${API_BASE_URL}/cliente/${clientId}`)
       if (response.ok) {
         const result = await response.json()
         if (result.data) {
           const apiCliente = result.data
-          setClient({
-            ...mockClient, // Fallback to mock fields if not in DB
+          const updatedClient = {
+            ...mockClient,
             id: apiCliente.id,
             name: apiCliente.nome,
             email: apiCliente.email,
@@ -151,29 +150,31 @@ export function ClienteApp() {
             avatarUrl: apiCliente.foto_perfil,
             clientId: apiCliente.client_id,
             createdAt: new Date(apiCliente.created_at)
-          })
+          }
+          setClient(updatedClient)
+          return updatedClient
         }
       }
     } catch (error) {
       console.error('Erro ao buscar dados do cliente:', error)
     }
+    return null
   }
 
   useEffect(() => {
     const fetchInitialData = async () => {
       setIsLoading(true)
       try {
-        // Fetch client
-        await fetchClientData()
+        // Fetch client - use mockClient.id as starting point for login simulation
+        const currentClient = await fetchClientData(mockClient.id)
+        const activeId = currentClient?.id || mockClient.id
 
         // Fetch processos
-        const processosRes = await fetch(`${API_BASE_URL}/cliente/${mockClient.id}/processos`)
+        const processosRes = await fetch(`${API_BASE_URL}/cliente/${activeId}/processos`)
         if (processosRes.ok) {
           const processosData = await processosRes.json()
           if (processosData.data && processosData.data.length > 0) {
             const apiProcesso = processosData.data[0]
-            // Map API response to Process type
-            // Map API response to Process type
             const phases = [
               { id: 1, name: "Iniciado", description: "O processo foi iniciado e está aguardando documentação." },
               { id: 2, name: "Documentação", description: "Fase de coleta e análise de documentos." },
@@ -185,26 +186,14 @@ export function ClienteApp() {
 
             const mappedSteps: ProcessStep[] = phases.map(phase => {
               let status: 'pending' | 'in_progress' | 'completed' | 'waiting' = 'pending';
-
-              if (phase.id < currentStepId) {
-                status = 'completed';
-              } else if (phase.id === currentStepId) {
-                status = 'in_progress';
-              } else {
-                status = 'pending';
-              }
-
-              return {
-                id: phase.id,
-                name: phase.name,
-                status: status,
-                description: phase.description
-              };
+              if (phase.id < currentStepId) status = 'completed';
+              else if (phase.id === currentStepId) status = 'in_progress';
+              return { id: phase.id, name: phase.name, status, description: phase.description };
             });
 
             const mappedProcesso: Process = {
               id: apiProcesso.id,
-              clientId: mockClient.id,
+              clientId: activeId,
               serviceType: apiProcesso.tipo_servico,
               currentStep: currentStepId,
               steps: mappedSteps,
@@ -216,35 +205,26 @@ export function ClienteApp() {
         }
 
         // Fetch dependentes
-        const dependentesRes = await fetch(`${API_BASE_URL}/cliente/${mockClient.id}/dependentes`)
+        const dependentesRes = await fetch(`${API_BASE_URL}/cliente/${activeId}/dependentes`)
         if (dependentesRes.ok) {
           const dependentesData = await dependentesRes.json()
-
-          // Map dependentes to family members format
           const members = (dependentesData.data || []).map((dep: any) => ({
             id: dep.id,
             name: dep.nome_completo,
             email: dep.email,
             type: dep.parentesco ? (dep.parentesco.charAt(0).toUpperCase() + dep.parentesco.slice(1)) : 'Dependente'
           }))
-          // Add the main client as titular
-          setFamilyMembers([{ id: mockClient.id, name: mockClient.name, email: mockClient.email, type: 'Titular' }, ...members])
+          setFamilyMembers([{ id: activeId, name: currentClient?.name || mockClient.name, email: currentClient?.email || mockClient.email, type: 'Titular' }, ...members])
         } else {
-          // Fallback: just the main client
-          setFamilyMembers([{ id: mockClient.id, name: mockClient.name, email: mockClient.email, type: 'Titular' }])
+          setFamilyMembers([{ id: activeId, name: currentClient?.name || mockClient.name, email: currentClient?.email || mockClient.email, type: 'Titular' }])
         }
 
-        // Fetch documents
-        await fetchDocuments()
-
-        // Fetch requerimentos
-        await fetchRequerimentos()
-
-        // Fetch notificações
-        await fetchNotificacoes()
+        // Fetch other data using the active ID
+        await fetchDocuments(activeId)
+        await fetchRequerimentos(activeId)
+        await fetchNotificacoes(activeId)
       } catch (error) {
         console.error('Erro ao buscar dados iniciais:', error)
-        setFamilyMembers([{ id: mockClient.id, name: mockClient.name, type: 'Titular' }])
       } finally {
         setIsLoading(false)
       }
@@ -316,15 +296,12 @@ export function ClienteApp() {
       setNotifications(prev =>
         prev.map(notification =>
           notification.id === notificationId
-            ? { ...notification, read: lida }
+            ? { ...notification, read: lida, lida: lida }
             : notification
         )
       )
 
-      // Se for uma notificação do backend (UUID), atualiza no banco
-      if (notificationId.length > 20) { // IDs de mock são curtos ou numéricos
-         await clienteService.updateNotificacaoStatus(notificationId, lida)
-      }
+      await clienteService.updateNotificacaoStatus(notificationId, lida)
     } catch (error) {
       console.error('Erro ao atualizar status da notificação:', error)
     }
@@ -334,10 +311,10 @@ export function ClienteApp() {
     try {
       // Optimistic update
       setNotifications(prev =>
-        prev.map(notification => ({ ...notification, read: true }))
+        prev.map(notification => ({ ...notification, read: true, lida: true }))
       )
 
-      await clienteService.markAllNotificacoesAsRead(mockClient.id)
+      await clienteService.markAllNotificacoesAsRead(client.id)
     } catch (error) {
       console.error('Erro ao marcar todas como lidas:', error)
     }
@@ -433,12 +410,14 @@ export function ClienteApp() {
     setNotifications(prev => [newNotification, ...prev])
   }
 
-  // Auto-mark all notifications as read when entering notifications page
+  // Removido marcação automática ao entrar na página
+  /*
   useEffect(() => {
     if (location.pathname === '/cliente/notificacoes') {
       handleMarkAllAsRead()
     }
   }, [location.pathname])
+  */
 
   // Configuração da sidebar seguindo o padrão do projeto
   const sidebarGroups: SidebarGroup[] = isPartnerOnly
@@ -653,13 +632,24 @@ export function ClienteApp() {
       <RequiredActionModal
         isOpen={isRequiredModalOpen}
         onClose={handleCloseRequiredModal}
-        actions={notifications.filter(n => !n.read).map(n => ({
-          id: n.id,
-          title: n.titulo || n.title || 'Solicitação',
-          description: n.mensagem || n.message || '',
-          deadline: new Date(new Date(n.criado_em || n.createdAt || Date.now()).getTime() + 7 * 24 * 60 * 60 * 1000),
-          priority: 'high'
-        }))}
+        actions={notifications
+          .filter(n => {
+            const isRead = n.lida || n.read;
+            const title = n.titulo || n.title;
+            const linkedDoc = documents.find(doc => doc.type === title);
+            
+            if (linkedDoc) {
+              return linkedDoc.status === 'pending' || linkedDoc.status === 'rejected';
+            }
+            return !isRead;
+          })
+          .map(n => ({
+            id: n.id,
+            title: n.titulo || n.title || 'Solicitação',
+            description: n.mensagem || n.message || '',
+            deadline: new Date(new Date(n.criado_em || n.createdAt || Date.now()).getTime() + 7 * 24 * 60 * 60 * 1000),
+            priority: 'high'
+          }))}
       />
     </div>
   )

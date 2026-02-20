@@ -40,13 +40,6 @@ export function ProcessAction({
             description: 'Registrar pendência de arquivo no sistema'
         },
         {
-            id: 'solicitar_requerimento',
-            name: 'Solicitar Requerimento',
-            icon: ClipboardCheck,
-            color: 'purple',
-            description: 'Abrir novo fluxo de requerimento estruturado'
-        },
-        {
             id: 'solicitar_formulario',
             name: 'Enviar Formulário',
             icon: Files,

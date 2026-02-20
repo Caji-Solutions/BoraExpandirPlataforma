@@ -82,7 +82,7 @@ juridico.get('/estatisticas', JuridicoController.getEstatisticas.bind(JuridicoCo
 // =============================================
 
 juridico.post('/documentos/solicitar', JuridicoController.solicitarDocumento.bind(JuridicoController))
-juridico.post('/requerimentos/solicitar', JuridicoController.solicitarRequerimento.bind(JuridicoController))
+juridico.post('/requerimentos/solicitar', upload.array('files'), JuridicoController.solicitarRequerimento.bind(JuridicoController))
 
 // =============================================
 // ROTAS DE FORMULÁRIOS DO JURÍDICO (enviados para clientes)

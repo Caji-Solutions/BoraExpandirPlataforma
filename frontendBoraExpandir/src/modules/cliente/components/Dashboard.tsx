@@ -123,12 +123,24 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
     const fetchDashboardData = async () => {
       try {
         setIsLoadingData(true)
-        // Fetch notifications and requirements in parallel
-        const [notifs, reqs] = await Promise.all([
+        const [notifsRaw, reqs] = await Promise.all([
           clienteService.getNotificacoes(client.id),
           clienteService.getRequerimentos(client.id)
         ])
-        setNotifications(notifs)
+        
+        const mappedNotifs = notifsRaw.map((n: any) => {
+          const isRead = n.lida === true || String(n.lida) === 'true' || n.lida === 1;
+          const type = n.type || n.tipo || 'info';
+          return {
+            ...n,
+            type,
+            read: isRead,
+            lida: isRead,
+            createdAt: n.criado_em ? new Date(n.criado_em) : (n.createdAt ? new Date(n.createdAt) : new Date())
+          }
+        })
+
+        setNotifications(mappedNotifs)
         setRealRequerimentos(reqs)
       } catch (error) {
         console.error('Erro ao buscar dados do dashboard:', error)
@@ -145,7 +157,22 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
   // Map backend notifications to dashboard actions/reminders
   const realPendingActions = useMemo(() => {
     return notifications
-      .filter(n => !n.lida && !n.read) // Must be unread
+      .filter(n => {
+        const isRead = n.lida || n.read;
+        const title = n.titulo || n.title;
+        
+        // Find if this notification is linked to a document request
+        const linkedDoc = documents.find(doc => doc.type === title);
+        
+        if (linkedDoc) {
+          // If it's a document request, it's pending if the document is 'pending' or 'rejected'
+          // We show it even if 'read' to remind the user of the pending upload
+          return linkedDoc.status === 'pending' || linkedDoc.status === 'rejected';
+        }
+
+        // For other types of notifications, follow the read status
+        return !isRead;
+      })
       .map(n => {
         const hasDeadline = !!(n.data_prazo || (n as any).deadline)
         const createdAt = n.criado_em || n.createdAt || new Date()
@@ -161,7 +188,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
         }
       })
       .filter(action => !action.deadline || action.deadline >= new Date())
-  }, [notifications])
+  }, [notifications, documents])
 
   const pendingActionReminders = useMemo(() => {
     const reminders = realPendingActions.map(action => ({
@@ -473,6 +500,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
         isOpen={showRequestedActionsModal}
         onClose={() => setShowRequestedActionsModal(false)}
         notifications={notifications}
+        documents={documents}
       />
 
       <RequiredActionModal

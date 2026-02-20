@@ -328,6 +328,7 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                 memberName={selectedMember.name}
                 clienteId={selectedFolder.clientId}
                 membroId={selectedMember.id !== selectedFolder.clientId ? selectedMember.id : undefined}
+                processoId={selectedFolder.id}
                 documents={memberDocs}
                 onBack={() => setSelectedMember(null)}
                 onUpdateDocument={async (id, updates) => {

@@ -344,17 +344,22 @@ export async function requestRequirement(payload: {
   tipo: string;
   processoId?: string;
   observacoes?: string;
-}): Promise<any> {
+  documentosAcoplados?: any[];
+  files?: File[];
+} | FormData): Promise<any> {
+  const isFormData = payload instanceof FormData;
+
   const response = await fetch(`${API_BASE_URL}/juridico/requerimentos/solicitar`, {
     method: 'POST',
-    headers: {
+    headers: isFormData ? {} : {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(payload),
+    body: isFormData ? payload : JSON.stringify(payload),
   });
 
   if (!response.ok) {
-    throw new Error('Erro ao solicitar requerimento');
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Erro ao solicitar requerimento');
   }
 
   return response.json();

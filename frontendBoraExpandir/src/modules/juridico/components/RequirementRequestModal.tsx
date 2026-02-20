@@ -24,7 +24,9 @@ import {
     Trash2, 
     FileText, 
     User,
-    ChevronRight
+    ChevronRight,
+    Upload,
+    X
 } from 'lucide-react';
 import { requestRequirement, requestDocument } from '../services/juridicoService';
 import { toast } from './ui/sonner';
@@ -64,10 +66,9 @@ export function RequirementRequestModal({
     members = [],
     onSuccess
 }: RequirementRequestModalProps) {
-    const [tipo, setTipo] = useState<string>('');
-    const [nomeExtra, setNomeExtra] = useState<string>('');
-    const [observacoes, setObservacoes] = useState('');
+    const [identificador, setIdentificador] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [files, setFiles] = useState<File[]>([]);
 
     // List of documents to request within this requirement
     const [documentsToRequest, setDocumentsToRequest] = useState<{ id: string, type: string, memberId: string }[]>([]);
@@ -97,51 +98,41 @@ export function RequirementRequestModal({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (!tipo) {
-            toast.error('Selecione o tipo de requerimento');
-            return;
-        }
-
         try {
             setIsSubmitting(true);
             
-            const reqLabel = REQUIREMENT_TYPES.find(r => r.value === tipo)?.label || tipo;
-            const finalNome = nomeExtra ? `${reqLabel}: ${nomeExtra}` : reqLabel;
+            const finalNome = identificador || (documentsToRequest.length > 0 ? `Requerimento: ${documentsToRequest[0].type}` : 'Novo Requerimento');
 
-            // 1. Create Requirement Entity
-            const reqResponse = await requestRequirement({
-                clienteId,
-                tipo: finalNome,
-                processoId,
-                observacoes: observacoes || undefined
+            // Construct FormData for file upload and data
+            const formData = new FormData();
+            formData.append('clienteId', clienteId);
+            formData.append('tipo', finalNome);
+            if (processoId) formData.append('processoId', processoId);
+            
+            // Send documentosAcoplados as a JSON string
+            if (documentsToRequest.length > 0) {
+                const coupledDocs = documentsToRequest.map(doc => ({
+                    type: doc.type,
+                    memberId: doc.memberId
+                }));
+                formData.append('documentosAcoplados', JSON.stringify(coupledDocs));
+            }
+
+            // Append each file
+            files.forEach(file => {
+                formData.append('files', file);
             });
 
-            const requirementId = reqResponse.data?.id;
-
-            // 2. Create associated Document Requests
-            if (documentsToRequest.length > 0 && requirementId) {
-                const docPromises = documentsToRequest.map(doc => 
-                    requestDocument({
-                        clienteId,
-                        tipo: doc.type,
-                        processoId,
-                        membroId: doc.memberId,
-                        requerimentoId: requirementId,
-                        notificar: true,
-                        prazo: 7
-                    })
-                );
-                await Promise.all(docPromises);
-            }
+            // 1. Create Requirement Entity and handle everything in backend
+            await requestRequirement(formData);
             
             toast.success('Requerimento e solicitações criados com sucesso!');
             onOpenChange(false);
             if (onSuccess) onSuccess();
             
             // Reset form
-            setTipo('');
-            setNomeExtra('');
-            setObservacoes('');
+            setIdentificador('');
+            setFiles([]);
             setDocumentsToRequest([]);
         } catch (error) {
             console.error('Erro ao solicitar requerimento:', error);
@@ -162,10 +153,10 @@ export function RequirementRequestModal({
                             </div>
                             <div>
                                 <DialogTitle className="text-2xl font-black tracking-tight text-foreground">
-                                    Novo Requerimento
+                                    Solicitação de Requerimento
                                 </DialogTitle>
                                 <DialogDescription className="text-muted-foreground font-medium">
-                                    Crie um container de requerimento e anexe solicitações de documentos.
+                                    Adicione documentos à solicitação e faça o upload de arquivos necessários.
                                 </DialogDescription>
                             </div>
                         </div>
@@ -174,38 +165,17 @@ export function RequirementRequestModal({
                     <ScrollArea className="flex-1 p-8">
                         <div className="grid gap-8">
                             {/* Main Info Section */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                        <ChevronRight className="h-3 w-3 text-purple-500" />
-                                        Espécie de Requerimento
-                                    </Label>
-                                    <Select value={tipo} onValueChange={setTipo}>
-                                        <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-none shadow-inner ring-offset-background focus:ring-2 focus:ring-purple-500">
-                                            <SelectValue placeholder="Selecione o tipo..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {REQUIREMENT_TYPES.map((req) => (
-                                                <SelectItem key={req.value} value={req.value} className="rounded-lg">
-                                                    {req.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                        <ChevronRight className="h-3 w-3 text-purple-500" />
-                                        Identificador (Nome)
-                                    </Label>
-                                    <Input 
-                                        placeholder="Ex: Pasta Itália 2024" 
-                                        value={nomeExtra}
-                                        onChange={(e) => setNomeExtra(e.target.value)}
-                                        className="h-12 rounded-xl bg-muted/30 border-none shadow-inner focus:ring-2 focus:ring-purple-500"
-                                    />
-                                </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    <ChevronRight className="h-3 w-3 text-purple-500" />
+                                    Identificador do Requerimento
+                                </Label>
+                                <Input 
+                                    placeholder="Ex: Documentação Adicional - Processo 123" 
+                                    value={identificador}
+                                    onChange={(e) => setIdentificador(e.target.value)}
+                                    className="h-12 rounded-xl bg-muted/30 border-none shadow-inner focus:ring-2 focus:ring-purple-500"
+                                />
                             </div>
 
                             {/* Document Request Section */}
@@ -295,17 +265,74 @@ export function RequirementRequestModal({
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
+                            {/* Upload Area */}
+                            <div className="space-y-4">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                    <ChevronRight className="h-3 w-3 text-purple-500" />
-                                    Observações Adicionais
+                                    <Upload className="h-3 w-3 text-green-500" />
+                                    Upload de Arquivos (Opcional)
                                 </Label>
-                                <Input 
-                                    placeholder="Instruções para a equipe técnica..." 
-                                    value={observacoes}
-                                    onChange={(e) => setObservacoes(e.target.value)}
-                                    className="h-12 rounded-xl bg-muted/30 border-none shadow-inner focus:ring-2 focus:ring-purple-500"
-                                />
+                                
+                                <div 
+                                    className="border-2 border-dashed border-border rounded-2xl p-8 text-center bg-muted/10 hover:bg-muted/20 transition-all cursor-pointer group"
+                                    onClick={() => document.getElementById('file-upload')?.click()}
+                                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        if (e.dataTransfer.files) {
+                                            setFiles([...files, ...Array.from(e.dataTransfer.files)]);
+                                        }
+                                    }}
+                                >
+                                    <input 
+                                        type="file" 
+                                        id="file-upload" 
+                                        multiple 
+                                        className="hidden" 
+                                        onChange={(e) => {
+                                            if (e.target.files) {
+                                                setFiles([...files, ...Array.from(e.target.files)]);
+                                            }
+                                        }}
+                                    />
+                                    <div className="flex flex-col items-center">
+                                        <div className="h-12 w-12 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center shadow-sm border border-border group-hover:scale-110 transition-transform">
+                                            <Upload className="h-6 w-6 text-muted-foreground" />
+                                        </div>
+                                        <p className="mt-4 text-sm font-bold text-foreground">Clique ou arraste arquivos aqui</p>
+                                        <p className="text-[10px] text-muted-foreground uppercase tracking-tighter mt-1 font-black">Sugerido: PDF, JPG, PNG (Max 10MB)</p>
+                                    </div>
+                                </div>
+
+                                {files.length > 0 && (
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {files.map((file, idx) => (
+                                            <div key={idx} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-xl border border-border shadow-sm animate-in zoom-in-95">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-green-50 text-green-600 rounded-lg">
+                                                        <FileText className="h-4 w-4" />
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold truncate max-w-[200px]">{file.name}</span>
+                                                        <span className="text-[10px] text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                                                    </div>
+                                                </div>
+                                                <Button 
+                                                    type="button" 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-8 w-8 text-muted-foreground hover:text-red-500"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setFiles(files.filter((_, i) => i !== idx));
+                                                    }}
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </ScrollArea>
@@ -323,7 +350,7 @@ export function RequirementRequestModal({
                             </Button>
                             <Button 
                                 type="submit" 
-                                disabled={isSubmitting || !tipo}
+                                disabled={isSubmitting || documentsToRequest.length === 0}
                                 className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl px-10 shadow-xl shadow-purple-500/20 py-6 transition-all active:scale-95 disabled:grayscale"
                             >
                                 {isSubmitting ? (

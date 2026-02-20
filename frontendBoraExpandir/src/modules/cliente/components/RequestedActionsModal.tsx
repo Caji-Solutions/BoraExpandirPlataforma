@@ -9,9 +9,10 @@ interface RequestedActionsModalProps {
     isOpen: boolean
     onClose: () => void
     notifications: Notification[]
+    documents: import('../types').Document[]
 }
 
-export function RequestedActionsModal({ isOpen, onClose, notifications }: RequestedActionsModalProps) {
+export function RequestedActionsModal({ isOpen, onClose, notifications, documents }: RequestedActionsModalProps) {
     if (!isOpen) return null
 
     // Filter actions
@@ -24,8 +25,23 @@ export function RequestedActionsModal({ isOpen, onClose, notifications }: Reques
         return null
     }
 
-    const pendingActions = notifications.filter(n => !(n.lida || n.read))
-    const realizedActions = notifications.filter(n => n.lida || n.read)
+    const isActionPending = (n: Notification) => {
+        const isRead = n.lida || n.read;
+        const title = n.titulo || n.title;
+        
+        const linkedDoc = documents.find(doc => doc.type === title);
+        
+        if (linkedDoc) {
+            // It's a document request: pending if doc is pending or rejected
+            return linkedDoc.status === 'pending' || linkedDoc.status === 'rejected';
+        }
+        
+        // Not a doc request: pending if not read
+        return !isRead;
+    };
+
+    const pendingActions = notifications.filter(n => isActionPending(n))
+    const realizedActions = notifications.filter(n => !isActionPending(n))
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">

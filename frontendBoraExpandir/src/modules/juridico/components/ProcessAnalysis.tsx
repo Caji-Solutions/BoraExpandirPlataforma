@@ -15,7 +15,8 @@ import {
   ClipboardList,
   Clock,
   CheckCircle2,
-  XOctagon
+  XOctagon,
+  Plus
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from '../../../components/ui/Badge';
@@ -30,10 +31,13 @@ import {
     getFormulariosWithStatus, 
     updateFormularioClienteStatus,
     getRequerimentosByCliente,
-    updateRequerimentoStatus 
+    updateRequerimentoStatus,
+    getDependentes
 } from '../services/juridicoService';
 import { ReviewActionButtons } from './ReviewActionButtons';
 import { RejectModal } from './RejectModal';
+import { RequirementRequestModal } from './RequirementRequestModal';
+import { clienteService } from '../../cliente/services/clienteService';
 
 // Status do formulário do cliente (resposta)
 export type FormularioClienteStatus = 'pendente' | 'aprovado' | 'rejeitado';
@@ -86,6 +90,7 @@ interface ProcessAnalysisProps {
   memberName: string;
   clienteId: string;
   membroId?: string;
+  processoId?: string;
   documents: JuridicoDocument[];
   onBack: () => void;
   onUpdateDocument: (docId: string, updates: Partial<JuridicoDocument>) => void;
@@ -102,6 +107,7 @@ export function ProcessAnalysis({
   memberName, 
   clienteId,
   membroId,
+  processoId,
   documents: initialDocs, 
   onBack,
   onUpdateDocument 
@@ -131,6 +137,10 @@ export function ProcessAnalysis({
   // Form rejection state
   const [formRejectModalOpen, setFormRejectModalOpen] = useState(false);
   const [isUpdatingFormStatus, setIsUpdatingFormStatus] = useState(false);
+  
+  // Requirement modal
+  const [isReqModalOpen, setIsReqModalOpen] = useState(false);
+  const [familyMembers, setFamilyMembers] = useState<any[]>([]);
   
   const selectedDoc = useMemo(() => initialDocs.find(d => d.id === selectedId), [initialDocs, selectedId]);
   const selectedForm = useMemo(() => formularios.find(f => f.id === selectedId), [formularios, selectedId]);
@@ -207,6 +217,22 @@ export function ProcessAnalysis({
   }, [filteredItems, activeTab]);
 
   // Fetch items when tab changes
+  useEffect(() => {
+    const fetchFamily = async () => {
+        if (!clienteId) return;
+        try {
+            const deps = await getDependentes(clienteId);
+            setFamilyMembers([
+                { id: clienteId, name: clientName, type: 'Titular' },
+                ...deps.map((d: any) => ({ id: d.id, name: d.nome_completo || d.name, type: d.parentesco || 'Dependente' }))
+            ]);
+        } catch (e) {
+            console.error('Erro ao buscar membros da família:', e);
+        }
+    };
+    fetchFamily();
+  }, [clienteId]);
+
   useEffect(() => {
     if (activeTab === 'formularios' && clienteId) {
       const fetchFormularios = async () => {
@@ -416,6 +442,16 @@ export function ProcessAnalysis({
                  activeTab === 'requerimentos' ? 'Requerimentos' :
                  'Documentos para Revisão'}
               </h3>
+              {activeTab === 'requerimentos' && (
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 rounded-lg hover:bg-primary/10 hover:text-primary"
+                    onClick={() => setIsReqModalOpen(true)}
+                >
+                    <Plus className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
           
@@ -915,6 +951,19 @@ export function ProcessAnalysis({
       loading={isUpdatingFormStatus}
       title="Rejeitar Formulário"
       description="Por favor, informe o motivo da rejeição para que o cliente possa corrigir e reenviar."
+    />
+    <RequirementRequestModal 
+        isOpen={isReqModalOpen}
+        onOpenChange={setIsReqModalOpen}
+        clienteId={clienteId}
+        processoId={processoId || ''}
+        members={familyMembers}
+        onSuccess={() => {
+            // Refresh requirements
+            if (activeTab === 'requerimentos') {
+                getRequerimentosByCliente(clienteId, membroId).then(setRequerimentos);
+            }
+        }}
     />
     </>
   );

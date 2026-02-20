@@ -356,8 +356,6 @@ export function DNAClientDetailView({
                                 onActionClick={(action) => {
                                     if (action === 'solicitar_documentos') {
                                         setIsDocModalOpen(true)
-                                    } else if (action === 'solicitar_requerimento') {
-                                        setIsReqModalOpen(true)
                                     } else if (action === 'solicitar_formulario') {
                                         setIsFormModalOpen(true)
                                     } else {
@@ -404,6 +402,7 @@ export function DNAClientDetailView({
                 processoId={client.processo_id}
                 members={members}
             />
+
         </div>
     )
 }

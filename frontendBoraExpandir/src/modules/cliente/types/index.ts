@@ -109,6 +109,7 @@ export interface Notification {
   cliente_id?: string;
   titulo?: string;
   mensagem?: string;
+  tipo?: 'info' | 'success' | 'warning' | 'error';
   lida?: boolean;
   data_prazo?: string;
   criado_em?: string;

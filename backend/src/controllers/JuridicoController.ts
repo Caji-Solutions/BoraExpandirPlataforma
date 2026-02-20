@@ -327,7 +327,8 @@ class JuridicoController {
                 storagePath: filePath,
                 publicUrl: uploadResult.publicUrl,
                 contentType: file.mimetype,
-                tamanho: file.size
+                tamanho: file.size,
+                notificar: req.body.notificar !== undefined ? req.body.notificar === 'true' || req.body.notificar === true : true
             })
 
             return res.status(200).json({
@@ -603,7 +604,8 @@ class JuridicoController {
     // POST /juridico/requerimentos/solicitar - Solicitar requerimento
     async solicitarRequerimento(req: any, res: any) {
         try {
-            const { clienteId, tipo, processoId, observacoes } = req.body
+            const { clienteId, tipo, processoId, observacoes, documentosAcoplados } = req.body
+            const files = req.files // Multer array of files
 
             if (!clienteId || !tipo) {
                 return res.status(400).json({ 
@@ -614,12 +616,28 @@ class JuridicoController {
             // TODO: Pegar do middleware de auth
             const criadorId = req.body.criadorId || this.MOCKED_FUNCIONARIO_JURIDICO_ID
 
+            // Parse documentosAcoplados if it's a string (from FormData)
+            let parsedDocs = []
+            if (documentosAcoplados) {
+                try {
+                    parsedDocs = typeof documentosAcoplados === 'string' 
+                        ? JSON.parse(documentosAcoplados) 
+                        : documentosAcoplados
+                } catch (e) {
+                    console.error('Erro ao fazer parse de documentosAcoplados:', e)
+                }
+            }
+
             const requerimento = await JuridicoRepository.solicitarRequerimento({
                 clienteId,
                 tipo,
                 processoId,
                 observacoes,
-                criadorId
+                criadorId,
+                documentosAcoplados: parsedDocs,
+                files: files || [],
+                notificar: req.body.notificar !== undefined ? req.body.notificar === 'true' || req.body.notificar === true : true,
+                prazo: req.body.prazo ? parseInt(req.body.prazo) : undefined
             })
 
             return res.status(201).json({

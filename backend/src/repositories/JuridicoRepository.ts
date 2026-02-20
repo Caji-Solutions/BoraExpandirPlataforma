@@ -1,3 +1,4 @@
+import NotificationService from '../services/NotificationService'
 import { supabase } from '../config/SupabaseClient'
 
 // Interface do funcionário jurídico
@@ -38,6 +39,10 @@ interface SolicitarRequerimentoParams {
     processoId?: string
     observacoes?: string
     criadorId?: string
+    notificar?: boolean
+    prazo?: number
+    documentosAcoplados?: { type: string, memberId: string }[]
+    files?: any[] // Express.Multer.File[]
 }
 
 class JuridicoRepository {
@@ -421,6 +426,7 @@ class JuridicoRepository {
         publicUrl: string
         contentType: string
         tamanho: number
+        notificar?: boolean
     }): Promise<any> {
         const { data, error } = await supabase
             .from('formularios_juridico')
@@ -442,6 +448,17 @@ class JuridicoRepository {
         if (error) {
             console.error('Erro ao criar formulário jurídico:', error)
             throw error
+        }
+
+        // Criar notificação para o novo formulário/documento enviado
+        if (params.notificar !== false) { // Por padrão notifica quando envia um documento novo
+            await NotificationService.createNotification({
+                clienteId: params.clienteId,
+                criadorId: params.funcionarioJuridicoId,
+                titulo: 'Novo Documento Disponível',
+                mensagem: `O jurídico enviou um novo documento para você: ${params.nomeOriginal}. Você pode visualizá-lo em sua central.`,
+                tipo: 'info'
+            }).catch(e => console.error('Erro ao notificar envio de formulário:', e))
         }
 
         return data
@@ -730,35 +747,17 @@ class JuridicoRepository {
 
         // 2. Criar notificação se solicitado
         if (params.notificar === true || (params.notificar as any) === 'true') {
-            console.log('Notificar é true, tentando criar notificação para o cliente...')
+            console.log('Notificar é true, tentando criar notificação via NotificationService...')
             
-            const prazoDias = params.prazo || 7
-            const dataPrazo = new Date()
-            dataPrazo.setDate(dataPrazo.getDate() + prazoDias)
-
-            const notificacaoData = {
-                cliente_id: params.clienteId,
-                criador_id: params.criadorId, // Adicionando quem criou a solicitação
+            await NotificationService.createNotification({
+                clienteId: params.clienteId,
+                criadorId: params.criadorId,
                 titulo: params.tipo,
                 mensagem: `A equipe jurídica solicitou o seguinte documento: ${params.tipo}. Por favor, realize o envio o quanto antes.`,
-                lida: false,
-                data_prazo: dataPrazo.toISOString(),
-                criado_em: new Date().toISOString()
-            }
-            
-            console.log('Dados da notificação (cliente_id):', notificacaoData)
-
-            const { data: notif, error: notifError } = await supabase
-                .from('notificacoes')
-                .insert([notificacaoData])
-                .select()
-
-            if (notifError) {
-                console.error('Erro ao criar notificação (FK violada?):', notifError)
-                // Não travamos o processo se a notificação falhar
-            } else {
-                console.log('Notificação criada com sucesso:', notif)
-            }
+                prazo: params.prazo || 7
+            }).catch(error => {
+                console.error('Erro ao criar notificação via Service:', error)
+            })
         } else {
             console.log('Notificar está desmarcado ou não é true/boolean.')
         }
@@ -793,6 +792,78 @@ class JuridicoRepository {
         }
 
         console.log('Requerimento solicitado com sucesso:', data.id)
+
+        // Criar notificação para o novo requerimento
+        if (params.notificar !== false) {
+            await NotificationService.createNotification({
+                clienteId: params.clienteId,
+                criadorId: params.criadorId,
+                titulo: `Novo Requerimento: ${params.tipo}`,
+                mensagem: `Um novo requerimento foi iniciado para você: ${params.tipo}. Fique atento às atualizações.`,
+                tipo: 'success',
+                prazo: params.prazo || 15 // Normalmente requerimentos tem prazos maiores
+            }).catch(e => console.error('Erro ao notificar requerimento:', e))
+        }
+
+        const requirementId = data.id
+
+        // 3. Criar solicitações de documentos acopladas
+        if (params.documentosAcoplados && params.documentosAcoplados.length > 0) {
+            console.log(`Criando ${params.documentosAcoplados.length} solicitações acopladas...`)
+            for (const docRequest of params.documentosAcoplados) {
+                await this.solicitarDocumento({
+                    clienteId: params.clienteId,
+                    tipo: docRequest.type,
+                    processoId: params.processoId,
+                    membroId: docRequest.memberId,
+                    requerimentoId: requirementId,
+                    notificar: false, // Evitar spam de notificações se já notificamos o requerimento
+                    criadorId: params.criadorId
+                }).catch(e => console.error('Erro ao criar solicitação acoplada:', e))
+            }
+        }
+
+        // 4. Fazer upload de arquivos físicos e criar registros em documentos
+        if (params.files && params.files.length > 0) {
+            console.log(`Fazendo upload de ${params.files.length} arquivos físicos...`)
+            for (const file of params.files) {
+                try {
+                    const timestamp = Date.now()
+                    const fileExtension = file.originalname.split('.').pop()
+                    const fileName = `req_${requirementId}_${timestamp}_${Math.random().toString(36).substring(7)}.${fileExtension}`
+                    const filePath = `${params.clienteId}/requerimentos/${requirementId}/${fileName}`
+
+                    // Upload para o bucket
+                    const uploadResult = await this.uploadFormularioJuridico({
+                        filePath,
+                        fileBuffer: file.buffer,
+                        contentType: file.mimetype
+                    })
+
+                    // Criar registro na tabela documentos
+                    await supabase
+                        .from('documentos')
+                        .insert([{
+                            cliente_id: params.clienteId,
+                            tipo: 'Anexo de Requerimento',
+                            processo_id: params.processoId || null,
+                            requerimento_id: requirementId,
+                            status: 'ANALYZING', // Já enviado pelo jurídico
+                            nome_original: file.originalname,
+                            nome_arquivo: fileName,
+                            storage_path: filePath,
+                            public_url: uploadResult.publicUrl,
+                            content_type: file.mimetype,
+                            tamanho: file.size,
+                            criado_em: new Date().toISOString(),
+                            atualizado_em: new Date().toISOString()
+                        }])
+                } catch (e) {
+                    console.error('Erro ao processar arquivo físico do requerimento:', e)
+                }
+            }
+        }
+
         console.log('========================================================')
         return data
     }
