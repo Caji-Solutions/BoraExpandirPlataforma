@@ -27,6 +27,7 @@ interface CreateDocumentoParams {
     tamanho?: number
     status?: 'PENDING' | 'ANALYZING' | 'WAITING_APOSTILLE' | 'ANALYZING_APOSTILLE' | 'WAITING_TRANSLATION' | 'ANALYZING_TRANSLATION' | 'WAITING_TRANSLATION_QUOTE' | 'WAITING_QUOTE_APPROVAL' | 'APPROVED' | 'REJECTED'
     dependenteId?: string
+    solicitado_pelo_juridico?: boolean
 }
 
 // Interface do documento retornado
@@ -50,6 +51,8 @@ interface DocumentoRecord {
     dependente_id: string | null
     apostilado: boolean
     traduzido: boolean
+    solicitado_pelo_juridico: boolean
+    data_solicitacao_juridico: string | null
 }
 
 class ClienteRepository {
@@ -200,6 +203,7 @@ class ClienteRepository {
                 tamanho: params.tamanho || null,
                 status: params.status || 'PENDING',
                 dependente_id: params.dependenteId || null,
+                solicitado_pelo_juridico: params.solicitado_pelo_juridico || false,
                 atualizado_em: new Date().toISOString()
             }])
             .select()
@@ -283,14 +287,14 @@ class ClienteRepository {
         }
     }
 
-    // Atualizar status do documento
     async updateDocumentoStatus(
         documentoId: string,
-        status: 'PENDING' | 'ANALYZING' | 'WAITING_APOSTILLE' | 'ANALYZING_APOSTILLE' | 'WAITING_TRANSLATION' | 'ANALYZING_TRANSLATION' | 'WAITING_TRANSLATION_QUOTE' | 'WAITING_QUOTE_APPROVAL' | 'APPROVED' | 'REJECTED',
+        status: string,
         motivoRejeicao?: string,
         analisadoPor?: string,
         apostilado?: boolean,
-        traduzido?: boolean
+        traduzido?: boolean,
+        solicitadoPeloJuridico?: boolean
     ): Promise<DocumentoRecord> {
         const updateData: any = {
             status,
@@ -299,6 +303,10 @@ class ClienteRepository {
 
         if (motivoRejeicao) {
             updateData.motivo_rejeicao = motivoRejeicao
+        }
+
+        if (solicitadoPeloJuridico !== undefined) {
+            updateData.solicitado_pelo_juridico = solicitadoPeloJuridico
         }
 
         if (analisadoPor) {

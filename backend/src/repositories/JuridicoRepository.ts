@@ -733,6 +733,7 @@ class JuridicoRepository {
                 nome_original: params.tipo,
                 nome_arquivo: params.tipo,
                 storage_path: 'pending',
+                solicitado_pelo_juridico: true,
                 criado_em: new Date().toISOString(),
                 atualizado_em: new Date().toISOString()
             }])

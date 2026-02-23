@@ -16,7 +16,8 @@ import {
   Clock,
   CheckCircle2,
   XOctagon,
-  Plus
+  Plus,
+  Bell
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from '../../../components/ui/Badge';
@@ -25,14 +26,17 @@ import { cn } from '../../cliente/lib/utils';
 import { ScrollArea } from './ui/scroll-area';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
+import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import { toast } from './ui/sonner';
 import {
   getFormulariosWithStatus,
   updateFormularioClienteStatus,
   getRequerimentosByCliente,
   updateRequerimentoStatus,
-  getDependentes
+  getDependentes,
+  updateDocumentStatus
 } from '../services/juridicoService';
 import { ReviewActionButtons } from './ReviewActionButtons';
 import { RejectModal } from './RejectModal';
@@ -75,6 +79,7 @@ export interface JuridicoDocument {
   status: 'pending' | 'analyzing' | 'rejected' | 'waiting_apostille' | 'analyzing_apostille' | 'waiting_translation' | 'analyzing_translation' | 'approved';
   currentStage: AnalysisStage;
   rejectionReason?: string;
+  solicitado_pelo_juridico?: boolean;
   // ... rest of interface
   uploadDate: string;
   history: {
@@ -93,7 +98,7 @@ interface ProcessAnalysisProps {
   processoId?: string;
   documents: JuridicoDocument[];
   onBack: () => void;
-  onUpdateDocument: (docId: string, updates: Partial<JuridicoDocument>) => void;
+  onUpdateDocument: (docId: string, updates: Partial<JuridicoDocument & { prazo?: number }>, skipFetch?: boolean) => Promise<void>;
 }
 
 const STAGES = [
@@ -293,6 +298,8 @@ export function ProcessAnalysis({
       setIsUpdatingReqStatus(false);
     }
   };
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [prazo, setPrazo] = useState<string>('15');
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
@@ -324,6 +331,52 @@ export function ProcessAnalysis({
     setApproveModalOpen(false);
   };
 
+  const handleConfirmRequest = async () => {
+    if (!selectedDoc) return;
+    setIsUpdatingStatus(true);
+    
+    // ID do funcionário jurídico (mockado como no restante do sistema)
+    const LAWYER_ID = 'befc50e4-3191-449e-9691-83d4e55dceb2';
+    
+    try {
+      const prazoNum = parseInt(prazo) || 15;
+      
+      // Define o status em MAIÚSCULO para coincidir com o enum do backend
+      let statusFinal = selectedDoc.status.toUpperCase();
+      if (selectedDoc.currentStage === 'apostille_check') {
+        statusFinal = 'WAITING_APOSTILLE';
+      } else if (selectedDoc.currentStage === 'translation_check') {
+        statusFinal = 'WAITING_TRANSLATION';
+      }
+      
+      // Chamada direta para o backend que atualiza o status e cria a notificação
+      await updateDocumentStatus(
+        selectedDoc.id,
+        statusFinal,
+        undefined, // motivoRejeicao
+        true,      // solicitado_pelo_juridico
+        prazoNum,
+        LAWYER_ID
+      );
+      
+      // Atualiza o estado local via onUpdateDocument para refletir as mudanças na UI
+      // Passamos skipBackend: true para o pai saber que NÃO deve chamar o fetch de novo
+      await onUpdateDocument(selectedDoc.id, {
+        status: statusFinal.toLowerCase() as any,
+        solicitado_pelo_juridico: true,
+        skipBackend: true
+      } as any);
+
+      toast.success("Solicitação e notificação enviadas com sucesso!");
+      setRequestModalOpen(false);
+    } catch (error) {
+      console.error('Erro ao solicitar documento:', error);
+      toast.error("Erro ao processar solicitação.");
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
   const handleAction = (action: 'reject' | 'request_action' | 'next') => {
     if (!selectedDoc) return;
 
@@ -334,16 +387,7 @@ export function ProcessAnalysis({
       setApproveModalOpen(true);
     }
     else if (action === 'request_action') {
-      let updates: Partial<JuridicoDocument> = {};
-      // Solicitar ação da etapa (meio)
-      if (selectedDoc.currentStage === 'apostille_check') {
-        updates = { status: 'waiting_apostille' };
-        // Notifica cliente para apostilar
-      } else if (selectedDoc.currentStage === 'translation_check') {
-        updates = { status: 'waiting_translation' };
-        // Notifica cliente para traduzir
-      }
-      onUpdateDocument(selectedDoc.id, updates);
+      setRequestModalOpen(true);
     }
   };
 
@@ -785,23 +829,39 @@ export function ProcessAnalysis({
 
                         {selectedDoc.currentStage === 'apostille_check' && (
                           <Button
-                            variant="secondary"
-                            className="flex-1 h-12 text-base border-2 bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-700 active:scale-[0.98]"
-                            onClick={() => handleAction('request_action')}
+                            variant={selectedDoc.solicitado_pelo_juridico ? "outline" : "secondary"}
+                            className={cn(
+                              "flex-1 h-12 text-base border-2 active:scale-[0.98]",
+                              selectedDoc.solicitado_pelo_juridico 
+                                ? "bg-white border-amber-200 text-amber-600 cursor-default" 
+                                : "bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-700"
+                            )}
+                            onClick={selectedDoc.solicitado_pelo_juridico ? undefined : () => handleAction('request_action')}
                           >
                             <Stamp className="w-5 h-5 mr-2" />
-                            Solicitar Apostilamento
+                            {selectedDoc.solicitado_pelo_juridico 
+                              ? 'Apostilamento já solicitado'
+                              : 'Solicitar Apostilamento'
+                            }
                           </Button>
                         )}
 
                         {selectedDoc.currentStage === 'translation_check' && (
                           <Button
-                            variant="secondary"
-                            className="flex-1 h-12 text-base border-2 bg-purple-50 hover:bg-purple-100 border-purple-300 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-700 active:scale-[0.98]"
-                            onClick={() => handleAction('request_action')}
+                            variant={selectedDoc.solicitado_pelo_juridico ? "outline" : "secondary"}
+                            className={cn(
+                              "flex-1 h-12 text-base border-2 active:scale-[0.98]",
+                              selectedDoc.solicitado_pelo_juridico 
+                                ? "bg-white border-purple-200 text-purple-600 cursor-default" 
+                                : "bg-purple-50 hover:bg-purple-100 border-purple-300 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-700"
+                            )}
+                            onClick={selectedDoc.solicitado_pelo_juridico ? undefined : () => handleAction('request_action')}
                           >
                             <Languages className="w-5 h-5 mr-2" />
-                            Solicitar Tradução
+                            {selectedDoc.solicitado_pelo_juridico 
+                              ? 'Tradução já solicitada'
+                              : 'Solicitar Tradução'
+                            }
                           </Button>
                         )}
 
@@ -1040,6 +1100,56 @@ export function ProcessAnalysis({
         title="Rejeitar Formulário"
         description="Por favor, informe o motivo da rejeição para que o cliente possa corrigir e reenviar."
       />
+      <Dialog open={requestModalOpen} onOpenChange={setRequestModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Solicitação</DialogTitle>
+            <DialogDescription>
+              {selectedDoc?.currentStage === 'apostille_check'
+                ? 'Isso notificará o cliente para providenciar o apostilamento deste documento. O documento aparecerá na aba "Para Apostilar" do painel do cliente.'
+                : 'Isso notificará o cliente para providenciar a tradução juramentada deste documento. O documento aparecerá na aba "Para Traduzir" do painel do cliente.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="prazo">Prazo para o Cliente (Dias)</Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  id="prazo"
+                  type="text"
+                  value={prazo}
+                  onChange={(e) => setPrazo(e.target.value)}
+                  className="w-24"
+                />
+                <span className="text-sm text-gray-500">Dias úteis para conclusão</span>
+              </div>
+            </div>
+            
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 flex items-start gap-3">
+              <Bell className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                Uma notificação automática será enviada ao cliente com as instruções e o prazo definido acima.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRequestModalOpen(false)} disabled={isUpdatingStatus}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleConfirmRequest} 
+              className="bg-blue-600 hover:bg-blue-700 text-white" 
+              disabled={isUpdatingStatus}
+            >
+              {isUpdatingStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirmar e Notificar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <RequirementRequestModal
         isOpen={isReqModalOpen}
         onOpenChange={setIsReqModalOpen}

@@ -37,11 +37,15 @@ model Notificacao {
   titulo    String
   mensagem  String
   lida      Boolean  @default(false)
+  tipo      String   @default("info")
   dataPrazo DateTime? @map("data_prazo")
   criadoEm  DateTime @default(now()) @map("criado_em")
 
-  usuarioId String   @db.Uuid @map("usuario_id")
-  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  clienteId String?  @db.Uuid @map("cliente_id")
+  criadorId String?  @db.Uuid @map("criador_id")
+
+  usuarioId String?   @db.Uuid @map("usuario_id")
+  usuario   Usuario?  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@map("notificacoes")
 }
@@ -129,6 +133,8 @@ model Documento {
   motivoRejeicao  String?         @map("motivo_rejeicao")
   analisadoPor    String?         @db.Uuid @map("analisado_por") // ID do usuário que analisou
   analisadoEm     DateTime?       @map("analisado_em")
+  solicitadoPeloJuridico Boolean       @default(false) @map("solicitado_pelo_juridico")
+  dataSolicitacaoJuridico DateTime?    @map("data_solicitacao_juridico")
   
   // Timestamps
   criadoEm        DateTime        @default(now()) @map("criado_em")

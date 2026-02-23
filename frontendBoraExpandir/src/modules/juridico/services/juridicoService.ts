@@ -289,7 +289,10 @@ export async function getDependentes(clienteId: string): Promise<any[]> {
 export async function updateDocumentStatus(
   documentoId: string, 
   status: string, 
-  motivoRejeicao?: string
+  motivoRejeicao?: string,
+  solicitado_pelo_juridico?: boolean,
+  prazo?: number,
+  analisadoPor?: string
 ): Promise<any> {
   const response = await fetch(`${API_BASE_URL}/cliente/documento/${documentoId}/status`, {
     method: 'PATCH',
@@ -298,7 +301,10 @@ export async function updateDocumentStatus(
     },
     body: JSON.stringify({
       status,
-      motivoRejeicao
+      motivoRejeicao,
+      solicitado_pelo_juridico,
+      prazo,
+      analisadoPor
     }),
   });
 

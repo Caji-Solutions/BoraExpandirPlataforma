@@ -75,6 +75,7 @@ export interface Document {
   fileSize?: number;
   updatedAt?: Date;
   requerimento_id?: string;
+  solicitado_pelo_juridico?: boolean;
 }
 
 export interface ProcessStep {

@@ -26,7 +26,6 @@ export function ApostilleQuoteModal({
   allDocuments = [],
   onPaymentSuccess
 }: ApostilleQuoteModalProps) {
-  const [allBudgets, setAllBudgets] = useState<Record<string, any>>({})
   const [candidateDocuments, setCandidateDocuments] = useState<ClientDocument[]>([])
   const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
@@ -44,35 +43,20 @@ export function ApostilleQuoteModal({
       setIsLoading(true)
       setError(null)
       
-      // Documentos para apostila: aprovados ou aguardando orçamento/aprovação
+      // Documentos para apostila: APENAS os que estão aguardando apostila
       const candidates = allDocuments.filter(d => {
         const s = d.status?.toLowerCase()
-        return s === 'waiting_apostille' || s === 'waiting_quote_approval' || d.id === documentoId
+        return s === 'waiting_apostille' || d.id === documentoId
       })
 
       setCandidateDocuments(candidates)
       
-      const budgetsMap: Record<string, any> = {}
-      await Promise.all(candidates.map(async (doc) => {
-        try {
-          const budget = await traducoesService.getOrcamentoByDocumento(doc.id)
-          if (budget) {
-            budgetsMap[doc.id] = budget
-          }
-        } catch (e) {
-          console.error(`Erro ao buscar orçamento para doc ${doc.id}:`, e)
-        }
-      }))
-
-      setAllBudgets(budgetsMap)
-      
+      // Seleciona inicialmente o documento que abriu o modal e outros que já estão na fase de espera
       const initialSelection = new Set<string>()
-      // Auto-selecionar o documento clicado
       initialSelection.add(documentoId)
       
-      // Adicionar outros que já estão aguardando aprovação
       candidates.forEach(d => {
-        if (budgetsMap[d.id] && d.status?.toLowerCase() === 'waiting_quote_approval') {
+        if (d.status?.toLowerCase() === 'waiting_apostille') {
           initialSelection.add(d.id)
         }
       })
@@ -98,11 +82,8 @@ export function ApostilleQuoteModal({
   }
 
   const calculateTotal = () => {
-    return Array.from(selectedDocIds).reduce((acc, id) => {
-      const budget = allBudgets[id]
-      if (budget) return acc + (budget.preco_atualizado)
-      return acc + 180 // Valor estimado para apostila
-    }, 0)
+    // Valor fixo padrão para apostilamento: R$ 180,00 por documento
+    return selectedDocIds.size * 180
   }
 
   const handleAction = async () => {
@@ -190,7 +171,6 @@ export function ApostilleQuoteModal({
                 <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
                   {candidateDocuments.map((doc) => {
                     const isSelected = selectedDocIds.has(doc.id)
-                    const budget = allBudgets[doc.id]
                     
                     return (
                       <div 
@@ -216,9 +196,7 @@ export function ApostilleQuoteModal({
                         </div>
                         <div className="text-right">
                           <span className="text-sm font-bold text-gray-900 dark:text-white">
-                            {budget 
-                              ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(budget.preco_atualizado || budget.valor_orcamento)
-                              : <span className="text-gray-400">R$ 180,00 (Est.)</span>}
+                            R$ 180,00
                           </span>
                         </div>
                       </div>

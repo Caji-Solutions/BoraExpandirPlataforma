@@ -312,6 +312,8 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                     url: doc.public_url || '',
                     status: status as any,
                     currentStage: stage,
+                    solicitado_pelo_juridico: doc.solicitado_pelo_juridico,
+                    data_solicitacao_juridico: doc.data_solicitacao_juridico,
                     uploadDate: new Date(doc.criado_em).toLocaleDateString(),
                     history: []
                 }
@@ -332,17 +334,31 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                 documents={memberDocs}
                 onBack={() => setSelectedMember(null)}
                 onUpdateDocument={async (id, updates) => {
-                    // Optimistic update
                     const newStatus = updates.status?.toUpperCase();
+                    // Usando o mesmo ID mockado para consistência
+                    const LAWYER_ID = '41f21e5c-dd93-4592-9470-e043badc3a18';
+                    
                     try {
-                        await juridicoService.updateDocumentStatus(
-                            id,
-                            newStatus || '',
-                            updates.rejectionReason
-                        );
+                        // Se skipBackend for true, não fazemos a chamada novamente
+                        if (!(updates as any).skipBackend) {
+                            await juridicoService.updateDocumentStatus(
+                                id,
+                                newStatus || '',
+                                updates.rejectionReason,
+                                updates.solicitado_pelo_juridico,
+                                (updates as any).prazo,
+                                LAWYER_ID
+                            );
+                        }
 
                         // Update local list
-                        const updatedRaw = selectedFolderDocs.map(d => d.id === id ? { ...d, status: newStatus } : d);
+                        const updatedRaw = selectedFolderDocs.map(d => 
+                            d.id === id ? { 
+                                ...d, 
+                                ...updates,
+                                status: (newStatus?.toLowerCase() as any) || d.status 
+                            } : d
+                        );
                         setSelectedFolderDocs(updatedRaw);
 
                     } catch (e) {

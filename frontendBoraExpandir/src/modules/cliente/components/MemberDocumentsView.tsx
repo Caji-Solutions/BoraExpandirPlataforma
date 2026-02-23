@@ -197,7 +197,8 @@ export function MemberDocumentsView({
                 {/* 8 Filter Tabs */}
                 <div className="relative">
                     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
-                        {filterTabs.map((tab) => {
+                        {filterTabs
+                            .map((tab) => {
                             const isActive = activeTab === tab.id
                             const count = actions.tabCounts[tab.id]
                             const TabIcon = tab.icon

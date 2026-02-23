@@ -69,15 +69,19 @@ export function FamilyFolders({
             const uploadedTypes = new Set(memberDocs.map((d) => d.type))
             const pendingCount = requiredDocuments.filter((req) => !uploadedTypes.has(req.type)).length
             stats.waitingAction += pendingCount
-
+            
             memberDocs.forEach((doc) => {
                 const statusLower = doc.status?.toLowerCase() || ''
                 if (statusLower === 'analyzing' || statusLower === 'analyzing_apostille' || statusLower === 'analyzing_translation') {
                     stats.analyzing++
                 } else if (statusLower === 'approved' && doc.isApostilled && doc.isTranslated) {
                     stats.completed++
-                } else if (statusLower === 'rejected' || statusLower === 'waiting_apostille' || statusLower === 'waiting_translation') {
+                } else if (statusLower === 'rejected' || statusLower === 'pending') {
                     stats.waitingAction++
+                } else if (statusLower === 'waiting_apostille' || statusLower === 'waiting_translation') {
+                    if (doc.solicitado_pelo_juridico) {
+                        stats.waitingAction++
+                    }
                 }
             })
 
@@ -130,25 +134,31 @@ export function FamilyFolders({
     const getMemberStats = (memberId: string) => {
         const memberDocs = documents.filter((d) => d.memberId === memberId)
         const uploadedTypes = new Set(memberDocs.filter(d => d.status?.toLowerCase() !== 'pending').map((d) => d.type))
-        const pending = requiredDocuments.filter((req) => !uploadedTypes.has(req.type)).length
-        const requestedPending = memberDocs.filter(d => d.status?.toLowerCase() === 'pending').length
-
+        const missingCount = requiredDocuments.filter((req) => !uploadedTypes.has(req.type)).length
+        
+        let pending = missingCount
         let analyzing = 0
         let rejected = 0
         let completed = 0
 
         memberDocs.forEach((doc) => {
             const statusLower = doc.status?.toLowerCase() || ''
-            if (statusLower === 'analyzing' || statusLower === 'analyzing_apostille' || statusLower === 'analyzing_translation') {
+            if (statusLower === 'pending') {
+                pending++
+            } else if (statusLower === 'analyzing' || statusLower === 'analyzing_apostille' || statusLower === 'analyzing_translation') {
                 analyzing++
             } else if (statusLower === 'approved' && doc.isApostilled && doc.isTranslated) {
                 completed++
             } else if (statusLower === 'rejected') {
                 rejected++
+            } else if (statusLower === 'waiting_apostille' || statusLower === 'waiting_translation') {
+                if (doc.solicitado_pelo_juridico) {
+                    pending++ 
+                }
             }
         })
 
-        return { pending: pending + requestedPending, analyzing, rejected, completed, total: memberDocs.length }
+        return { pending, analyzing, rejected, completed, total: memberDocs.length }
     }
 
     const titular = members.find((m) => m.isTitular)

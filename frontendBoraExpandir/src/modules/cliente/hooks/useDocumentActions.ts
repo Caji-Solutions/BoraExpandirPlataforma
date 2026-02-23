@@ -120,7 +120,22 @@ export function useDocumentActions({
 
     const getDocumentsForStage = (stageId: string) => {
         return memberDocs
-            .filter(doc => !doc.requerimento_id && getDocStage(doc) === stageId)
+            .filter(doc => {
+                const docStage = getDocStage(doc)
+                if (docStage !== stageId) return false
+                
+                // Filtro de visibilidade para o cliente
+                // Abas de fluxo (apostila/tradução) só mostram se o jurídico solicitou explicitamente
+                if (stageId === 'apostille' || stageId === 'translation') {
+                    // Verificação robusta: aceita true ou 1 (caso venha do banco como número)
+                    const foiSolicitado = doc.solicitado_pelo_juridico === true || 
+                                        (doc.solicitado_pelo_juridico as any) === 1 ||
+                                        (doc.solicitado_pelo_juridico as any) === 'true';
+                    return foiSolicitado;
+                }
+                
+                return true
+            })
             .map(doc => {
                 const reqDoc = requiredDocuments.find(r => r.type === doc.type)
                 return {
@@ -129,13 +144,18 @@ export function useDocumentActions({
                     description: reqDoc?.description,
                     _document: doc,
                     required: !!reqDoc,
+                    solicitado_pelo_juridico: doc.solicitado_pelo_juridico
                 }
             })
     }
 
     // Calculate pending documents (required but not uploaded + requested by juridico)
     const pendingDocs = useMemo(() => {
-        const uploadedTypes = new Set(memberDocs.filter(d => d.status?.toLowerCase() !== 'pending').map(d => d.type))
+        const uploadedTypes = new Set(
+            memberDocs
+                .filter(d => d.status?.toLowerCase() !== 'pending' && d.status?.toLowerCase() !== 'rejected')
+                .map(d => d.type)
+        )
 
         const missing = requiredDocuments
             .filter(req => !uploadedTypes.has(req.type))
@@ -146,7 +166,22 @@ export function useDocumentActions({
             }))
 
         const requested = memberDocs
-            .filter(d => d.status?.toLowerCase() === 'pending' && !d.requerimento_id)
+            .filter(d => {
+                const status = d.status?.toLowerCase();
+                // Inclui se o status for explicitamente 'pending'
+                if (status === 'pending' && !d.requerimento_id) return true;
+                
+                // OU se foi solicitado pelo jurídico e está aguardando ação de fluxo
+                const foiSolicitado = d.solicitado_pelo_juridico === true || 
+                                    (d.solicitado_pelo_juridico as any) === 1 || 
+                                    (d.solicitado_pelo_juridico as any) === 'true';
+                
+                if (foiSolicitado && (status === 'waiting_apostille' || status === 'waiting_translation')) {
+                    return true;
+                }
+
+                return false;
+            })
             .map(doc => {
                 const reqDoc = requiredDocuments.find(r => r.type === doc.type)
                 return {

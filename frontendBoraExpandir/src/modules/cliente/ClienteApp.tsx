@@ -87,6 +87,9 @@ export function ClienteApp() {
           fileSize: doc.tamanho,
           updatedAt: doc.atualizado_em ? new Date(doc.atualizado_em) : undefined,
           requerimento_id: doc.requerimento_id || undefined,
+          solicitado_pelo_juridico: doc.solicitado_pelo_juridico === true || 
+                                   (doc.solicitado_pelo_juridico as any) === 1 || 
+                                   (doc.solicitado_pelo_juridico as any) === 'true',
         }
       })
 

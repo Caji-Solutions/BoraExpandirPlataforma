@@ -1,6 +1,7 @@
 import type { ClienteDTO } from '../types/parceiro';
 import ClienteRepository from '../repositories/ClienteRepository';
 import JuridicoRepository from '../repositories/JuridicoRepository';
+import NotificationService from '../services/NotificationService';
 import { getDocumentosPorTipoServico, DocumentoRequeridoConfig } from '../config/documentosConfig';
 
 // Interface para o documento requerido com informações do processo
@@ -396,6 +397,10 @@ class ClienteController {
 
   // PATCH /cliente/documento/:documentoId/status
   async updateDocumentoStatus(req: any, res: any) {
+    console.log('============= DEBUG STATUS UPDATE =============');
+    console.log('Documento ID:', req.params.documentoId);
+    console.log('Body recebido:', req.body);
+    
     try {
       const { documentoId } = req.params
       const { status, motivoRejeicao, analisadoPor } = req.body
@@ -431,27 +436,81 @@ class ClienteController {
         traduzido = true;
       }
 
+      const { solicitado_pelo_juridico, prazo } = req.body;
+
+      console.log('Enviando para o repositório...', {
+        documentoId, status, solicitado_pelo_juridico
+      });
+
       const documento = await ClienteRepository.updateDocumentoStatus(
         documentoId,
         status,
         motivoRejeicao,
         analisadoPor,
         apostilado,
-        traduzido
+        traduzido,
+        solicitado_pelo_juridico
       )
 
+      console.log('Documento atualizado no repositório com sucesso.');
+
+      // Criar notificação se o status exigir ação do cliente ou se foi solicitado pelo jurídico
+      try {
+        const canNotify = status === 'REJECTED' || status === 'WAITING_APOSTILLE' || status === 'WAITING_TRANSLATION' || solicitado_pelo_juridico;
+        console.log('Pode notificar?', canNotify, { status, solicitado_pelo_juridico });
+        
+        if (canNotify) {
+          let titulo = '';
+          let mensagem = '';
+          let tipo: 'info' | 'success' | 'warning' | 'error' = 'info';
+
+          if (status === 'REJECTED') {
+            titulo = `Documento Rejeitado: ${documento.tipo}`;
+            mensagem = `O documento "${documento.tipo}" foi rejeitado. Motivo: ${motivoRejeicao || 'Não especificado'}. Por favor, envie uma nova versão.`;
+            tipo = 'error';
+          } else if (status === 'WAITING_APOSTILLE' || (solicitado_pelo_juridico && status.includes('APOSTILLE'))) {
+            titulo = 'Apostilamento Necessário';
+            mensagem = `O documento "${documento.tipo}" foi analisado e agora precisa ser apostilado. Por favor, providencie o apostilamento.`;
+            tipo = 'warning';
+          } else if (status === 'WAITING_TRANSLATION' || (solicitado_pelo_juridico && status.includes('TRANSLATION'))) {
+            titulo = 'Tradução Necessária';
+            mensagem = `O documento "${documento.tipo}" foi analisado e agora precisa ser traduzido. Por favor, providencie a tradução.`;
+            tipo = 'warning';
+          }
+
+          if (titulo && mensagem) {
+            await NotificationService.createNotification({
+              clienteId: documento.cliente_id,
+              criadorId: analisadoPor,
+              titulo,
+              mensagem,
+              tipo,
+              prazo: Number(prazo) || 15
+            });
+            console.log(`Notificação "${titulo}" enviada com sucesso para o cliente ${documento.cliente_id} (Prazo: ${prazo || 15} dias)`);
+          }
+        }
+      } catch (notifyError) {
+        console.error('Erro ao enviar notificação de status:', notifyError);
+      }
+
+      console.log('Finalizando resposta de sucesso.');
       return res.status(200).json({
         message: 'Status do documento atualizado com sucesso',
         data: documento
       })
     } catch (error: any) {
-      console.error('Erro ao atualizar status do documento:', error)
+      console.error('ERRO NO updateDocumentoStatus:', error)
       return res.status(500).json({
-        message: `Erro ao atualizar status do documento: ${error.message} (ID: ${req.params.documentoId}, Status: ${req.body.status})`,
+        message: `Erro ao atualizar status do documento: ${error.message}`,
         error: error.message,
-        documentoId: req.params.documentoId,
-        status: req.body.status
+        debug_info: {
+          documentoId: req.params.documentoId,
+          status: req.body.status
+        }
       })
+    } finally {
+      console.log('===============================================');
     }
   }
 
