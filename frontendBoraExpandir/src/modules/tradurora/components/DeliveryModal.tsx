@@ -1,25 +1,18 @@
 import React, { useState } from 'react'
-import { X, Upload, AlertTriangle } from 'lucide-react'
-import type { TraducaoItem } from '../types'
+import { X, Upload, AlertTriangle, ExternalLink } from 'lucide-react'
+import type { OrcamentoItem } from '../types/orcamento'
 import { compressFile } from '../../../utils/compressFile'
 
 interface DeliveryModalProps {
-  traducao: TraducaoItem | null
+  item: OrcamentoItem
   onClose: () => void
-  onSubmit: (traducaoId: string, arquivo: File) => void
+  onSubmit: (documentoId: string, arquivo: File) => Promise<void>
 }
 
-export default function DeliveryModal({ traducao, onClose, onSubmit }: DeliveryModalProps) {
+export default function DeliveryModal({ item, onClose, onSubmit }: DeliveryModalProps) {
   const [arquivo, setArquivo] = useState<File | null>(null)
   const [revisada, setRevisada] = useState(false)
   const [uploading, setUploading] = useState(false)
-
-  if (!traducao) return null
-
-  const agora = new Date()
-  const prazo = new Date(traducao.prazoSLA)
-  const diffHours = (prazo.getTime() - agora.getTime()) / (1000 * 60 * 60)
-  const isUrgent = diffHours < 4
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -45,17 +38,14 @@ export default function DeliveryModal({ traducao, onClose, onSubmit }: DeliveryM
     if (!arquivo || !revisada) return
     setUploading(true)
     try {
-      // Comprimir arquivo antes do upload
       const compressedArquivo = await compressFile(arquivo)
-      await onSubmit(traducao.id, compressedArquivo)
-      // Resetar estados
+      await onSubmit(item.documentoId, compressedArquivo)
       setArquivo(null)
       setRevisada(false)
-      // Fechar modal após sucesso
       onClose()
     } catch (error) {
       console.error('Erro ao enviar tradução:', error)
-      // Em caso de erro, manter o modal aberto
+      alert('Erro ao enviar tradução. Tente novamente.')
     } finally {
       setUploading(false)
     }
@@ -67,7 +57,7 @@ export default function DeliveryModal({ traducao, onClose, onSubmit }: DeliveryM
         {/* Header */}
         <div className="sticky top-0 bg-white dark:bg-neutral-800 border-b border-gray-200 dark:border-neutral-700 p-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {traducao.documentoNome} ({traducao.parIdiomas.origem} → {traducao.parIdiomas.destino})
+            Entregar Tradução
           </h2>
           <button
             onClick={onClose}
@@ -79,49 +69,47 @@ export default function DeliveryModal({ traducao, onClose, onSubmit }: DeliveryM
 
         {/* Content */}
         <div className="p-6 space-y-6">
-          {/* Alert Banner */}
-          {isUrgent && (
-            <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg flex gap-3">
-              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-red-900 dark:text-red-200">
-                  ⚠️ Atenção: Documento urgente
-                </p>
-                <p className="text-sm text-red-800 dark:text-red-300 mt-1">
-                  Este documento vence em menos de 4 horas. Entrega imediata é crítica.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Prazo Info */}
+          {/* Document Info */}
           <div className="bg-gray-50 dark:bg-neutral-700/50 p-4 rounded-lg">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Prazo de Entrega</p>
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Informações do Documento</p>
             <p className="text-lg font-semibold text-gray-900 dark:text-white">
-              {prazo.toLocaleString('pt-BR')}
+              {item.documentoNome}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Cliente: {traducao.clienteNome}
+              Cliente: {item.clienteNome}
+              {item.dependente?.nome_completo && ` — Membro: ${item.dependente.nome_completo}`}
             </p>
+            {item.prazoEntrega && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Prazo: {new Date(item.prazoEntrega).toLocaleDateString('pt-BR')}
+              </p>
+            )}
           </div>
 
-          {/* Preview do Documento Original */}
+          {/* Link to Original Document */}
           <div>
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Documento Original</p>
-            <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-lg p-4">
-              <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
-                📄 {traducao.documentoNome}
-              </p>
-              <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
-                Visualização apenas - Documento disponível para tradução
-              </p>
-            </div>
+            {item.publicUrl ? (
+              <button
+                onClick={() => window.open(item.publicUrl, '_blank')}
+                className="w-full flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors"
+              >
+                <span className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                  📄 {item.documentoNome}
+                </span>
+                <ExternalLink className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </button>
+            ) : (
+              <div className="p-4 bg-gray-50 dark:bg-neutral-700/50 border border-gray-200 dark:border-neutral-600 rounded-lg">
+                <span className="text-sm text-gray-500">Documento original não disponível</span>
+              </div>
+            )}
           </div>
 
           {/* Upload Area */}
           <div>
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Enviar Tradução</p>
-            
+
             {!arquivo ? (
               <div
                 onDragOver={handleDragOver}

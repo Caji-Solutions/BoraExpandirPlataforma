@@ -17,12 +17,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from './ui/select';
-import { 
-    ClipboardCheck, 
-    Loader2, 
-    Plus, 
-    Trash2, 
-    FileText, 
+import {
+    ClipboardCheck,
+    Loader2,
+    Plus,
+    Trash2,
+    FileText,
     User,
     ChevronRight,
     Upload,
@@ -73,6 +73,7 @@ export function RequirementRequestModal({
     // List of documents to request within this requirement
     const [documentsToRequest, setDocumentsToRequest] = useState<{ id: string, type: string, memberId: string }[]>([]);
     const [newDocType, setNewDocType] = useState('');
+    const [customDocName, setCustomDocName] = useState('');
     const [newDocMemberId, setNewDocMemberId] = useState(members.find(m => m.isTitular)?.id || clienteId);
 
     const handleAddDocument = () => {
@@ -80,8 +81,12 @@ export function RequirementRequestModal({
             toast.error('Selecione o tipo de documento');
             return;
         }
-        
-        const docLabel = DOCUMENT_TYPES.find(d => d.value === newDocType)?.label || newDocType;
+        if (newDocType === 'outro' && !customDocName.trim()) {
+            toast.error('Digite o nome do documento');
+            return;
+        }
+
+        const docLabel = newDocType === 'outro' ? customDocName.trim() : (DOCUMENT_TYPES.find(d => d.value === newDocType)?.label || newDocType);
         const memberName = members.find(m => m.id === newDocMemberId)?.name || 'Membro';
 
         setDocumentsToRequest([
@@ -89,6 +94,7 @@ export function RequirementRequestModal({
             { id: Math.random().toString(36).substr(2, 9), type: docLabel, memberId: newDocMemberId }
         ]);
         setNewDocType('');
+        setCustomDocName('');
     };
 
     const handleRemoveDocument = (id: string) => {
@@ -97,10 +103,10 @@ export function RequirementRequestModal({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         try {
             setIsSubmitting(true);
-            
+
             const finalNome = identificador || (documentsToRequest.length > 0 ? `Requerimento: ${documentsToRequest[0].type}` : 'Novo Requerimento');
 
             // Construct FormData for file upload and data
@@ -108,7 +114,7 @@ export function RequirementRequestModal({
             formData.append('clienteId', clienteId);
             formData.append('tipo', finalNome);
             if (processoId) formData.append('processoId', processoId);
-            
+
             // Send documentosAcoplados as a JSON string
             if (documentsToRequest.length > 0) {
                 const coupledDocs = documentsToRequest.map(doc => ({
@@ -125,11 +131,11 @@ export function RequirementRequestModal({
 
             // 1. Create Requirement Entity and handle everything in backend
             await requestRequirement(formData);
-            
+
             toast.success('Requerimento e solicitações criados com sucesso!');
             onOpenChange(false);
             if (onSuccess) onSuccess();
-            
+
             // Reset form
             setIdentificador('');
             setFiles([]);
@@ -161,23 +167,9 @@ export function RequirementRequestModal({
                             </div>
                         </div>
                     </DialogHeader>
-                    
+
                     <ScrollArea className="flex-1 p-8">
                         <div className="grid gap-8">
-                            {/* Main Info Section */}
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                    <ChevronRight className="h-3 w-3 text-purple-500" />
-                                    Identificador do Requerimento
-                                </Label>
-                                <Input 
-                                    placeholder="Ex: Documentação Adicional - Processo 123" 
-                                    value={identificador}
-                                    onChange={(e) => setIdentificador(e.target.value)}
-                                    className="h-12 rounded-xl bg-muted/30 border-none shadow-inner focus:ring-2 focus:ring-purple-500"
-                                />
-                            </div>
-
                             {/* Document Request Section */}
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
@@ -217,9 +209,9 @@ export function RequirementRequestModal({
                                                 </SelectContent>
                                             </Select>
                                         </div>
-                                        <Button 
-                                            type="button" 
-                                            size="sm" 
+                                        <Button
+                                            type="button"
+                                            size="sm"
                                             onClick={handleAddDocument}
                                             className="h-10 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/10"
                                         >
@@ -227,13 +219,24 @@ export function RequirementRequestModal({
                                         </Button>
                                     </div>
 
+                                    {newDocType === 'outro' && (
+                                        <div className="mt-3">
+                                            <Input
+                                                placeholder="Digite o nome do documento..."
+                                                value={customDocName}
+                                                onChange={(e) => setCustomDocName(e.target.value)}
+                                                className="h-10 rounded-lg text-xs bg-white border-border/50"
+                                            />
+                                        </div>
+                                    )}
+
                                     {documentsToRequest.length > 0 && (
                                         <div className="mt-4 space-y-2">
                                             {documentsToRequest.map((doc) => {
                                                 const m = members.find(m => m.id === doc.memberId);
                                                 return (
-                                                    <div 
-                                                        key={doc.id} 
+                                                    <div
+                                                        key={doc.id}
                                                         className="flex items-center justify-between p-3 bg-card rounded-xl border border-border animate-in slide-in-from-left-2"
                                                     >
                                                         <div className="flex items-center gap-3">
@@ -248,10 +251,10 @@ export function RequirementRequestModal({
                                                                 </span>
                                                             </div>
                                                         </div>
-                                                        <Button 
-                                                            type="button" 
-                                                            variant="ghost" 
-                                                            size="icon" 
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
                                                             onClick={() => handleRemoveDocument(doc.id)}
                                                             className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-50"
                                                         >
@@ -271,8 +274,8 @@ export function RequirementRequestModal({
                                     <Upload className="h-3 w-3 text-green-500" />
                                     Upload de Arquivos (Opcional)
                                 </Label>
-                                
-                                <div 
+
+                                <div
                                     className="border-2 border-dashed border-border rounded-2xl p-8 text-center bg-muted/10 hover:bg-muted/20 transition-all cursor-pointer group"
                                     onClick={() => document.getElementById('file-upload')?.click()}
                                     onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
@@ -284,11 +287,11 @@ export function RequirementRequestModal({
                                         }
                                     }}
                                 >
-                                    <input 
-                                        type="file" 
-                                        id="file-upload" 
-                                        multiple 
-                                        className="hidden" 
+                                    <input
+                                        type="file"
+                                        id="file-upload"
+                                        multiple
+                                        className="hidden"
                                         onChange={(e) => {
                                             if (e.target.files) {
                                                 setFiles([...files, ...Array.from(e.target.files)]);
@@ -317,10 +320,10 @@ export function RequirementRequestModal({
                                                         <span className="text-[10px] text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
                                                     </div>
                                                 </div>
-                                                <Button 
-                                                    type="button" 
-                                                    variant="ghost" 
-                                                    size="icon" 
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
                                                     className="h-8 w-8 text-muted-foreground hover:text-red-500"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -339,17 +342,17 @@ export function RequirementRequestModal({
 
                     <DialogFooter className="p-8 bg-muted/10 border-t border-border/50">
                         <div className="flex items-center justify-between w-full">
-                            <Button 
-                                type="button" 
-                                variant="ghost" 
+                            <Button
+                                type="button"
+                                variant="ghost"
                                 onClick={() => onOpenChange(false)}
                                 disabled={isSubmitting}
                                 className="rounded-xl px-6 font-bold text-muted-foreground hover:bg-muted"
                             >
                                 Cancelar
                             </Button>
-                            <Button 
-                                type="submit" 
+                            <Button
+                                type="submit"
                                 disabled={isSubmitting || documentsToRequest.length === 0}
                                 className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl px-10 shadow-xl shadow-purple-500/20 py-6 transition-all active:scale-95 disabled:grayscale"
                             >

@@ -1,8 +1,19 @@
 import { useState, useEffect, useMemo } from 'react'
-import { FamilyFolderCard } from './MemberFolderCard'
-import { InitialUploadModal } from './InitialUploadModal'
+import { MemberDocumentsView } from './MemberDocumentsView'
 import { Document as ClientDocument, RequiredDocument } from '../types'
-import { ClipboardList, Clock, CheckCircle2, AlertCircle } from 'lucide-react'
+import {
+    ClipboardList,
+    Clock,
+    CheckCircle2,
+    AlertCircle,
+    Folder,
+    ChevronRight,
+    User,
+    Users,
+    FileText,
+} from 'lucide-react'
+import { Badge } from './ui/badge'
+import { cn } from '../lib/utils'
 
 interface FamilyMember {
     id: string
@@ -36,13 +47,10 @@ export function FamilyFolders({
     requiredDocuments,
     requerimentos = [],
     onUpload,
-    onDelete
+    onDelete,
 }: FamilyFoldersProps) {
-    // Track which card is expanded - ONLY ONE allowed at a time
-    const [expandedCardId, setExpandedCardId] = useState<string | null>(null)
-
-    // Track which member has the upload modal open
-    const [uploadModalMember, setUploadModalMember] = useState<FamilyMember | null>(null)
+    // Selected member for document view (null = show member selection)
+    const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null)
 
     // Enriched members with fetched data
     const [members, setMembers] = useState<FamilyMember[]>(initialMembers)
@@ -50,23 +58,20 @@ export function FamilyFolders({
     // Calculate aggregated stats for the entire process
     const processStats = useMemo(() => {
         const stats = {
-            waitingAction: 0,  // Aguardam Ação
-            analyzing: 0,      // Em Análise
-            completed: 0,      // Concluídos
-            total: 0           // Total required
+            waitingAction: 0,
+            analyzing: 0,
+            completed: 0,
+            total: 0,
         }
 
-        members.forEach(member => {
-            const memberDocs = documents.filter(d => d.memberId === member.id)
-            const uploadedTypes = new Set(memberDocs.map(d => d.type))
-
-            // Count pending (not uploaded) docs
-            const pendingCount = requiredDocuments.filter(req => !uploadedTypes.has(req.type)).length
+        members.forEach((member) => {
+            const memberDocs = documents.filter((d) => d.memberId === member.id)
+            const uploadedTypes = new Set(memberDocs.map((d) => d.type))
+            const pendingCount = requiredDocuments.filter((req) => !uploadedTypes.has(req.type)).length
             stats.waitingAction += pendingCount
 
-            memberDocs.forEach(doc => {
+            memberDocs.forEach((doc) => {
                 const statusLower = doc.status?.toLowerCase() || ''
-
                 if (statusLower === 'analyzing' || statusLower === 'analyzing_apostille' || statusLower === 'analyzing_translation') {
                     stats.analyzing++
                 } else if (statusLower === 'approved' && doc.isApostilled && doc.isTranslated) {
@@ -89,26 +94,23 @@ export function FamilyFolders({
                 const dependentesRes = await fetch(`${API_BASE_URL}/cliente/${clienteId}/dependentes`)
                 const dependentesData = dependentesRes.ok ? await dependentesRes.json() : { data: [] }
 
-                // Build family members list
                 const familyMembers: FamilyMember[] = []
 
-                // Add titular (main client) - always first
                 familyMembers.push({
                     id: clienteId,
                     name: clientName,
                     type: 'Titular',
                     isTitular: true,
-                    clienteId: clienteId
+                    clienteId: clienteId,
                 })
 
-                // Add dependentes
                 if (dependentesData.data && Array.isArray(dependentesData.data)) {
                     const dependentes = dependentesData.data.map((dep: any) => ({
                         id: dep.id,
                         name: dep.nome_completo || dep.name || 'Dependente',
-                        type: dep.parentesco ? (dep.parentesco.charAt(0).toUpperCase() + dep.parentesco.slice(1)) : 'Dependente',
+                        type: dep.parentesco ? dep.parentesco.charAt(0).toUpperCase() + dep.parentesco.slice(1) : 'Dependente',
                         isTitular: false,
-                        clienteId: clienteId
+                        clienteId: clienteId,
                     }))
                     familyMembers.push(...dependentes)
                 }
@@ -116,7 +118,6 @@ export function FamilyFolders({
                 setMembers(familyMembers)
             } catch (error) {
                 console.error('Erro ao buscar dados da família:', error)
-                // Keep initial members on error
             }
         }
 
@@ -125,22 +126,155 @@ export function FamilyFolders({
         }
     }, [clienteId, clientName])
 
-    const toggleCard = (memberId: string) => {
-        setExpandedCardId(prev => prev === memberId ? null : memberId)
+    // Calculate per-member stats
+    const getMemberStats = (memberId: string) => {
+        const memberDocs = documents.filter((d) => d.memberId === memberId)
+        const uploadedTypes = new Set(memberDocs.filter(d => d.status?.toLowerCase() !== 'pending').map((d) => d.type))
+        const pending = requiredDocuments.filter((req) => !uploadedTypes.has(req.type)).length
+        const requestedPending = memberDocs.filter(d => d.status?.toLowerCase() === 'pending').length
+
+        let analyzing = 0
+        let rejected = 0
+        let completed = 0
+
+        memberDocs.forEach((doc) => {
+            const statusLower = doc.status?.toLowerCase() || ''
+            if (statusLower === 'analyzing' || statusLower === 'analyzing_apostille' || statusLower === 'analyzing_translation') {
+                analyzing++
+            } else if (statusLower === 'approved' && doc.isApostilled && doc.isTranslated) {
+                completed++
+            } else if (statusLower === 'rejected') {
+                rejected++
+            }
+        })
+
+        return { pending: pending + requestedPending, analyzing, rejected, completed, total: memberDocs.length }
     }
 
-    const openUploadModal = (member: FamilyMember) => {
-        setUploadModalMember(member)
+    const titular = members.find((m) => m.isTitular)
+    const dependentes = members.filter((m) => !m.isTitular)
+
+    // If a member is selected, show MemberDocumentsView
+    if (selectedMember) {
+        return (
+            <MemberDocumentsView
+                member={selectedMember}
+                documents={documents}
+                requiredDocuments={requiredDocuments}
+                processoId={processoId}
+                requerimentos={requerimentos}
+                onUpload={onUpload}
+                onDelete={onDelete}
+                onBack={() => setSelectedMember(null)}
+            />
+        )
     }
 
-    const closeUploadModal = () => {
-        setUploadModalMember(null)
+    // Render member card
+    const renderMemberCard = (member: FamilyMember) => {
+        const stats = getMemberStats(member.id)
+        const hasRejected = stats.rejected > 0
+        const hasPending = stats.pending > 0
+        const hasDocuments = stats.total > 0
+
+        return (
+            <button
+                key={member.id}
+                onClick={() => setSelectedMember(member)}
+                className={cn(
+                    'w-full text-left p-5 rounded-2xl border-2 transition-all duration-200 group',
+                    'bg-white dark:bg-gray-800 hover:shadow-lg hover:scale-[1.01]',
+                    hasRejected
+                        ? 'border-red-300 dark:border-red-700 hover:border-red-400 shadow-sm shadow-red-500/5'
+                        : hasPending
+                            ? 'border-amber-200 dark:border-amber-800 hover:border-amber-300'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600'
+                )}
+            >
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        {/* Avatar */}
+                        <div
+                            className={cn(
+                                'p-3 rounded-xl transition-colors',
+                                member.isTitular
+                                    ? 'bg-blue-50 dark:bg-blue-900/20 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40'
+                                    : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-gray-200 dark:group-hover:bg-gray-600'
+                            )}
+                        >
+                            <Folder
+                                className={cn(
+                                    'h-7 w-7',
+                                    member.isTitular ? 'text-blue-500' : 'text-gray-500 dark:text-gray-400'
+                                )}
+                            />
+                        </div>
+
+                        {/* Info */}
+                        <div>
+                            <div className="flex items-center gap-2 mb-0.5">
+                                <h3 className="font-semibold text-base text-gray-900 dark:text-white">{member.name}</h3>
+                                {member.isTitular && (
+                                    <Badge variant="default" className="text-[10px] px-2 py-0.5 bg-blue-600 hover:bg-blue-700">
+                                        Titular
+                                    </Badge>
+                                )}
+                                {hasRejected && (
+                                    <Badge variant="destructive" className="text-[10px] px-2 py-0.5">
+                                        Ação Necessária
+                                    </Badge>
+                                )}
+                                {!hasDocuments && !hasRejected && (
+                                    <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
+                                        Pendente envio
+                                    </Badge>
+                                )}
+                            </div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{member.type}</p>
+                        </div>
+                    </div>
+
+                    {/* Stats + Arrow */}
+                    <div className="flex items-center gap-5">
+                        {/* Mini stats */}
+                        <div className="hidden sm:flex items-center gap-3 text-sm">
+                            {stats.rejected > 0 && (
+                                <div className="flex flex-col items-center">
+                                    <span className="font-bold text-red-600">{stats.rejected}</span>
+                                    <span className="text-[10px] text-gray-400">Rejeitados</span>
+                                </div>
+                            )}
+                            {stats.pending > 0 && (
+                                <div className="flex flex-col items-center">
+                                    <span className="font-bold text-amber-600">{stats.pending}</span>
+                                    <span className="text-[10px] text-gray-400">Pendentes</span>
+                                </div>
+                            )}
+                            {stats.analyzing > 0 && (
+                                <div className="flex flex-col items-center">
+                                    <span className="font-bold text-blue-600">{stats.analyzing}</span>
+                                    <span className="text-[10px] text-gray-400">Em Análise</span>
+                                </div>
+                            )}
+                            {stats.completed > 0 && (
+                                <div className="flex flex-col items-center">
+                                    <span className="font-bold text-green-600">{stats.completed}</span>
+                                    <span className="text-[10px] text-gray-400">Aprovados</span>
+                                </div>
+                            )}
+                        </div>
+
+                        <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                    </div>
+                </div>
+            </button>
+        )
     }
 
     return (
-        <>
+        <div className="space-y-6 pb-20">
             {/* Process-level Summary Card */}
-            <div className="mb-6 p-4 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="p-4 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
                     <ClipboardList className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                     <h3 className="font-semibold text-slate-700 dark:text-slate-200">Resumo do Processo</h3>
@@ -170,38 +304,45 @@ export function FamilyFolders({
                 </div>
             </div>
 
-             <div className="space-y-4 pb-20">
-                {members.map((member) => (
-                    <FamilyFolderCard
-                        key={member.id}
-                        member={member}
-                        documents={documents}
-                        requiredDocuments={requiredDocuments}
-                        requerimentos={requerimentos}
-                        processoId={processoId}
-                        isExpanded={expandedCardId === member.id}
-                        onToggle={() => toggleCard(member.id)}
-                        onOpenUploadModal={() => openUploadModal(member)}
-                        onUpload={onUpload}
-                        onDelete={onDelete}
-                    />
-                ))}
-                
-                {/* Spacer to ensure the last expanded card is fully scrollable */}
-                <div className="h-40" aria-hidden="true" />
-            </div>
-
-
-            {/* Initial Upload Modal */}
-            {uploadModalMember && (
-                <InitialUploadModal
-                    isOpen={!!uploadModalMember}
-                    onClose={closeUploadModal}
-                    member={uploadModalMember}
-                    requiredDocuments={requiredDocuments}
-                    onUpload={onUpload}
-                />
+            {/* Titular Section */}
+            {titular && (
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2 px-1">
+                        <User className="h-4 w-4 text-blue-500" />
+                        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                            Titular
+                        </h3>
+                    </div>
+                    {renderMemberCard(titular)}
+                </div>
             )}
-        </>
+
+            {/* Dependentes Section */}
+            {dependentes.length > 0 && (
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2 px-1">
+                        <Users className="h-4 w-4 text-gray-500" />
+                        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                            Dependentes
+                        </h3>
+                        <Badge variant="secondary" className="text-[10px] h-5">
+                            {dependentes.length}
+                        </Badge>
+                    </div>
+                    <div className="space-y-3">
+                        {dependentes.map((dep) => renderMemberCard(dep))}
+                    </div>
+                </div>
+            )}
+
+            {/* Empty state if no members */}
+            {members.length === 0 && (
+                <div className="p-12 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
+                    <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <h3 className="text-base font-semibold text-gray-700 dark:text-gray-300 mb-1">Carregando membros...</h3>
+                    <p className="text-sm text-gray-500">Buscando informações do titular e dependentes.</p>
+                </div>
+            )}
+        </div>
     )
 }

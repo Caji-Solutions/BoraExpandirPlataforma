@@ -86,6 +86,7 @@ export function ClienteApp() {
           fileName: doc.nome_arquivo,
           fileSize: doc.tamanho,
           updatedAt: doc.atualizado_em ? new Date(doc.atualizado_em) : undefined,
+          requerimento_id: doc.requerimento_id || undefined,
         }
       })
 
@@ -114,7 +115,7 @@ export function ClienteApp() {
       const backendNotifs = result.map((n: any) => {
         // Garantir que lida seja um booleano real (converte 1, 'true', etc)
         const isRead = n.lida === true || String(n.lida) === 'true' || n.lida === 1;
-        
+
         return {
           id: n.id,
           clientId: n.cliente_id,
@@ -637,7 +638,7 @@ export function ClienteApp() {
             const isRead = n.lida || n.read;
             const title = n.titulo || n.title;
             const linkedDoc = documents.find(doc => doc.type === title);
-            
+
             if (linkedDoc) {
               return linkedDoc.status === 'pending' || linkedDoc.status === 'rejected';
             }

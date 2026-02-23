@@ -1,43 +1,40 @@
 import React, { useMemo, useState } from 'react'
-import { CheckCircle2, ChevronDown, ChevronRight, Folder, FileText } from 'lucide-react'
-import type { TraducaoItem } from '../types'
+import { CheckCircle2, ChevronDown, ChevronRight, Folder, FileText, ExternalLink } from 'lucide-react'
+import type { OrcamentoItem } from '../types/orcamento'
 import { Badge } from '../../../components/ui/Badge'
 
 interface EntreguesPageProps {
-  traducoes: TraducaoItem[]
+  items: OrcamentoItem[]
 }
 
 interface ClienteGroup {
   clienteNome: string
-  traducoes: TraducaoItem[]
+  items: OrcamentoItem[]
 }
 
-export default function EntreguesPage({ traducoes }: EntreguesPageProps) {
+export default function EntreguesPage({ items }: EntreguesPageProps) {
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set())
 
   const clientesAgrupados = useMemo(() => {
-    const entregues = traducoes
-      .filter(t => t.status === 'entregue')
-      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    const sorted = [...items].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
 
-    // Agrupar por cliente
-    const grupos = entregues.reduce((acc, traducao) => {
-      const cliente = traducao.clienteNome
+    // Group by client
+    const grupos = sorted.reduce((acc, item) => {
+      const cliente = item.clienteNome
       if (!acc[cliente]) {
         acc[cliente] = []
       }
-      acc[cliente].push(traducao)
+      acc[cliente].push(item)
       return acc
-    }, {} as Record<string, TraducaoItem[]>)
+    }, {} as Record<string, OrcamentoItem[]>)
 
-    // Converter para array e ordenar por número de traduções
     return Object.entries(grupos)
-      .map(([clienteNome, traducoes]) => ({
+      .map(([clienteNome, groupItems]) => ({
         clienteNome,
-        traducoes,
+        items: groupItems,
       }))
-      .sort((a, b) => b.traducoes.length - a.traducoes.length)
-  }, [traducoes])
+      .sort((a, b) => b.items.length - a.items.length)
+  }, [items])
 
   const toggleClient = (clienteNome: string) => {
     setExpandedClients(prev => {
@@ -51,7 +48,7 @@ export default function EntreguesPage({ traducoes }: EntreguesPageProps) {
     })
   }
 
-  const totalEntregues = clientesAgrupados.reduce((acc, grupo) => acc + grupo.traducoes.length, 0)
+  const totalEntregues = clientesAgrupados.reduce((acc, grupo) => acc + grupo.items.length, 0)
 
   return (
     <div>
@@ -70,19 +67,19 @@ export default function EntreguesPage({ traducoes }: EntreguesPageProps) {
       {clientesAgrupados.length === 0 ? (
         <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-12 text-center">
           <CheckCircle2 className="h-12 w-12 text-gray-300 dark:text-neutral-600 mx-auto mb-3" />
-          <p className="text-gray-600 dark:text-gray-400">Nenhuma tradução entregue</p>
+          <p className="text-gray-600 dark:text-gray-400">Nenhuma tradução entregue ainda</p>
         </div>
       ) : (
         <div className="space-y-3">
           {clientesAgrupados.map(grupo => {
             const isExpanded = expandedClients.has(grupo.clienteNome)
-            
+
             return (
               <div
                 key={grupo.clienteNome}
                 className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 overflow-hidden"
               >
-                {/* Header da Pasta do Cliente */}
+                {/* Client Folder Header */}
                 <button
                   onClick={() => toggleClient(grupo.clienteNome)}
                   className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors"
@@ -99,16 +96,16 @@ export default function EntreguesPage({ traducoes }: EntreguesPageProps) {
                         {grupo.clienteNome}
                       </h3>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {grupo.traducoes.length} {grupo.traducoes.length === 1 ? 'documento' : 'documentos'}
+                        {grupo.items.length} {grupo.items.length === 1 ? 'documento' : 'documentos'}
                       </p>
                     </div>
                   </div>
                   <Badge variant="outline">
-                    {grupo.traducoes.length}
+                    {grupo.items.length}
                   </Badge>
                 </button>
 
-                {/* Conteúdo Expansível */}
+                {/* Expandable Content */}
                 {isExpanded && (
                   <div className="border-t border-gray-200 dark:border-neutral-700">
                     <div className="overflow-x-auto">
@@ -119,37 +116,56 @@ export default function EntreguesPage({ traducoes }: EntreguesPageProps) {
                               Documento
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">
-                              Idiomas
+                              Data Entrega
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">
-                              Data Entrega
+                              Valor
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">
+                              Original
                             </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 dark:divide-neutral-700">
-                          {grupo.traducoes.map(traducao => (
+                          {grupo.items.map(item => (
                             <tr
-                              key={traducao.id}
+                              key={item.id}
                               className="hover:bg-gray-50 dark:hover:bg-neutral-700/30 transition-colors"
                             >
                               <td className="px-6 py-4">
                                 <div className="flex items-center gap-2">
                                   <FileText className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-                                  <p className="font-medium text-gray-900 dark:text-white">
-                                    {traducao.documentoNome}
-                                  </p>
+                                  <div>
+                                    <p className="font-medium text-gray-900 dark:text-white">
+                                      {item.documentoNome}
+                                    </p>
+                                    {item.dependente?.nome_completo && (
+                                      <p className="text-xs text-gray-500">{item.dependente.nome_completo}</p>
+                                    )}
+                                  </div>
                                 </div>
                               </td>
-                              <td className="px-6 py-4">
-                                <Badge variant="default">
-                                  {traducao.parIdiomas.origem} → {traducao.parIdiomas.destino}
-                                </Badge>
-                              </td>
                               <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                                {new Date(traducao.updated_at).toLocaleString('pt-BR', {
+                                {new Date(item.updated_at).toLocaleString('pt-BR', {
                                   dateStyle: 'short',
                                   timeStyle: 'short',
                                 })}
+                              </td>
+                              <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                                {item.valorOrcamento ? (
+                                  `R$ ${item.valorOrcamento.toFixed(2).replace('.', ',')}`
+                                ) : '—'}
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                {item.publicUrl ? (
+                                  <button
+                                    onClick={() => window.open(item.publicUrl, '_blank')}
+                                    className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded text-xs font-medium hover:bg-blue-200 transition-colors"
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                    Ver
+                                  </button>
+                                ) : '—'}
                               </td>
                             </tr>
                           ))}

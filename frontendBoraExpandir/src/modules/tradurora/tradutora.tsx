@@ -7,144 +7,116 @@ import FilaDeTrabalho from './components/FilaDeTrabalho'
 import EntreguesPage from './components/EntreguesPage'
 import PagamentosPage from './components/PagamentosPage'
 import { FileText, Clock, CheckCircle2, DollarSign, Settings, Loader2 } from 'lucide-react'
-import type { TraducaoItem } from './types'
 import type { OrcamentoItem, OrcamentoFormData } from './types/orcamento'
 import { Config } from '../../components/ui/Config'
 import { traducoesService } from './services/traducoesService'
 import { useEffect } from 'react'
 
-
-const mockTraducoes: TraducaoItem[] = [
-  {
-    id: '1',
-    documentoNome: 'Certidão de Nascimento',
-    clienteNome: 'Cliente A',
-    parIdiomas: { origem: 'PT', destino: 'EN' },
-    prazoSLA: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2 horas
-    status: 'pendente',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    documentoNome: 'Contrato Comercial',
-    clienteNome: 'Cliente B',
-    parIdiomas: { origem: 'PT', destino: 'IT' },
-    prazoSLA: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(), // 8 horas
-    status: 'pendente',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    documentoNome: 'Manual Técnico (Volume 1)',
-    clienteNome: 'Cliente C',
-    parIdiomas: { origem: 'PT', destino: 'ES' },
-    prazoSLA: new Date(Date.now() + 32 * 60 * 60 * 1000).toISOString(), // 32 horas
-    status: 'pendente',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '4',
-    documentoNome: 'Parecer Jurídico',
-    clienteNome: 'Cliente D',
-    parIdiomas: { origem: 'PT', destino: 'EN' },
-    prazoSLA: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(), // 48 horas
-    status: 'pendente',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '5',
-    documentoNome: 'Relatório Anual',
-    clienteNome: 'Cliente E',
-    parIdiomas: { origem: 'PT', destino: 'FR' },
-    prazoSLA: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(), // 72 horas
-    status: 'entregue',
-    created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-]
-
-
 export default function Tradutora() {
-  const [traducoes, setTraducoes] = useState<TraducaoItem[]>(mockTraducoes)
   const [orcamentos, setOrcamentos] = useState<OrcamentoItem[]>([])
+  const [filaItems, setFilaItems] = useState<OrcamentoItem[]>([])
+  const [entregueItems, setEntregueItems] = useState<OrcamentoItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
-    fetchOrcamentos()
+    fetchAllData()
   }, [])
 
-  const fetchOrcamentos = async () => {
+  const fetchAllData = async () => {
+    setIsLoading(true)
     try {
-      setIsLoading(true)
-      const data = await traducoesService.getOrcamentosPendentes()
-      
-      const mappedOrcamentos: OrcamentoItem[] = data.map((item: any) => ({
-        id: item.id,
-        documentoNome: item.nome_original,
-        clienteNome: item.clientes?.nome || 'N/A',
-        parIdiomas: { origem: 'PT', destino: 'IT' }, // Default for now
-        status: 
-          item.status === 'disponivel' ? ('aprovado' as const) :
-          item.orcamento ? ('respondido' as const) : 
-          ('pendente' as const),
-        storagePath: item.storage_path,
-        publicUrl: item.public_url,
-        documentoId: item.id,
-        processoId: item.processo_id,
-        dependenteId: item.dependente_id,
-        dependente: item.dependente,
-        created_at: item.criado_em,
-        updated_at: item.atualizado_em,
-        prazoDesejado: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Default 7 days from now
-        valorOrcamento: item.orcamento?.valor_orcamento,
-        prazoEntrega: item.orcamento?.prazo_entrega,
-        observacoes: item.orcamento?.observacoes,
-      }))
-
-      setOrcamentos([...mappedOrcamentos])
-
+      await Promise.all([fetchOrcamentos(), fetchFila(), fetchEntregues()])
     } catch (error) {
-      console.error('Erro ao buscar orçamentos:', error)
+      console.error('Erro ao buscar dados:', error)
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleSubmitTraducao = (traducaoId: string, arquivo: File) => {
-    setTraducoes(prev =>
-      prev.map(t =>
-        t.id === traducaoId
-          ? { ...t, status: 'entregue' as const, updated_at: new Date().toISOString() }
-          : t
-      )
-    )
-    console.log(`Tradução ${traducaoId} enviada:`, arquivo.name)
+  const mapDocToOrcamentoItem = (item: any): OrcamentoItem => ({
+    id: item.id,
+    documentoNome: item.nome_original || item.tipo,
+    clienteNome: item.clientes?.nome || 'N/A',
+    clienteEmail: item.clientes?.email || '',
+    clienteTelefone: item.clientes?.whatsapp || '',
+    parIdiomas: { origem: 'PT', destino: 'IT' },
+    status:
+      item.status === 'disponivel' ? ('aprovado' as const) :
+        item.status === 'ANALYZING_TRANSLATION' ? ('aprovado' as const) :
+          item.status === 'TRANSLATION_DONE' || item.status === 'APPROVED_TRANSLATION' ? ('aprovado' as const) :
+            item.orcamento ? ('respondido' as const) :
+              ('pendente' as const),
+    storagePath: item.storage_path,
+    publicUrl: item.public_url,
+    documentoId: item.id,
+    processoId: item.processo_id,
+    dependenteId: item.dependente_id,
+    dependente: item.dependente,
+    created_at: item.criado_em,
+    updated_at: item.atualizado_em,
+    prazoDesejado: item.orcamento?.prazo_entrega || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    valorOrcamento: item.orcamento?.valor_orcamento,
+    prazoEntrega: item.orcamento?.prazo_entrega,
+    observacoes: item.orcamento?.observacoes,
+  })
+
+  const fetchOrcamentos = async () => {
+    try {
+      const data = await traducoesService.getOrcamentosPendentes()
+      setOrcamentos(data.map(mapDocToOrcamentoItem))
+    } catch (error) {
+      console.error('Erro ao buscar orçamentos:', error)
+    }
+  }
+
+  const fetchFila = async () => {
+    try {
+      const data = await traducoesService.getFilaDeTrabalho()
+      setFilaItems(data.map(mapDocToOrcamentoItem))
+    } catch (error) {
+      console.error('Erro ao buscar fila:', error)
+    }
+  }
+
+  const fetchEntregues = async () => {
+    try {
+      const data = await traducoesService.getEntregues()
+      setEntregueItems(data.map(mapDocToOrcamentoItem))
+    } catch (error) {
+      console.error('Erro ao buscar entregues:', error)
+    }
+  }
+
+  const handleSubmitTraducao = async (documentoId: string, arquivo: File) => {
+    try {
+      await traducoesService.submitTraducao(documentoId, arquivo)
+      // Refresh fila and entregues after submission
+      await Promise.all([fetchFila(), fetchEntregues()])
+    } catch (error) {
+      console.error('Erro ao enviar tradução:', error)
+      throw error // Re-throw so DeliveryModal can handle the error
+    }
   }
 
   const handleResponderOrcamento = async (orcamentoId: string, dados: OrcamentoFormData) => {
     try {
       await traducoesService.responderOrcamento(dados)
-      
+
       setOrcamentos(prev =>
         prev.map(o =>
           o.id === orcamentoId
             ? {
-                ...o,
-                status: 'respondido' as const,
-                valorOrcamento: dados.valorOrcamento,
-                prazoEntrega: dados.prazoEntrega,
-                ...(dados.observacoes && { observacoes: dados.observacoes }),
-                updated_at: new Date().toISOString(),
-              }
+              ...o,
+              status: 'respondido' as const,
+              valorOrcamento: dados.valorOrcamento,
+              prazoEntrega: dados.prazoEntrega,
+              ...(dados.observacoes && { observacoes: dados.observacoes }),
+              updated_at: new Date().toISOString(),
+            }
             : o
         )
       )
-      console.log(`Orçamento ${orcamentoId} respondido com sucesso no banco:`, dados)
     } catch (error) {
       console.error(`Erro ao responder orçamento ${orcamentoId}:`, error)
       alert('Erro ao enviar orçamento. Verifique o console para mais detalhes.')
@@ -172,7 +144,7 @@ export default function Tradutora() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar groups={sidebarGroups} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-      
+
       {!sidebarOpen && (
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -193,9 +165,9 @@ export default function Tradutora() {
         <Routes>
           <Route path="/" element={<Navigate to="/tradutor/orcamentos" replace />} />
           <Route path="/orcamentos" element={<OrcamentosPage orcamentos={orcamentos} onResponderOrcamento={handleResponderOrcamento} />} />
-          <Route path="/fila" element={<FilaDeTrabalho traducoes={traducoes} onSubmitTraducao={handleSubmitTraducao} />} />
-          <Route path="/entregues" element={<EntreguesPage traducoes={traducoes} />} />
-          <Route path="/pagamentos" element={<PagamentosPage traducoes={traducoes} />} />
+          <Route path="/fila" element={<FilaDeTrabalho items={filaItems} onSubmitTraducao={handleSubmitTraducao} />} />
+          <Route path="/entregues" element={<EntreguesPage items={entregueItems} />} />
+          <Route path="/pagamentos" element={<PagamentosPage items={[...entregueItems]} />} />
           <Route path="/configuracoes" element={<Config />} />
           <Route path="*" element={<Navigate to="/tradutor/orcamentos" replace />} />
         </Routes>

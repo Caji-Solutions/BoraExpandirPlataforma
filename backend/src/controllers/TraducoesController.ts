@@ -39,7 +39,7 @@ class TraducoesController {
     try {
       const { documentoId } = req.params
       const orcamento = await TraducoesRepository.getOrcamentoByDocumento(documentoId)
-      
+
       if (!orcamento) {
         return res.status(404).json({ error: 'Orçamento não encontrado' })
       }
@@ -141,6 +141,60 @@ class TraducoesController {
     } catch (error: any) {
       console.error('[TraducoesController.createCheckoutSession] Error:', error)
       return res.status(500).json({ error: 'Erro ao criar sessão de checkout', details: error.message })
+    }
+  }
+
+  async getFilaDeTrabalho(req: Request, res: Response) {
+    try {
+      const fila = await TraducoesRepository.getFilaDeTrabalho()
+      return res.status(200).json(fila)
+    } catch (error) {
+      console.error('[TraducoesController.getFilaDeTrabalho] Error:', error)
+      return res.status(500).json({ error: 'Erro ao buscar fila de trabalho' })
+    }
+  }
+
+  async getEntregues(req: Request, res: Response) {
+    try {
+      const entregues = await TraducoesRepository.getEntregues()
+      return res.status(200).json(entregues)
+    } catch (error) {
+      console.error('[TraducoesController.getEntregues] Error:', error)
+      return res.status(500).json({ error: 'Erro ao buscar traduções entregues' })
+    }
+  }
+
+  async submitTraducao(req: Request, res: Response) {
+    try {
+      const { documentoId } = req.body
+      const file = (req as any).file
+
+      if (!file) {
+        return res.status(400).json({ error: 'Nenhum arquivo enviado' })
+      }
+
+      if (!documentoId) {
+        return res.status(400).json({ error: 'documentoId é obrigatório' })
+      }
+
+      // Build storage path for translated file
+      const timestamp = Date.now()
+      const fileExtension = file.originalname.split('.').pop()
+      const fileName = `traducao_${timestamp}.${fileExtension}`
+      const filePath = `traducoes/${documentoId}/${fileName}`
+
+      const result = await TraducoesRepository.submitTraducao({
+        documentoId,
+        filePath,
+        fileBuffer: file.buffer,
+        contentType: file.mimetype,
+        nomeOriginal: file.originalname
+      })
+
+      return res.status(200).json({ message: 'Tradução enviada com sucesso', data: result })
+    } catch (error: any) {
+      console.error('[TraducoesController.submitTraducao] Error:', error)
+      return res.status(500).json({ error: 'Erro ao enviar tradução', details: error.message })
     }
   }
 }

@@ -127,7 +127,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
           clienteService.getNotificacoes(client.id),
           clienteService.getRequerimentos(client.id)
         ])
-        
+
         const mappedNotifs = notifsRaw.map((n: any) => {
           const isRead = n.lida === true || String(n.lida) === 'true' || n.lida === 1;
           const type = n.type || n.tipo || 'info';
@@ -160,10 +160,10 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
       .filter(n => {
         const isRead = n.lida || n.read;
         const title = n.titulo || n.title;
-        
+
         // Find if this notification is linked to a document request
         const linkedDoc = documents.find(doc => doc.type === title);
-        
+
         if (linkedDoc) {
           // If it's a document request, it's pending if the document is 'pending' or 'rejected'
           // We show it even if 'read' to remind the user of the pending upload
@@ -177,7 +177,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
         const hasDeadline = !!(n.data_prazo || (n as any).deadline)
         const createdAt = n.criado_em || n.createdAt || new Date()
         const defaultDeadline = new Date(new Date(createdAt).getTime() + 7 * 24 * 60 * 60 * 1000)
-        
+
         return {
           id: n.id,
           title: n.titulo || n.title || 'Ação Necessária',
@@ -191,24 +191,32 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
   }, [notifications, documents])
 
   const pendingActionReminders = useMemo(() => {
-    const reminders = realPendingActions.map(action => ({
-      id: `notif-${action.id}`,
-      title: action.title,
-      message: action.deadline 
-        ? `${action.description} (Prazo: ${formatDateSimple(action.deadline)})`
-        : action.description,
-      date: action.deadline || new Date(),
-      type: action.type === 'error' ? 'urgent' as const : 'warning' as const,
-      actionLink: '/cliente/notificacoes'
-    }))
+    const now = new Date()
 
-    // Add pending documents as reminders
+    const reminders = realPendingActions
+      .filter(action => {
+        // Only keep actions whose deadlines haven't expired
+        if (action.deadline && action.deadline < now) return false
+        return true
+      })
+      .map(action => ({
+        id: `notif-${action.id}`,
+        title: action.title,
+        message: action.deadline
+          ? `${action.description} (Prazo: ${formatDateSimple(action.deadline)})`
+          : action.description,
+        date: action.deadline || new Date(),
+        type: action.type === 'error' ? 'urgent' as const : 'warning' as const,
+        actionLink: '/cliente/notificacoes'
+      }))
+
+    // Add pending documents as reminders (only truly pending or rejected)
     const docReminders = documents
       .filter(doc => doc.status === 'pending' || doc.status === 'rejected')
       .map(doc => ({
         id: `doc-${doc.id}`,
         title: doc.status === 'rejected' ? 'Documento Rejeitado' : 'Envio Pendente',
-        message: doc.status === 'rejected' 
+        message: doc.status === 'rejected'
           ? `O documento "${doc.name}" foi rejeitado e precisa ser reenviado.`
           : `O documento "${doc.name}" ainda não foi enviado.`,
         date: doc.updatedAt || doc.uploadDate || new Date(),
@@ -216,7 +224,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
         actionLink: '/cliente/upload'
       }))
 
-    // Add pending requirements as reminders
+    // Add pending requirements as reminders (only 'pendente' status)
     const reqReminders = uniqueRequerimentos
       .filter(r => r.status === 'pendente')
       .map(r => ({
@@ -228,7 +236,16 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
         actionLink: '/cliente/processo'
       }))
 
-    return [...reminders, ...docReminders, ...reqReminders].sort((a, b) => {
+    // Deduplicate: if a notification reminder refers to the same document type 
+    // that already has a docReminder, skip the notification one to avoid duplicates
+    const docTypes = new Set(documents.filter(d => d.status === 'pending' || d.status === 'rejected').map(d => d.type))
+    const filteredReminders = reminders.filter(r => {
+      // Check if this notification title matches a document type already covered
+      const matchesDocType = docTypes.has(r.title)
+      return !matchesDocType
+    })
+
+    return [...filteredReminders, ...docReminders, ...reqReminders].sort((a, b) => {
       // Prioritize urgent
       if (a.type === 'urgent' && b.type !== 'urgent') return -1
       if (a.type !== 'urgent' && b.type === 'urgent') return 1

@@ -74,6 +74,7 @@ export interface Document {
   fileName?: string;
   fileSize?: number;
   updatedAt?: Date;
+  requerimento_id?: string;
 }
 
 export interface ProcessStep {
@@ -103,7 +104,7 @@ export interface Notification {
   message?: string;
   read?: boolean;
   createdAt?: Date | string;
-  
+
   // backend fields (snake_case)
   usuario_id?: string;
   cliente_id?: string;

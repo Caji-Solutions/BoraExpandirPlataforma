@@ -34,6 +34,7 @@ interface FormsDeclarationsCardProps {
     clienteId?: string
     isTitular?: boolean
     isJuridico?: boolean
+    alwaysExpanded?: boolean
     onUpload?: (file: File, formularioId: string) => Promise<void>
     onDelete?: (formId: string) => Promise<void>
 }
@@ -47,10 +48,11 @@ export function FormsDeclarationsCard({
     clienteId,
     isTitular = false,
     isJuridico = false,
+    alwaysExpanded = false,
     onUpload,
     onDelete
 }: FormsDeclarationsCardProps) {
-    const [isExpanded, setIsExpanded] = useState(false)
+    const [isExpanded, setIsExpanded] = useState(alwaysExpanded)
     const [forms, setForms] = useState<FormDeclaration[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [selectedFormId, setSelectedFormId] = useState<string | null>(null)
@@ -118,7 +120,7 @@ export function FormsDeclarationsCard({
             }
         }
 
-        if (isExpanded) {
+        if (isExpanded || alwaysExpanded) {
             fetchForms()
             fetchSentForms()
         }
@@ -198,42 +200,44 @@ export function FormsDeclarationsCard({
     }
 
     return (
-        <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4 pb-6">
-            {/* Header */}
-            <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-lg hover:from-purple-100 hover:to-indigo-100 dark:hover:from-purple-900/30 dark:hover:to-indigo-900/30 transition-all"
-            >
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-100 dark:bg-purple-900/40 rounded-lg">
-                        <Folder className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+        <div className={alwaysExpanded ? '' : 'mt-4 border-t border-gray-200 dark:border-gray-700 pt-4 pb-6'}>
+            {/* Header - hidden when alwaysExpanded */}
+            {!alwaysExpanded && (
+                <button
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-lg hover:from-purple-100 hover:to-indigo-100 dark:hover:from-purple-900/30 dark:hover:to-indigo-900/30 transition-all"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-purple-100 dark:bg-purple-900/40 rounded-lg">
+                            <Folder className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <div className="text-left">
+                            <h4 className="font-semibold text-purple-900 dark:text-purple-100">
+                                Fomulários Solicitados
+                            </h4>
+                            <p className="text-xs text-purple-600 dark:text-purple-400">
+                                Formulários para preencher e assinar
+                            </p>
+                        </div>
                     </div>
-                    <div className="text-left">
-                        <h4 className="font-semibold text-purple-900 dark:text-purple-100">
-                            Fomulários Solicitados
-                        </h4>
-                        <p className="text-xs text-purple-600 dark:text-purple-400">
-                            Formulários para preencher e assinar
-                        </p>
-                    </div>
-                </div>
 
-                <div className="flex items-center gap-3">
-                    {forms.length > 0 && (
-                        <Badge className="bg-purple-600 text-white">
-                            {forms.length}
-                        </Badge>
-                    )}
-                    {isExpanded ? (
-                        <ChevronUp className="h-5 w-5 text-purple-600" />
-                    ) : (
-                        <ChevronDown className="h-5 w-5 text-purple-600" />
-                    )}
-                </div>
-            </button>
+                    <div className="flex items-center gap-3">
+                        {forms.length > 0 && (
+                            <Badge className="bg-purple-600 text-white">
+                                {forms.length}
+                            </Badge>
+                        )}
+                        {isExpanded ? (
+                            <ChevronUp className="h-5 w-5 text-purple-600" />
+                        ) : (
+                            <ChevronDown className="h-5 w-5 text-purple-600" />
+                        )}
+                    </div>
+                </button>
+            )}
 
             {/* Expanded Content */}
-            {isExpanded && (
+            {(isExpanded || alwaysExpanded) && (
                 <div className="mt-3 space-y-2 pl-2">
                     {isLoading ? (
                         <div className="flex items-center justify-center py-6 text-purple-600">
