@@ -13,6 +13,7 @@ import comercial from './routes/comercial'
 import juridico from './routes/juridico'
 import traducoes from './routes/traducoes'
 import config from './routes/config'
+import authRoutes from './routes/auth'
 
 dotenv.config()
 
@@ -21,8 +22,8 @@ const app = express()
 app.use(cors())
 // Rota de Webhook do Stripe precisa do corpo bruto (raw) para validar a assinatura
 app.post('/comercial/webhook/stripe', express.raw({ type: 'application/json' }), (req, res) => {
-    const ComercialController = require('./controllers/ComercialController').default
-    ComercialController.handleStripeWebhook(req, res)
+  const ComercialController = require('./controllers/ComercialController').default
+  ComercialController.handleStripeWebhook(req, res)
 })
 app.use(express.json())
 app.use(morgan('dev'))
@@ -32,11 +33,8 @@ app.get('/', (_req, res) => {
   res.json({ ok: true, message: 'API BoraExpandir', env: env.NODE_ENV })
 })
 
-app.get('/', (_req, res) => {
-  res.json({ ok: true, message: 'Endpoint de exemplo funcionando!' })
-})
-
 app.use('/api', router)
+app.use('/auth', authRoutes)
 app.use('/parceiro', parceiro)
 app.use('/cliente', cliente)
 app.use('/comercial', comercial)

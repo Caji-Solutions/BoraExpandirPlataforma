@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { Menu, X, ChevronDown, ChevronRight } from 'lucide-react'
+import { Menu, X, ChevronDown, ChevronRight, ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { NotificationsDropdown } from './NotificationsDropdown'
+import { useAuth } from '../../contexts/AuthContext'
 
 export type SidebarItem = {
   label: string
@@ -104,6 +105,7 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen }: Sidebar
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [localSidebarOpen, setLocalSidebarOpen] = useState(false)
+  const { impersonatedProfile, setImpersonatedProfile, profile } = useAuth()
 
   // Use props if provided, otherwise use local state
   const isOpen = sidebarOpen !== undefined ? sidebarOpen : localSidebarOpen
@@ -113,10 +115,11 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen }: Sidebar
 
   const handleLogout = () => {
     try {
+      localStorage.removeItem('auth_token')
       localStorage.removeItem('authToken')
       localStorage.removeItem('userName')
     } catch { }
-    navigate('/', { replace: true })
+    window.location.href = '/login'
   }
 
   return (
@@ -157,6 +160,26 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen }: Sidebar
           </div>
           <div className="text-xs text-muted-foreground truncate">{userName}</div>
         </div>
+
+        {/* Banner de impersonação — Super Admin visualizando como outro usuário */}
+        {impersonatedProfile && (
+          <div className="mx-3 mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <p className="text-xs text-amber-600 font-medium">Visualizando como:</p>
+            <p className="text-sm text-amber-700 font-semibold truncate">
+              {impersonatedProfile.full_name}
+            </p>
+            <button
+              onClick={() => {
+                setImpersonatedProfile(null)
+                navigate('/adm')
+              }}
+              className="mt-2 flex items-center gap-1 text-xs text-amber-600 hover:text-amber-800 font-medium transition-colors"
+            >
+              <ArrowLeft className="h-3 w-3" />
+              Voltar ao Admin
+            </button>
+          </div>
+        )}
 
         {/* Navegação */}
         <nav className="flex-1 overflow-y-auto py-2">

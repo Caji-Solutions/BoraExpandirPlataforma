@@ -12,4 +12,10 @@ if (!supabaseKey) {
   throw new Error('SUPABASE_SERVICE environment variable is not set');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false
+  }
+})
