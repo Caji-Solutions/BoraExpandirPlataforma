@@ -21,6 +21,7 @@ import { RequirementRequestModal } from '../../modules/juridico/components/Requi
 import { FormsDeclarationsSection } from '../../modules/juridico/components/FormsDeclarationsSection'
 import { RequirementsSection } from '../../modules/juridico/components/RequirementsSection'
 import juridicoService from '../../modules/juridico/services/juridicoService'
+import { useAuth } from '../../contexts/AuthContext'
 
 export function DNAClientDetailView({
     client,
@@ -29,6 +30,7 @@ export function DNAClientDetailView({
     client: ClientDNAData
     onBack: () => void
 }) {
+    const { activeProfile } = useAuth()
     const [copiedId, setCopiedId] = useState(false)
     const [noteStageId, setNoteStageId] = useState<string | null>(null)
     const [newNote, setNewNote] = useState('')
@@ -41,6 +43,7 @@ export function DNAClientDetailView({
     const [members, setMembers] = useState<any[]>([])
     const [loadingMembers, setLoadingMembers] = useState(false)
     const [selectedRequerimentoId, setSelectedRequerimentoId] = useState<string | undefined>(undefined)
+    const [areaFilter, setAreaFilter] = useState<'todos' | 'juridico' | 'comercial' | 'administrativo'>('todos')
 
     // Handle adding document to a specific requirement
     const handleAddDocToReq = (reqId: string) => {
@@ -66,7 +69,8 @@ export function DNAClientDetailView({
                 const mappedNotes: ClientNote[] = result.data.map((n: any) => ({
                     id: n.id,
                     text: n.texto,
-                    author: n.autor?.full_name || 'Jurídico',
+                    author: n.autor?.full_name || 'Usuário',
+                    area: n.autor?.role || 'juridico',
                     createdAt: n.created_at,
                     stageId: n.etapa
                 }))
@@ -137,7 +141,8 @@ export function DNAClientDetailView({
                     clienteId: client.true_id || client.id,
                     processoId: client.processo_id,
                     etapa: stageId || noteStageId || undefined,
-                    texto: newNote
+                    texto: newNote,
+                    autorId: activeProfile?.id
                 })
             })
 
@@ -147,7 +152,8 @@ export function DNAClientDetailView({
                 const note: ClientNote = {
                     id: n.id,
                     text: n.texto,
-                    author: n.autor?.full_name || 'Jurídico',
+                    author: n.autor?.full_name || 'Usuário',
+                    area: n.autor?.role || 'juridico',
                     createdAt: n.created_at,
                     stageId: n.etapa
                 }
@@ -224,10 +230,29 @@ export function DNAClientDetailView({
                     {/* Linha do Tempo (Timeline) */}
                     <div className="lg:col-span-8 space-y-6">
                         <div className="bg-card border border-border rounded-2xl p-8 relative">
-                            <h3 className="text-xl font-bold text-foreground mb-8 flex items-center gap-3">
-                                <History className="h-6 w-6 text-primary" />
-                                Timeline do Processo
-                            </h3>
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                                <h3 className="text-xl font-bold text-foreground flex items-center gap-3">
+                                    <History className="h-6 w-6 text-primary" />
+                                    Timeline do Processo
+                                </h3>
+                                
+                                <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-xl border border-border">
+                                    {(['todos', 'juridico', 'comercial', 'administrativo'] as const).map((area) => (
+                                        <button
+                                            key={area}
+                                            onClick={() => setAreaFilter(area)}
+                                            className={cn(
+                                                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all capitalize",
+                                                areaFilter === area 
+                                                    ? "bg-primary text-primary-foreground shadow-sm" 
+                                                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                            )}
+                                        >
+                                            {area === 'todos' ? 'Todas Áreas' : area}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
 
                             <div className="space-y-0 relative ml-4">
                                 {/* Linha vertical decorativa */}
@@ -237,7 +262,12 @@ export function DNAClientDetailView({
                                     const isCurrent = stage.id === client.categoria
                                     const isCompleted = index < currentStageIndex
                                     const isFuture = index > currentStageIndex
-                                    const stageNotes = notes.filter(n => n.stageId === stage.id)
+                                    
+                                    const stageNotes = notes.filter(n => {
+                                        const matchesStage = n.stageId === stage.id
+                                        const matchesArea = areaFilter === 'todos' || n.area === areaFilter
+                                        return matchesStage && matchesArea
+                                    })
 
                                     return (
                                         <div key={stage.id} className="relative pl-12 pb-10 group last:pb-0">
@@ -328,10 +358,20 @@ export function DNAClientDetailView({
                                                     <div className="mt-3 space-y-3 animate-in slide-in-from-top-2 duration-300">
                                                         {stageNotes.map(note => (
                                                             <div key={note.id} className="bg-muted/30 border border-border/50 rounded-xl p-4 text-sm relative">
-                                                                <div className="flex justify-between items-center mb-2 opacity-70">
-                                                                    <span className="font-bold flex items-center gap-1.5"><User className="h-3 w-3" /> {note.author}</span>
-                                                                    <span className="text-[10px]">{new Date(note.createdAt).toLocaleDateString('pt-BR')}</span>
-                                                                </div>
+                                                                 <div className="flex justify-between items-center mb-2 opacity-70">
+                                                                     <div className="flex items-center gap-3">
+                                                                         <span className="font-bold flex items-center gap-1.5"><User className="h-3 w-3" /> {note.author}</span>
+                                                                         <span className={cn(
+                                                                             "text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-tight",
+                                                                             note.area === 'juridico' ? "bg-purple-100 text-purple-700" :
+                                                                             note.area === 'comercial' ? "bg-blue-100 text-blue-700" :
+                                                                             "bg-amber-100 text-amber-700"
+                                                                         )}>
+                                                                             {note.area}
+                                                                         </span>
+                                                                     </div>
+                                                                     <span className="text-[10px]">{new Date(note.createdAt).toLocaleDateString('pt-BR')}</span>
+                                                                 </div>
                                                                 <p className="text-foreground/90 leading-relaxed italic border-l-2 border-primary/20 pl-3">
                                                                     "{note.text}"
                                                                 </p>

@@ -13,124 +13,94 @@ import { ClientDNAPage } from "../../components/ui/ClientDNA";
 import juridicoService, { Processo } from "./services/juridicoService";
 
 import { ProcessTable, ProcessData } from "./components/ProcessTable";
+import { useAuth } from "../../contexts/AuthContext";
+import { TaskModule } from "../shared/components/TaskModule";
+
+const MeusProcessos = () => {
+  const { activeProfile } = useAuth();
+  const [processes, setProcesses] = useState<ProcessData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchMyProcesses = async () => {
+      try {
+        setLoading(true);
+        if (!activeProfile?.id) return;
+        
+        const data = await juridicoService.getProcessosByResponsavel(activeProfile.id);
+        
+        const mapped: ProcessData[] = data.map((p: Processo) => ({
+          id: p.id,
+          clienteId: p.cliente_id,
+          status: p.status,
+          fase: p.etapa_atual,
+          processo: parseInt(p.id.split('-')[0]) || 0,
+          cliente: { nome: p.clientes?.nome || 'Cliente Desconhecido' },
+          servico: p.tipo_servico,
+          tipo: 'Processo Jurídico',
+          dataProtocolo: p.criado_em ? new Date(p.criado_em).toLocaleDateString() : 'N/A',
+          valorAcao: '---',
+          observacao: p.observacoes || '',
+          hasRequirement: p.requerimentos && p.requerimentos.length > 0
+        }));
+        
+        setProcesses(mapped);
+      } catch (err) {
+        console.error("Failed to fetch personal processes", err);
+        setError("Não foi possível carregar seus processos.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMyProcesses();
+  }, [activeProfile?.id]);
+
+  if (loading) return (
+    <div className="p-8 text-center animate-pulse">
+      <p className="text-muted-foreground">Carregando seus processos...</p>
+    </div>
+  );
+
+  if (error) return (
+    <div className="p-8 text-center text-red-500">
+      <p>{error}</p>
+    </div>
+  );
+
+  return (
+    <div className="p-8 max-w-7xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Meus Processos</h1>
+        <p className="text-muted-foreground">Gestão dos seus casos em andamento</p>
+      </div>
+      <ProcessTable 
+        data={processes} 
+      />
+    </div>
+  );
+};
+
+const Tarefas = () => {
+  const { activeProfile } = useAuth();
+  return (
+    <div className="p-8">
+      <h1 className="text-3xl font-bold mb-6">Tarefas</h1>
+      <TaskModule currentUser={activeProfile?.full_name || "Usuário"} />
+    </div>
+  );
+};
 
 // Simulação: Usuário logado é Supervisor
 // Em produção, isso viria do contexto de autenticação
-const USUARIO_LOGADO = {
-  nome: "Dr. Carlos Lima",
-  cargo: "Supervisor Jurídico",
-  isSupervisor: true, // Altere para false para testar como usuário comum
-};
-
-const mockJuridicoData: ProcessData[] = [
-  {
-    id: "1",
-    clienteId: "1",
-    status: "pendente",
-    fase: 1,
-    processo: 1,
-    cliente: { nome: "João Silva" },
-    servico: "Familiar de Esp...",
-    tipo: "Pedido",
-    dataProtocolo: 0,
-    prazoResposta: 0,
-    observacao: "0",
-    valorAcao: "1,00 €",
-  },
-  {
-    id: "2",
-    clienteId: "2",
-    status: "pendente",
-    fase: 2,
-    processo: 2,
-    cliente: { nome: "Maria Santos" },
-    servico: "Visto D7",
-    tipo: "Renovação",
-    dataProtocolo: "12/12/2024",
-    prazoResposta: 15,
-    observacao: "Aguardando documentação",
-    valorAcao: "500,00 €",
-  }
-];
-
-  const MeusProcessos = () => {
-    const [processes, setProcesses] = useState<ProcessData[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-      const fetchMyProcesses = async () => {
-        try {
-          setLoading(true);
-          // Simulated Lawyer ID for Carlos Lima
-          const LAWER_ID = '41f21e5c-dd93-4592-9470-e043badc3a18';
-          const data = await juridicoService.getProcessosByResponsavel(LAWER_ID);
-          
-          const mapped: ProcessData[] = data.map((p: Processo) => ({
-            id: p.id,
-            clienteId: p.cliente_id,
-            status: p.status,
-            fase: p.etapa_atual,
-            processo: parseInt(p.id.split('-')[0]) || 0,
-            cliente: { nome: p.clientes?.nome || 'Cliente Desconhecido' },
-            servico: p.tipo_servico,
-            tipo: 'Processo Jurídico',
-            dataProtocolo: p.created_at ? new Date(p.created_at).toLocaleDateString() : 'N/A',
-            valorAcao: '---',
-            observacao: p.observacoes || '',
-            hasRequirement: p.requerimentos && p.requerimentos.length > 0
-          }));
-          
-          setProcesses(mapped);
-        } catch (err) {
-          console.error("Failed to fetch personal processes", err);
-          setError("Não foi possível carregar seus processos.");
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchMyProcesses();
-    }, []);
-
-    if (loading) return (
-      <div className="p-8 text-center animate-pulse">
-        <p className="text-muted-foreground">Carregando seus processos...</p>
-      </div>
-    );
-
-    if (error) return (
-      <div className="p-8 text-center text-red-500">
-        <p>{error}</p>
-      </div>
-    );
-
-    return (
-      <div className="p-8 max-w-7xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Meus Processos</h1>
-          <p className="text-muted-foreground">Gestão dos seus casos em andamento</p>
-        </div>
-        <ProcessTable 
-          data={processes} 
-        />
-      </div>
-    );
-  };
-
-import { TaskModule } from "../shared/components/TaskModule";
-
-const Tarefas = () => (
-  <div className="p-8">
-    <h1 className="text-3xl font-bold mb-6">Tarefas</h1>
-    {/* Simulating logged in user: Carlos Lima */}
-    <TaskModule currentUser="Carlos Lima" />
-  </div>
-);
-
-
-
 const Index = () => {
+  const { activeProfile } = useAuth();
+  
+  const USUARIO_LOGADO = {
+    nome: activeProfile?.full_name || "Usuário",
+    isSupervisor: activeProfile?.is_supervisor || false,
+  };
 
   // Configuração da sidebar seguindo o padrão do projeto
   // Itens exclusivos para supervisor são adicionados condicionalmente

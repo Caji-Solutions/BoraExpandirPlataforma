@@ -2,10 +2,12 @@ import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { Clock, ShoppingCart, Check, ChevronLeft, ChevronRight, Search, X, Trash2 } from 'lucide-react'
 // import { useToast } from '../../components/Toast'
 // Update the import path below if Toast is located elsewhere:
-import { useToast } from '../../components/ui/Toast' // <-- Ensure this file exists or update the path
+import { useToast } from '../../components/ui/Toast'
 import { SUCESSO, ERRO, AVISO } from '../../components/MockFrases'
 import { CalendarPicker } from '../../components/ui/CalendarPicker'
 import { AgendamentoConfirmacaoModal } from './components/AgendamentoConfirmacaoModal'
+import { useAuth } from '../../contexts/AuthContext'
+import comercialService from './services/comercialService'
 
 interface Cliente {
   id: string
@@ -103,8 +105,28 @@ export interface Comercial1Props {
 
 export default function Comercial1({ preSelectedClient, isClientView = false }: Comercial1Props) {
   const { success, error } = useToast()
+  const { activeProfile } = useAuth()
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([])
-  const [clientes, setClientes] = useState<Cliente[]>(mockClientes)
+  const [clientes, setClientes] = useState<Cliente[]>([])
+
+  useEffect(() => {
+    async function fetchClientes() {
+      try {
+        const data = await comercialService.getAllClientes()
+        // Map backend Cliente to local Cliente interface if needed
+        const mapped = data.map(c => ({
+          id: c.id,
+          nome: c.nome,
+          email: c.email || null,
+          telefone: c.telefone
+        }))
+        setClientes(mapped)
+      } catch (err) {
+        console.error("Erro ao carregar clientes para agendamento:", err)
+      }
+    }
+    fetchClientes()
+  }, [])
   const [dataSelecionada, setDataSelecionada] = useState<Date | undefined>(undefined)
   const [horaSelecionada, setHoraSelecionada] = useState<string>('')
   const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null)
@@ -175,6 +197,15 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   }, [searchCliente, clientes])
 
   const agendamentoPreview = useMemo<Agendamento | null>(() => {
+    // Debug log para identificar campos faltando
+    console.log('DEBUG Agendamento Preview State:', {
+      cliente: !!clienteSelecionado,
+      data: !!dataSelecionada,
+      hora: !!horaSelecionada,
+      produto: !!produtoSelecionado,
+      emailCheck: clienteSelecionado?.email || !!emailTemporario
+    })
+
     if (!clienteSelecionado || !dataSelecionada || !horaSelecionada || !produtoSelecionado) return null
 
     // Se o cliente não tem email, verificar se o email temporário foi preenchido
@@ -354,7 +385,17 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       isEuro: (agendamentoPreview.produto as any).isEuro,
       duracao_minutos: agendamentoPreview.duracaoMinutos,
       status: agendamentoPreview.status,
+      usuario_id: activeProfile?.id,
+      cliente_id: agendamentoPreview.cliente.id
     })
+
+    console.log('========== AGENDAMENTO PAYLOAD DEBUG ==========')
+    console.log('Payload que será enviado ao modal:', {
+      usuario_id: activeProfile?.id,
+      cliente_id: agendamentoPreview.cliente.id,
+      cliente_id_source: agendamentoPreview.cliente.id ? 'Presente' : 'AUSENTE'
+    })
+    console.log('================================================')
 
     setShowConfirmacao(true)
   }
@@ -723,36 +764,41 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Resumo</h3>
               </div>
 
-              {/* Lead Info Fixed at Top - Sempre visível se houver cliente selecionado */}
-              {clienteSelecionado && (
+              {/* Informações dos Envolvidos */}
+              {(clienteSelecionado || activeProfile) && (
                 <div className="mb-6 p-4 bg-gray-50 dark:bg-neutral-800/50 rounded-lg border border-gray-100 dark:border-neutral-800">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Agendado por</p>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{clienteSelecionado.nome}</p>
-                    {clienteSelecionado.email && (
-                      <p className="text-xs text-gray-500">{clienteSelecionado.email}</p>
+                  <div className="mb-4">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Agendado por</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {activeProfile?.full_name || 'Administrador'}
+                    </p>
+                    {activeProfile?.email && (
+                      <p className="text-xs text-gray-500">{activeProfile.email}</p>
                     )}
                   </div>
-                  {/* Campo de Email quando não informado */}
-                  {!clienteSelecionado.email && (
-                    <div className="mt-3">
-                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-2">
-                        E-mail do Lead <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="email"
-                        value={emailTemporario}
-                        onChange={(e) => setEmailTemporario(e.target.value)}
-                        placeholder="email@exemplo.com"
-                        className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 ${!emailTemporario
-                          ? 'border-red-500 dark:border-red-500 focus:ring-red-500 ring-2 ring-red-200 dark:ring-red-500/30'
-                          : 'border-gray-300 dark:border-neutral-600 focus:ring-emerald-500'
-                          }`}
-                      />
-                      {!emailTemporario && (
-                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                          ⚠️ Preencha o e-mail do lead para continuar
-                        </p>
+
+                  {clienteSelecionado && (
+                    <div className="pt-4 border-t border-gray-100 dark:border-neutral-700">
+                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Lead</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{clienteSelecionado.nome}</p>
+                      {clienteSelecionado.email ? (
+                        <p className="text-xs text-gray-500">{clienteSelecionado.email}</p>
+                      ) : (
+                        <div className="mt-2">
+                          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                            E-mail do Lead <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="email"
+                            value={emailTemporario}
+                            onChange={(e) => setEmailTemporario(e.target.value)}
+                            placeholder="email@exemplo.com"
+                            className={`w-full px-3 py-1.5 border rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white text-xs focus:outline-none focus:ring-2 ${!emailTemporario
+                              ? 'border-red-500 focus:ring-red-500'
+                              : 'border-gray-300 dark:border-neutral-600 focus:ring-emerald-500'
+                              }`}
+                          />
+                        </div>
                       )}
                     </div>
                   )}
@@ -760,7 +806,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
               )}
 
               {/* Produto */}
-              {produtoSelecionado && (
+              {produtoSelecionado ? (
                 <div className="mb-4 pb-4 border-b border-gray-100 dark:border-neutral-800 flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Produto</p>
@@ -791,6 +837,11 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
+                </div>
+              ) : (
+                <div className="mb-4 pb-4 border-b border-dashed border-gray-200 dark:border-neutral-700">
+                   <p className="text-xs text-gray-400 mb-1 italic">Produto não selecionado</p>
+                   <button onClick={() => setPasso('produto')} className="text-xs text-blue-500 hover:underline">Selecionar agora</button>
                 </div>
               )}
 
@@ -843,12 +894,21 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                     : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
                 >
                   <Check className="h-5 w-5" />
-                  Criar agendamento
+                  {!clienteSelecionado ? 'Incompleto: Selecione o Lead' : 
+                   !produtoSelecionado ? 'Incompleto: Selecione o Produto' :
+                   !dataSelecionada ? 'Incompleto: Selecione a Data' :
+                   !horaSelecionada ? 'Incompleto: Selecione o Horário' :
+                   (!clienteSelecionado.email && !emailTemporario) ? 'Incompleto: Informe o E-mail' :
+                   'Criar agendamento'}
                 </button>
                 {!agendamentoPreview && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
-                    Complete lead, data, horário e produto para liberar.
-                  </p>
+                  <div className="text-xs text-red-500 font-medium text-center mt-2 space-y-1">
+                    {!produtoSelecionado && <p>• Selecione um Produto na primeira etapa</p>}
+                    {!dataSelecionada && <p>• Escolha uma data no calendário</p>}
+                    {!horaSelecionada && <p>• Escolha um horário disponível</p>}
+                    {!clienteSelecionado && <p>• Identifique o Lead (Cliente)</p>}
+                    {clienteSelecionado && !clienteSelecionado.email && !emailTemporario && <p>• O lead selecionado não possui e-mail cadastrado</p>}
+                  </div>
                 )}
               </div>
             </div>
@@ -870,19 +930,28 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Resumo</h3>
             </div>
 
-            {/* Lead Info Fixed at Top - Sempre visível se houver cliente selecionado */}
-            {clienteSelecionado && (
+            {/* Informações dos Envolvidos */}
+            {(clienteSelecionado || activeProfile) && (
               <div className="mb-6 p-4 bg-gray-50 dark:bg-neutral-800/50 rounded-lg border border-gray-100 dark:border-neutral-800">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Agendado por</p>
-                <div className="flex justify-between items-start">
-                  <div>
+                <div className="mb-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Agendado por</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {activeProfile?.full_name || 'Administrador'}
+                  </p>
+                  {activeProfile?.email && (
+                    <p className="text-xs text-gray-500">{activeProfile.email}</p>
+                  )}
+                </div>
+
+                {clienteSelecionado && (
+                  <div className="pt-4 border-t border-gray-100 dark:border-neutral-700">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Lead</p>
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">{clienteSelecionado.nome}</p>
                     {clienteSelecionado.email && (
                       <p className="text-xs text-gray-500">{clienteSelecionado.email}</p>
                     )}
                   </div>
-                  {/* Ícone de lixeira removido conforme solicitado */}
-                </div>
+                )}
               </div>
             )}
 
@@ -954,12 +1023,21 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'}`}
               >
                 <Check className="h-5 w-5" />
-                Criar agendamento
+                {!clienteSelecionado ? 'Incompleto: Selecione o Lead' : 
+                 !produtoSelecionado ? 'Incompleto: Selecione o Produto' :
+                 !dataSelecionada ? 'Incompleto: Selecione a Data' :
+                 !horaSelecionada ? 'Incompleto: Selecione o Horário' :
+                 (!clienteSelecionado.email && !emailTemporario) ? 'Incompleto: Informe o E-mail' :
+                 'Criar agendamento'}
               </button>
               {!agendamentoPreview && (
-                <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-3">
-                  Complete todas as etapas para finalizar.
-                </p>
+                <div className="text-xs text-red-500 font-medium text-center mt-3 space-y-1">
+                  {!produtoSelecionado && <p>• Selecione um Produto</p>}
+                  {!dataSelecionada && <p>• Escolha uma data</p>}
+                  {!horaSelecionada && <p>• Escolha um horário</p>}
+                  {!clienteSelecionado && <p>• Identifique o Lead (Cliente)</p>}
+                  {clienteSelecionado && !clienteSelecionado.email && !emailTemporario && <p>• Informe o e-mail do lead</p>}
+                </div>
               )}
             </div>
           </div>

@@ -16,7 +16,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-    const { isAuthenticated, profile, loading } = useAuth()
+    const { isAuthenticated, activeProfile, profile, loading } = useAuth()
 
     if (loading) {
         return (
@@ -29,18 +29,21 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
         )
     }
 
-    if (!isAuthenticated || !profile) {
+    // Se não estiver autenticado ou não tiver perfil, manda pro login
+    if (!isAuthenticated || !activeProfile) {
         return <Navigate to="/login" replace />
     }
 
-    // Super admin acessa tudo
-    if (profile.role === 'super_admin') {
+    // Se for Super Admin REAL (não impersonado), ele tem acesso total
+    // Se estiver impersonando, ele deve seguir as regras do perfil impersonado
+    if (profile?.role === 'super_admin' && activeProfile.role === 'super_admin') {
         return <>{children}</>
     }
 
-    // Verifica se o role do usuário está na lista de permitidos
-    if (!allowedRoles.includes(profile.role)) {
-        const destination = roleRouteMap[profile.role] || '/login'
+    // Verifica se o role do perfil ativo (pode ser o impersonado) está na lista de permitidos
+    if (!allowedRoles.includes(activeProfile.role)) {
+        // Redireciona para a home do próprio usuário se ele tentar entrar onde não deve
+        const destination = roleRouteMap[activeProfile.role] || '/login'
         return <Navigate to={destination} replace />
     }
 

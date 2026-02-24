@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Sidebar } from '../../components/ui/Sidebar'
 import type { SidebarGroup } from '../../components/ui/Sidebar'
@@ -33,6 +33,7 @@ import type {
 } from '../../types/comercial'
 import Toast, { useToast, ToastContainer } from '../../components/ui/Toast'
 import { Badge } from '../../components/ui/Badge'
+import comercialService from './services/comercialService'
 
 // Componentes de página
 function DashboardPage({
@@ -435,7 +436,10 @@ function RequerimentosPage({
   )
 }
 
+import { useAuth } from '../../contexts/AuthContext'
+
 export default function Comercial() {
+  const { activeProfile } = useAuth()
 
   // Modals
   const [showCadastroCliente, setShowCadastroCliente] = useState(false)
@@ -444,226 +448,64 @@ export default function Comercial() {
   const [contratoParaAssinar, setContratoParaAssinar] = useState<Contrato | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  // Mock data (substituir por chamadas ao backend)
-  const [clientes, setClientes] = useState<Cliente[]>([
-    {
-      id: '1',
-      nome: 'João Silva',
-      email: 'joao.silva@example.com',
-      telefone: '(11) 98765-4321',
-      whatsapp: '(11) 98765-4321',
-      documento: '123.456.789-00',
-      endereco: 'Rua das Flores, 123 - São Paulo/SP',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: '2',
-      nome: 'Maria Santos',
-      email: 'maria.santos@example.com',
-      telefone: '(21) 99876-5432',
-      whatsapp: '(21) 99876-5432',
-      documento: '987.654.321-00',
-      endereco: 'Av. Paulista, 1000 - São Paulo/SP',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: '3',
-      nome: 'Carlos Oliveira',
-      email: 'carlos.oliveira@example.com',
-      telefone: '(31) 97654-3210',
-      whatsapp: '(31) 97654-3210',
-      documento: '456.789.123-00',
-      endereco: 'Rua do Comércio, 456 - Belo Horizonte/MG',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: '4',
-      nome: 'Ana Costa',
-      email: 'ana.costa@example.com',
-      telefone: '(41) 96543-2109',
-      whatsapp: '(41) 96543-2109',
-      documento: '789.123.456-00',
-      endereco: 'Rua XV de Novembro, 789 - Curitiba/PR',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: '5',
-      nome: 'Pedro Almeida',
-      email: 'pedro.almeida@example.com',
-      telefone: '(51) 95432-1098',
-      whatsapp: '(51) 95432-1098',
-      documento: '321.654.987-00',
-      endereco: 'Av. Independência, 321 - Porto Alegre/RS',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  ])
+  // Data states
+  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchClientes() {
+      try {
+        setLoading(true)
+        const data = await comercialService.getAllClientes()
+        setClientes(data)
+      } catch (err) {
+        console.error("Erro ao carregar clientes reais:", err);
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchClientes()
+  }, [])
+
+  const [agendamentos, setAgendamentos] = useState<Agendamento[]>([])
+
+  useEffect(() => {
+    async function fetchAgendamentos() {
+      if (!activeProfile?.id) return
+
+      try {
+        const data = await comercialService.getAgendamentosByUsuario(activeProfile.id)
+        const mapped = data.map((b: any) => ({
+          id: b.id,
+          cliente_id: b.cliente_id || '',
+          cliente: {
+            id: b.cliente_id || '',
+            nome: b.nome || 'Cliente sem nome',
+            email: b.email || '',
+            telefone: b.telefone || '',
+            documento: '',
+            created_at: b.created_at,
+            updated_at: b.updated_at
+          },
+          data: (b.data_hora || '').split('T')[0],
+          hora: (b.data_hora || '').includes('T') ? b.data_hora.split('T')[1].substring(0, 5) : '00:00',
+          duracao_minutos: b.duracao_minutos || 60,
+          produto: b.produto_id || 'Serviço',
+          status: b.status as any,
+          created_at: b.created_at,
+          updated_at: b.updated_at
+        }))
+        setAgendamentos(mapped)
+      } catch (err) {
+        console.error("Erro ao carregar agendamentos reais:", err)
+      }
+    }
+    fetchAgendamentos()
+  }, [activeProfile?.id])
+
   const [contratos, setContratos] = useState<Contrato[]>([])
-  const [requerimentos, setRequerimentos] = useState<Requerimento[]>([
-    {
-      id: '1',
-      tipo: 'aprovacao_contrato',
-      titulo: 'Aprovação de desconto de 20% para cliente estratégico',
-      descricao: 'Cliente ABC Ltda está solicitando desconto de 20% no pacote Premium devido ao volume de contratos. Histórico de pagamentos em dia e potencial de expansão para outros serviços.',
-      comercial_usuario_id: 'usuario-1',
-      status: 'pendente',
-      created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: '2',
-      tipo: 'ajuste_valor',
-      titulo: 'Ajuste de valor para renovação de contrato',
-      descricao: 'Cliente XYZ solicitou reajuste de 15% no valor do contrato devido a mudanças no escopo. Necessário aprovação para prosseguir com a renovação.',
-      comercial_usuario_id: 'usuario-1',
-      status: 'aprovado',
-      resposta_admin: 'Aprovado. Pode prosseguir com o ajuste conforme solicitado. Documentar todas as mudanças no escopo.',
-      created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: '3',
-      tipo: 'cancelamento',
-      titulo: 'Cancelamento de contrato - Cliente inadimplente',
-      descricao: 'Cliente DEF está com 3 meses de inadimplência. Tentativas de contato foram realizadas sem sucesso. Solicitando autorização para cancelamento e cobrança judicial.',
-      comercial_usuario_id: 'usuario-1',
-      status: 'rejeitado',
-      resposta_admin: 'Antes de cancelar, realizar mais uma tentativa de negociação com desconto de juros. Se não houver resposta em 7 dias, pode prosseguir com o cancelamento.',
-      created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      updated_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: '4',
-      tipo: 'outro',
-      titulo: 'Solicitação de extensão de prazo para entrega',
-      descricao: 'Cliente solicitou extensão de 15 dias no prazo de entrega do projeto devido a atrasos internos. Não há impacto financeiro, apenas ajuste de cronograma.',
-      comercial_usuario_id: 'usuario-1',
-      status: 'aprovado',
-      resposta_admin: 'Aprovado. Formalizar a extensão por escrito e atualizar o cronograma no sistema.',
-      created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-      updated_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: '5',
-      tipo: 'aprovacao_contrato',
-      titulo: 'Aprovação de condições especiais de pagamento',
-      descricao: 'Cliente GHI solicitou parcelamento em 12x sem juros para contrato de R$ 50.000. Cliente tem bom histórico e potencial de indicações.',
-      comercial_usuario_id: 'usuario-1',
-      status: 'pendente',
-      created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-      updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-  ])
   const [leads, setLeads] = useState<Lead[]>([])
-
-  // Mock agendamentos
-  const [agendamentos, setAgendamentos] = useState<Agendamento[]>([
-    {
-      id: '1',
-      cliente_id: '1',
-      cliente: {
-        id: '1',
-        nome: 'João Silva',
-        email: 'joao.silva@example.com',
-        telefone: '(11) 98765-4321',
-        documento: '123.456.789-00',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      data: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      hora: '14:00',
-      duracao_minutos: 60,
-      produto: 'Consultoria Jurídica - Contrato Comercial',
-      status: 'agendado',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: '2',
-      cliente_id: '2',
-      cliente: {
-        id: '2',
-        nome: 'Maria Santos',
-        email: 'maria.santos@example.com',
-        telefone: '(21) 99876-5432',
-        documento: '987.654.321-00',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      data: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      hora: '10:30',
-      duracao_minutos: 45,
-      produto: 'Parecer Jurídico - Propriedade Intelectual',
-      status: 'agendado',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: '3',
-      cliente_id: '3',
-      cliente: {
-        id: '3',
-        nome: 'Carlos Oliveira',
-        email: 'carlos.oliveira@example.com',
-        telefone: '(31) 97654-3210',
-        documento: '456.789.123-00',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      data: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      hora: '15:00',
-      duracao_minutos: 90,
-      produto: 'Assessoria Contratual - M&A',
-      status: 'agendado',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: '4',
-      cliente_id: '4',
-      cliente: {
-        id: '4',
-        nome: 'Ana Costa',
-        email: 'ana.costa@example.com',
-        telefone: '(41) 96543-2109',
-        documento: '789.123.456-00',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      data: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      hora: '09:00',
-      duracao_minutos: 60,
-      produto: 'Consultoria - Direito Trabalhista',
-      status: 'agendado',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: '5',
-      cliente_id: '5',
-      cliente: {
-        id: '5',
-        nome: 'Pedro Almeida',
-        email: 'pedro.almeida@example.com',
-        telefone: '(51) 95432-1098',
-        documento: '321.654.987-00',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      data: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      hora: '13:30',
-      duracao_minutos: 45,
-      produto: 'Análise de Conformidade - LGPD',
-      status: 'agendado',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  ])
-
+  const [requerimentos, setRequerimentos] = useState<Requerimento[]>([])
 
   // Handlers
   const handleSaveCliente = async (clienteData: ClienteFormData) => {

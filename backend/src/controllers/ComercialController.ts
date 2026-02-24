@@ -5,11 +5,16 @@ import ComercialRepository from '../repositories/ComercialRepository';
 
 class ComercialController {
     async createAgendamento(req: any, res: any) {
+        console.log('========== CREATE AGENDAMENTO DEBUG ==========')
+        console.log('Body completo recebido:', req.body)
         try {
-            const { nome, email, telefone, data_hora, produto_id, duracao_minutos, status } = req.body
+            const { nome, email, telefone, data_hora, produto_id, duracao_minutos, status, usuario_id, cliente_id } = req.body
             
+            console.log('IDs recebidos:', { usuario_id, cliente_id })
+
             // Validação básica
             if (!nome || !email || !telefone || !data_hora || !produto_id) {
+                console.error('Campos obrigatórios faltando:', { nome, email, telefone, data_hora, produto_id })
                 return res.status(400).json({ 
                     message: 'Campos obrigatórios: nome, email, telefone, data_hora, produto_id' 
                 })
@@ -37,11 +42,14 @@ class ComercialController {
                 data_hora: dataHoraIso, 
                 produto_id, 
                 duracao_minutos: duracao,
-                status: status || 'agendado'
+                status: status || 'agendado',
+                usuario_id: usuario_id || null,
+                cliente_id: cliente_id || null
             }
             
-            console.log('Criando agendamento:', agendamento)     
+            console.log('Objeto agendamento final para envio ao DB:', agendamento)     
             const createdData = await ComercialRepository.createAgendamento(agendamento)  
+            console.log('Agendamento criado com sucesso:', createdData)
             return res.status(201).json(createdData)   
             
         } catch (error: any) {
@@ -50,6 +58,8 @@ class ComercialController {
                 message: 'Erro ao criar agendamento', 
                 error: error.message 
             })
+        } finally {
+            console.log('================================================')
         }
     }
 
@@ -58,8 +68,12 @@ class ComercialController {
      * O agendamento será criado pelo webhook após confirmação do pagamento
      */
     async createAgendamentoMercadoPago(req: any, res: any) {
+        console.log('========== CREATE MERCADO PAGO CHECKOUT DEBUG ==========')
+        console.log('Body recebido:', req.body)
         try {
-            const { nome, email, telefone, data_hora, produto_id, produto_nome, valor, duracao_minutos } = req.body
+            const { nome, email, telefone, data_hora, produto_id, produto_nome, valor, duracao_minutos, usuario_id, cliente_id } = req.body
+            
+            console.log('IDs recebidos:', { usuario_id, cliente_id })
             
             // Validação básica
             if (!nome || !email || !telefone || !data_hora || !produto_id || !produto_nome || !valor) {
@@ -82,7 +96,23 @@ class ComercialController {
                 })
             }
 
-            // Cria a preferência de checkout no MercadoPago
+            // 1. Cria o agendamento como PENDENTE no banco
+            const agendamentoPendente = {
+                nome,
+                email,
+                telefone,
+                data_hora: dataHoraIso,
+                produto_id,
+                duracao_minutos: duracao,
+                status: 'agendado',
+                usuario_id: usuario_id || null,
+                cliente_id: cliente_id || null
+            }
+            
+            const createdAgendamento = await ComercialRepository.createAgendamento(agendamentoPendente)
+            console.log('Agendamento PENDENTE criado no banco:', createdAgendamento.id)
+
+            // 2. Cria a preferência de checkout no MercadoPago
             const MercadoPagoService = (await import('../services/MercadoPagoService')).default
             const checkout = await MercadoPagoService.createCheckoutPreference({
                 nome,
@@ -92,7 +122,10 @@ class ComercialController {
                 produto_id,
                 produto_nome,
                 valor,
-                duracao_minutos: duracao
+                duracao_minutos: duracao,
+                usuario_id: usuario_id || undefined,
+                cliente_id: cliente_id || undefined,
+                agendamento_id: createdAgendamento.id
             })
 
             console.log('Checkout MercadoPago criado:', checkout.preferenceId)
@@ -100,7 +133,8 @@ class ComercialController {
             return res.status(200).json({
                 checkoutUrl: checkout.checkoutUrl,
                 preferenceId: checkout.preferenceId,
-                message: 'Checkout criado. Aguardando pagamento para confirmar agendamento.'
+                agendamentoId: createdAgendamento.id,
+                message: 'Agendamento reservado. Aguardando pagamento.'
             })
             
         } catch (error: any) {
@@ -109,6 +143,8 @@ class ComercialController {
                 message: 'Erro ao criar checkout', 
                 error: error.message 
             })
+        } finally {
+            console.log('========================================================')
         }
     }   
 
@@ -117,8 +153,12 @@ class ComercialController {
      * O agendamento será criado pelo webhook após confirmação do pagamento
      */
     async createAgendamentoStripe(req: any, res: any) {
+        console.log('========== CREATE STRIPE CHECKOUT DEBUG ==========')
+        console.log('Body recebido:', req.body)
         try {
-            const { nome, email, telefone, data_hora, produto_id, produto_nome, valor, duracao_minutos, isEuro } = req.body
+            const { nome, email, telefone, data_hora, produto_id, produto_nome, valor, duracao_minutos, isEuro, usuario_id, cliente_id } = req.body
+            
+            console.log('IDs recebidos:', { usuario_id, cliente_id })
             
             // Validação básica
             if (!nome || !email || !telefone || !data_hora || !produto_id || !produto_nome || !valor) {
@@ -141,7 +181,23 @@ class ComercialController {
                 })
             }
 
-            // Cria a sessão de checkout no Stripe
+            // 1. Cria o agendamento como PENDENTE no banco
+            const agendamentoPendente = {
+                nome,
+                email,
+                telefone,
+                data_hora: dataHoraIso,
+                produto_id,
+                duracao_minutos: duracao,
+                status: 'agendado',
+                usuario_id: usuario_id || null,
+                cliente_id: cliente_id || null
+            }
+            
+            const createdAgendamento = await ComercialRepository.createAgendamento(agendamentoPendente)
+            console.log('Agendamento PENDENTE criado via Stripe no banco:', createdAgendamento.id)
+
+            // 2. Cria a sessão de checkout no Stripe
             const StripeService = (await import('../services/StripeService')).default
             const checkout = await StripeService.createCheckoutSession({
                 nome,
@@ -150,18 +206,21 @@ class ComercialController {
                 data_hora: dataHoraIso,
                 produto_id,
                 produto_nome,
-                valor: Math.round(valor * 100), // Converte para centavos (Stripe espera o menor valor da moeda)
+                valor: Math.round(valor * 100), // Converte para centavos
                 duracao_minutos: duracao,
-                isEuro: isEuro ?? true
+                isEuro: isEuro ?? true,
+                usuario_id: usuario_id || undefined,
+                cliente_id: cliente_id || undefined,
+                agendamento_id: createdAgendamento.id // Passa o ID para o webhook
             })
 
             console.log('Checkout Stripe criado:', checkout.sessionId)
-            console.log('Checkout Stripe criado:', checkout.checkoutUrl)
 
             return res.status(200).json({
                 checkoutUrl: checkout.checkoutUrl,
                 sessionId: checkout.sessionId,
-                message: 'Checkout criado. Aguardando pagamento para confirmar agendamento.'
+                agendamentoId: createdAgendamento.id,
+                message: 'Agendamento reservado. Aguardando pagamento.'
             })
             
         } catch (error: any) {
@@ -170,6 +229,8 @@ class ComercialController {
                 message: 'Erro ao criar checkout', 
                 error: error.message 
             })
+        } finally {
+            console.log('==================================================')
         }
     }   
 
@@ -198,25 +259,41 @@ class ComercialController {
 
                 if (metadata && metadata.tipo === 'agendamento') {
                     try {
-                        console.log('Pagamento Stripe confirmado. Criando agendamento:', metadata.email)
+                        console.log('========== STRIPE WEBHOOK AGENDAMENTO DEBUG ==========')
+                        console.log('Metadata recebido do Stripe:', metadata)
                         
-                        const agendamento = {
-                            nome: metadata.nome,
-                            email: metadata.email,
-                            telefone: metadata.telefone,
-                            data_hora: metadata.data_hora,
-                            produto_id: metadata.produto_id,
-                            duracao_minutos: parseInt(metadata.duracao_minutos) || 60,
-                            status: 'agendado'
-                        }
+                        const status = 'agendado'; // Pagamento confirmado
+                        const agendamentoId = metadata.agendamento_id;
 
-                        await ComercialRepository.createAgendamento(agendamento)
-                        console.log('Agendamento criado com sucesso via Webhook Stripe')
+                        if (agendamentoId) {
+                            console.log('Atualizando agendamento existente:', agendamentoId)
+                            await ComercialRepository.updateAgendamentoStatus(agendamentoId, status)
+                        } else {
+                            // Fallback caso não tenha o ID (legado ou erro)
+                            console.log('ID não encontrado no metadata, criando novo agendamento...')
+                            const agendamento = {
+                                nome: metadata.nome,
+                                email: metadata.email,
+                                telefone: metadata.telefone,
+                                data_hora: metadata.data_hora,
+                                produto_id: metadata.produto_id,
+                                duracao_minutos: parseInt(metadata.duracao_minutos) || 60,
+                                status: status,
+                                usuario_id: metadata.usuario_id && metadata.usuario_id !== '' ? metadata.usuario_id : null,
+                                cliente_id: metadata.cliente_id && metadata.cliente_id !== '' ? metadata.cliente_id : null
+                            }
+                            await ComercialRepository.createAgendamento(agendamento)
+                        }
+                        
+                        console.log('Agendamento processado com sucesso via Webhook Stripe')
                     } catch (error: any) {
-                        console.error('Erro ao criar agendamento via Webhook Stripe:', error)
+                        console.error('Erro ao processar agendamento via Webhook Stripe:', error)
                         return res.status(500).json({ message: 'Erro ao processar agendamento' })
+                    } finally {
+                        console.log('========================================================')
                     }
-                } else if (metadata && metadata.tipo === 'orcamento') {
+                } 
+else if (metadata && metadata.tipo === 'orcamento') {
                     try {
                         const documentoIds = metadata.documentoIds?.split(',') || []
                         console.log('Pagamento Stripe confirmado para orçamentos:', documentoIds)
@@ -301,6 +378,30 @@ class ComercialController {
         }
     }
 
+    async getAgendamentosByUsuario(req: any, res: any) {
+        try {
+            const { usuarioId } = req.params
+            
+            if (!usuarioId) {
+                return res.status(400).json({ message: 'usuarioId é obrigatório' })
+            }
+
+            const agendamentos = await ComercialRepository.getAgendamentosByUsuario(usuarioId)
+
+            return res.status(200).json({
+                message: 'Agendamentos recuperados com sucesso',
+                data: agendamentos
+            })
+            
+        } catch (error: any) {
+            console.error('Erro ao buscar agendamentos do usuário:', error)
+            return res.status(500).json({ 
+                message: 'Erro ao buscar agendamentos do usuário', 
+                error: error.message 
+            })
+        }
+    }
+
     async getAgendamentosByData(req: any, res: any) {
         try {
             const { data } = req.params
@@ -320,6 +421,57 @@ class ComercialController {
                 error: error.message 
             })
         }
+    }
+
+    /**
+     * Processa o webhook do MercadoPago para confirmar agendamento
+     */
+    async handleMercadoPagoWebhook(req: any, res: any) {
+        console.log('========== MERCADO PAGO WEBHOOK DEBUG ==========')
+        const { type, data } = req.body
+        console.log('Evento recebido:', { type, resource: data?.id })
+
+        if (type === 'payment' && data?.id) {
+            try {
+                const MercadoPagoService = (await import('../services/MercadoPagoService')).default
+                const payment = await MercadoPagoService.getPayment(data.id)
+                console.log('Status do pagamento:', payment.status)
+
+                if (payment.status === 'approved' && payment.metadata?.tipo === 'agendamento') {
+                    const metadata = payment.metadata
+                    console.log('Metadata recuperado:', metadata)
+
+                    const status = 'agendado';
+                    const agendamentoId = metadata.agendamento_id;
+
+                    if (agendamentoId) {
+                        console.log('Atualizando agendamento existente via Mercado Pago:', agendamentoId)
+                        await ComercialRepository.updateAgendamentoStatus(agendamentoId, status)
+                    } else {
+                        // Fallback
+                        const agendamento = {
+                            nome: metadata.nome,
+                            email: metadata.email,
+                            telefone: metadata.telefone,
+                            data_hora: metadata.data_hora,
+                            produto_id: metadata.produto_id,
+                            duracao_minutos: parseInt(metadata.duracao_minutos) || 60,
+                            status: status,
+                            usuario_id: metadata.usuario_id && metadata.usuario_id !== '' ? metadata.usuario_id : null,
+                            cliente_id: metadata.cliente_id && metadata.cliente_id !== '' ? metadata.cliente_id : null
+                        }
+                        await ComercialRepository.createAgendamento(agendamento)
+                    }
+                    console.log('Agendamento confirmado via Mercado Pago')
+                }
+            } catch (error: any) {
+                console.error('Erro no processamento do webhook MercadoPago:', error)
+            } finally {
+                console.log('================================================')
+            }
+        }
+
+        return res.status(200).send('OK')
     }
 
 }

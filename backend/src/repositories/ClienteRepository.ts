@@ -92,7 +92,7 @@ class ClienteRepository {
             .from('clientes')
             .select('*')
             .eq('parceiro_id', parceiroId)
-            .order('created_at', { ascending: false })
+            .order('criado_em', { ascending: false })
 
         if (error) {
             throw error
@@ -104,9 +104,9 @@ class ClienteRepository {
     async getProcessosByClienteId(clienteId: string) {
         const { data, error } = await supabase
             .from('processos')
-            .select('id, tipo_servico, status, etapa_atual, created_at, updated_at')
+            .select('id, tipo_servico, status, etapa_atual, criado_em, atualizado_em')
             .eq('cliente_id', clienteId)
-            .order('created_at', { ascending: false })
+            .order('criado_em', { ascending: false })
 
         if (error) {
             console.error('Erro ao buscar processos do cliente:', error)
@@ -595,7 +595,7 @@ class ClienteRepository {
                 ),
                 requerimentos (*)
             `)
-            .order('created_at', { ascending: false })
+            .order('criado_em', { ascending: false })
 
         if (error) {
             console.error('Erro ao buscar todos os clientes:', error)
@@ -643,7 +643,7 @@ class ClienteRepository {
             .from('clientes')
             .update({
                 foto_perfil: publicUrl,
-                updated_at: new Date().toISOString()
+                atualizado_em: new Date().toISOString()
             })
             .eq('id', params.clienteId)
             .select()

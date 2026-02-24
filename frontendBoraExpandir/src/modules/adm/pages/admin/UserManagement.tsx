@@ -44,7 +44,8 @@ interface TeamMember {
   role: UserRole;
   nivel?: string | null;
   is_supervisor?: boolean;
-  senha?: string | null;
+  cpf?: string | null;
+  telefone?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -115,6 +116,8 @@ export default function UserManagement() {
   const [formRole, setFormRole] = useState("");
   const [formNivel, setFormNivel] = useState<string | null>(null);
   const [formIsSupervisor, setFormIsSupervisor] = useState(false);
+  const [formCpf, setFormCpf] = useState("");
+  const [formTelefone, setFormTelefone] = useState("");
 
   const { toast } = useToast();
 
@@ -154,6 +157,8 @@ export default function UserManagement() {
     setFormRole("");
     setFormNivel(null);
     setFormIsSupervisor(false);
+    setFormCpf("");
+    setFormTelefone("");
     setError("");
   };
 
@@ -181,6 +186,17 @@ export default function UserManagement() {
 
     setCreating(true);
     setError("");
+    console.log("Creating user...");
+    console.log("Form data:", {
+      name: formName,
+      email: formEmail,
+      password: formPassword,
+      role: formRole,
+      nivel: formNivel,
+      is_supervisor: formIsSupervisor,
+      cpf: formCpf,
+      telefone: formTelefone,
+    });
 
     try {
       const res = await fetch(`${BACKEND_URL}/auth/register`, {
@@ -196,6 +212,8 @@ export default function UserManagement() {
           role: formRole,
           nivel: formNivel,
           is_supervisor: formIsSupervisor,
+          cpf: formCpf,
+          telefone: formTelefone,
         }),
       });
 
@@ -241,7 +259,7 @@ export default function UserManagement() {
     setSelectedMember(member);
     setShowPassword(false);
     setIsEditingPassword(false);
-    setEditPassword(member.senha || "");
+    setEditPassword("");
     setDetailOpen(true);
   };
 
@@ -280,7 +298,7 @@ export default function UserManagement() {
         }
 
         setIsEditingPassword(false);
-        const updatedMember = { ...selectedMember, senha: editPassword };
+        const updatedMember = { ...selectedMember };
         setSelectedMember(updatedMember);
         // Atualiza a lista local para evitar race condition com view cache do Supabase
         setMembers(prev => prev.map(m => m.id === selectedMember.id ? updatedMember : m));
@@ -367,6 +385,28 @@ export default function UserManagement() {
                   onChange={(e) => setFormPassword(e.target.value)}
                   className="bg-input border-border text-foreground"
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cpf" className="text-foreground">CPF</Label>
+                  <Input
+                    id="cpf"
+                    placeholder="000.000.000-00"
+                    value={formCpf}
+                    onChange={(e) => setFormCpf(e.target.value)}
+                    className="bg-input border-border text-foreground"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="telefone" className="text-foreground">Telefone</Label>
+                  <Input
+                    id="telefone"
+                    placeholder="(00) 00000-0000"
+                    value={formTelefone}
+                    onChange={(e) => setFormTelefone(e.target.value)}
+                    className="bg-input border-border text-foreground"
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role" className="text-foreground">Função</Label>
@@ -455,19 +495,31 @@ export default function UserManagement() {
                 <span className="text-sm text-foreground font-medium">{selectedMember.email}</span>
               </div>
 
+              {/* CPF */}
+              <div className="flex items-center justify-between py-3 border-b border-border">
+                <span className="text-sm text-muted-foreground">CPF</span>
+                <span className="text-sm text-foreground font-medium">{selectedMember.cpf || "—"}</span>
+              </div>
+
+              {/* Telefone */}
+              <div className="flex items-center justify-between py-3 border-b border-border">
+                <span className="text-sm text-muted-foreground">Telefone</span>
+                <span className="text-sm text-foreground font-medium">{selectedMember.telefone || "—"}</span>
+              </div>
+
               {/* Senha */}
               <div className="py-3 border-b border-border">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">Senha</span>
+                  <span className="text-sm text-muted-foreground">Segurança</span>
                   {!isEditingPassword && (
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-7 text-xs text-muted-foreground hover:text-foreground"
-                      onClick={() => { setIsEditingPassword(true); setEditPassword(selectedMember.senha || ""); }}
+                      onClick={() => setIsEditingPassword(true)}
                     >
                       <Pencil className="h-3 w-3 mr-1" />
-                      Alterar
+                      Redefinir Senha
                     </Button>
                   )}
                 </div>
@@ -499,7 +551,7 @@ export default function UserManagement() {
                         onClick={handleUpdatePassword}
                         disabled={savingPassword}
                       >
-                        {savingPassword ? "Salvando..." : "Salvar Senha"}
+                        {savingPassword ? "Salvando..." : "Salvar Nova Senha"}
                       </Button>
                       <Button
                         variant="outline"
@@ -513,21 +565,9 @@ export default function UserManagement() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-foreground font-mono">
-                      {showPassword
-                        ? (selectedMember.senha || "Não definida")
-                        : (selectedMember.senha ? "••••••••" : "Não definida")}
+                    <span className="text-sm text-muted-foreground italic">
+                      As senhas são criptografadas e não podem ser visualizadas.
                     </span>
-                    {selectedMember.senha && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                      </Button>
-                    )}
                   </div>
                 )}
               </div>

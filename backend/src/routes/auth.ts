@@ -10,7 +10,6 @@ function buildFullProfile(profile: any, authUserMetadata: any) {
         ...profile,
         is_supervisor: authUserMetadata?.is_supervisor || false,
         nivel: authUserMetadata?.nivel || null,
-        senha: authUserMetadata?.senha || null,
     }
 }
 
@@ -135,7 +134,7 @@ router.post('/register', async (req: Request, res: Response) => {
             return res.status(403).json({ error: 'Apenas Super Admin pode registrar colaboradores' })
         }
 
-        const { name, email, password, role, nivel, is_supervisor } = req.body
+        const { name, email, password, role, nivel, is_supervisor, cpf, telefone } = req.body
 
         if (!name || !email || !password || !role) {
             return res.status(400).json({ error: 'Nome, email, senha e função são obrigatórios' })
@@ -160,7 +159,6 @@ router.post('/register', async (req: Request, res: Response) => {
                 role,
                 is_supervisor: isSupervisor,
                 nivel: nivel || null,
-                senha: password,
             }
         })
 
@@ -180,6 +178,8 @@ router.post('/register', async (req: Request, res: Response) => {
                 full_name: name,
                 email,
                 role,
+                cpf: cpf || null,
+                telefone: telefone || null,
             })
             .select()
             .single()
@@ -193,6 +193,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
         // Retorna profile completo mesclando user_metadata
         const fullProfile = buildFullProfile(profile, authData.user.user_metadata)
+        console.log("Full profile:", fullProfile)
 
         return res.status(201).json({ user: authData.user, profile: fullProfile })
     } catch (error: any) {
@@ -389,10 +390,9 @@ router.patch('/team/:id/password', async (req: Request, res: Response) => {
 
         const currentMetadata = targetUser.user.user_metadata || {}
 
-        // Atualizar senha no Auth + user_metadata
+        // Atualizar senha no Auth
         const { error: updateError } = await supabase.auth.admin.updateUserById(id, {
-            password,
-            user_metadata: { ...currentMetadata, senha: password }
+            password
         })
 
         if (updateError) {

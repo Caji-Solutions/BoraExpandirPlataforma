@@ -16,8 +16,44 @@ class ComercialRepository {
             throw error
         }
         
-        console.log('Agendamento criado com sucesso:', createdData)
+        console.log('Agendamento criou com sucesso:', createdData)
         return createdData
+    }
+
+    async updateAgendamentoStatus(id: string, status: string) {
+        console.log('Atualizando status do agendamento:', { id, status })
+        
+        const { data, error } = await supabase
+            .from('agendamentos')
+            .update({ status })
+            .eq('id', id)
+            .select()
+            .single()
+        
+        if (error) {
+            console.error('Erro ao atualizar status do agendamento:', error)
+            throw error
+        }
+        
+        return data
+    }
+
+    async getAgendamentosByUsuario(usuarioId: string) {
+        console.log('Buscando agendamentos para o usuário:', usuarioId)
+        
+        const { data: agendamentos, error } = await supabase
+            .from('agendamentos')
+            .select('*')
+            .eq('usuario_id', usuarioId)
+            .neq('status', 'cancelado')
+            .order('data_hora', { ascending: true })
+        
+        if (error) {
+            console.error('Erro ao buscar agendamentos por usuário:', error)
+            throw error
+        }
+        
+        return agendamentos || []
     }
 
     async getAgendamentosByIntervalo(data_hora_inicio: string, data_hora_fim: string) {

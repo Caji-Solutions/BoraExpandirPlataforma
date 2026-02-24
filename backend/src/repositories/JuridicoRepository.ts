@@ -17,8 +17,8 @@ interface ClienteComResponsavel {
     parceiro_id: string
     status: string
     responsavel_juridico_id: string | null
-    created_at: string
-    updated_at: string
+    criado_em: string
+    atualizado_em: string
     responsavel_juridico?: FuncionarioJuridico | null
 }
 
@@ -95,15 +95,15 @@ class JuridicoRepository {
             .from('processos')
             .select(`
                 *,
-                client:profiles!client_id (
+                clientes:clientes!cliente_id (
                     id,
-                    full_name,
+                    nome,
                     email
                 ),
                 documentos (*),
                 requerimentos (*)
             `)
-            .order('created_at', { ascending: false })
+            .order('criado_em', { ascending: false })
 
         if (error) {
             console.error('Erro ao buscar processos:', error)
@@ -152,15 +152,15 @@ class JuridicoRepository {
             .from('processos')
             .select(`
                 *,
-                client:profiles!client_id (
+                clientes:clientes!cliente_id (
                     id,
-                    full_name,
+                    nome,
                     email
                 ),
                 documentos (*)
             `)
             .is('responsavel_id', null)
-            .order('created_at', { ascending: false })
+            .order('criado_em', { ascending: false })
 
         if (error) {
             console.error('Erro ao buscar processos sem responsável:', error)
@@ -185,7 +185,7 @@ class JuridicoRepository {
                 requerimentos (*)
             `)
             .eq('responsavel_id', responsavelId)
-            .order('created_at', { ascending: false })
+            .order('criado_em', { ascending: false })
 
         if (error) {
             console.error('Erro ao buscar processos do responsável:', error)
@@ -202,7 +202,7 @@ class JuridicoRepository {
             .update({   
                 responsavel_id: responsavelId,
                 delegado_em: responsavelId ? new Date().toISOString() : null,
-                updated_at: new Date().toISOString()
+                atualizado_em: new Date().toISOString()
             })
             .eq('id', processoId)
             .select()
@@ -222,7 +222,7 @@ class JuridicoRepository {
             .from('processos')
             .update({
                 etapa_atual: etapa,
-                updated_at: new Date().toISOString()
+                atualizado_em: new Date().toISOString()
             })
             .eq('id', processoId)
             .select()
@@ -242,7 +242,7 @@ class JuridicoRepository {
             .from('clientes')
             .select('*')
             .eq('responsavel_juridico_id', responsavelId)
-            .order('created_at', { ascending: false })
+            .order('criado_em', { ascending: false })
 
         if (error) {
             console.error('Erro ao buscar clientes do responsável:', error)
@@ -258,7 +258,7 @@ class JuridicoRepository {
             .from('clientes')
             .select('*')
             .is('responsavel_juridico_id', null)
-            .order('created_at', { ascending: false })
+            .order('criado_em', { ascending: false })
 
         if (error) {
             console.error('Erro ao buscar clientes sem responsável:', error)
@@ -310,7 +310,7 @@ class JuridicoRepository {
         const { data: clientes, error } = await supabase
             .from('clientes')
             .select('*')
-            .order('created_at', { ascending: false })
+            .order('criado_em', { ascending: false })
 
         if (error) {
             console.error('Erro ao buscar clientes:', error)
@@ -657,7 +657,8 @@ class JuridicoRepository {
                 *,
                 autor:profiles!autor_id (
                     id,
-                    full_name
+                    full_name,
+                    role
                 )
             `)
             .single()
@@ -679,11 +680,12 @@ class JuridicoRepository {
                 *,
                 autor:profiles!autor_id (
                     id,
-                    full_name
+                    full_name,
+                    role
                 )
             `)
             .eq('cliente_id', clienteId)
-            .order('created_at', { ascending: false })
+            .order('criado_em', { ascending: false })
 
         if (error) {
             console.error('Erro ao buscar notas jurídicas:', error)
@@ -781,8 +783,8 @@ class JuridicoRepository {
                 status: 'pendente',
                 criador_id: params.criadorId || null,
                 observacoes: params.observacoes || null,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                criado_em: new Date().toISOString(),
+                atualizado_em: new Date().toISOString()
             }])
             .select()
             .single()
@@ -878,7 +880,7 @@ class JuridicoRepository {
                 documentos (*)
             `)
             .eq('cliente_id', clienteId)
-            .order('created_at', { ascending: false })
+            .order('criado_em', { ascending: false })
 
         if (error) {
             console.error('Erro ao buscar requerimentos do cliente:', error)

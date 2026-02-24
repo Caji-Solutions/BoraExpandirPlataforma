@@ -25,6 +25,10 @@ app.post('/comercial/webhook/stripe', express.raw({ type: 'application/json' }),
   const ComercialController = require('./controllers/ComercialController').default
   ComercialController.handleStripeWebhook(req, res)
 })
+app.post('/webhooks/mercadopago', express.json(), (req, res) => {
+  const ComercialController = require('./controllers/ComercialController').default
+  ComercialController.handleMercadoPagoWebhook(req, res)
+})
 app.use(express.json())
 app.use(morgan('dev'))
 
@@ -41,6 +45,11 @@ app.use('/comercial', comercial)
 app.use('/juridico', juridico)
 app.use('/traducoes', traducoes)
 app.use('/configuracoes', config)
+
+app.post('/leads', (req, res) => {
+  const ClienteController = require('./controllers/ClienteController').default
+  ClienteController.registerLead(req, res)
+})
 
 
 

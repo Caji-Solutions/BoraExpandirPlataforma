@@ -14,6 +14,9 @@ interface CheckoutPreferenceParams {
     produto_nome: string
     valor: number // em reais (será convertido para centavos internamente)
     duracao_minutos: number
+    usuario_id?: string
+    cliente_id?: string
+    agendamento_id?: string
 }
 
 class MercadoPagoService {
@@ -64,7 +67,10 @@ class MercadoPagoService {
                     telefone,
                     data_hora,
                     produto_id,
-                    duracao_minutos: duracao_minutos.toString()
+                    duracao_minutos: duracao_minutos.toString(),
+                    usuario_id: params.usuario_id || '',
+                    cliente_id: params.cliente_id || '',
+                    agendamento_id: params.agendamento_id || ''
                 },
                 back_urls: {
                     success: `${process.env.FRONTEND_URL}/agendamento/sucesso`,

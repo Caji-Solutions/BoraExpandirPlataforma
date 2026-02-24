@@ -25,6 +25,7 @@ model Usuario {
   bucketRootPath String?     @map("bucket_root_path")
 
   notificacoes   Notificacao[]
+  agendamentos   Agendamento[]
 
   criadoEm       DateTime    @default(now()) @map("criado_em")
   atualizadoEm   DateTime    @updatedAt @map("atualizado_em")
@@ -156,4 +157,25 @@ model Configuracao {
   atualizadoEm DateTime @updatedAt @map("atualizado_em")
 
   @@map("configuracoes")
+}
+
+model Agendamento {
+  id              String   @id @default(uuid()) @db.Uuid
+  nome            String
+  email           String
+  telefone        String
+  dataHora        DateTime @map("data_hora")
+  produtoId       String   @map("produto_id")
+  duracaoMinutos  Int      @default(60) @map("duracao_minutos")
+  status          String   @default("agendado")
+  
+  usuarioId       String?  @db.Uuid @map("usuario_id")
+  usuario         Usuario? @relation(fields: [usuarioId], references: [id])
+  
+  clienteId       String?  @db.Uuid @map("cliente_id")
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("agendamentos")
 }

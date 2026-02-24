@@ -10,11 +10,13 @@ import {
 } from 'lucide-react'
 import { DNAClientListView } from './DNAClientListView'
 import { DNAClientDetailView } from './DNAClientDetailView'
+import { useAuth } from '../../contexts/AuthContext'
 
 export type ClientNote = {
     id: string
     text: string
     author: string
+    area: string
     createdAt: string
     stageId?: string
 }
@@ -79,6 +81,7 @@ export const formatDate = (dateString: string | undefined) => {
 type DNAView = 'list' | 'detail'
 
 export function ClientDNAPage() {
+    const { activeProfile } = useAuth()
     const [view, setView] = useState<DNAView>('list')
     const [selectedClient, setSelectedClient] = useState<ClientDNAData | null>(null)
     const [clientes, setClientes] = useState<ClientDNAData[]>([])
@@ -86,23 +89,27 @@ export function ClientDNAPage() {
     const [error, setError] = useState<string | null>(null)
 
     const fetchClientes = useCallback(async () => {
+        if (!activeProfile?.id) return;
+        
         try {
             setLoading(true)
-            const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
+            const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
             const response = await fetch(`${baseUrl}/cliente/clientes`)
             const result = await response.json()
 
             if (result.data) {
-                const LAWER_ID = '41f21e5c-dd93-4592-9470-e043badc3a18';
+                const isSuperAdmin = activeProfile.role === 'super_admin';
+                const userId = activeProfile.id;
                 
                 const mappedClientes: ClientDNAData[] = result.data
                     .filter((item: any) => {
+                        if (isSuperAdmin) return true;
                         // Filtra apenas clientes que possuem processos atribuídos ao advogado logado
-                        return item.processos && item.processos.some((p: any) => p.responsavel_id === LAWER_ID);
+                        return item.processos && item.processos.some((p: any) => p.responsavel_id === userId);
                     })
                     .map((item: any) => {
-                        // Encontra o processo específico deste advogado (ou o primeiro caso tenha múltiplos)
-                        const userProcess = item.processos.find((p: any) => p.responsavel_id === LAWER_ID) || item.processos[0];
+                        // Encontra o processo específico deste advogado (ou o primeiro caso tenha múltiplos ou seja admin)
+                        const userProcess = item.processos?.find((p: any) => p.responsavel_id === userId) || item.processos?.[0];
 
                         return {
                             id: item.client_id || item.id,
@@ -130,7 +137,7 @@ export function ClientDNAPage() {
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [activeProfile?.id, activeProfile?.role])
 
     useEffect(() => {
         fetchClientes()

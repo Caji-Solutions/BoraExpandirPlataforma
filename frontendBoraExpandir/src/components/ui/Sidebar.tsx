@@ -105,13 +105,13 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen }: Sidebar
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [localSidebarOpen, setLocalSidebarOpen] = useState(false)
-  const { impersonatedProfile, setImpersonatedProfile, profile } = useAuth()
+  const { impersonatedProfile, setImpersonatedProfile, profile, activeProfile } = useAuth()
 
   // Use props if provided, otherwise use local state
   const isOpen = sidebarOpen !== undefined ? sidebarOpen : localSidebarOpen
   const setOpen = setSidebarOpen || setLocalSidebarOpen
 
-  const userName = (typeof window !== 'undefined' && localStorage.getItem('userName')) || 'Usuário'
+  const userName = activeProfile?.full_name || (typeof window !== 'undefined' && localStorage.getItem('userName')) || 'Usuário'
 
   const handleLogout = () => {
     try {

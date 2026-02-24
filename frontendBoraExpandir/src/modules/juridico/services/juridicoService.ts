@@ -40,8 +40,8 @@ export interface Processo {
   responsavel_id: string | null;
   delegado_em: string | null;
   observacoes: string | null;
-  created_at: string;
-  updated_at: string;
+  criado_em: string;
+  atualizado_em: string;
   clientes?: Cliente;
   responsavel?: FuncionarioJuridico | null;
 }
@@ -448,6 +448,20 @@ export async function updateRequerimentoStatus(
   return response.json();
 }
 
+/**
+ * Busca estatísticas globais do jurídico
+ */
+export async function getEstatisticas(): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/juridico/estatisticas`);
+
+    if (!response.ok) {
+        throw new Error('Erro ao buscar estatísticas');
+    }
+
+    const result = await response.json();
+    return result.data;
+}
+
 export default {
     getProcessos,
     getProcessosByResponsavel,
@@ -469,5 +483,7 @@ export default {
     updateProcessEtapa,
     getRequerimentosByProcesso,
     getRequerimentosByCliente,
-    updateRequerimentoStatus
+    updateRequerimentoStatus,
+    getEstatisticas
 };
+

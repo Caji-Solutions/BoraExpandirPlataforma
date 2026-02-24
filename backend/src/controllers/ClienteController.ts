@@ -896,6 +896,40 @@ class ClienteController {
       })
     }
   }
+
+  async registerLead(req: any, res: any) {
+    console.log('========== REGISTER LEAD DEBUG ==========')
+    console.log('Body recebido:', req.body)
+    try {
+      const { nome, email, telefone } = req.body
+      
+      if (!nome || !email || !telefone) {
+        console.error('Campos obrigatórios faltando:', { nome, email, telefone })
+        return res.status(400).json({ message: 'Nome, email e telefone são obrigatórios' })
+      }
+
+      const leadData = {
+        nome,
+        email,
+        whatsapp: telefone, // mapeando telefone para whatsapp que é o campo no banco
+        status: 'LEAD', // status inicial
+      }
+
+      console.log('Tentando registrar lead no repositório:', leadData)
+      const createdData = await ClienteRepository.register(leadData as any)
+      console.log('Lead registrado com sucesso:', createdData)
+      
+      return res.status(201).json(createdData)
+    } catch (error: any) {
+      console.error('Erro ao registrar lead:', error)
+      return res.status(500).json({ 
+        message: 'Erro ao registrar lead', 
+        error: error.message 
+      })
+    } finally {
+      console.log('=========================================')
+    }
+  }
 }
 
 export default new ClienteController()

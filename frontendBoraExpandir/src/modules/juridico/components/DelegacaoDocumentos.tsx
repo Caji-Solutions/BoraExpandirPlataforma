@@ -171,9 +171,9 @@ export function DelegacaoDocumentos() {
             <AlertCircle className="h-4 w-4" />
             <span className="font-medium">Área exclusiva para Supervisores</span>
           </div>
-          <h1 className="text-3xl font-bold text-foreground">Delegação de Processos</h1>
+          <h1 className="text-3xl font-bold text-foreground">Delegação de Documentos</h1>
           <p className="text-muted-foreground mt-1">
-            Gerencie e delegue os processos para a equipe jurídica
+            Gerencie e delegue os documentos para a equipe jurídica
           </p>
         </div>
         <button

@@ -24,45 +24,53 @@ import { ProcessQueue } from "../juridico/components/ProcessQueue";
 import { ProcessTable, ProcessData } from "../juridico/components/ProcessTable";
 import { TaskModule } from "../shared/components/TaskModule";
 
-// Mock data para processos jurídicos
-const mockJuridicoData: ProcessData[] = [
-  {
-    id: "1",
-    clienteId: "1",
-    status: "Preparando",
-    fase: 1,
-    processo: 1,
-    cliente: { nome: "João Silva" },
-    servico: "Familiar de Esp...",
-    tipo: "Pedido",
-    dataProtocolo: 0,
-    prazoResposta: 0,
-    observacao: "0",
-    valorAcao: "1,00 €",
-  },
-  {
-    id: "2",
-    clienteId: "2",
-    status: "Análise",
-    fase: 2,
-    processo: 2,
-    cliente: { nome: "Maria Santos" },
-    servico: "Visto D7",
-    tipo: "Renovação",
-    dataProtocolo: "12/12/2024",
-    prazoResposta: 15,
-    observacao: "Aguardando documentação",
-    valorAcao: "500,00 €",
-  }
-];
+import { useState, useEffect } from "react";
+import juridicoService, { Processo } from "../juridico/services/juridicoService";
 
 // Componentes wrapper para rotas jurídicas
-const JuridicoProcessos = () => (
-  <div className="p-8">
-    <h1 className="text-3xl font-bold mb-6">Processos Jurídicos</h1>
-    <ProcessTable data={mockJuridicoData} />
-  </div>
-);
+const JuridicoProcessos = () => {
+  const [processes, setProcesses] = useState<ProcessData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchProcesses() {
+      try {
+        setLoading(true);
+        const data = await juridicoService.getProcessos();
+        const mapped: ProcessData[] = data.map((p: Processo) => ({
+          id: p.id,
+          clienteId: p.cliente_id,
+          status: p.status,
+          fase: p.etapa_atual,
+          processo: parseInt(p.id.split('-')[0]) || 0,
+          cliente: { nome: p.clientes?.nome || 'Cliente Desconhecido' },
+          servico: p.tipo_servico,
+          tipo: 'Processo Jurídico',
+          dataProtocolo: p.created_at ? new Date(p.created_at).toLocaleDateString() : 'N/A',
+          valorAcao: '---',
+          observacao: p.observacoes || '',
+        }));
+        setProcesses(mapped);
+      } catch (err) {
+        console.error("Erro ao buscar processos no ADM:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProcesses();
+  }, []);
+
+  return (
+    <div className="p-8">
+      <h1 className="text-3xl font-bold mb-6">Processos Jurídicos</h1>
+      {loading ? (
+        <div className="animate-pulse">Carregando processos reais...</div>
+      ) : (
+        <ProcessTable data={processes} />
+      )}
+    </div>
+  );
+};
 
 const JuridicoTarefas = () => (
   <div className="p-8">
@@ -70,6 +78,7 @@ const JuridicoTarefas = () => (
     <TaskModule currentUser="Admin" />
   </div>
 );
+
 
 const NotFound = () => (
   <div className="p-8">

@@ -27,8 +27,8 @@ class ParceiroRepository {
             email: data.email,
             telefone: data.telefone ?? undefined,
             documento: data.documento ?? undefined,
-            criadoEm: new Date(data.created_at),
-            atualizadoEm: new Date(data.updated_at),
+            criadoEm: new Date(data.criado_em),
+            atualizadoEm: new Date(data.atualizado_em),
         }
         
         store.set(parceiro.id, parceiro)
@@ -53,8 +53,8 @@ class ParceiroRepository {
                     email: parceiro.email,
                     telefone: parceiro.telefone ?? undefined,
                     documento: parceiro.documento ?? undefined,
-                    criadoEm: new Date(parceiro.created_at),
-                    atualizadoEm: new Date(parceiro.updated_at),
+                    criadoEm: new Date(parceiro.criado_em),
+                    atualizadoEm: new Date(parceiro.atualizado_em),
                 }
             }
         }
@@ -74,8 +74,8 @@ class ParceiroRepository {
                 email: cliente.email,
                 telefone: cliente.whatsapp ?? undefined,
                 documento: undefined,
-                criadoEm: new Date(cliente.created_at),
-                atualizadoEm: new Date(cliente.updated_at),
+                criadoEm: new Date(cliente.criado_em),
+                atualizadoEm: new Date(cliente.atualizado_em),
             }
         }
 
@@ -101,7 +101,7 @@ class ParceiroRepository {
         const { data, error } = await supabase
             .from('parceiros')
             .select('*')
-            .order('created_at', { ascending: false })
+            .order('criado_em', { ascending: false })
 
         if (error || !data) return []
 
@@ -111,8 +111,8 @@ class ParceiroRepository {
             email: row.email,
             telefone: row.telefone ?? undefined,
             documento: row.documento ?? undefined,
-            criadoEm: new Date(row.created_at),
-            atualizadoEm: new Date(row.updated_at),
+            criadoEm: new Date(row.criado_em),
+            atualizadoEm: new Date(row.atualizado_em),
         }))
     }
 

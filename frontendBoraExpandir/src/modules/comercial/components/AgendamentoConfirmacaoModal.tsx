@@ -17,6 +17,8 @@ interface AgendamentoConfirmacaoModalProps {
     isEuro?: boolean
     duracao_minutos: number
     status: string
+    usuario_id?: string
+    cliente_id?: string
   }
   exchangeRate?: number
 }
@@ -241,8 +243,15 @@ export const AgendamentoConfirmacaoModal: React.FC<AgendamentoConfirmacaoModalPr
                     <p className="text-xs text-gray-500 mb-1">Duração</p>
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">{payload.duracao_minutos} minutos</p>
                   </div>
-                  <div className="col-span-2">
-                    <p className="text-xs text-gray-500 mb-1">Lead</p>
+                  <div className="col-span-2 py-2 border-t border-gray-100 dark:border-neutral-800">
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Agendado por</p>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {/* Como o payload não traz o nome do usuário, vamos mostrar uma mensagem genérica ou passar o nome via prop se necessário */}
+                      Consultor Responsável
+                    </p>
+                  </div>
+                  <div className="col-span-2 pt-2 border-t border-gray-200 dark:border-neutral-700">
+                    <p className="text-xs text-gray-500 mb-1">Lead / Cliente</p>
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">{payload.nome}</p>
                     <p className="text-xs text-gray-500">{payload.email} • {payload.telefone}</p>
                   </div>

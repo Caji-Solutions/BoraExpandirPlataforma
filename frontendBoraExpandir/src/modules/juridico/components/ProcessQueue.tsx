@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom';
 import { FileText, User, ChevronRight, Folder, ChevronLeft, Search } from "lucide-react";
 import { Button } from "./ui/button";
@@ -8,6 +8,7 @@ import { ProcessAnalysis, JuridicoDocument, AnalysisStage } from './ProcessAnaly
 import juridicoService, { Processo } from '../services/juridicoService';
 import { FormsDeclarationsSection } from './FormsDeclarationsSection';
 import { ProcessMemberCard } from './ProcessMemberCard';
+import { useAuth } from '../../../contexts/AuthContext';
 
 
 export interface Process {
@@ -44,6 +45,7 @@ interface ProcessQueueProps {
 }
 
 export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
+    const { activeProfile } = useAuth();
     const [searchParams] = useSearchParams();
     const [processes, setProcesses] = useState<Process[]>([]);
     const [selectedFolder, setSelectedFolder] = useState<Process | null>(null);
@@ -59,7 +61,7 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
     });
 
     // Helper function to map Backend Process to Frontend Process View
-    const mapProcessoToView = (p: Processo): Process => {
+    const mapProcessoToView = useCallback((p: Processo): Process => {
         const docs = p.documentos || [];
         const total = docs.length;
 
@@ -113,15 +115,21 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
             documentsTranslated: translated,
             hasRequirement: p.requerimentos ? p.requerimentos.length > 0 : false
         };
-    };
+    }, []);
 
     useEffect(() => {
         const fetchProcesses = async () => {
+            if (!activeProfile?.id) return;
+            
             setLoading(true);
             try {
-                // Simulated Lawyer ID from user request
-                const LAWYER_ID = '41f21e5c-dd93-4592-9470-e043badc3a18';
-                const data = await juridicoService.getProcessosByResponsavel(LAWYER_ID);
+                let data;
+                if (activeProfile.role === 'super_admin') {
+                    data = await juridicoService.getProcessos();
+                } else {
+                    data = await juridicoService.getProcessosByResponsavel(activeProfile.id);
+                }
+                
                 const mapped = data.map(mapProcessoToView);
                 setProcesses(mapped);
 
@@ -140,7 +148,7 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
             }
         };
         fetchProcesses();
-    }, [searchParams]);
+    }, [searchParams, activeProfile?.id, activeProfile?.role, mapProcessoToView]);
 
     // Fetch Documents and Dependents when Folder Selected
     useEffect(() => {
@@ -334,9 +342,8 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                 documents={memberDocs}
                 onBack={() => setSelectedMember(null)}
                 onUpdateDocument={async (id, updates) => {
+                    if (!activeProfile?.id) return;
                     const newStatus = updates.status?.toUpperCase();
-                    // Usando o mesmo ID mockado para consistência
-                    const LAWYER_ID = '41f21e5c-dd93-4592-9470-e043badc3a18';
                     
                     try {
                         // Se skipBackend for true, não fazemos a chamada novamente
@@ -347,7 +354,7 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                                 updates.rejectionReason,
                                 updates.solicitado_pelo_juridico,
                                 (updates as any).prazo,
-                                LAWYER_ID
+                                activeProfile.id
                             );
                         }
 

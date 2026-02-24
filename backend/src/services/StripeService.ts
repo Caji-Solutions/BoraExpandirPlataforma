@@ -15,6 +15,9 @@ interface CheckoutSessionParams {
     valor: number // em centavos
     duracao_minutos: number
     isEuro?: boolean
+    usuario_id?: string
+    cliente_id?: string
+    agendamento_id?: string
 }
 
 class StripeService {
@@ -64,6 +67,9 @@ class StripeService {
                 valor: valor.toString(),
                 moeda: isEuro ? 'eur' : 'brl',
                 duracao_minutos: duracao_minutos.toString(),
+                usuario_id: params.usuario_id || '',
+                cliente_id: params.cliente_id || '',
+                agendamento_id: params.agendamento_id || '',
             },
             success_url: `${process.env.FRONTEND_URL}/agendamento/sucesso?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${process.env.FRONTEND_URL}/agendamento/cancelado`,
