@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
     User,
     FileText,
@@ -31,6 +32,7 @@ export function DNAClientDetailView({
     onBack: () => void
 }) {
     const { activeProfile } = useAuth()
+    const navigate = useNavigate()
     const [copiedId, setCopiedId] = useState(false)
     const [noteStageId, setNoteStageId] = useState<string | null>(null)
     const [newNote, setNewNote] = useState('')
@@ -195,10 +197,25 @@ export function DNAClientDetailView({
                                 <span className="flex items-center gap-1.5"><Phone className="h-4 w-4" /> {client.telefone}</span>
                                 <div className="flex items-center gap-2 bg-muted px-2 py-0.5 rounded font-mono text-xs">
                                     {client.id}
-                                    <button onClick={handleCopyId} className="hover:text-primary transition-colors">
+                                    <button onClick={handleCopyId} className="hover:text-primary transition-colors" title="Copiar ID">
                                         {copiedId ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
                                     </button>
                                 </div>
+
+                                {activeProfile?.role === 'super_admin' && (
+                                    <button
+                                        onClick={() => {
+                                            localStorage.setItem('impersonatedClientId', client.true_id || client.id)
+                                            localStorage.setItem('impersonatedClientName', client.nome)
+                                            navigate('/cliente')
+                                        }}
+                                        className="flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 hover:bg-amber-200 rounded-full text-xs font-bold transition-colors ml-2"
+                                        title="Acessar como cliente"
+                                    >
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                        Acessar Área
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -235,7 +252,7 @@ export function DNAClientDetailView({
                                     <History className="h-6 w-6 text-primary" />
                                     Timeline do Processo
                                 </h3>
-                                
+
                                 <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-xl border border-border">
                                     {(['todos', 'juridico', 'comercial', 'administrativo'] as const).map((area) => (
                                         <button
@@ -243,8 +260,8 @@ export function DNAClientDetailView({
                                             onClick={() => setAreaFilter(area)}
                                             className={cn(
                                                 "px-3 py-1.5 rounded-lg text-xs font-bold transition-all capitalize",
-                                                areaFilter === area 
-                                                    ? "bg-primary text-primary-foreground shadow-sm" 
+                                                areaFilter === area
+                                                    ? "bg-primary text-primary-foreground shadow-sm"
                                                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                                             )}
                                         >
@@ -262,7 +279,7 @@ export function DNAClientDetailView({
                                     const isCurrent = stage.id === client.categoria
                                     const isCompleted = index < currentStageIndex
                                     const isFuture = index > currentStageIndex
-                                    
+
                                     const stageNotes = notes.filter(n => {
                                         const matchesStage = n.stageId === stage.id
                                         const matchesArea = areaFilter === 'todos' || n.area === areaFilter
@@ -274,27 +291,27 @@ export function DNAClientDetailView({
                                             {/* Dot / Indicator */}
                                             <div className={cn(
                                                 "absolute left-0 top-1 w-8 h-8 rounded-full border-4 z-10 flex items-center justify-center transition-all",
-                                                isCurrent ? "bg-primary border-primary-foreground shadow-[0_0_10px_rgba(var(--primary),0.5)] animate-pulse" : 
-                                                isCompleted ? "bg-green-500 border-green-200" : "bg-muted border-card"
+                                                isCurrent ? "bg-primary border-primary-foreground shadow-[0_0_10px_rgba(var(--primary),0.5)] animate-pulse" :
+                                                    isCompleted ? "bg-green-500 border-green-200" : "bg-muted border-card"
                                             )}>
-                                                {isCompleted ? <Check className="h-4 w-4 text-white" /> : 
-                                                 isCurrent ? <Clock className="h-4 w-4 text-white" /> : 
-                                                 <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />}
+                                                {isCompleted ? <Check className="h-4 w-4 text-white" /> :
+                                                    isCurrent ? <Clock className="h-4 w-4 text-white" /> :
+                                                        <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />}
                                             </div>
 
                                             <div className="flex flex-col gap-2">
                                                 <div className="flex items-center justify-between">
                                                     <h4 className={cn(
                                                         "font-bold transition-colors",
-                                                        isCurrent ? "text-primary text-lg" : 
-                                                        isCompleted ? "text-foreground" : "text-muted-foreground"
+                                                        isCurrent ? "text-primary text-lg" :
+                                                            isCompleted ? "text-foreground" : "text-muted-foreground"
                                                     )}>
                                                         {stage.label.split('-')[1] || stage.label}
                                                     </h4>
-                                                    
+
                                                     <div className="flex items-center gap-2">
                                                         {stageNotes.length > 0 && (
-                                                            <button 
+                                                            <button
                                                                 onClick={() => toggleStage(stage.id)}
                                                                 className={cn(
                                                                     "flex items-center gap-1 px-2 py-1 rounded-lg transition-all border border-transparent hover:bg-muted font-bold text-[10px]",
@@ -309,7 +326,7 @@ export function DNAClientDetailView({
                                                             </button>
                                                         )}
 
-                                                        <button 
+                                                        <button
                                                             onClick={() => setNoteStageId(stage.id === noteStageId ? null : stage.id)}
                                                             className="text-xs font-semibold text-primary hover:bg-primary/5 px-3 py-1.5 rounded-lg border border-primary/20 transition-all flex items-center gap-1.5"
                                                         >
@@ -321,7 +338,7 @@ export function DNAClientDetailView({
 
                                                 {/* Form de Nota para esta etapa */}
                                                 {noteStageId === stage.id && (
-                                                    <form 
+                                                    <form
                                                         onSubmit={(e) => {
                                                             handleAddNote(e, stage.id)
                                                             if (!expandedStages.has(stage.id)) toggleStage(stage.id)
@@ -336,14 +353,14 @@ export function DNAClientDetailView({
                                                             className="w-full bg-card border border-border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 min-h-[80px] resize-none"
                                                         />
                                                         <div className="flex justify-end gap-2 mt-3">
-                                                            <button 
+                                                            <button
                                                                 type="button"
                                                                 onClick={() => setNoteStageId(null)}
                                                                 className="px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-muted rounded-lg"
                                                             >
                                                                 Cancelar
                                                             </button>
-                                                            <button 
+                                                            <button
                                                                 type="submit"
                                                                 className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-xs font-bold hover:bg-primary/90 shadow-sm"
                                                             >
@@ -358,20 +375,20 @@ export function DNAClientDetailView({
                                                     <div className="mt-3 space-y-3 animate-in slide-in-from-top-2 duration-300">
                                                         {stageNotes.map(note => (
                                                             <div key={note.id} className="bg-muted/30 border border-border/50 rounded-xl p-4 text-sm relative">
-                                                                 <div className="flex justify-between items-center mb-2 opacity-70">
-                                                                     <div className="flex items-center gap-3">
-                                                                         <span className="font-bold flex items-center gap-1.5"><User className="h-3 w-3" /> {note.author}</span>
-                                                                         <span className={cn(
-                                                                             "text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-tight",
-                                                                             note.area === 'juridico' ? "bg-purple-100 text-purple-700" :
-                                                                             note.area === 'comercial' ? "bg-blue-100 text-blue-700" :
-                                                                             "bg-amber-100 text-amber-700"
-                                                                         )}>
-                                                                             {note.area}
-                                                                         </span>
-                                                                     </div>
-                                                                     <span className="text-[10px]">{new Date(note.createdAt).toLocaleDateString('pt-BR')}</span>
-                                                                 </div>
+                                                                <div className="flex justify-between items-center mb-2 opacity-70">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <span className="font-bold flex items-center gap-1.5"><User className="h-3 w-3" /> {note.author}</span>
+                                                                        <span className={cn(
+                                                                            "text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-tight",
+                                                                            note.area === 'juridico' ? "bg-purple-100 text-purple-700" :
+                                                                                note.area === 'comercial' ? "bg-blue-100 text-blue-700" :
+                                                                                    "bg-amber-100 text-amber-700"
+                                                                        )}>
+                                                                            {note.area}
+                                                                        </span>
+                                                                    </div>
+                                                                    <span className="text-[10px]">{new Date(note.createdAt).toLocaleDateString('pt-BR')}</span>
+                                                                </div>
                                                                 <p className="text-foreground/90 leading-relaxed italic border-l-2 border-primary/20 pl-3">
                                                                     "{note.text}"
                                                                 </p>
@@ -390,7 +407,7 @@ export function DNAClientDetailView({
                     {/* Coluna Direita: Informações Extras */}
                     <div className="lg:col-span-4 space-y-6">
                         <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-                            <ProcessAction 
+                            <ProcessAction
                                 clienteId={client.true_id || client.id}
                                 processoId={client.processo_id}
                                 onActionClick={(action) => {
@@ -405,7 +422,7 @@ export function DNAClientDetailView({
                             />
                         </div>
                         {/* Requirements Section */}
-                        <RequirementsSection 
+                        <RequirementsSection
                             clienteId={client.true_id || client.id}
                             processoId={client.processo_id || ''}
                             members={members}
@@ -426,7 +443,7 @@ export function DNAClientDetailView({
                 </div>
             </div>
 
-            <DocumentRequestModal 
+            <DocumentRequestModal
                 isOpen={isDocModalOpen}
                 onOpenChange={setIsDocModalOpen}
                 clienteId={client.true_id || client.id}
@@ -435,7 +452,7 @@ export function DNAClientDetailView({
                 initialRequerimentoId={selectedRequerimentoId}
             />
 
-            <RequirementRequestModal 
+            <RequirementRequestModal
                 isOpen={isReqModalOpen}
                 onOpenChange={setIsReqModalOpen}
                 clienteId={client.true_id || client.id}

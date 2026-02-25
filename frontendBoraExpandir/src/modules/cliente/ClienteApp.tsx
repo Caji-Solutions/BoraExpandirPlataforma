@@ -87,9 +87,9 @@ export function ClienteApp() {
           fileSize: doc.tamanho,
           updatedAt: doc.atualizado_em ? new Date(doc.atualizado_em) : undefined,
           requerimento_id: doc.requerimento_id || undefined,
-          solicitado_pelo_juridico: doc.solicitado_pelo_juridico === true || 
-                                   (doc.solicitado_pelo_juridico as any) === 1 || 
-                                   (doc.solicitado_pelo_juridico as any) === 'true',
+          solicitado_pelo_juridico: doc.solicitado_pelo_juridico === true ||
+            (doc.solicitado_pelo_juridico as any) === 1 ||
+            (doc.solicitado_pelo_juridico as any) === 'true',
         }
       })
 
@@ -169,9 +169,12 @@ export function ClienteApp() {
     const fetchInitialData = async () => {
       setIsLoading(true)
       try {
-        // Fetch client - use mockClient.id as starting point for login simulation
-        const currentClient = await fetchClientData(mockClient.id)
-        const activeId = currentClient?.id || mockClient.id
+        const impersonatedClientId = localStorage.getItem('impersonatedClientId')
+        const startingId = impersonatedClientId || mockClient.id
+
+        // Fetch client - use startingId as starting point for login simulation
+        const currentClient = await fetchClientData(startingId)
+        const activeId = currentClient?.id || startingId
 
         // Fetch processos
         const processosRes = await fetch(`${API_BASE_URL}/cliente/${activeId}/processos`)
@@ -261,7 +264,7 @@ export function ClienteApp() {
     // Simulate file upload
     const newDocument: Document = {
       id: Date.now().toString(),
-      clientId: mockClient.id,
+      clientId: client.id,
       name: mockRequiredDocuments.find(req => req.type === documentType)?.name || 'Documento',
       type: documentType,
       status: 'analyzing',
@@ -279,7 +282,7 @@ export function ClienteApp() {
     // Add notification
     const newNotification: Notification = {
       id: Date.now().toString(),
-      clientId: mockClient.id,
+      clientId: client.id,
       type: 'info',
       title: 'Documento Recebido',
       message: `Seu documento "${newDocument.name}" foi recebido e está sendo analisado.`,
@@ -333,7 +336,7 @@ export function ClienteApp() {
   const handleUploadTranslation = (file: File, approvedDocumentId: string, targetLanguage: string) => {
     const newTranslation: TranslatedDocument = {
       id: Date.now().toString(),
-      clientId: mockClient.id,
+      clientId: client.id,
       approvedDocumentId,
       documentName: approvedDocuments.find(d => d.id === approvedDocumentId)?.name || 'Documento',
       sourceLanguage: approvedDocuments.find(d => d.id === approvedDocumentId)?.originalLanguage || 'PT',
@@ -347,7 +350,7 @@ export function ClienteApp() {
 
     const newNotification: Notification = {
       id: Date.now().toString(),
-      clientId: mockClient.id,
+      clientId: client.id,
       type: 'success',
       title: 'Tradução Enviada',
       message: `Sua tradução "${file.name}" foi enviada com sucesso.`,
@@ -365,7 +368,7 @@ export function ClienteApp() {
 
     const newNotification: Notification = {
       id: Date.now().toString(),
-      clientId: mockClient.id,
+      clientId: client.id,
       type: 'info',
       title: 'Solicitação de Orçamento Enviada',
       message: `Sua solicitação de orçamento para "${docNames}" foi enviada. Você receberá uma resposta em até 24 horas.`,
@@ -404,7 +407,7 @@ export function ClienteApp() {
 
     const newNotification: Notification = {
       id: Date.now().toString(),
-      clientId: mockClient.id,
+      clientId: client.id,
       type: 'success',
       title: 'Documentos Enviados para Apostilamento',
       message: 'Seus documentos foram enviados para a equipe administrativa iniciar o processo de apostilamento.',

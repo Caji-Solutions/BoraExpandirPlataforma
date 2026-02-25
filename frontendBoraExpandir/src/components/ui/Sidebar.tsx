@@ -112,6 +112,8 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen }: Sidebar
   const setOpen = setSidebarOpen || setLocalSidebarOpen
 
   const userName = activeProfile?.full_name || (typeof window !== 'undefined' && localStorage.getItem('userName')) || 'Usuário'
+  const impersonatedClientId = typeof window !== 'undefined' ? localStorage.getItem('impersonatedClientId') : null
+  const impersonatedClientName = typeof window !== 'undefined' ? localStorage.getItem('impersonatedClientName') : null
 
   const handleLogout = () => {
     try {
@@ -172,6 +174,28 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen }: Sidebar
               onClick={() => {
                 setImpersonatedProfile(null)
                 navigate('/adm')
+              }}
+              className="mt-2 flex items-center gap-1 text-xs text-amber-600 hover:text-amber-800 font-medium transition-colors"
+            >
+              <ArrowLeft className="h-3 w-3" />
+              Voltar ao Admin
+            </button>
+          </div>
+        )}
+
+        {/* Banner de impersonação - Super Admin visualizando como cliente */}
+        {!impersonatedProfile && impersonatedClientId && activeProfile?.role === 'super_admin' && (
+          <div className="mx-3 mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <p className="text-xs text-amber-600 font-medium">Visualizando como cliente:</p>
+            <p className="text-sm text-amber-700 font-semibold truncate capitalize">
+              {impersonatedClientName || 'Cliente'}
+            </p>
+            <button
+              onClick={() => {
+                localStorage.removeItem('impersonatedClientId')
+                localStorage.removeItem('impersonatedClientName')
+                // Se quisermos dar um refresh na tela para garantir voltar ao estado anterior ou redirecionar ao admin
+                navigate('/adm/dna')
               }}
               className="mt-2 flex items-center gap-1 text-xs text-amber-600 hover:text-amber-800 font-medium transition-colors"
             >
