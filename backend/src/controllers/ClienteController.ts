@@ -163,13 +163,77 @@ class ClienteController {
 
   async register(req: any, res: any) {
     try {
+      const { nome, email, whatsapp, parceiro_id, status, documento, endereco } = req.body
 
-      const { nome, email, whatsapp, parceiro_id, status } = req.body
-      const Cliente = { nome, email, whatsapp, parceiro_id, status } as ClienteDTO
-      const createdData = await ClienteRepository.register(Cliente)
-      return res.status(201).json(createdData)
-    } catch (error) {
-      throw error
+      if (!nome || !email || !whatsapp) {
+        return res.status(400).json({ message: 'Nome, email e WhatsApp são obrigatórios' })
+      }
+
+      // 1. Gerar senha temporária
+      const tempPassword = Math.random().toString(36).substring(2, 10)
+
+      // 2. Criar usuário no Auth do Supabase (utilizando admin para bypassar confirmação)
+      const { data: authData, error: authError } = await (await import('../config/SupabaseClient')).supabase.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          full_name: nome,
+          role: 'cliente',
+          temp_password: tempPassword
+        }
+      })
+
+      if (authError) {
+        console.error('Erro ao criar auth user para cliente:', authError.message)
+        if (authError.message.includes('already')) {
+          return res.status(409).json({ message: 'Já existe um usuário com este e-mail' })
+        }
+        return res.status(400).json({ message: authError.message })
+      }
+
+      const usuarioId = authData.user.id
+
+      // 3. Criar profile na tabela profiles (usando documento como cpf)
+      const { error: profileError } = await (await import('../config/SupabaseClient')).supabase
+        .from('profiles')
+        .upsert({
+          id: usuarioId,
+          full_name: nome,
+          email,
+          role: 'cliente',
+          telefone: whatsapp || req.body.telefone,
+          cpf: documento || null // Mapeia documento para CPF no profile
+        })
+
+      if (profileError) {
+        console.error('Erro ao criar profile para cliente:', profileError.message)
+        // Cleanup: deletar auth user se falhar o profile
+        await (await import('../config/SupabaseClient')).supabase.auth.admin.deleteUser(usuarioId)
+        return res.status(500).json({ message: 'Erro ao criar perfil de acesso' })
+      }
+
+      // 4. Registrar na tabela clientes
+      const clienteData: any = { 
+        nome, 
+        email, 
+        whatsapp, 
+        parceiro_id: parceiro_id || null, 
+        status: status || 'cadastrado'
+      }
+      
+      const createdData = await ClienteRepository.register(clienteData)
+
+      return res.status(201).json({
+        ...createdData,
+        loginInfo: {
+          email,
+          password: tempPassword
+        }
+      })
+    } catch (error: any) {
+      console.error('Erro no registro de cliente:', error)
+      return res.status(500).json({ message: 'Erro interno ao registrar cliente', error: error.message })
     }
   }
   async AttStatusClientebyWpp(req: any, res: any) {
@@ -928,6 +992,57 @@ class ClienteController {
       })
     } finally {
       console.log('=========================================')
+    }
+  }
+
+  async getClienteCredentials(req: any, res: any) {
+    try {
+      const { email } = req.params;
+
+      if (!email) {
+        return res.status(400).json({ message: 'E-mail é obrigatório' });
+      }
+
+      const { supabase } = await import('../config/SupabaseClient');
+      
+      // 1. Primeiro busca o ID na tabela profiles pelo email
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .single();
+      
+      if (profileError || !profile) {
+        // Fallback: Tenta listar usuários se não achar no profile (pode acontecer com usuários recém-criados ou sem profile)
+        const { data: usersData, error: listError } = await supabase.auth.admin.listUsers();
+        if (listError) throw listError;
+        
+        const targetUser = usersData.users.find(u => u.email === email);
+        if (!targetUser) {
+          return res.status(404).json({ message: 'Usuário não encontrado' });
+        }
+        
+        return res.status(200).json({
+          email: targetUser.email,
+          password: targetUser.user_metadata?.temp_password || null
+        });
+      }
+      
+      // 2. Com o ID, busca os metadados do Auth
+      const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(profile.id);
+      
+      if (authError || !authUser.user) {
+        return res.status(404).json({ message: 'Credenciais não encontradas no Auth' });
+      }
+
+      return res.status(200).json({
+        email: authUser.user.email,
+        password: authUser.user.user_metadata?.temp_password || null
+      });
+
+    } catch (error: any) {
+      console.error('Erro ao buscar credenciais:', error);
+      return res.status(500).json({ message: 'Erro ao buscar credenciais', error: error.message });
     }
   }
 }

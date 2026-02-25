@@ -16,6 +16,8 @@ import { Toaster } from './modules/adm/components/ui/toaster'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ProtectedRoute, roleRouteMap } from './components/ProtectedRoute'
 import LoginPage from './modules/shared/pages/LoginPage'
+import PaymentSuccess from './modules/shared/pages/PaymentSuccess'
+import PaymentCancel from './modules/shared/pages/PaymentCancel'
 
 import { useParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
@@ -109,6 +111,12 @@ function AppRouter() {
           <Route path="/parceiro/cadastro" element={<CadastroParceiro />} />
           <Route path="/indicado/:partnerId" element={<TelaIndicadoWrapper />} />
           <Route path="/r/:partnerId" element={<TelaIndicadoWrapper />} />
+
+          {/* Rotas de Pagamento */}
+          <Route path="/agendamento/sucesso" element={<PaymentSuccess />} />
+          <Route path="/agendamento/cancelado" element={<PaymentCancel />} />
+          <Route path="/agendamento/falha" element={<PaymentCancel />} />
+          <Route path="/agendamento/pendente" element={<PaymentSuccess />} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />

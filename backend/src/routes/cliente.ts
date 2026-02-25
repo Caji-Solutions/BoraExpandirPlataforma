@@ -37,6 +37,7 @@ cliente.post('/profile-photo', upload.single('file'), ClienteController.uploadPr
 
 cliente.get('/clientesbyparceiro/:parceiroId', ClienteController.getByParceiro.bind(ClienteController))
 cliente.get('/clientes', ClienteController.getAllClientes.bind(ClienteController))
+cliente.get('/credentials/:email', ClienteController.getClienteCredentials.bind(ClienteController))
 
 // Rotas de documentos
 cliente.get('/:clienteId', ClienteController.getCliente.bind(ClienteController))

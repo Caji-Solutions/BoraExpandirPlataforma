@@ -681,6 +681,37 @@ class JuridicoController {
             })
         }
     }
+    // POST /juridico/processo - Criar processo manualmente
+    async createProcess(req: any, res: any) {
+        try {
+            const { clienteId, tipoServico, status, etapaAtual, responsavelId } = req.body
+
+            if (!clienteId || !tipoServico) {
+                return res.status(400).json({ 
+                    message: 'clienteId e tipoServico são obrigatórios' 
+                })
+            }
+
+            const processo = await JuridicoRepository.createProcess({
+                clienteId,
+                tipoServico,
+                status,
+                etapaAtual,
+                responsavelId
+            })
+
+            return res.status(201).json({
+                message: 'Processo criado com sucesso',
+                data: processo
+            })
+        } catch (error: any) {
+            console.error('Erro ao criar processo no controller:', error)
+            return res.status(500).json({
+                message: 'Erro ao criar processo',
+                error: error.message
+            })
+        }
+    }
 }
 
 export default new JuridicoController()

@@ -132,9 +132,9 @@ class TraducoesController {
           tipo: 'orcamento',
           documentoIds: documentoIds.join(',')
         },
-        successUrl: successUrl || `${process.env.FRONTEND_URL}/dashboard?status=success`,
-        cancelUrl: cancelUrl || `${process.env.FRONTEND_URL}/dashboard?status=cancelled`,
-        currency: 'brl'
+        successUrl: successUrl || `${process.env.FRONTEND_URL}/agendamento/sucesso`,
+        cancelUrl: cancelUrl || `${process.env.FRONTEND_URL}/agendamento/cancelado`,
+        currency: 'eur'
       })
 
       return res.status(200).json(checkout)

@@ -889,6 +889,36 @@ class JuridicoRepository {
 
         return data || []
     }
+
+    // Criar um novo processo manualmente
+    async createProcess(params: {
+        clienteId: string
+        tipoServico: string
+        status?: string
+        etapaAtual?: number
+        responsavelId?: string
+    }): Promise<any> {
+        const { data, error } = await supabase
+            .from('processos')
+            .insert([{
+                cliente_id: params.clienteId,
+                tipo_servico: params.tipoServico,
+                status: params.status || 'in_progress',
+                etapa_atual: params.etapaAtual || 1,
+                responsavel_id: params.responsavelId || null,
+                criado_em: new Date().toISOString(),
+                atualizado_em: new Date().toISOString()
+            }])
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro ao criar processo manualmente:', error)
+            throw error
+        }
+
+        return data
+    }
 }
 
 export default new JuridicoRepository()

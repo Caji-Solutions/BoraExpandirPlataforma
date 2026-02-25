@@ -25,6 +25,7 @@ import { Home, FileText, Upload, GitBranch, Bell, Languages, Users, Calendar, Se
 import { Config } from '../../components/ui/Config'
 import { RequiredActionModal } from './components/RequiredActionModal'
 import { clienteService } from './services/clienteService'
+import { useAuth } from '../../contexts/AuthContext'
 
 export function ClienteApp() {
   const location = useLocation()
@@ -34,7 +35,9 @@ export function ClienteApp() {
   const [familyMembers, setFamilyMembers] = useState<{ id: string, name: string, email?: string, type: string }[]>([])
   const [processo, setProcesso] = useState<Process | null>(null)
   const [requerimentos, setRequerimentos] = useState<any[]>([])
+  const [requiredDocuments, setRequiredDocuments] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const { profile, activeProfile, isAuthenticated } = useAuth()
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
@@ -138,6 +141,15 @@ export function ClienteApp() {
     }
   }
 
+  const fetchRequiredDocuments = async (clientId: string = client.id) => {
+    try {
+      const result = await clienteService.getDocumentosRequeridos(clientId)
+      setRequiredDocuments(result || [])
+    } catch (error) {
+      console.error('Erro ao buscar documentos requeridos:', error)
+    }
+  }
+
   const fetchClientData = async (clientId: string = mockClient.id) => {
     try {
       const response = await fetch(`${API_BASE_URL}/cliente/${clientId}`)
@@ -153,7 +165,7 @@ export function ClienteApp() {
             phone: apiCliente.whatsapp,
             avatarUrl: apiCliente.foto_perfil,
             clientId: apiCliente.client_id,
-            createdAt: new Date(apiCliente.created_at)
+            createdAt: new Date(apiCliente.criado_em || apiCliente.created_at)
           }
           setClient(updatedClient)
           return updatedClient
@@ -170,11 +182,28 @@ export function ClienteApp() {
       setIsLoading(true)
       try {
         const impersonatedClientId = localStorage.getItem('impersonatedClientId')
-        const startingId = impersonatedClientId || mockClient.id
+        
+        let activeId = mockClient.id
 
-        // Fetch client - use startingId as starting point for login simulation
-        const currentClient = await fetchClientData(startingId)
-        const activeId = currentClient?.id || startingId
+        if (isAuthenticated && activeProfile) {
+          if (activeProfile.role === 'cliente') {
+            // Se for cliente logado, buscar pelo email dele
+            const res = await fetch(`${API_BASE_URL}/cliente/clientes`)
+            if (res.ok) {
+              const all = await res.json()
+              const me = (all.data || []).find((c: any) => c.email === activeProfile.email)
+              if (me) {
+                activeId = me.id
+              }
+            }
+          } else if (impersonatedClientId) {
+             activeId = impersonatedClientId
+          }
+        }
+
+        // Fetch client data
+        const currentClient = await fetchClientData(activeId)
+        const finalActiveId = currentClient?.id || activeId
 
         // Fetch processos
         const processosRes = await fetch(`${API_BASE_URL}/cliente/${activeId}/processos`)
@@ -226,10 +255,11 @@ export function ClienteApp() {
           setFamilyMembers([{ id: activeId, name: currentClient?.name || mockClient.name, email: currentClient?.email || mockClient.email, type: 'Titular' }])
         }
 
-        // Fetch other data using the active ID
-        await fetchDocuments(activeId)
-        await fetchRequerimentos(activeId)
-        await fetchNotificacoes(activeId)
+        // Fetch other data using the final active ID
+        await fetchDocuments(finalActiveId)
+        await fetchRequerimentos(finalActiveId)
+        await fetchNotificacoes(finalActiveId)
+        await fetchRequiredDocuments(finalActiveId)
       } catch (error) {
         console.error('Erro ao buscar dados iniciais:', error)
       } finally {
@@ -238,7 +268,7 @@ export function ClienteApp() {
     }
 
     fetchInitialData()
-  }, [])
+  }, [isAuthenticated, activeProfile?.id, activeProfile?.role])
 
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
   const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false)
@@ -502,7 +532,7 @@ export function ClienteApp() {
   }
 
   // Check if client has access
-  if (!mockClient.accessGranted) {
+  if (!client.accessGranted && !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="max-w-md w-full bg-white dark:bg-neutral-800 rounded-lg shadow-md p-8 text-center border border-gray-200 dark:border-neutral-700">
@@ -557,7 +587,7 @@ export function ClienteApp() {
           />
           <Route
             path="processo"
-            element={<ProcessTimeline process={processo!} requerimentos={requerimentos} familyMembers={familyMembers} />}
+            element={<ProcessTimeline process={processo} requerimentos={requerimentos} familyMembers={familyMembers} />}
           />
           <Route path="agendamento" element={<ClienteAgendamento client={client} />} />
           <Route
@@ -570,7 +600,7 @@ export function ClienteApp() {
                 processType={processo?.serviceType}
                 familyMembers={familyMembers}
                 documents={documents}
-                requiredDocuments={mockRequiredDocuments}
+                requiredDocuments={requiredDocuments}
                 requerimentos={requerimentos}
                 onUploadSuccess={async (data) => {
                   console.log('Upload concluído:', data)

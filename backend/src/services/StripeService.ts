@@ -18,6 +18,8 @@ interface CheckoutSessionParams {
     usuario_id?: string
     cliente_id?: string
     agendamento_id?: string
+    successUrl?: string
+    cancelUrl?: string
 }
 
 class StripeService {
@@ -71,8 +73,8 @@ class StripeService {
                 cliente_id: params.cliente_id || '',
                 agendamento_id: params.agendamento_id || '',
             },
-            success_url: `${process.env.FRONTEND_URL}/agendamento/sucesso?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${process.env.FRONTEND_URL}/agendamento/cancelado`,
+            success_url: params.successUrl || `${process.env.FRONTEND_URL}/agendamento/sucesso?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: params.cancelUrl || `${process.env.FRONTEND_URL}/agendamento/cancelado`,
         })
 
         if (!session.url) {

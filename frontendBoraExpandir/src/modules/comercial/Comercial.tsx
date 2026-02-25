@@ -105,10 +105,12 @@ function DashboardPage({
 
 function ClientesPage({
   clientes,
-  onShowCadastroCliente
+  onShowCadastroCliente,
+  onRowClick
 }: {
   clientes: Cliente[]
   onShowCadastroCliente: () => void
+  onRowClick: (cliente: Cliente) => void
 }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [timeRange, setTimeRange] = useState<TimeRange>('current_month')
@@ -236,11 +238,27 @@ function ClientesPage({
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-neutral-700">
                 {filteredClientes.map(cliente => (
-                  <tr key={cliente.id} className="hover:bg-gray-50 dark:hover:bg-neutral-700">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{cliente.nome}</td>
+                  <tr 
+                    key={cliente.id} 
+                    className="hover:bg-gray-50 dark:hover:bg-neutral-700 cursor-pointer transition-colors"
+                    onClick={() => onRowClick(cliente)}
+                    title="Clique para ver credenciais de acesso"
+                  >
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-700 dark:text-emerald-400 font-bold text-xs">
+                          {cliente.nome.charAt(0).toUpperCase()}
+                        </div>
+                        {cliente.nome}
+                      </div>
+                    </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{cliente.email}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{cliente.telefone}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{cliente.documento}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{cliente.whatsapp || (cliente as any).telefone || '-'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      <Badge variant="outline" className="font-mono text-[10px]">
+                        {cliente.documento || '-'}
+                      </Badge>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -447,6 +465,9 @@ export default function Comercial() {
   const [showRequerimento, setShowRequerimento] = useState(false)
   const [contratoParaAssinar, setContratoParaAssinar] = useState<Contrato | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [selectedClientDetail, setSelectedClientDetail] = useState<any | null>(null)
+  const [clientCredentials, setClientCredentials] = useState<any | null>(null)
+  const [isLoadingCredentials, setIsLoadingCredentials] = useState(false)
 
   // Data states
   const [clientes, setClientes] = useState<Cliente[]>([])
@@ -509,14 +530,19 @@ export default function Comercial() {
 
   // Handlers
   const handleSaveCliente = async (clienteData: ClienteFormData) => {
-    // TODO: Integrar com backend
-    const novoCliente: Cliente = {
-      id: Math.random().toString(36).substring(7),
-      ...clienteData,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    try {
+      const response = await comercialService.register(clienteData)
+      const novoCliente: Cliente = {
+        ...response,
+        created_at: response.criado_em || new Date().toISOString(),
+        updated_at: response.atualizado_em || new Date().toISOString(),
+      }
+      setClientes(prev => [novoCliente, ...prev])
+      return response // Retorna a resposta completa incluindo loginInfo
+    } catch (err: any) {
+      console.error('Erro ao salvar cliente:', err)
+      throw err
     }
-    setClientes(prev => [...prev, novoCliente])
   }
 
   const handleSaveContrato = async (contratoData: ContratoFormData) => {
@@ -645,6 +671,20 @@ export default function Comercial() {
               <ClientesPage
                 clientes={clientes}
                 onShowCadastroCliente={() => setShowCadastroCliente(true)}
+                onRowClick={async (c) => {
+                  setClientCredentials(null)
+                  setSelectedClientDetail(c)
+                  setIsLoadingCredentials(true)
+                  try {
+                    const creds = await comercialService.getClienteCredentials(c.email)
+                    setClientCredentials(creds)
+                  } catch (e) {
+                    console.error(e)
+                    setClientCredentials({ email: c.email, password: 'Erro ao recuperar' })
+                  } finally {
+                    setIsLoadingCredentials(false)
+                  }
+                }}
               />
             }
           />
@@ -689,6 +729,28 @@ export default function Comercial() {
         <CadastroCliente
           onClose={() => setShowCadastroCliente(false)}
           onSave={handleSaveCliente}
+        />
+      )}
+
+      {selectedClientDetail && (
+        <CadastroCliente
+          onClose={() => {
+            setSelectedClientDetail(null)
+            setClientCredentials(null)
+          }}
+          onSave={handleSaveCliente}
+          initialData={selectedClientDetail}
+          initialSuccessData={clientCredentials ? {
+            loginInfo: {
+              email: clientCredentials.email,
+              password: clientCredentials.password || 'Não disponível'
+            }
+          } : isLoadingCredentials ? {
+            loginInfo: {
+              email: selectedClientDetail.email,
+              password: 'Carregando...'
+            }
+          } : null}
         />
       )}
 

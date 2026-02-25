@@ -17,6 +17,9 @@ interface CheckoutPreferenceParams {
     usuario_id?: string
     cliente_id?: string
     agendamento_id?: string
+    successUrl?: string
+    cancelUrl?: string
+    failureUrl?: string
 }
 
 class MercadoPagoService {
@@ -73,8 +76,8 @@ class MercadoPagoService {
                     agendamento_id: params.agendamento_id || ''
                 },
                 back_urls: {
-                    success: `${process.env.FRONTEND_URL}/agendamento/sucesso`,
-                    failure: `${process.env.FRONTEND_URL}/agendamento/falha`,
+                    success: params.successUrl || `${process.env.FRONTEND_URL}/agendamento/sucesso`,
+                    failure: params.failureUrl || `${process.env.FRONTEND_URL}/agendamento/falha`,
                     pending: `${process.env.FRONTEND_URL}/agendamento/pendente`
                 },
                 auto_return: 'approved',

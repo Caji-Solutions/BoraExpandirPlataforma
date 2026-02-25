@@ -7,7 +7,7 @@ export interface UserProfile {
     full_name: string
     email: string
     telefone?: string
-    role: 'comercial' | 'juridico' | 'administrativo' | 'tradutor' | 'super_admin'
+    role: 'comercial' | 'juridico' | 'administrativo' | 'tradutor' | 'super_admin' | 'cliente'
     nivel?: 'C1' | 'C2' | null
     is_supervisor?: boolean
     avatar_url?: string

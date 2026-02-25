@@ -275,7 +275,7 @@ class TraducoesRepository {
     const { data: documentos, error: docError } = await supabase
       .from('documentos')
       .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id')
-      .in('status', ['TRANSLATION_DONE', 'APPROVED_TRANSLATION'])
+      .in('status', ['APPROVED'])
       .order('atualizado_em', { ascending: false })
 
     if (docError) {
@@ -344,7 +344,7 @@ class TraducoesRepository {
     const { data: doc, error: updateError } = await supabase
       .from('documentos')
       .update({
-        status: 'TRANSLATION_DONE',
+        status: 'APPROVED',
         traducao_url: publicUrl,
         traducao_storage_path: dados.filePath,
         traducao_nome_original: dados.nomeOriginal,

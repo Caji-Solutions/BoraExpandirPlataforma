@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
-import { Clock, ShoppingCart, Check, ChevronLeft, ChevronRight, Search, X, Trash2 } from 'lucide-react'
+import { Clock, ShoppingCart, Check, ChevronLeft, ChevronRight, Search, X, Trash2, Loader2 } from 'lucide-react'
 // import { useToast } from '../../components/Toast'
 // Update the import path below if Toast is located elsewhere:
 import { useToast } from '../../components/ui/Toast'
@@ -7,6 +7,7 @@ import { SUCESSO, ERRO, AVISO } from '../../components/MockFrases'
 import { CalendarPicker } from '../../components/ui/CalendarPicker'
 import { AgendamentoConfirmacaoModal } from './components/AgendamentoConfirmacaoModal'
 import { useAuth } from '../../contexts/AuthContext'
+import { catalogService, Service } from '../adm/services/catalogService'
 import comercialService from './services/comercialService'
 
 interface Cliente {
@@ -22,6 +23,7 @@ interface Produto {
   descricao: string
   valor: number
   imagem?: string
+  isEuro?: boolean
 }
 
 interface Agendamento {
@@ -34,42 +36,6 @@ interface Agendamento {
   linkPagamento?: string
   status: 'agendado' | 'confirmado' | 'pago'
 }
-
-const mockClientes: Cliente[] = [
-  { id: '1', nome: 'João Silva', email: 'joao@example.com', telefone: '(11) 99999-1111' },
-  { id: '2', nome: 'Maria Santos', email: null, telefone: '(11) 99999-2222' }, // Lead da IA sem email
-  { id: '3', nome: 'Pedro Oliveira', email: 'pedro@example.com', telefone: '(11) 99999-3333' },
-  { id: '4', nome: 'Ana Costa', email: null, telefone: '(11) 99999-4444' }, // Lead da IA sem email
-  { id: '5', nome: 'Carlos Mendes', email: 'carlos@example.com', telefone: '(11) 99999-5555' },
-  { id: '6', nome: 'Lucia Ferreira', email: null, telefone: '(11) 99999-6666' }, // Lead da IA sem email
-]
-
-const mockProdutos: Produto[] = [
-  {
-    id: '1',
-    nome: 'Consultoria Empresarial 1h',
-    descricao: 'Sessão de consultoria empresarial com especialista',
-    valor: 300,
-  },
-  {
-    id: '2',
-    nome: 'Mentoria de Negócios 2h',
-    descricao: 'Mentoria intensiva para estratégia de negócios',
-    valor: 500,
-  },
-  {
-    id: '3',
-    nome: 'Análise de Mercado',
-    descricao: 'Análise completa do seu mercado e concorrência',
-    valor: 800,
-  },
-  {
-    id: '4',
-    nome: 'Workshop Expansão Internacional',
-    descricao: 'Workshop sobre expansão para mercados internacionais',
-    valor: 1200,
-  },
-]
 
 const HORARIOS_DISPONIVEIS = [
   '08:00',
@@ -108,24 +74,52 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const { activeProfile } = useAuth()
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
+  const [produtos, setProdutos] = useState<Produto[]>([])
+  const [loadingProdutos, setLoadingProdutos] = useState(false)
 
   useEffect(() => {
-    async function fetchClientes() {
+    async function fetchInitialData() {
       try {
-        const data = await comercialService.getAllClientes()
-        // Map backend Cliente to local Cliente interface if needed
-        const mapped = data.map(c => ({
+        setLoadingProdutos(true)
+        // Fetch Clientes e Produtos em paralelo
+        const [clientesData, produtosData] = await Promise.all([
+          comercialService.getAllClientes(),
+          catalogService.getCatalogServices()
+        ])
+
+        // Map Clientes
+        const mappedClientes = clientesData.map((c: any) => ({
           id: c.id,
           nome: c.nome,
           email: c.email || null,
           telefone: c.telefone
         }))
-        setClientes(mapped)
+        setClientes(mappedClientes)
+
+        // Map Produtos (Services) transformando para a interface Produto
+        // Filtrar apenas os que possuem showInCommercial === true
+        const mappedProdutos = produtosData
+          .filter((s: Service) => s.showInCommercial)
+          .map((s: Service) => ({
+            id: s.id,
+            nome: s.name,
+            descricao: s.documents?.length 
+              ? `Requer ${s.documents.length} documentos. Duração: ${s.duration}` 
+              : `Duração estimada: ${s.duration}`,
+            valor: Number(s.value),
+            show: s.showInCommercial,
+            isEuro: true // No catálogo atual os valores são em Euro
+          }))
+        setProdutos(mappedProdutos)
+
       } catch (err) {
-        console.error("Erro ao carregar clientes para agendamento:", err)
+        console.error("Erro ao carregar dados iniciais:", err)
+        error("Erro ao carregar serviços ou clientes.")
+      } finally {
+        setLoadingProdutos(false)
       }
     }
-    fetchClientes()
+    fetchInitialData()
   }, [])
   const [dataSelecionada, setDataSelecionada] = useState<Date | undefined>(undefined)
   const [horaSelecionada, setHoraSelecionada] = useState<string>('')
@@ -534,45 +528,50 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
             {/* PASSO 1: Seleção de Produto */}
             {passo === 'produto' && (
               <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Selecione o Produto</h3>
-                <div className="space-y-3">
-                  {(isClientView ? [
-                    {
-                      id: 'consultoria-euro',
-                      nome: 'Consultoria Empresarial',
-                      descricao: 'Sessão de consultoria estratégica com especialista (Valor em Euro)',
-                      valor: 50, // EUR
-                      isEuro: true
-                    }
-                  ] : mockProdutos).map((produto: any) => (
-                    <button
-                      key={produto.id}
-                      onClick={() => handleSelecionarProduto(produto)}
-                      className={`w-full p-4 rounded-lg border-2 text-left transition-all ${produtoSelecionado?.id === produto.id
-                        ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-500/10'
-                        : 'border-gray-200 dark:border-neutral-600 hover:border-emerald-300 bg-gray-50 dark:bg-neutral-700 hover:bg-white dark:hover:bg-neutral-600'}`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-semibold text-gray-900 dark:text-white">{produto.nome}</h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{produto.descricao}</p>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Selecione o Serviço</h3>
+                {loadingProdutos ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                    <Loader2 className="h-10 w-10 animate-spin mb-4 opacity-20" />
+                    <p>Carregando catálogo de serviços...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {produtos.map((produto: any) => (
+                      <button
+                        key={produto.id}
+                        onClick={() => handleSelecionarProduto(produto)}
+                        className={`w-full p-4 rounded-lg border-2 text-left transition-all ${produtoSelecionado?.id === produto.id
+                          ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-500/10'
+                          : 'border-gray-200 dark:border-neutral-600 hover:border-emerald-300 bg-gray-50 dark:bg-neutral-700 hover:bg-white dark:hover:bg-neutral-600'}`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-semibold text-gray-900 dark:text-white">{produto.nome}</h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{produto.descricao}</p>
+                          </div>
+                          <div className="text-right">
+                            {produto.isEuro ? (
+                              <>
+                                <p className="text-xl font-bold text-emerald-600">€ {produto.valor.toFixed(2)}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  (Aprox. R$ {(produto.valor * (exchangeRate || 6.27)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                                </p>
+                              </>
+                            ) : (
+                              <p className="text-xl font-bold text-emerald-600">R$ {produto.valor}</p>
+                            )}
+                          </div>
                         </div>
-                        <div className="text-right">
-                          {produto.isEuro ? (
-                            <>
-                              <p className="text-xl font-bold text-emerald-600">€ {produto.valor.toFixed(2)}</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                (Aprox. R$ {(produto.valor * (exchangeRate || 6.27)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
-                              </p>
-                            </>
-                          ) : (
-                            <p className="text-xl font-bold text-emerald-600">R$ {produto.valor}</p>
-                          )}
-                        </div>
+                      </button>
+                    ))}
+                    {produtos.length === 0 && (
+                      <div className="text-center py-12 border-2 border-dashed rounded-xl opacity-30">
+                        <Search className="h-12 w-12 mx-auto mb-2" />
+                        <p className="font-bold">Nenhum serviço disponível no catálogo.</p>
                       </div>
-                    </button>
-                  ))}
-                </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

@@ -8,6 +8,7 @@ export const roleRouteMap: Record<string, string> = {
     administrativo: '/financeiro',
     tradutor: '/tradutor',
     super_admin: '/adm',
+    cliente: '/cliente',
 }
 
 interface ProtectedRouteProps {

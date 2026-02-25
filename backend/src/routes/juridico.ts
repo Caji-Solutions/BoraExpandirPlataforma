@@ -55,6 +55,9 @@ juridico.get('/processos/por-responsavel/:responsavelId', JuridicoController.get
 // Atualizar etapa do processo
 juridico.patch('/processo/:processoId/etapa', JuridicoController.updateEtapaProcesso.bind(JuridicoController))
 
+// Criar processo manualmente
+juridico.post('/processo', JuridicoController.createProcess.bind(JuridicoController))
+
 // =============================================
 // ROTAS DE CLIENTES
 // =============================================

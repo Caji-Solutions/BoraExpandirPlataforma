@@ -77,5 +77,16 @@ export const clienteService = {
     }
 
     return response.json();
+  },
+
+  async getDocumentosRequeridos(clienteId: string) {
+    const response = await fetch(`${API_BASE_URL}/cliente/${clienteId}/documentos-requeridos`);
+    
+    if (!response.ok) {
+      throw new Error('Falha ao buscar documentos requeridos');
+    }
+    
+    const result = await response.json();
+    return result.data || [];
   }
 };

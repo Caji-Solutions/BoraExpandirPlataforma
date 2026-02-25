@@ -14,6 +14,7 @@ import juridico from './routes/juridico'
 import traducoes from './routes/traducoes'
 import config from './routes/config'
 import authRoutes from './routes/auth'
+import admRoutes from './routes/adm'
 
 dotenv.config()
 
@@ -45,6 +46,7 @@ app.use('/comercial', comercial)
 app.use('/juridico', juridico)
 app.use('/traducoes', traducoes)
 app.use('/configuracoes', config)
+app.use('/adm', admRoutes)
 
 app.post('/leads', (req, res) => {
   const ClienteController = require('./controllers/ClienteController').default

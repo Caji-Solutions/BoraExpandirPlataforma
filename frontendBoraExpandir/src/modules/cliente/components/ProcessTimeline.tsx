@@ -2,11 +2,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Badge } from './ui/badge'
 import { Progress } from './ui/progress'
 import { CheckCircle, Clock, AlertCircle, FileText } from 'lucide-react'
-import { Process } from '../types'
+import { Process, ProcessStep } from '../types'
 import { cn, formatDate } from '../lib/utils'
 
 interface ProcessTimelineProps {
-  process: Process
+  process: Process | null
   requerimentos?: any[]
   familyMembers?: { id: string, name: string, type: string }[]
 }
@@ -48,17 +48,59 @@ const stepLabels = {
 }
 
 export function ProcessTimeline({ process, requerimentos = [], familyMembers = [] }: ProcessTimelineProps) {
-  if (!process) return <div className="p-8 text-center text-gray-500">Carregando processo...</div>
+  // Se não houver processo, criamos uma estrutura "mock" para exibir a primeira etapa (Iniciado/Contrato)
+  const defaultSteps: ProcessStep[] = [
+    { id: 1, name: "Iniciado", description: "Aguardando assinatura do contrato e delegação de responsável.", status: 'in_progress' as const },
+    { id: 2, name: "Documentação", description: "Fase de coleta e análise de documentos.", status: 'pending' as const },
+    { id: 3, name: "Consultoria", description: "Análise técnica e consultoria especializada.", status: 'pending' as const },
+    { id: 4, name: "Imigração", description: "Processo em fase final de imigração.", status: 'pending' as const }
+  ];
+
+  const currentProcess: Process = process || {
+    id: 'not-started',
+    clientId: 'unknown',
+    serviceType: 'Processo em Abertura',
+    currentStep: 1,
+    steps: defaultSteps,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
 
   const pendingRequerimentos = requerimentos.filter(r => r.status === 'pendente')
   const hasPendingReq = pendingRequerimentos.length > 0
 
-  const completedSteps = process.steps?.filter(step => step.status === 'completed').length || 0
-  const totalSteps = process.steps?.length || 0
+  const completedSteps = currentProcess.steps?.filter(s => s.status === 'completed').length || 0
+  const totalSteps = currentProcess.steps?.length || 0
   const progressPercentage = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0
 
   return (
     <div className="space-y-6">
+      {!process && (
+        <Card className="bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800 shadow-sm animate-in fade-in slide-in-from-top duration-500">
+          <CardContent className="p-6">
+            <div className="flex items-start space-x-4">
+              <div className="p-2 bg-amber-100 dark:bg-amber-900/40 rounded-full">
+                <Clock className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-amber-800 dark:text-amber-300">
+                  Processo em Abertura
+                </h3>
+                <p className="text-amber-700 dark:text-amber-400 mt-1">
+                  Seu processo oficial ainda não foi iniciado. Isso acontecerá automaticamente após a aprovação da sua ficha e a **assinatura do contrato**.
+                </p>
+                <div className="mt-4 p-3 bg-white dark:bg-neutral-800 rounded-lg border border-amber-100 dark:border-amber-900/30">
+                  <div className="flex items-center space-x-2 text-sm font-medium text-amber-600 dark:text-amber-400">
+                    <AlertCircle className="w-4 h-4" />
+                    <span>Status: Aguardando assinatura de contrato</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
@@ -66,7 +108,7 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
             <span>Andamento do Processo</span>
           </CardTitle>
           <CardDescription>
-            {process.serviceType} • Iniciado em {formatDate(process.createdAt)}
+            {currentProcess.serviceType} • {process ? `Iniciado em ${formatDate(currentProcess.createdAt)}` : 'Aguardando formalização'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -85,10 +127,10 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
       </Card>
 
       <div className="space-y-4">
-        {process.steps.map((step, index) => {
+        {currentProcess.steps.map((step, index) => {
           const StepIcon = stepIcons[step.status] || Clock
-          const isLast = index === process.steps.length - 1
-          const isActive = process.currentStep === step.id
+          const isLast = index === currentProcess.steps.length - 1
+          const isActive = currentProcess.currentStep === step.id
 
           return (
             <div key={step.id} className="relative">
@@ -251,9 +293,11 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
             <div>
               <h3 className="font-semibold text-blue-900 dark:text-blue-200">Próximos Passos</h3>
               <p className="text-blue-700 dark:text-blue-300 text-sm">
-                {process.currentStep < totalSteps 
-                  ? `Aguarde enquanto trabalhamos na etapa "${process.steps[process.currentStep - 1]?.name}".` 
-                  : 'Seu processo foi concluído com sucesso!'
+                {!process 
+                  ? 'O contrato será enviado para seu e-mail em breve para assinatura digital.'
+                  : currentProcess.currentStep < totalSteps 
+                    ? `Aguarde enquanto trabalhamos na etapa "${currentProcess.steps[currentProcess.currentStep - 1]?.name}".` 
+                    : 'Seu processo foi concluído com sucesso!'
                 }
               </p>
             </div>

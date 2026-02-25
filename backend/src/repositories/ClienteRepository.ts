@@ -602,7 +602,19 @@ class ClienteRepository {
             throw error
         }
 
-        return data || []
+        if (!data || data.length === 0) return []
+
+        // Fetch profiles to get CPF/documento
+        const { data: profiles } = await supabase
+            .from('profiles')
+            .select('email, cpf')
+        
+        const cpfMap = new Map(profiles?.map(p => [p.email, p.cpf]) || [])
+
+        return data.map(c => ({
+            ...c,
+            documento: cpfMap.get(c.email) || ''
+        }))
     }
 
     // ========== PROFILE PHOTO ==========

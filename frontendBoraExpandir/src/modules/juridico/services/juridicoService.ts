@@ -462,6 +462,32 @@ export async function getEstatisticas(): Promise<any> {
     return result.data;
 }
 
+/**
+ * Cria um novo processo manualmente
+ */
+export async function createProcess(payload: {
+  clienteId: string;
+  tipoServico: string;
+  status?: string;
+  etapaAtual?: number;
+  responsavelId?: string;
+}): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/juridico/processo`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Erro ao criar processo');
+  }
+
+  return response.json();
+}
+
 export default {
     getProcessos,
     getProcessosByResponsavel,
@@ -484,6 +510,7 @@ export default {
     getRequerimentosByProcesso,
     getRequerimentosByCliente,
     updateRequerimentoStatus,
-    getEstatisticas
+    getEstatisticas,
+    createProcess
 };
 
