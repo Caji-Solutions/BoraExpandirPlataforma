@@ -32,8 +32,8 @@ export default function LeadCapturePage({ partnerName, partnerId, partnerAvatarU
 		if (!nome.trim() || !email.trim() || !whats.trim()) return;
 		setLoading(true);
 		try {
-			// Salvar lead no backend
-			const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/cliente/register`, {
+			// Salvar lead no backend (sem criar conta de auth)
+			const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/cliente/register-lead`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -41,7 +41,7 @@ export default function LeadCapturePage({ partnerName, partnerId, partnerAvatarU
 					email,
 					whatsapp: whats,
 					parceiro_id: partnerId,
-                    status: 'prospect'
+                    status: 'LEAD'
 				}),
 			});
 

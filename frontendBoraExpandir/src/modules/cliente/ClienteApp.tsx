@@ -165,6 +165,7 @@ export function ClienteApp() {
             phone: apiCliente.whatsapp,
             avatarUrl: apiCliente.foto_perfil,
             clientId: apiCliente.client_id,
+            status: apiCliente.status,
             createdAt: new Date(apiCliente.criado_em || apiCliente.created_at)
           }
           setClient(updatedClient)
@@ -187,15 +188,7 @@ export function ClienteApp() {
 
         if (isAuthenticated && activeProfile) {
           if (activeProfile.role === 'cliente') {
-            // Se for cliente logado, buscar pelo email dele
-            const res = await fetch(`${API_BASE_URL}/cliente/clientes`)
-            if (res.ok) {
-              const all = await res.json()
-              const me = (all.data || []).find((c: any) => c.email === activeProfile.email)
-              if (me) {
-                activeId = me.id
-              }
-            }
+            activeId = activeProfile.id
           } else if (impersonatedClientId) {
              activeId = impersonatedClientId
           }
@@ -278,7 +271,8 @@ export function ClienteApp() {
   const [isRequiredModalOpen, setIsRequiredModalOpen] = useState(false)
 
   const unreadNotifications = notifications.filter(n => !n.read).length
-  const isPartnerOnly = !!mockClient.isPartner && mockClient.isClient === false
+  // Um usuário é considerado "Apenas Parceiro" se o seu status for 'parceiro'
+  const isPartnerOnly = client.status === 'parceiro';
 
 
   const handleCloseRequiredModal = () => {
@@ -576,13 +570,20 @@ export function ClienteApp() {
           <Route
             index
             element={
-              <Dashboard
-                client={client}
-                documents={documents}
-                process={processo}
-                requerimentos={requerimentos}
-                notifications={notifications}
-              />
+              isPartnerOnly ? (
+                <PartnerDashboard 
+                  client={client} 
+                  onBecomeClient={handleBecomeClient} 
+                />
+              ) : (
+                <Dashboard
+                  client={client}
+                  documents={documents}
+                  process={processo}
+                  requerimentos={requerimentos}
+                  notifications={notifications}
+                />
+              )
             }
           />
           <Route

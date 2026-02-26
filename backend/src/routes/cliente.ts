@@ -31,6 +31,7 @@ const upload = multer({
 })
 
 cliente.post('/register', ClienteController.register.bind(ClienteController))
+cliente.post('/register-lead', ClienteController.registerLead.bind(ClienteController))
 cliente.post('/attstatusbywpp', ClienteController.AttStatusClientebyWpp.bind(ClienteController))
 cliente.post('/uploadDoc', upload.single('file'), ClienteController.uploadDoc.bind(ClienteController))
 cliente.post('/profile-photo', upload.single('file'), ClienteController.uploadProfilePhoto.bind(ClienteController))

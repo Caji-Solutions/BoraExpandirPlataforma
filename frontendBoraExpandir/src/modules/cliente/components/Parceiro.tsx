@@ -1,33 +1,48 @@
-import { useMemo, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Copy, Check } from 'lucide-react';
-import { mockClient, mockPartnerMetrics } from '../lib/mock-data';
 import { Badge } from '../../../components/ui/Badge';
+import { Client } from '../types';
+import { parceiroService } from '../services/parceiroService';
 
 const statusConfig = {
   prospect: { variant: 'secondary' as const, label: 'Prospect' },
   'em-processo': { variant: 'default' as const, label: 'Em Processo' },
   confirmado: { variant: 'success' as const, label: 'Confirmado' },
   concluido: { variant: 'success' as const, label: 'Concluído' },
+  LEAD: { variant: 'secondary' as const, label: 'Lead' },
+  parceiro: { variant: 'secondary' as const, label: 'Parceiro' },
+  cadastrado: { variant: 'secondary' as const, label: 'Cadastrado' },
 };
-
-
-
-
-import { Client } from '../types';
 
 interface ParceiroProps {
   client: Client;
 }
 
 export default function Parceiro({ client }: ParceiroProps) {
-  const metrics = useMemo(() => mockPartnerMetrics, []);
+  const [metrics, setMetrics] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      if (!client?.id) return;
+      try {
+        setIsLoading(true);
+        const data = await parceiroService.getMetrics(client.id);
+        setMetrics(data);
+      } catch (error) {
+        console.error('Erro ao buscar métricas:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMetrics();
+  }, [client?.id]);
 
   // O ID agora vem da coluna client_id (mapeado para client.clientId no frontend)
-  // Se por acaso não estiver preenchido, usamos o id padrão (UUID)
   const displayId = client.clientId || client.id;
-  const referralLink = `${window.location.origin}/r/${displayId}`;
-
-  const [copied, setCopied] = useState(false);
+  const referralLink = `${window.location.origin}/indicado/${displayId}`;
 
   const handleCopyLink = () => {
     if (referralLink) {
@@ -35,7 +50,16 @@ export default function Parceiro({ client }: ParceiroProps) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
-  }; 
+  };
+
+  if (isLoading || !metrics) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2">Carregando métricas...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -97,8 +121,8 @@ export default function Parceiro({ client }: ParceiroProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-neutral-700">
-              {metrics.referralList?.map((referral) => {
-                const statusInfo = statusConfig[referral.status as keyof typeof statusConfig];
+              {metrics.referralList?.map((referral: any) => {
+                const statusInfo = statusConfig[referral.status as keyof typeof statusConfig] || { variant: 'secondary' as const, label: referral.status || 'Pendente' };
                 return (
                   <tr key={referral.id} className="hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{referral.name}</td>

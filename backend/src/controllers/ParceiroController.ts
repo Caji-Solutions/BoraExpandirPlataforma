@@ -61,13 +61,29 @@ class ParceiroController {
         }
     }
 
-    async getClientsByParceiroId(parceiroId: string) {
+    async getClientsByParceiroId(req: any, res: any) {
         try {
-            // Implementar lógica para buscar clientes associados ao parceiro
-            // Por enquanto, retorna um array vazio
-            return [];
-        } catch (error) {
-            throw error;
+            const { id } = req.params;
+            if (!id) return res.status(400).json({ message: 'ID do parceiro é obrigatório' });
+            
+            const clients = await ParceiroRepository.getMetrics(id);
+            return res.status(200).json(clients.referralList);
+        } catch (error: any) {
+            console.error('Erro ao buscar clientes do parceiro:', error);
+            return res.status(500).json({ message: 'Erro ao buscar clientes do parceiro', error: error.message });
+        }
+    }
+
+    async getMetrics(req: any, res: any) {
+        try {
+            const { id } = req.params;
+            if (!id) return res.status(400).json({ message: 'ID do parceiro é obrigatório' });
+
+            const metrics = await ParceiroRepository.getMetrics(id);
+            return res.status(200).json(metrics);
+        } catch (error: any) {
+            console.error('Erro ao buscar métricas do parceiro:', error);
+            return res.status(500).json({ message: 'Erro ao buscar métricas do parceiro', error: error.message });
         }
     }
 

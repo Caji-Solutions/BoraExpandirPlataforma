@@ -25,6 +25,7 @@ import { useState, useEffect } from 'react'
 function TelaIndicadoWrapper() {
   const { partnerId } = useParams<{ partnerId: string }>()
   const [partnerName, setPartnerName] = useState('Parceiro')
+  const [realPartnerId, setRealPartnerId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -34,15 +35,16 @@ function TelaIndicadoWrapper() {
       .then(res => res.json())
       .then(data => {
         if (data?.nome) setPartnerName(data.nome)
+        if (data?.id) setRealPartnerId(data.id)
       })
       .catch(() => setPartnerName('Parceiro'))
       .finally(() => setLoading(false))
   }, [partnerId])
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Carregando...</div>
-  if (!partnerId) return <div className="min-h-screen flex items-center justify-center">Link inválido</div>
+  if (!partnerId || !realPartnerId) return <div className="min-h-screen flex items-center justify-center">Link inválido</div>
 
-  return <TelaIndicado partnerName={partnerName} partnerId={partnerId} />
+  return <TelaIndicado partnerName={partnerName} partnerId={realPartnerId} />
 }
 
 // Componente que redireciona baseado no role do usuário logado

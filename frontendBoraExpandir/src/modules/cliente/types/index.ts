@@ -6,6 +6,7 @@ export interface Client {
   serviceType: string;
   paymentStatus: 'pending' | 'confirmed' | 'failed';
   accessGranted: boolean;
+  status?: string;
   isPartner?: boolean;
   isClient?: boolean;
   createdAt: Date;
@@ -17,7 +18,7 @@ export interface Referral {
   id: string;
   name: string;
   email: string;
-  status: 'prospect' | 'em-processo' | 'confirmado' | 'concluido';
+  status: 'LEAD' | 'prospect' | 'em-processo' | 'confirmado' | 'concluido';
   service: string;
   referredDate: Date;
   conversionDate?: Date;
@@ -129,6 +130,7 @@ export interface RequiredDocument {
 
 export interface ApprovedDocument {
   id: string;
+  author_id?: string;
   clientId: string;
   name: string;
   originalLanguage: string;

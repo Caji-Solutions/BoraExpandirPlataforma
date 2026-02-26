@@ -12,6 +12,7 @@ export const mockClient: Client = {
   accessGranted: true,
   isPartner: false,
   isClient: true,
+  clientId: '',
   createdAt: new Date('2024-12-22'),
 }
 
