@@ -270,6 +270,20 @@ export async function getDocumentosByProcesso(processoId: string): Promise<any[]
 }
 
 /**
+ * Busca o catálogo de serviços
+ */
+export async function getCatalogServices(): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/adm/catalog`);
+
+  if (!response.ok) {
+    throw new Error('Erro ao buscar catálogo de serviços');
+  }
+
+  const result = await response.json();
+  return result.data || [];
+}
+
+/**
  * Busca dependentes de um cliente
  */
 export async function getDependentes(clienteId: string): Promise<any[]> {
@@ -488,6 +502,60 @@ export async function createProcess(payload: {
   return response.json();
 }
 
+/**
+ * Cria uma nova assessoria jurídica
+ */
+export async function createAssessoria(payload: {
+  clienteId: string;
+  respostas: any;
+  observacoes?: string;
+  responsavelId?: string;
+  servicoId?: string;
+}): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/juridico/assessoria`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Erro ao criar assessoria jurídica');
+  }
+
+  return response.json();
+}
+
+/**
+ * Busca a última assessoria de um cliente
+ */
+export async function getLatestAssessoria(clienteId: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/juridico/assessoria/${clienteId}`);
+
+  if (!response.ok) {
+    throw new Error('Erro ao buscar assessoria');
+  }
+
+  const result = await response.json();
+  return result.data;
+}
+
+/**
+ * Busca o processo ativo de um cliente
+ */
+export async function getProcessoByCliente(clienteId: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/juridico/processo-cliente/${clienteId}`);
+
+  if (!response.ok) {
+    throw new Error('Erro ao buscar processo do cliente');
+  }
+
+  const result = await response.json();
+  return result.data;
+}
+
 export default {
     getProcessos,
     getProcessosByResponsavel,
@@ -498,6 +566,7 @@ export default {
     getClientesVagos,
     getAllClientesComResponsavel,
     getClientesByResponsavel,
+    getCatalogServices,
     getFormulariosWithStatus,
     updateFormularioClienteStatus,
     getDocumentosCliente,
@@ -511,6 +580,42 @@ export default {
     getRequerimentosByCliente,
     updateRequerimentoStatus,
     getEstatisticas,
-    createProcess
-};
+    createProcess,
+    createAssessoria,
+    getLatestAssessoria,
+    getProcessoByCliente,
+    createDependent: async (
+      clienteId: string, 
+      nomeCompleto: string, 
+      parentesco: string, 
+      extra?: {
+        documento?: string, 
+        dataNascimento?: string,
+        rg?: string,
+        passaporte?: string,
+        nacionalidade?: string,
+        email?: string,
+        telefone?: string,
+        isAncestralDireto?: boolean
+      }
+    ) => {
+      const response = await fetch(`${API_BASE_URL}/cliente/${clienteId}/dependentes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          nomeCompleto, 
+          parentesco, 
+          ...extra 
+        }),
+      });
 
+      if (!response.ok) {
+        throw new Error('Erro ao criar dependente');
+      }
+
+      const result = await response.json();
+      return result.data;
+    }
+};

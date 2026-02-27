@@ -712,6 +712,85 @@ class JuridicoController {
             })
         }
     }
+    // POST /juridico/assessoria - Criar assessoria jurídica
+    async createAssessoria(req: any, res: any) {
+        try {
+            const { clienteId, respostas, observacoes, servicoId } = req.body
+            
+            // TODO: Pegar do middleware de auth
+            const responsavelId = req.body.responsavelId || this.MOCKED_FUNCIONARIO_JURIDICO_ID
+
+            if (!clienteId || !respostas) {
+                return res.status(400).json({ 
+                    message: 'clienteId e respostas são obrigatórios' 
+                })
+            }
+
+            const assessoria = await JuridicoRepository.createAssessoria({
+                clienteId,
+                responsavelId,
+                respostas,
+                servicoId,
+                observacoes
+            })
+
+            return res.status(201).json({
+                message: 'Assessoria jurídica criada com sucesso',
+                data: assessoria
+            })
+        } catch (error: any) {
+            console.error('Erro ao criar assessoria jurídica no controller:', error)
+            return res.status(500).json({
+                message: 'Erro ao criar assessoria jurídica',
+                error: error.message
+            })
+        }
+    }
+
+    // GET /juridico/assessoria/:clienteId - Buscar última assessoria
+    async getLatestAssessoria(req: any, res: any) {
+        try {
+            const { clienteId } = req.params
+
+            if (!clienteId) {
+                return res.status(400).json({ message: 'clienteId é obrigatório' })
+            }
+
+            const assessoria = await JuridicoRepository.getLatestAssessoriaByClienteId(clienteId)
+
+            return res.status(200).json({
+                data: assessoria
+            })
+        } catch (error: any) {
+            console.error('Erro ao buscar assessoria no controller:', error)
+            return res.status(500).json({
+                message: 'Erro ao buscar assessoria',
+                error: error.message
+            })
+        }
+    }
+    // GET /juridico/processo-cliente/:clienteId - Buscar processo do cliente
+    async getProcessoByCliente(req: any, res: any) {
+        try {
+            const { clienteId } = req.params
+
+            if (!clienteId) {
+                return res.status(400).json({ message: 'clienteId é obrigatório' })
+            }
+
+            const processo = await JuridicoRepository.getProcessoByClienteId(clienteId)
+
+            return res.status(200).json({
+                data: processo
+            })
+        } catch (error: any) {
+            console.error('Erro ao buscar processo no controller:', error)
+            return res.status(500).json({
+                message: 'Erro ao buscar processo',
+                error: error.message
+            })
+        }
+    }
 }
 
 export default new JuridicoController()

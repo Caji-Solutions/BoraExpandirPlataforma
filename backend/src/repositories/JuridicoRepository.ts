@@ -238,34 +238,58 @@ class JuridicoRepository {
 
     // Buscar clientes por responsável jurídico
     async getClientesByResponsavel(responsavelId: string): Promise<any[]> {
-        const { data, error } = await supabase
-            .from('clientes')
-            .select('*')
-            .eq('responsavel_juridico_id', responsavelId)
-            .order('criado_em', { ascending: false })
+        const { data: processos, error } = await supabase
+            .from('processos')
+            .select(`
+                cliente_id,
+                clientes:clientes!cliente_id (*)
+            `)
+            .eq('responsavel_id', responsavelId)
 
         if (error) {
-            console.error('Erro ao buscar clientes do responsável:', error)
+            console.error('Erro ao buscar clientes do responsável via processos:', error)
             throw error
         }
 
-        return data || []
+        // Retornar clientes únicos
+        const clientsMap = new Map()
+        processos?.forEach((p: any) => {
+            const cliente = Array.isArray(p.clientes) ? p.clientes[0] : p.clientes
+            if (cliente && !clientsMap.has(cliente.id)) {
+                clientsMap.set(cliente.id, cliente)
+            }
+        })
+
+        return Array.from(clientsMap.values())
     }
 
     // Buscar clientes sem responsável jurídico (vagos)
     async getClientesSemResponsavel(): Promise<any[]> {
-        const { data, error } = await supabase
-            .from('clientes')
-            .select('*')
-            .is('responsavel_juridico_id', null)
-            .order('criado_em', { ascending: false })
+        // Busca clientes que não possuem nenhum processo com responsável atribuído
+        // Ou busca processos sem responsável e pega seus clientes
+        const { data: processos, error } = await supabase
+            .from('processos')
+            .select(`
+                cliente_id,
+                clientes:clientes!cliente_id (*)
+            `)
+            .is('responsavel_id', null)
 
         if (error) {
-            console.error('Erro ao buscar clientes sem responsável:', error)
+            console.error('Erro ao buscar clientes sem responsável via processos:', error)
             throw error
         }
 
-        return data || []
+        // Retornar clientes únicos
+        const clientsMap = new Map()
+        processos?.forEach((p: any) => {
+            const cliente = Array.isArray(p.clientes) ? p.clientes[0] : p.clientes
+            if (cliente && !clientsMap.has(cliente.id)) {
+                clientsMap.set(cliente.id, cliente)
+            }
+        })
+
+        return Array.from(clientsMap.values())
     }
 
     // Buscar cliente com dados do responsável jurídico
@@ -283,12 +307,21 @@ class JuridicoRepository {
             throw clienteError
         }
 
-        // Se tiver responsável, busca os dados dele
-        if (cliente?.responsavel_juridico_id) {
+        // Busca o processo mais recente para ver quem é o responsável
+        const { data: processo, error: procError } = await supabase
+            .from('processos')
+            .select('responsavel_id')
+            .eq('cliente_id', clienteId)
+            .order('criado_em', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+        // Se tiver responsável no processo, busca os dados dele
+        if (!procError && processo?.responsavel_id) {
             const { data: responsavel, error: responsavelError } = await supabase
                 .from('profiles')
                 .select('id, full_name, email, telefone')
-                .eq('id', cliente.responsavel_juridico_id)
+                .eq('id', processo.responsavel_id)
                 .single()
 
             if (!responsavelError && responsavel) {
@@ -307,6 +340,7 @@ class JuridicoRepository {
 
     // Buscar todos os clientes com seus responsáveis (para listagem geral)
     async getAllClientesComResponsavel(): Promise<any[]> {
+        // 1. Buscar todos os clientes
         const { data: clientes, error } = await supabase
             .from('clientes')
             .select('*')
@@ -319,13 +353,21 @@ class JuridicoRepository {
 
         if (!clientes || clientes.length === 0) return []
 
-        // Buscar todos os responsáveis únicos
-        const responsavelIds = [...new Set(
-            clientes
-                .filter(c => c.responsavel_juridico_id)
-                .map(c => c.responsavel_juridico_id)
-        )]
+        // 2. Buscar todos os processos para mapear responsabilidades
+        const { data: processos } = await supabase
+            .from('processos')
+            .select('cliente_id, responsavel_id')
+        
+        const clientToResponsavel = new Map()
+        processos?.forEach(p => {
+            if (p.responsavel_id) {
+                // Assume o último ou primeiro responsável encontrado para o cliente
+                clientToResponsavel.set(p.cliente_id, p.responsavel_id)
+            }
+        })
 
+        // 3. Buscar nomes dos responsáveis
+        const responsavelIds = [...new Set(Array.from(clientToResponsavel.values()))]
         let responsaveisMap: Record<string, FuncionarioJuridico> = {}
 
         if (responsavelIds.length > 0) {
@@ -342,13 +384,14 @@ class JuridicoRepository {
             }
         }
 
-        // Mapear clientes com seus responsáveis
-        return clientes.map(cliente => ({
-            ...cliente,
-            responsavel_juridico: cliente.responsavel_juridico_id 
-                ? responsaveisMap[cliente.responsavel_juridico_id] || null 
-                : null
-        }))
+        // 4. Mapear clientes com seus responsáveis
+        return clientes.map(cliente => {
+            const respId = clientToResponsavel.get(cliente.id)
+            return {
+                ...cliente,
+                responsavel_juridico: respId ? (responsaveisMap[respId] || null) : null
+            }
+        })
     }
 
     // =============================================
@@ -914,6 +957,87 @@ class JuridicoRepository {
 
         if (error) {
             console.error('Erro ao criar processo manualmente:', error)
+            throw error
+        }
+
+        return data
+    }
+    // =============================================
+    // ASSESSORIA JURÍDICA
+    // =============================================
+
+    // Criar um novo registro de assessoria jurídica
+    async createAssessoria(params: {
+        clienteId: string
+        responsavelId: string
+        respostas: any
+        servicoId?: string
+        observacoes?: string
+    }): Promise<any> {
+        const { data, error } = await supabase
+            .from('assessorias_juridico')
+            .insert([{
+                cliente_id: params.clienteId,
+                responsavel_id: params.responsavelId,
+                servico_id: params.servicoId || null,
+                respostas: params.respostas,
+                observacoes: params.observacoes || null,
+                criado_em: new Date().toISOString()
+            }])
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro ao criar assessoria jurídica no repositório:', error)
+            throw error
+        }
+
+        // Se um serviço foi selecionado, atualiza o cliente
+        if (params.servicoId) {
+            const { error: clienteError } = await supabase
+                .from('clientes')
+                .update({ servico_id: params.servicoId })
+                .eq('id', params.clienteId)
+
+            if (clienteError) {
+                console.error('Erro ao atualizar serviço no cliente:', clienteError)
+                // Não trava o processo se falhar aqui, mas loga o erro
+            }
+        }
+
+        return data
+    }
+
+    // Buscar o processo ativo de um cliente
+    async getProcessoByClienteId(clienteId: string): Promise<any | null> {
+        const { data, error } = await supabase
+            .from('processos')
+            .select('*')
+            .eq('cliente_id', clienteId)
+            .order('criado_em', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+        if (error) {
+            console.error('Erro ao buscar processo do cliente:', error)
+            throw error
+        }
+
+        return data
+    }
+
+    // Buscar a última assessoria de um cliente
+    async getLatestAssessoriaByClienteId(clienteId: string): Promise<any | null> {
+        const { data, error } = await supabase
+            .from('assessorias_juridico')
+            .select('*')
+            .eq('cliente_id', clienteId)
+            .order('criado_em', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+        if (error) {
+            console.error('Erro ao buscar última assessoria:', error)
             throw error
         }
 

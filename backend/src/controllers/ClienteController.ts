@@ -113,6 +113,54 @@ class ClienteController {
     }
   }
 
+  // POST /cliente/:clienteId/dependentes
+  async createDependent(req: any, res: any) {
+    try {
+      const { clienteId } = req.params
+      const { 
+        nomeCompleto, 
+        parentesco, 
+        documento, 
+        dataNascimento,
+        rg,
+        passaporte,
+        nacionalidade,
+        email,
+        telefone,
+        isAncestralDireto
+      } = req.body
+
+      if (!clienteId || !nomeCompleto || !parentesco) {
+        return res.status(400).json({ message: 'clienteId, nomeCompleto e parentesco são obrigatórios' })
+      }
+
+      const dependente = await ClienteRepository.createDependent({
+        clienteId,
+        nomeCompleto,
+        parentesco,
+        documento,
+        dataNascimento,
+        rg,
+        passaporte,
+        nacionalidade,
+        email,
+        telefone,
+        isAncestralDireto
+      })
+
+      return res.status(201).json({
+        message: 'Dependente criado com sucesso',
+        data: dependente
+      })
+    } catch (error: any) {
+      console.error('Erro ao criar dependente:', error)
+      return res.status(500).json({
+        message: 'Erro ao criar dependente',
+        error: error.message
+      })
+    }
+  }
+
   // GET /cliente/:clienteId/processos
   async getProcessos(req: any, res: any) {
     try {
@@ -146,7 +194,37 @@ class ClienteController {
         return res.status(400).json({ message: 'clienteId é obrigatório' })
       }
 
-      const cliente = await ClienteRepository.getClienteById(clienteId)
+      // 1. Tentar buscar direto pelo ID (caso coincida)
+      let cliente = await ClienteRepository.getClienteById(clienteId)
+
+      // 2. Se não encontrar, pode ser que o clienteId seja o ID do Profile (Auth UID)
+      // mas na tabela clientes o ID seja diferente. Vamos tentar buscar pelo profile associado.
+      if (!cliente) {
+        const { data: profile } = await (await import('../config/SupabaseClient')).supabase
+          .from('profiles')
+          .select('email')
+          .eq('id', clienteId)
+          .maybeSingle();
+
+        if (profile && profile.email) {
+          const { data: clientePorEmail } = await (await import('../config/SupabaseClient')).supabase
+            .from('clientes')
+            .select('*')
+            .eq('email', profile.email)
+            .maybeSingle();
+          
+          if (clientePorEmail) {
+            cliente = clientePorEmail;
+          }
+        }
+      }
+
+      if (!cliente) {
+        return res.status(404).json({
+          message: 'Cliente não encontrado',
+          data: null
+        })
+      }
 
       return res.status(200).json({
         message: 'Cliente recuperado com sucesso',

@@ -89,7 +89,7 @@ export function useDocumentActions({
     // Fetch forms count for the tab badge
     useEffect(() => {
         if (!processoId || !member.id) return
-        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+        const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
         fetch(`${API_BASE_URL}/cliente/processo/${processoId}/formularios/${member.id}`)
             .then(res => res.ok ? res.json() : { data: [] })
             .then(data => setFormsCount((data.data || []).length))
@@ -316,7 +316,7 @@ export function useDocumentActions({
             const compressedFile = await compressFile(file)
             const formData = new FormData()
             formData.append('file', compressedFile)
-            const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+            const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
             const response = await fetch(`${API_BASE_URL}/cliente/formularios/${formularioId}/response`, {
                 method: 'POST',
                 body: formData,

@@ -36,7 +36,7 @@ interface FamilyFoldersProps {
     onDelete: (documentId: string) => void
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
 
 export function FamilyFolders({
     clienteId,
@@ -54,6 +54,20 @@ export function FamilyFolders({
 
     // Enriched members with fetched data
     const [members, setMembers] = useState<FamilyMember[]>(initialMembers)
+
+    // Sync state with props when they change in parent
+    useEffect(() => {
+        if (initialMembers && initialMembers.length > 0) {
+            setMembers(prev => {
+                // If we already have members and the new ones are just the same (or less), keep ours
+                // unless it's the first time
+                if (prev.length <= 1 && initialMembers.length > 1) {
+                    return initialMembers;
+                }
+                return prev;
+            });
+        }
+    }, [initialMembers])
 
     // Calculate aggregated stats for the entire process
     const processStats = useMemo(() => {

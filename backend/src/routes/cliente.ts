@@ -44,6 +44,7 @@ cliente.get('/credentials/:email', ClienteController.getClienteCredentials.bind(
 cliente.get('/:clienteId', ClienteController.getCliente.bind(ClienteController))
 cliente.get('/:clienteId/documentos-requeridos', ClienteController.getDocumentosRequeridos.bind(ClienteController))
 cliente.get('/:clienteId/dependentes', ClienteController.getDependentes.bind(ClienteController))
+cliente.post('/:clienteId/dependentes', ClienteController.createDependent.bind(ClienteController))
 cliente.get('/:clienteId/processos', ClienteController.getProcessos.bind(ClienteController))
 cliente.get('/:clienteId/documentos', ClienteController.getDocumentos.bind(ClienteController))
 cliente.get('/processo/:processoId/documentos', ClienteController.getDocumentosByProcesso.bind(ClienteController))

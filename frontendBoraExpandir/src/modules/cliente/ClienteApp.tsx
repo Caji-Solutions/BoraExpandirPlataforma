@@ -39,7 +39,7 @@ export function ClienteApp() {
   const [isLoading, setIsLoading] = useState(true)
   const { profile, activeProfile, isAuthenticated } = useAuth()
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+  const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
 
   // Helper to sanitize name (same as backend)
   const sanitizeName = (name: string) => {
@@ -199,7 +199,7 @@ export function ClienteApp() {
         const finalActiveId = currentClient?.id || activeId
 
         // Fetch processos
-        const processosRes = await fetch(`${API_BASE_URL}/cliente/${activeId}/processos`)
+        const processosRes = await fetch(`${API_BASE_URL}/cliente/${finalActiveId}/processos`)
         if (processosRes.ok) {
           const processosData = await processosRes.json()
           if (processosData.data && processosData.data.length > 0) {
@@ -222,7 +222,7 @@ export function ClienteApp() {
 
             const mappedProcesso: Process = {
               id: apiProcesso.id,
-              clientId: activeId,
+              clientId: finalActiveId,
               serviceType: apiProcesso.tipo_servico,
               currentStep: currentStepId,
               steps: mappedSteps,
@@ -234,7 +234,7 @@ export function ClienteApp() {
         }
 
         // Fetch dependentes
-        const dependentesRes = await fetch(`${API_BASE_URL}/cliente/${activeId}/dependentes`)
+        const dependentesRes = await fetch(`${API_BASE_URL}/cliente/${finalActiveId}/dependentes`)
         if (dependentesRes.ok) {
           const dependentesData = await dependentesRes.json()
           const members = (dependentesData.data || []).map((dep: any) => ({
@@ -243,9 +243,9 @@ export function ClienteApp() {
             email: dep.email,
             type: dep.parentesco ? (dep.parentesco.charAt(0).toUpperCase() + dep.parentesco.slice(1)) : 'Dependente'
           }))
-          setFamilyMembers([{ id: activeId, name: currentClient?.name || mockClient.name, email: currentClient?.email || mockClient.email, type: 'Titular' }, ...members])
+          setFamilyMembers([{ id: finalActiveId, name: currentClient?.name || mockClient.name, email: currentClient?.email || mockClient.email, type: 'Titular' }, ...members])
         } else {
-          setFamilyMembers([{ id: activeId, name: currentClient?.name || mockClient.name, email: currentClient?.email || mockClient.email, type: 'Titular' }])
+          setFamilyMembers([{ id: finalActiveId, name: currentClient?.name || mockClient.name, email: currentClient?.email || mockClient.email, type: 'Titular' }])
         }
 
         // Fetch other data using the final active ID

@@ -63,7 +63,7 @@ class ClienteRepository {
             .from('clientes')
             .select('*')
             .eq('whatsapp', wppNumber)
-            .single()
+            .maybeSingle()
 
         if (error) {
             throw error
@@ -77,7 +77,7 @@ class ClienteRepository {
             .from('clientes')
             .select('*')
             .eq('id', id)
-            .single()
+            .maybeSingle()
 
         if (error) {
             console.error('Erro ao buscar cliente por ID:', error)
@@ -118,13 +118,10 @@ class ClienteRepository {
 
     // Buscar dependentes de um cliente
     async getDependentesByClienteId(clienteId: string) {
-        console.log('Repository: Buscando dependentes para clienteId:', clienteId)
-
         const { data, error } = await supabase
             .from('dependentes')
-            .select('id, nome_completo, parentesco')
+            .select('*')
             .eq('cliente_id', clienteId)
-            //.eq('status', 'ativo') // Comentado para debug - trazer todos
             .order('nome_completo', { ascending: true })
 
         if (error) {
@@ -132,9 +129,50 @@ class ClienteRepository {
             throw error
         }
 
-        console.log('Repository: Dependentes encontrados:', data?.length, data)
         return data || []
     }
+    // Criar dependente para um cliente
+    async createDependent(params: {
+        clienteId: string
+        nomeCompleto: string
+        parentesco: string
+        documento?: string // CPF
+        dataNascimento?: string
+        rg?: string
+        passaporte?: string
+        nacionalidade?: string
+        email?: string
+        telefone?: string
+        isAncestralDireto?: boolean
+    }) {
+        const { data, error } = await supabase
+            .from('dependentes')
+            .insert([{
+                cliente_id: params.clienteId,
+                nome_completo: params.nomeCompleto,
+                parentesco: params.parentesco,
+                cpf: params.documento,
+                data_nascimento: params.dataNascimento,
+                rg: params.rg,
+                passaporte: params.passaporte,
+                nacionalidade: params.nacionalidade,
+                email: params.email,
+                telefone: params.telefone,
+                is_ancestral_direto: params.isAncestralDireto || false,
+                status: 'ativo',
+                criado_em: new Date().toISOString()
+            }])
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro ao criar dependente:', error)
+            throw error
+        }
+
+        return data
+    }
+
     async register(cliente: ClienteDTO) {
         const { data: createdData, error } = await supabase
             .from('clientes')

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { Home, FolderOpen, FileSearch, CheckSquare, Settings, Users, FileStack, Dna } from "lucide-react";
+import { Home, FolderOpen, FileSearch, CheckSquare, Settings, Users, FileStack, Dna, ClipboardCheck } from "lucide-react";
 import { Sidebar } from "../../components/ui/Sidebar";
 import type { SidebarGroup } from "../../components/ui/Sidebar";
 import { Dashboard } from "./components/Dashboard";
@@ -9,6 +9,7 @@ import { ReviewPanel } from "./components/ReviewPanel";
 import { Config } from "../../components/ui/Config";
 import { DelegacaoDocumentos } from "./components/DelegacaoDocumentos";
 import { EquipeJuridica } from "./components/EquipeJuridica";
+import { AssessoriaJuridica } from "./components/AssessoriaJuridica";
 import { ClientDNAPage } from "../../components/ui/ClientDNA";
 import juridicoService, { Processo } from "./services/juridicoService";
 
@@ -113,6 +114,7 @@ const Index = () => {
         { label: "Meus Processos", to: "/juridico/processos", icon: FolderOpen },
         { label: "Fila de Análise", to: "/juridico/analise", icon: FileSearch },
         { label: "Tarefas", to: "/juridico/tarefas", icon: CheckSquare },
+        { label: "Assessoria Jurídica", to: "/juridico/assessoria", icon: ClipboardCheck },
       ],
     },
     // Grupo exclusivo para Supervisores
@@ -148,6 +150,7 @@ const Index = () => {
             />
             <Route path="tarefas" element={<Tarefas />} />
             <Route path="dna" element={<ClientDNAPage />} />
+            <Route path="assessoria" element={<AssessoriaJuridica />} />
 
             <Route path="configuracoes" element={<Config />} />
 

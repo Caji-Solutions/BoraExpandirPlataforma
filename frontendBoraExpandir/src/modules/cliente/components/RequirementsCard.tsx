@@ -51,7 +51,7 @@ export function RequirementsCard({
     const [pendingDocId, setPendingDocId] = useState<string | null>(null)
     const [pendingDocContext, setPendingDocContext] = useState<any | null>(null)
 
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+    const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
 
     useEffect(() => {
         const processRequirements = (data: any[]) => {

@@ -38,6 +38,7 @@ interface RequirementRequestModalProps {
     clienteId: string;
     processoId?: string;
     members?: { id: string, name: string, type: string, isTitular: boolean }[];
+    initialMemberId?: string;
     onSuccess?: () => void;
 }
 
@@ -64,6 +65,7 @@ export function RequirementRequestModal({
     clienteId,
     processoId,
     members = [],
+    initialMemberId,
     onSuccess
 }: RequirementRequestModalProps) {
     const [identificador, setIdentificador] = useState('');
@@ -74,7 +76,7 @@ export function RequirementRequestModal({
     const [documentsToRequest, setDocumentsToRequest] = useState<{ id: string, type: string, memberId: string }[]>([]);
     const [newDocType, setNewDocType] = useState('');
     const [customDocName, setCustomDocName] = useState('');
-    const [newDocMemberId, setNewDocMemberId] = useState(members.find(m => m.isTitular)?.id || clienteId);
+    const [newDocMemberId, setNewDocMemberId] = useState(initialMemberId || members.find(m => m.isTitular)?.id || clienteId);
 
     const handleAddDocument = () => {
         if (!newDocType) {
