@@ -5,12 +5,23 @@ import {
     ChevronRight, 
     ChevronDown,
     ChevronUp,
+    Filter,
+    Search,
+    X,
     CheckCircle2, 
     Circle,
     Info
 } from "lucide-react";
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 import juridicoService from "../services/juridicoService";
 import { toast } from "./ui/sonner";
 
@@ -39,8 +50,16 @@ interface ProcessTableProps {
 }
 
 export function ProcessTable({ data }: ProcessTableProps) {
+    // Log para depuração solicitado pelo usuário
+    React.useEffect(() => {
+        console.log("ProcessTable - Dados brutos chegando:", data);
+    }, [data]);
+
     const [expandedId, setExpandedId] = React.useState<string | null>(null);
     const [localData, setLocalData] = React.useState<ProcessData[]>(data);
+    const [searchTerm, setSearchTerm] = React.useState("");
+    const [faseFilter, setFaseFilter] = React.useState<string>("todas");
+    const [statusFilter, setStatusFilter] = React.useState<string>("todos");
     const [searchParams] = useSearchParams();
 
     React.useEffect(() => {
@@ -52,6 +71,23 @@ export function ProcessTable({ data }: ProcessTableProps) {
             setExpandedId(expandId);
         }
     }, [data, searchParams]);
+
+    // Lógica de filtragem
+    const filteredData = React.useMemo(() => {
+        return localData.filter(item => {
+            const matchesSearch = 
+                item.cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                item.servico.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                item.id.toLowerCase().includes(searchTerm.toLowerCase());
+            
+            const matchesFase = faseFilter === "todas" || item.fase.toString() === faseFilter;
+            
+            const matchesStatus = statusFilter === "todos" || 
+                item.status.toLowerCase() === statusFilter.toLowerCase();
+
+            return matchesSearch && matchesFase && matchesStatus;
+        });
+    }, [localData, searchTerm, faseFilter, statusFilter]);
 
     const handleUpdateEtapa = async (processId: string, currentFase: number, delta: number) => {
         const novaEtapa = currentFase + delta;
@@ -75,188 +111,260 @@ export function ProcessTable({ data }: ProcessTableProps) {
         { id: 4, label: "Imigração" }
     ];
 
+    const clearFilters = () => {
+        setSearchTerm("");
+        setFaseFilter("todas");
+        setStatusFilter("todos");
+    };
+
     return (
-        <div className="space-y-4">
-            {localData.map((row) => {
-                const isExpanded = expandedId === row.id;
+        <div className="space-y-6">
+            {/* Barra de Filtros Avançada */}
+            <div className="flex flex-col md:flex-row gap-4 bg-card p-4 rounded-2xl border border-border shadow-sm">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Buscar por cliente, serviço ou ID..." 
+                        className="pl-10 rounded-xl bg-background"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
                 
-                return (
-                    <div 
-                        key={row.id}
-                        className={`bg-card border border-border rounded-2xl overflow-hidden shadow-sm transition-all duration-300 ${isExpanded ? 'ring-2 ring-primary/20 shadow-md' : 'hover:shadow-md'}`}
-                    >
-                        {/* Card Header (Visible initially) */}
-                        <div 
-                            className="grid grid-cols-12 gap-4 px-6 py-5 items-center cursor-pointer group"
-                            onClick={() => setExpandedId(isExpanded ? null : row.id)}
+                <div className="flex flex-wrap gap-2 items-center">
+                    <div className="flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Filtros:</span>
+                    </div>
+
+                    <Select value={faseFilter} onValueChange={setFaseFilter}>
+                        <SelectTrigger className="w-[140px] h-9 rounded-xl text-xs font-bold">
+                            <SelectValue placeholder="Todas as Fases" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-border">
+                            <SelectItem value="todas">Todas as Fases</SelectItem>
+                            {phases.map(p => (
+                                <SelectItem key={p.id} value={p.id.toString()}>Fase {p.id}: {p.label}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-[140px] h-9 rounded-xl text-xs font-bold">
+                            <SelectValue placeholder="Todos os Status" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-border">
+                            <SelectItem value="todos">Todos os Status</SelectItem>
+                            <SelectItem value="em_andamento">Em Andamento</SelectItem>
+                            <SelectItem value="pendente">Pendente</SelectItem>
+                            <SelectItem value="concluido">Concluído</SelectItem>
+                            <SelectItem value="aguardando_cliente">Aguardando Cliente</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    {(searchTerm || faseFilter !== "todas" || statusFilter !== "todos") && (
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={clearFilters}
+                            className="h-9 px-2 text-primary hover:bg-primary/10 rounded-xl flex gap-1 items-center font-bold text-xs"
                         >
-                            <div className="col-span-1 text-center font-mono text-xs text-muted-foreground bg-muted/30 py-1 rounded-md">
-                                #{row.id.substring(0, 4)}
-                            </div>
-                            
-                            <div className="col-span-4 flex items-center gap-3 text-left">
-                                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                                    <span className="text-primary text-xs font-bold">
-                                        {row.cliente.nome.charAt(0)}
+                            <X className="h-3 w-3" /> Limpar
+                        </Button>
+                    )}
+                </div>
+            </div>
+
+            <div className="space-y-4">
+                {filteredData.map((row) => {
+                    const isExpanded = expandedId === row.id;
+                    
+                    return (
+                        <div 
+                            key={row.id}
+                            className={`bg-card border border-border rounded-2xl overflow-hidden shadow-sm transition-all duration-300 ${isExpanded ? 'ring-2 ring-primary/20 shadow-md' : 'hover:shadow-md'}`}
+                        >
+                            {/* Card Header (Visible initially) */}
+                            <div 
+                                className="grid grid-cols-12 gap-4 px-6 py-5 items-center cursor-pointer group"
+                                onClick={() => setExpandedId(isExpanded ? null : row.id)}
+                            >
+                                <div className="col-span-1 text-center font-mono text-xs text-muted-foreground bg-muted/30 py-1 rounded-md">
+                                    #{row.id.substring(0, 4)}
+                                </div>
+                                
+                                <div className="col-span-4 flex items-center gap-3 text-left">
+                                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                                        <span className="text-primary text-xs font-bold">
+                                            {row.cliente.nome.charAt(0)}
+                                        </span>
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-all">
+                                            {row.cliente.nome}
+                                        </div>
+                                        <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{row.servico}</div>
+                                    </div>
+                                    {row.hasRequirement && (
+                                        <Badge variant="destructive" className="ml-2 animate-pulse text-[8px] px-1 py-0 h-4 min-w-[60px] flex items-center justify-center">
+                                            REQUERIMENTO
+                                        </Badge>
+                                    )}
+                                </div>
+
+                                <div className="col-span-3 text-center">
+                                    <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase ${
+                                        row.status.toLowerCase().includes('conclu') ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                        row.status.toLowerCase().includes('pendente') ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                                        'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                    }`}>
+                                        {row.status}
                                     </span>
                                 </div>
-                                <div className="min-w-0">
-                                    <div className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-all">
-                                        {row.cliente.nome}
+
+                                <div className="col-span-3 flex flex-col items-center justify-center gap-1">
+                                    <div className="flex gap-1">
+                                        {phases.map((p) => (
+                                            <div 
+                                                key={p.id} 
+                                                className={`w-4 h-1 rounded-full ${row.fase >= p.id ? 'bg-primary' : 'bg-muted'}`}
+                                            />
+                                        ))}
                                     </div>
-                                    <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{row.servico}</div>
+                                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">
+                                        Fase {row.fase}: {phases.find(p => p.id === row.fase)?.label}
+                                    </span>
                                 </div>
-                                {row.hasRequirement && (
-                                    <Badge variant="destructive" className="ml-2 animate-pulse text-[8px] px-1 py-0 h-4 min-w-[60px] flex items-center justify-center">
-                                        REQUERIMENTO
-                                    </Badge>
-                                )}
-                            </div>
 
-                            <div className="col-span-3 text-center">
-                                <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase ${
-                                    row.status.toLowerCase().includes('conclu') ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                    row.status.toLowerCase().includes('pendente') ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                                    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                                }`}>
-                                    {row.status}
-                                </span>
-                            </div>
-
-                            <div className="col-span-3 flex flex-col items-center justify-center gap-1">
-                                <div className="flex gap-1">
-                                    {phases.map((p) => (
-                                        <div 
-                                            key={p.id} 
-                                            className={`w-4 h-1 rounded-full ${row.fase >= p.id ? 'bg-primary' : 'bg-muted'}`}
-                                        />
-                                    ))}
-                                </div>
-                                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">
-                                    Fase {row.fase}: {phases.find(p => p.id === row.fase)?.label}
-                                </span>
-                            </div>
-
-                            <div className="col-span-1 flex justify-end">
-                                <div className="p-1 rounded-full bg-muted/50 group-hover:bg-primary/10 transition-colors">
-                                    {isExpanded ? <ChevronUp className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                                <div className="col-span-1 flex justify-end">
+                                    <div className="p-1 rounded-full bg-muted/50 group-hover:bg-primary/10 transition-colors">
+                                        {isExpanded ? <ChevronUp className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Expanded Content (Status & Navigation) */}
-                        {isExpanded && (
-                            <div className="px-6 pb-6 pt-2 bg-muted/10 border-t border-border/50 animate-in fade-in slide-in-from-top-2 duration-300">
-                                <div className="max-w-3xl mx-auto py-4 space-y-8">
-                                    <div className="flex justify-between items-center bg-background p-4 rounded-xl border border-border shadow-sm">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-primary/10 rounded-lg">
-                                                <Info className="h-4 w-4 text-primary" />
-                                            </div>
-                                            <div>
-                                                <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Controle de Etapas</h3>
-                                                <p className="text-[10px] text-muted-foreground/70 font-medium">Gerencie o progresso do processo jurídico</p>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex gap-2">
-                                            <Button 
-                                                size="sm" 
-                                                variant="outline" 
-                                                className="h-9 rounded-xl text-[10px] font-bold bg-background hover:bg-muted"
-                                                disabled={row.fase <= 1}
-                                                onClick={() => handleUpdateEtapa(row.id, row.fase, -1)}
-                                            >
-                                                <ChevronLeft className="h-3 w-3 mr-1" /> Retroceder
-                                            </Button>
-                                            <Button 
-                                                size="sm" 
-                                                className={`h-9 rounded-xl text-[10px] font-bold shadow-lg transition-transform active:scale-95 ${row.hasRequirement ? 'bg-muted text-muted-foreground' : 'shadow-primary/20'}`}
-                                                disabled={row.fase >= 4 || row.hasRequirement}
-                                                onClick={() => handleUpdateEtapa(row.id, row.fase, 1)}
-                                            >
-                                                Avançar <ChevronRight className="h-3 w-3 ml-1" />
-                                            </Button>
-                                            {row.hasRequirement && (
-                                                <div className="absolute -bottom-1 right-0 text-[7px] text-red-500 font-bold uppercase tracking-tighter">
-                                                    Bloqueado por Requerimento
+                            {/* Expanded Content (Status & Navigation) */}
+                            {isExpanded && (
+                                <div className="px-6 pb-6 pt-2 bg-muted/10 border-t border-border/50 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <div className="max-w-3xl mx-auto py-4 space-y-8">
+                                        <div className="flex justify-between items-center bg-background p-4 rounded-xl border border-border shadow-sm">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-primary/10 rounded-lg">
+                                                    <Info className="h-4 w-4 text-primary" />
                                                 </div>
-                                            )}
+                                                <div>
+                                                    <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Controle de Etapas</h3>
+                                                    <p className="text-[10px] text-muted-foreground/70 font-medium">Gerencie o progresso do processo jurídico</p>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex gap-2">
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="outline" 
+                                                    className="h-9 rounded-xl text-[10px] font-bold bg-background hover:bg-muted"
+                                                    disabled={row.fase <= 1}
+                                                    onClick={() => handleUpdateEtapa(row.id, row.fase, -1)}
+                                                >
+                                                    <ChevronLeft className="h-3 w-3 mr-1" /> Retroceder
+                                                </Button>
+                                                <Button 
+                                                    size="sm" 
+                                                    className={`h-9 rounded-xl text-[10px] font-bold shadow-lg transition-transform active:scale-95 ${row.hasRequirement ? 'bg-muted text-muted-foreground' : 'shadow-primary/20'}`}
+                                                    disabled={row.fase >= 4 || row.hasRequirement}
+                                                    onClick={() => handleUpdateEtapa(row.id, row.fase, 1)}
+                                                >
+                                                    Avançar <ChevronRight className="h-3 w-3 ml-1" />
+                                                </Button>
+                                                {row.hasRequirement && (
+                                                    <div className="absolute -bottom-1 right-0 text-[7px] text-red-500 font-bold uppercase tracking-tighter">
+                                                        Bloqueado por Requerimento
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                    
-                                    <div className="relative flex justify-between px-6 pt-2">
-                                        <div className="absolute top-[21px] left-10 right-10 h-0.5 bg-muted -z-0" />
                                         
-                                        {row.hasRequirement && row.fase < 4 && (
-                                            (() => {
-                                                const dotStep = 100 / 3;
-                                                const dotLeft = ((row.fase - 1) * dotStep) + (dotStep / 2);
-                                                const lineLeft = ((row.fase - 1) * dotStep) + (dotStep / 4); // Ajustado para começar um pouco após o círculo da etapa
+                                        <div className="relative flex justify-between px-6 pt-2">
+                                            <div className="absolute top-[21px] left-10 right-10 h-0.5 bg-muted -z-0" />
+                                            
+                                            {row.hasRequirement && row.fase < 4 && (
+                                                (() => {
+                                                    const dotStep = 100 / 3;
+                                                    const dotLeft = ((row.fase - 1) * dotStep) + (dotStep / 2);
+                                                    const lineLeft = ((row.fase - 1) * dotStep) + (dotStep / 4); // Ajustado para começar um pouco após o círculo da etapa
+                                                    
+                                                    return (
+                                                        <>
+                                                            {/* Linha vermelha de bloqueio */}
+                                                            <div 
+                                                                className="absolute top-[21px] h-0.5 bg-red-400 dark:bg-red-600 -z-0 transition-all duration-500" 
+                                                                style={{ 
+                                                                    left: `calc(1.5rem + (100% - 3rem) * ${lineLeft / 100})`,
+                                                                    right: '1.5rem' 
+                                                                }}
+                                                            />
+                                                            {/* Bolinha vermelha de bloqueio */}
+                                                            <div 
+                                                                className="absolute top-[17px] w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)] z-20 animate-pulse border-2 border-background transition-all duration-500" 
+                                                                style={{ 
+                                                                    left: `calc(1.5rem + (100% - 3rem) * ${dotLeft / 100})`,
+                                                                    transform: 'translateX(-50%)'
+                                                                }}
+                                                            />
+                                                        </>
+                                                    );
+                                                })()
+                                            )}
+                                            
+                                            {phases.map((phase) => {
+                                                const isActive = row.fase === phase.id;
+                                                const isCompleted = row.fase > phase.id;
                                                 
                                                 return (
-                                                    <>
-                                                        {/* Linha vermelha de bloqueio */}
-                                                        <div 
-                                                            className="absolute top-[21px] h-0.5 bg-red-400 dark:bg-red-600 -z-0 transition-all duration-500" 
-                                                            style={{ 
-                                                                left: `calc(1.5rem + (100% - 3rem) * ${lineLeft / 100})`,
-                                                                right: '1.5rem' 
-                                                            }}
-                                                        />
-                                                        {/* Bolinha vermelha de bloqueio */}
-                                                        <div 
-                                                            className="absolute top-[17px] w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)] z-20 animate-pulse border-2 border-background transition-all duration-500" 
-                                                            style={{ 
-                                                                left: `calc(1.5rem + (100% - 3rem) * ${dotLeft / 100})`,
-                                                                transform: 'translateX(-50%)'
-                                                            }}
-                                                        />
-                                                    </>
-                                                );
-                                            })()
-                                        )}
-                                        
-                                        {phases.map((phase) => {
-                                            const isActive = row.fase === phase.id;
-                                            const isCompleted = row.fase > phase.id;
-                                            
-                                            return (
-                                                <div key={phase.id} className="flex flex-col items-center gap-3 group relative z-10">
-                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 border-2 ${
-                                                        isActive ? 'border-primary bg-background ring-8 ring-primary/5 shadow-xl scale-110' : 
-                                                        isCompleted ? 'border-primary bg-primary text-white' : 
-                                                        'border-border bg-background text-muted-foreground'
-                                                    }`}>
-                                                        {isCompleted ? <CheckCircle2 className="h-5 w-5" /> : 
-                                                         isActive ? <Circle className="h-5 w-5 fill-primary text-primary animate-pulse" /> :
-                                                         <span className="text-xs font-bold">{phase.id}</span>}
+                                                    <div key={phase.id} className="flex flex-col items-center gap-3 group relative z-10">
+                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 border-2 ${
+                                                            isActive ? 'border-primary bg-background ring-8 ring-primary/5 shadow-xl scale-110' : 
+                                                            isCompleted ? 'border-primary bg-primary text-white' : 
+                                                            'border-border bg-background text-muted-foreground'
+                                                        }`}>
+                                                            {isCompleted ? <CheckCircle2 className="h-5 w-5" /> : 
+                                                            isActive ? <Circle className="h-5 w-5 fill-primary text-primary animate-pulse" /> :
+                                                            <span className="text-xs font-bold">{phase.id}</span>}
+                                                        </div>
+                                                        <span className={`text-[9px] font-black uppercase tracking-widest transition-colors duration-300 ${
+                                                            isActive ? 'text-primary' : 'text-muted-foreground'
+                                                        }`}>
+                                                            {phase.label}
+                                                        </span>
                                                     </div>
-                                                    <span className={`text-[9px] font-black uppercase tracking-widest transition-colors duration-300 ${
-                                                        isActive ? 'text-primary' : 'text-muted-foreground'
-                                                    }`}>
-                                                        {phase.label}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
+                    );
+                })}
+                
+                {filteredData.length === 0 && (
+                    <div className="bg-muted/30 border-2 border-dashed border-border rounded-2xl py-20 text-center">
+                        <div className="h-12 w-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Info className="h-6 w-6 text-muted-foreground opacity-50" />
+                        </div>
+                        <p className="text-sm font-medium text-muted-foreground tracking-tight">
+                            {searchTerm || faseFilter !== "todas" || statusFilter !== "todos" 
+                                ? "Nenhum resultado para os filtros aplicados" 
+                                : "Capa de processo vazia"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/60 uppercase font-black mt-1">
+                            {searchTerm || faseFilter !== "todas" || statusFilter !== "todos"
+                                ? "Tente ajustar sua busca ou limpar os filtros"
+                                : "Nenhum processo jurídico atribuído"}
+                        </p>
                     </div>
-                );
-            })}
-            
-            {localData.length === 0 && (
-                <div className="bg-muted/30 border-2 border-dashed border-border rounded-2xl py-20 text-center">
-                    <div className="h-12 w-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Info className="h-6 w-6 text-muted-foreground opacity-50" />
-                    </div>
-                    <p className="text-sm font-medium text-muted-foreground tracking-tight">Capa de processo vazia</p>
-                    <p className="text-[10px] text-muted-foreground/60 uppercase font-black mt-1">Nenhum processo jurídico atribuído</p>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 }

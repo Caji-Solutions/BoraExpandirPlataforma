@@ -71,36 +71,41 @@ export const AgendamentoConfirmacaoModal: React.FC<AgendamentoConfirmacaoModalPr
       return
     }
 
+    console.log('DEBUG MODAL: Iniciando confirmação de agendamento.', {
+      plataforma: selectedPlatform,
+      backendUrl,
+      payload: basePayload
+    })
+
     try {
       let response: Response
 
       if (selectedPlatform === 'mercado_pago') {
-        // Lógica específica para Mercado Pago
-        console.log('Iniciando processamento via Mercado Pago...')
+        console.log('DEBUG MODAL: Chamando API Mercado Pago...')
         response = await fetch(`${backendUrl}/comercial/agendamento/mercadopago`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(basePayload),
         })
       } else if (selectedPlatform === 'stripe') {
-        // Lógica específica para Stripe
-        console.log('Iniciando processamento via Stripe...')
-        // Exemplo: caso o stripe use um endpoint diferente ou precise de ajuste no payload
+        console.log('DEBUG MODAL: Chamando API Stripe...')
         response = await fetch(`${backendUrl}/comercial/agendamento/stripe`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ...basePayload,
-            stripe_specific_flag: true // Exemplo de campo específico
+            stripe_specific_flag: true
           }),
         })
-        console.log('DEBUG MODAL: Resposta JSON bruta do backend:', response)
       } else {
         throw new Error('Plataforma não suportada')
       }
 
+      console.log('DEBUG MODAL: Status da resposta do backend:', response.status)
+
       if (response.status === 409) {
         const body = await response.json().catch(() => ({}))
+        console.warn('DEBUG MODAL: Conflito de horário detectado.', body)
         const msg = body?.message || 'Este horário não está mais disponível.'
         setLocalError(msg)
         setIsLoading(false)
@@ -109,6 +114,7 @@ export const AgendamentoConfirmacaoModal: React.FC<AgendamentoConfirmacaoModalPr
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({}))
+        console.error('DEBUG MODAL: Erro na resposta do backend.', body)
         const msg = body?.message || 'Não foi possível completar o agendamento.'
         setLocalError(msg)
         setIsLoading(false)
@@ -116,11 +122,11 @@ export const AgendamentoConfirmacaoModal: React.FC<AgendamentoConfirmacaoModalPr
       }
 
       const responseData = await response.json().catch(() => ({}))
-      console.log('DEBUG MODAL: Resposta JSON bruta do backend:', responseData)
+      console.log('DEBUG MODAL: Sucesso! Dados retornados:', responseData)
       setIsLoading(false)
       onSuccess(responseData)
     } catch (err) {
-      console.error('Erro ao salvar agendamento:', err)
+      console.error('DEBUG MODAL: Exceção capturada durante o fetch:', err)
       setLocalError('Erro de conexão com o servidor. Tente novamente.')
       setIsLoading(false)
     }

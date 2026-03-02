@@ -383,13 +383,16 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       cliente_id: agendamentoPreview.cliente.id
     })
 
-    console.log('========== AGENDAMENTO PAYLOAD DEBUG ==========')
-    console.log('Payload que será enviado ao modal:', {
+    console.log('DEBUG AGENDAMENTO: Iniciando processo de finalização. Payload gerado:', {
+      nome: agendamentoPreview.cliente.nome,
+      email: emailFinal,
+      telefone: agendamentoPreview.cliente.telefone,
+      data_hora: `${agendamentoPreview.data}T${agendamentoPreview.hora}:00`,
+      produto_nome: agendamentoPreview.produto.nome,
+      valor: agendamentoPreview.produto.valor,
       usuario_id: activeProfile?.id,
-      cliente_id: agendamentoPreview.cliente.id,
-      cliente_id_source: agendamentoPreview.cliente.id ? 'Presente' : 'AUSENTE'
+      cliente_id: agendamentoPreview.cliente.id
     })
-    console.log('================================================')
 
     setShowConfirmacao(true)
   }
@@ -398,6 +401,8 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     setShowConfirmacao(false)
   
     
+    console.log('DEBUG AGENDAMENTO: Fluxo de sucesso detectado. Response data:', responseData)
+
     // Tenta obter o link de várias formas possíveis para garantir compatibilidade
     // Prioridade máxima para o que vier no responseData direto ou dentro de .data
     const backendLink = 
@@ -408,14 +413,14 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       responseData.url ||
       responseData.data?.url;
 
-    console.log('DEBUG COMERCIAL1: Link detectado (backendLink):', backendLink)
+    console.log('DEBUG AGENDAMENTO: Link detectado no backend:', backendLink)
 
     // Garante que o link tenha protocolo se não for vazio
     let finalPaymentLink = backendLink || `https://FALLBACK-ERROR-${Date.now()}.com`
     if (backendLink && !backendLink.startsWith('http')) {
       finalPaymentLink = `https://${backendLink}`
     }
-    console.log('DEBUG COMERCIAL1: Link final (finalPaymentLink):', finalPaymentLink)
+    console.log('DEBUG AGENDAMENTO: Link de pagamento final (formatado):', finalPaymentLink)
   
 
     const resumoTexto = `Oi ${agendamentoPayload.nome}! Seu agendamento está marcado para ${agendamentoPreview?.data} às ${agendamentoPreview?.hora} (${agendamentoPayload.duracao_minutos} min) - ${agendamentoPayload.produto_nome}.`
@@ -423,9 +428,10 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     setAgendamentos([...agendamentos, agendamentoPreview!])
 
     if (isClientView) {
-      console.log('Redirecionando cliente para:', finalPaymentLink)
+      console.log('DEBUG AGENDAMENTO: Redirecionando cliente para checkout:', finalPaymentLink)
       window.location.href = finalPaymentLink
     } else {
+      console.log('DEBUG AGENDAMENTO: Exibindo link de pagamento no modal comercial')
       setPaymentLink(finalPaymentLink)
       setShareMessage(`${resumoTexto} Link de pagamento: ${finalPaymentLink}`)
       setShowModalPagamento(true)

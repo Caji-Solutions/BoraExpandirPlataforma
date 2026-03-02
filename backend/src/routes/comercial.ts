@@ -11,5 +11,7 @@ comercial.post('/agendamento/stripe', ComercialController.createAgendamentoStrip
 comercial.get('/disponibilidade', ComercialController.checkDisponibilidade.bind(ComercialController))
 comercial.get('/agendamentos/usuario/:usuarioId', ComercialController.getAgendamentosByUsuario.bind(ComercialController))
 comercial.get('/agendamentos/:data', ComercialController.getAgendamentosByData.bind(ComercialController))
+comercial.get('/agendamentos/cliente/:clienteId', ComercialController.getAgendamentosByCliente.bind(ComercialController))
+comercial.post('/agendamento/:id/checkout', ComercialController.regenerateCheckout.bind(ComercialController))
 
 export default comercial

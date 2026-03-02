@@ -34,6 +34,22 @@ class ComercialRepository {
             console.error('Erro ao atualizar status do agendamento:', error)
             throw error
         }
+
+        // Se o status for aprovado, cria uma notificação para o cliente
+        if (status === 'aprovado' && data && data.cliente_id) {
+            try {
+                const NotificationService = (await import('../services/NotificationService')).default
+                await NotificationService.createNotification({
+                    clienteId: data.cliente_id,
+                    titulo: 'Agendamento Confirmado',
+                    mensagem: `Seu agendamento de "${data.produto_nome || 'Consultoria'}" para o dia ${new Date(data.data_hora).toLocaleDateString('pt-BR')} às ${new Date(data.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} foi confirmado com sucesso!`,
+                    tipo: 'agendamento',
+                    dataPrazo: data.data_hora // O "prazo" da notificação é a própria data do agendamento
+                })
+            } catch (notifError) {
+                console.error('Erro ao criar notificação de agendamento aprovado:', notifError)
+            }
+        }
         
         return data
     }
@@ -91,6 +107,58 @@ class ComercialRepository {
         }
         
         return agendamentos || []
+    }
+
+    async getAgendamentosByCliente(clienteId: string) {
+        console.log('Buscando agendamentos para o cliente:', clienteId)
+        
+        const { data: agendamentos, error } = await supabase
+            .from('agendamentos')
+            .select('*')
+            .eq('cliente_id', clienteId)
+            .order('data_hora', { ascending: true })
+        
+        if (error) {
+            console.error('Erro ao buscar agendamentos por cliente:', error)
+            throw error
+        }
+        
+        return agendamentos || []
+    }
+
+    async getAgendamentoById(id: string) {
+        console.log('Buscando agendamento por ID:', id)
+        
+        const { data, error } = await supabase
+            .from('agendamentos')
+            .select('*')
+            .eq('id', id)
+            .single()
+        
+        if (error) {
+            console.error('Erro ao buscar agendamento por ID:', error)
+            throw error
+        }
+        
+        return data
+    }
+
+    async updateAgendamentoCheckoutUrl(id: string, checkoutUrl: string) {
+        console.log('Salvando checkout_url no agendamento:', { id, checkoutUrl })
+        
+        const { data, error } = await supabase
+            .from('agendamentos')
+            .update({ checkout_url: checkoutUrl })
+            .eq('id', id)
+            .select()
+            .single()
+        
+        if (error) {
+            console.error('Erro ao atualizar checkout_url do agendamento:', error)
+            throw error
+        }
+        
+        return data
     }
 }
 

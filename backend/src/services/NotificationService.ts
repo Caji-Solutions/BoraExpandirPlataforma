@@ -5,7 +5,7 @@ export interface CreateNotificationParams {
     criadorId?: string
     titulo: string
     mensagem: string
-    tipo?: 'info' | 'success' | 'warning' | 'error'
+    tipo?: 'info' | 'success' | 'warning' | 'error' | 'agendamento'
     prazo?: number // prazo em dias
     dataPrazo?: string
     lida?: boolean

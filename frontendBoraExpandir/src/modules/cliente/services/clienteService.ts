@@ -88,5 +88,28 @@ export const clienteService = {
     
     const result = await response.json();
     return result.data || [];
+  },
+  
+  async getAgendamentos(clienteId: string) {
+    const response = await fetch(`${API_BASE_URL}/comercial/agendamentos/cliente/${clienteId}`);
+    
+    if (!response.ok) {
+      throw new Error('Falha ao buscar agendamentos');
+    }
+    
+    return response.json();
+  },
+
+  async recreateCheckout(agendamentoId: string) {
+    const response = await fetch(`${API_BASE_URL}/comercial/agendamento/${agendamentoId}/checkout`, {
+      method: 'POST',
+    });
+    
+    if (!response.ok) {
+      throw new Error('Falha ao gerar link de pagamento');
+    }
+    
+    const result = await response.json();
+    return result.checkoutUrl;
   }
 };

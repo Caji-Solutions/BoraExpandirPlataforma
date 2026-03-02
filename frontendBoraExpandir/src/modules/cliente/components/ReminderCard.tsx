@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
-import { Bell, Briefcase, FileText, Scale, ArrowRight, Clock, Info, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Bell, Briefcase, FileText, Scale, ArrowRight, Clock, Info, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import { Reminder } from '../types'
 import { Link } from 'react-router-dom'
 import { formatDateSimple } from '../lib/utils'
@@ -49,6 +49,8 @@ export function ReminderCard({ title, type, reminders }: ReminderCardProps) {
                 return <Clock className="h-4 w-4 text-orange-500" />
             case 'success':
                 return <CheckCircle className="h-4 w-4 text-green-500" />
+            case 'agendamento':
+                return <Calendar className="h-4 w-4 text-indigo-500" />
             default:
                 return <Info className="h-4 w-4 text-blue-500" />
         }

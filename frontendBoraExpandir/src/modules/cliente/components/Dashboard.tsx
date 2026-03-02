@@ -15,10 +15,11 @@ import {
   Target,
   TrendingUp,
   XCircle,
-  Stamp
+  Stamp,
+  Calendar
 } from 'lucide-react'
 import { Client, Document, Process } from '../types'
-import { formatDate, formatDateSimple } from '../lib/utils'
+import { cn, formatDate, formatDateSimple } from '../lib/utils'
 import { AppointmentReminder } from './AppointmentReminder'
 import { ReminderCard } from './ReminderCard'
 import { CountdownTimer } from './CountdownTimer'
@@ -38,6 +39,7 @@ interface DashboardProps {
 export function Dashboard({ client, documents, process, requerimentos = [], notifications: propNotifications }: DashboardProps) {
   const [notifications, setNotifications] = useState<import('../types').Notification[]>([])
   const [realRequerimentos, setRealRequerimentos] = useState<any[]>([])
+  const [agendamentos, setAgendamentos] = useState<any[]>([])
   const [isLoadingData, setIsLoadingData] = useState(false)
   const [showRequestedActionsModal, setShowRequestedActionsModal] = useState(false)
 
@@ -105,29 +107,30 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
     },
   ]
 
-  // Mock appointment data - substituir por dados reais do backend
-  const nextAppointment = {
-    date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 2 dias no futuro
-    time: "14:30",
-    service: "Consultoria Jurídica - Visto D7",
-    location: "Online - WhatsApp/Zoom"
-  }
-
+  // Encontra o agendamento mais próximo no futuro (ou o atual)
+  const nextAppointmentData = useMemo(() => {
+    if (!agendamentos || agendamentos.length === 0) return null;
+    
+    return agendamentos
+      .filter(a => a.status !== 'cancelada' && a.status !== 'cancelado')
+      .sort((a, b) => new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime())[0];
+  }, [agendamentos]);
 
   useEffect(() => {
     if (propNotifications && propNotifications.length > 0) {
       setNotifications(propNotifications)
-      return
     }
 
     const fetchDashboardData = async () => {
       try {
         setIsLoadingData(true)
-        const [notifsRaw, reqs] = await Promise.all([
+        const [notifsRaw, reqs, agendamentosData] = await Promise.all([
           clienteService.getNotificacoes(client.id),
-          clienteService.getRequerimentos(client.id)
+          clienteService.getRequerimentos(client.id),
+          clienteService.getAgendamentos(client.id)
         ])
 
+        // Map notifications... (existing logic)
         const mappedNotifs = notifsRaw.map((n: any) => {
           const isRead = n.lida === true || String(n.lida) === 'true' || n.lida === 1;
           const type = n.type || n.tipo || 'info';
@@ -142,6 +145,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
 
         setNotifications(mappedNotifs)
         setRealRequerimentos(reqs)
+        setAgendamentos(Array.isArray(agendamentosData) ? agendamentosData : [])
       } catch (error) {
         console.error('Erro ao buscar dados do dashboard:', error)
       } finally {
@@ -206,7 +210,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
           ? `${action.description} (Prazo: ${formatDateSimple(action.deadline)})`
           : action.description,
         date: action.deadline || new Date(),
-        type: action.type === 'error' ? 'urgent' as const : 'warning' as const,
+        type: action.type === 'error' ? 'urgent' as const : (action.type === 'agendamento' ? 'agendamento' as const : 'warning' as const),
         actionLink: '/cliente/notificacoes'
       }))
 
@@ -317,6 +321,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
         </div>
       </div>
 
+
       {/* Requirement Alert Banner */}
       {pendingRequerimentos.length > 0 && (
         <div className="animate-in fade-in slide-in-from-top duration-500">
@@ -346,6 +351,17 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
       )}
       {/* Reminders Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Próximo Agendamento */}
+        {nextAppointmentData && (
+          <AppointmentReminder 
+            appointmentDate={nextAppointmentData.data_hora}
+            appointmentTime={new Date(nextAppointmentData.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            service={nextAppointmentData.produto_nome || "Consultoria"}
+            status={nextAppointmentData.status}
+            checkoutUrl={nextAppointmentData.checkout_url || nextAppointmentData.checkoutUrl}
+            agendamentoId={nextAppointmentData.id}
+          />
+        )}
         {/* Only show categories that have real reminders */}
         {legalReminders.length > 0 && (
           <ReminderCard
@@ -368,22 +384,41 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
       {
         realPendingActions.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {realPendingActions.map(action => (
-              <Card key={action.id} className="border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-red-700 dark:text-red-400 flex items-center space-x-2 text-lg">
-                    <AlertTriangle className="h-5 w-5" />
-                    <span>{action.title}</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{action.description}</p>
-                  <div className="bg-white dark:bg-neutral-800 p-4 rounded-xl border border-red-100 dark:border-red-900/30 shadow-sm">
-                    <CountdownTimer targetDate={action.deadline} variant="red" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            {realPendingActions.map(action => {
+              const isAgendamento = action.type === 'agendamento';
+              const Icon = isAgendamento ? Calendar : AlertTriangle;
+              
+              return (
+                <Card 
+                  key={action.id} 
+                  className={cn(
+                    "border shadow-sm transition-all hover:shadow-md",
+                    isAgendamento 
+                      ? "border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/50 dark:bg-indigo-900/10" 
+                      : "border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10"
+                  )}
+                >
+                  <CardHeader className="pb-2">
+                    <CardTitle className={cn(
+                      "flex items-center space-x-2 text-lg",
+                      isAgendamento ? "text-indigo-700 dark:text-indigo-400" : "text-red-700 dark:text-red-400"
+                    )}>
+                      <Icon className="h-5 w-5" />
+                      <span>{action.title}</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{action.description}</p>
+                    <div className={cn(
+                      "p-4 rounded-xl border shadow-sm bg-white dark:bg-neutral-800",
+                      isAgendamento ? "border-indigo-100 dark:border-indigo-900/30" : "border-red-100 dark:border-red-900/30"
+                    )}>
+                      <CountdownTimer targetDate={action.deadline} variant={isAgendamento ? "blue" : "red"} />
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )
       }

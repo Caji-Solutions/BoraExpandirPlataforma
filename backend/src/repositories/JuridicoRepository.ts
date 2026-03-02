@@ -992,19 +992,6 @@ class JuridicoRepository {
             throw error
         }
 
-        // Se um serviço foi selecionado, atualiza o cliente
-        if (params.servicoId) {
-            const { error: clienteError } = await supabase
-                .from('clientes')
-                .update({ servico_id: params.servicoId })
-                .eq('id', params.clienteId)
-
-            if (clienteError) {
-                console.error('Erro ao atualizar serviço no cliente:', clienteError)
-                // Não trava o processo se falhar aqui, mas loga o erro
-            }
-        }
-
         return data
     }
 

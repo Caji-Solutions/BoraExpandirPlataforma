@@ -485,6 +485,7 @@ export async function createProcess(payload: {
   status?: string;
   etapaAtual?: number;
   responsavelId?: string;
+  vendedor_id?: string;
 }): Promise<any> {
   const response = await fetch(`${API_BASE_URL}/juridico/processo`, {
     method: 'POST',

@@ -192,8 +192,11 @@ export function AssessoriaJuridica() {
         return;
       }
 
+      const selectedService = catalogServices.find(s => s.id === selectedServiceId);
+      const serviceName = selectedService?.name || 'Serviço Jurídico';
       const obsGerais = (questions.find(q => q.id === 'obs_gerais')?.value as string) || '';
 
+      // 1. Criar/Atualizar Assessoria
       await juridicoService.createAssessoria({
         clienteId: selectedCliente.id,
         respostas: respostasMap,
@@ -201,6 +204,28 @@ export function AssessoriaJuridica() {
         responsavelId: activeProfile.id,
         servicoId: selectedServiceId
       });
+
+      // 2. Criar Processo se ainda não existir
+      // De acordo com o solicitado, isso inicia o procedimento na tabela processos
+      if (!currentProcess) {
+        const novoProcesso = await juridicoService.createProcess({
+          clienteId: selectedCliente.id,
+          tipoServico: serviceName,
+          status: 'formularios', // Status inicial conforme enum no DB
+          etapaAtual: 1,
+          responsavelId: undefined, // Definido como null/vago para atribuição futura
+          vendedor_id: (selectedCliente as any).vendedor_id 
+        });
+
+        // Se o retorno da criação for o objeto do processo, atualizamos o estado
+        if (novoProcesso && novoProcesso.id) {
+          setCurrentProcess(novoProcesso);
+        } else {
+          // Fallback: busca o processo criado
+          const proc = await juridicoService.getProcessoByCliente(selectedCliente.id);
+          setCurrentProcess(proc);
+        }
+      }
 
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);

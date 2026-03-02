@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Card, CardContent } from './ui/card'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
-import { Bell, AlertCircle, CheckCircle, Info, Trash2, Eye, EyeOff, CheckCheck } from 'lucide-react'
+import { Bell, AlertCircle, CheckCircle, Info, Trash2, Eye, EyeOff, CheckCheck, Calendar } from 'lucide-react'
 import { Notification } from '../types'
 import { cn, formatDate } from '../lib/utils'
 
@@ -41,6 +41,13 @@ const notificationConfig = {
     bgColor: 'bg-rose-50 dark:bg-rose-900/20',
     borderColor: 'border-rose-200',
     badge: 'destructive' as const,
+  },
+  agendamento: {
+    icon: Calendar,
+    color: 'text-indigo-600',
+    bgColor: 'bg-indigo-50 dark:bg-indigo-900/20',
+    borderColor: 'border-indigo-200',
+    badge: 'default' as const,
   },
 }
 

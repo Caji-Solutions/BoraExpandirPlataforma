@@ -42,7 +42,7 @@ export interface Reminder {
   title: string;
   message: string;
   date: Date;
-  type: 'info' | 'warning' | 'urgent' | 'success';
+  type: 'info' | 'warning' | 'urgent' | 'success' | 'agendamento';
   actionLink?: string;
 }
 
@@ -101,7 +101,7 @@ export interface Notification {
   id: string;
   // legacy/frontend fields
   clientId?: string;
-  type?: 'info' | 'success' | 'warning' | 'error';
+  type?: 'info' | 'success' | 'warning' | 'error' | 'agendamento';
   title?: string;
   message?: string;
   read?: boolean;
@@ -112,7 +112,7 @@ export interface Notification {
   cliente_id?: string;
   titulo?: string;
   mensagem?: string;
-  tipo?: 'info' | 'success' | 'warning' | 'error';
+  tipo?: 'info' | 'success' | 'warning' | 'error' | 'agendamento';
   lida?: boolean;
   data_prazo?: string;
   criado_em?: string;
