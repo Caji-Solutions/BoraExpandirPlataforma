@@ -27,6 +27,10 @@ export interface Process {
     documentsApostilled: number;
     documentsTranslated: number;
     hasRequirement: boolean;
+    crmStatus?: string;
+    whatsapp?: string;
+    previsaoChegada?: string;
+    createdAt: string;
 }
 
 const StatusBadge = ({ status }: { status: Process["status"] }) => {
@@ -57,7 +61,9 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [filters, setFilters] = useState({
         status: 'todos',
-        serviceType: 'todos'
+        serviceType: 'todos',
+        crmStatus: 'todos',
+        sortBy: 'recent'
     });
 
     // Helper function to map Backend Process to Frontend Process View
@@ -96,12 +102,11 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
         let status: Process['status'] = 'pending_client';
         if (p.status === 'NOVO') status = 'new';
         if (p.status === 'PRONTO') status = 'ready';
-        // Se todos concluídos e total > 0 -> Ready? (Can refine this later)
 
         return {
             id: p.id,
             clientName: p.clientes?.nome || 'Cliente Desconhecido',
-            clientId: p.cliente_id,
+            clientId: p.clientes?.client_id || p.cliente_id,
             serviceType: p.tipo_servico || 'Serviço',
             currentStage: p.etapa_atual?.toString() || '1',
             totalStages: 4,
@@ -113,7 +118,11 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
             documentsAnalyzing: analyzing,
             documentsApostilled: apostilled,
             documentsTranslated: translated,
-            hasRequirement: p.requerimentos ? p.requerimentos.length > 0 : false
+            hasRequirement: p.requerimentos ? p.requerimentos.length > 0 : false,
+            crmStatus: (p.clientes as any)?.status,
+            whatsapp: (p.clientes as any)?.whatsapp,
+            previsaoChegada: (p.clientes as any)?.previsao_chegada,
+            createdAt: p.criado_em
         };
     }, []);
 
@@ -174,15 +183,36 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
     }, [processes]);
 
     const filteredProcesses = useMemo(() => {
-        return processes.filter(p => {
+        const filtered = processes.filter(p => {
             const matchesSearch = 
                 p.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                p.clientId.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 p.id.toLowerCase().includes(searchTerm.toLowerCase());
             
             const matchesStatus = filters.status === 'todos' || p.status === filters.status;
             const matchesService = filters.serviceType === 'todos' || p.serviceType === filters.serviceType;
+            const matchesCrm = filters.crmStatus === 'todos' || p.crmStatus === filters.crmStatus;
             
-            return matchesSearch && matchesStatus && matchesService;
+            return matchesSearch && matchesStatus && matchesService && matchesCrm;
+        });
+
+        // Sorting logic
+        return [...filtered].sort((a, b) => {
+            if (filters.sortBy === 'recent') {
+                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            }
+            if (filters.sortBy === 'name') {
+                return a.clientName.localeCompare(b.clientName);
+            }
+            if (filters.sortBy === 'urgent') {
+                // Priority to 'new' status or hasRequirement
+                if (a.status === 'new' && b.status !== 'new') return -1;
+                if (b.status === 'new' && a.status !== 'new') return 1;
+                if (a.hasRequirement && !b.hasRequirement) return -1;
+                if (b.hasRequirement && !a.hasRequirement) return 1;
+                return 0;
+            }
+            return 0;
         });
     }, [processes, searchTerm, filters]);
 
@@ -475,9 +505,9 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
 
                 {/* Filters and Search - Matching Client Aesthetic */}
                 <div className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Status do Processo</label>
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Status Processo</label>
                             <select
                                 value={filters.status}
                                 onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
@@ -487,6 +517,20 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                                 <option value="new">Novo</option>
                                 <option value="pending_client">Pendente</option>
                                 <option value="ready">Pronto</option>
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Status CRM (Lead)</label>
+                            <select
+                                value={filters.crmStatus}
+                                onChange={e => setFilters(f => ({ ...f, crmStatus: e.target.value }))}
+                                className="w-full bg-muted/30 border border-border px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer appearance-none"
+                            >
+                                <option value="todos">Todos Status CRM</option>
+                                <option value="parceiro">Parceiro</option>
+                                <option value="cadastrado">Cadastrado</option>
+                                <option value="contrato_assinado">Contrato Assinado</option>
+                                <option value="cancelado">Cancelado</option>
                             </select>
                         </div>
                         <div className="space-y-1.5">
@@ -502,6 +546,18 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                                 ))}
                             </select>
                         </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Ordenar por</label>
+                            <select
+                                value={filters.sortBy}
+                                onChange={e => setFilters(f => ({ ...f, sortBy: e.target.value }))}
+                                className="w-full bg-muted/30 border border-border px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer appearance-none"
+                            >
+                                <option value="recent">Mais Recentes</option>
+                                <option value="name">Nome (A-Z)</option>
+                                <option value="urgent">Urgência / Prioridade</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div className="relative">
@@ -513,11 +569,16 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full pl-12 pr-4 py-3.5 bg-muted/50 border-2 border-transparent focus:border-primary/20 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/5 shadow-inner text-base"
                         />
-                        {(searchTerm || filters.status !== 'todos' || filters.serviceType !== 'todos') && (
+                        {(searchTerm || filters.status !== 'todos' || filters.serviceType !== 'todos' || filters.crmStatus !== 'todos' || filters.sortBy !== 'recent') && (
                             <button 
                                 onClick={() => {
                                     setSearchTerm('')
-                                    setFilters({ status: 'todos', serviceType: 'todos' })
+                                    setFilters({ 
+                                        status: 'todos', 
+                                        serviceType: 'todos',
+                                        crmStatus: 'todos',
+                                        sortBy: 'recent'
+                                    })
                                 }}
                                 className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-primary hover:underline"
                             >
@@ -546,22 +607,32 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                                 onClick={() => setSelectedFolder(process)}
                             >
                                 <div className="col-span-1 text-center">
-                                    <span className="text-xs font-mono text-muted-foreground">{process.clientId.substring(0, 4)}...</span>
+                                    <span className="text-[10px] font-mono text-muted-foreground bg-muted p-1 rounded">#{process.clientId.split('-')[0].substring(0, 4)}</span>
                                 </div>
                                 <div className="col-span-3 flex items-center gap-3 text-left">
                                     <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
                                         <Folder className="h-4 w-4 text-primary" />
                                     </div>
                                     <div className="min-w-0">
-                                        <div className="text-sm font-semibold text-foreground">{process.clientName}</div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="text-sm font-semibold text-foreground truncate">{process.clientName}</div>
+                                        <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                                             <div className="text-[10px] text-muted-foreground font-mono">ID: {process.clientId}</div>
+                                            {process.crmStatus && (
+                                                <Badge variant="outline" className="text-[8px] h-3.5 px-1 py-0 uppercase border-gray-200 text-gray-500 bg-gray-50">
+                                                    {process.crmStatus.replace(/_/g, ' ')}
+                                                </Badge>
+                                            )}
                                             {process.hasRequirement && (
                                                 <Badge variant="destructive" className="animate-pulse text-[7px] px-1 py-0 h-3 leading-none min-w-[50px] flex items-center justify-center">
                                                     REQUERIMENTO
                                                 </Badge>
                                             )}
                                         </div>
+                                        {process.previsaoChegada && (
+                                            <div className="text-[9px] text-muted-foreground mt-0.5 opacity-70">
+                                                Chegada prevista: {new Date(process.previsaoChegada).toLocaleDateString()}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="col-span-2 text-center text-xs font-medium">

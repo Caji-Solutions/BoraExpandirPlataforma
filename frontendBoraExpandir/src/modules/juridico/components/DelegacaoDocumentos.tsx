@@ -52,7 +52,7 @@ function adaptProcessoParaModal(processo: Processo) {
     clienteId: processo.cliente_id,
     tipoServico: processo.tipo_servico,
     documentos: processo.documentos || [],
-    dataSubmissao: processo.created_at,
+    dataSubmissao: processo.criado_em,
     prioridade: 'media' as const,
     delegadoPara: processo.responsavel?.full_name || null,
     status: processo.responsavel_id ? 'delegado' as const : 'aguardando_delegacao' as const,
@@ -67,6 +67,7 @@ function adaptFuncionarioParaMembro(func: FuncionarioJuridico): MembroEquipe {
     cargo: 'Equipe Jurídica',
     processosAtivos: 0, // TODO: buscar da API
     disponibilidade: 'disponivel' as const,
+    horario_trabalho: func.horario_trabalho,
   };
 }
 
@@ -87,7 +88,7 @@ export function DelegacaoDocumentos() {
     setError(null);
     try {
       const [processosData, funcionariosData] = await Promise.all([
-        getProcessos(),
+        getProcessos(), // Mantemos todos para o supervisor ver o histórico se quiser
         getFuncionariosJuridico()
       ]);
       setProcessos(processosData);
@@ -109,8 +110,8 @@ export function DelegacaoDocumentos() {
     const isDelegado = proc.responsavel_id !== null;
     const matchStatus = 
       filtroStatus === 'todos' || 
+      (filtroStatus === 'aguardando_delegacao' && (!isDelegado || proc.status === 'waiting_delegation')) ||
       (filtroStatus === 'delegado' && isDelegado) ||
-      (filtroStatus === 'aguardando_delegacao' && !isDelegado) ||
       proc.status === filtroStatus;
     
     const nomeCliente = proc.clientes?.nome || '';
@@ -122,8 +123,8 @@ export function DelegacaoDocumentos() {
   });
 
   // Estatísticas
-  const aguardandoDelegacao = processos.filter(p => !p.responsavel_id).length;
-  const delegados = processos.filter(p => p.responsavel_id !== null).length;
+  const aguardandoDelegacao = processos.filter(p => !p.responsavel_id || p.status === 'waiting_delegation').length;
+  const delegados = processos.filter(p => p.responsavel_id !== null && p.status !== 'waiting_delegation').length;
   const emAnalise = processos.filter(p => p.status === 'em_analise').length;
 
   // Callback após delegação
@@ -317,9 +318,9 @@ export function DelegacaoDocumentos() {
                           setSelectedProcesso(processo);
                           setShowDelegacaoModal(true);
                         }}
-                        disabled={processo.responsavel_id !== null}
+                        disabled={processo.responsavel_id !== null && processo.status !== 'waiting_delegation'}
                         className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                          processo.responsavel_id === null
+                          (processo.responsavel_id === null || processo.status === 'waiting_delegation')
                             ? 'bg-blue-600 text-white hover:bg-blue-700'
                             : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                         }`}
@@ -370,6 +371,11 @@ export function DelegacaoDocumentos() {
                         <DisponibilidadeBadge disponibilidade={membro.disponibilidade} />
                       </div>
                       <p className="text-sm text-gray-500">{membro.cargo}</p>
+                      {membro.horario_trabalho && (
+                        <p className="text-[10px] text-blue-600 font-medium mt-1">
+                          {membro.horario_trabalho}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -28,7 +28,8 @@ export class AdmRepository {
         nome: name,
         valor: value,
         duracao: duration,
-        exibir_comercial: showInCommercial
+        exibir_comercial: showInCommercial,
+        requer_delegacao_juridico: data.requiresLegalDelegation || false
       }])
       .select()
       .single();
@@ -72,6 +73,7 @@ export class AdmRepository {
         valor: value,
         duracao: duration,
         exibir_comercial: showInCommercial,
+        requer_delegacao_juridico: data.requiresLegalDelegation,
         updated_at: new Date().toISOString()
       })
       .eq('id', id);
@@ -129,7 +131,7 @@ export class AdmRepository {
     }
   }
 
-  private async getServiceById(id: string) {
+  public async getServiceById(id: string) {
     const { data, error } = await supabase
       .from('catalogo_servicos')
       .select(`

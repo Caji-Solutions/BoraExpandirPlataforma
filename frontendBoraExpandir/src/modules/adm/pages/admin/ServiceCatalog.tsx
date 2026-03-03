@@ -60,6 +60,7 @@ export default function ServiceCatalog() {
     value: "",
     duration: "",
     showInCommercial: true,
+    requiresLegalDelegation: false,
     documents: [],
   });
 
@@ -91,6 +92,7 @@ export default function ServiceCatalog() {
       value: "",
       duration: "",
       showInCommercial: true,
+      requiresLegalDelegation: false,
       documents: [],
     });
     setDurationValue("");
@@ -105,6 +107,7 @@ export default function ServiceCatalog() {
       value: service.value,
       duration: service.duration,
       showInCommercial: service.showInCommercial,
+      requiresLegalDelegation: service.requiresLegalDelegation,
       documents: service.documents,
     });
 
@@ -393,6 +396,17 @@ export default function ServiceCatalog() {
                 <Switch
                   checked={formData.showInCommercial}
                   onCheckedChange={(val) => setFormData({ ...formData, showInCommercial: val })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-xl">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-bold">Requer Delegação Jurídica</Label>
+                  <p className="text-xs text-muted-foreground">Exige atribuição de responsável</p>
+                </div>
+                <Switch
+                  checked={formData.requiresLegalDelegation}
+                  onCheckedChange={(val) => setFormData({ ...formData, requiresLegalDelegation: val })}
                 />
               </div>
             </div>

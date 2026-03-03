@@ -46,6 +46,7 @@ interface TeamMember {
   is_supervisor?: boolean;
   cpf?: string | null;
   telefone?: string | null;
+  horario_trabalho?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -98,7 +99,6 @@ export default function UserManagement() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
 
   // Detail modal state
@@ -108,6 +108,9 @@ export default function UserManagement() {
   const [editPassword, setEditPassword] = useState("");
   const [isEditingPassword, setIsEditingPassword] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -118,6 +121,8 @@ export default function UserManagement() {
   const [formIsSupervisor, setFormIsSupervisor] = useState(false);
   const [formCpf, setFormCpf] = useState("");
   const [formTelefone, setFormTelefone] = useState("");
+  const [formHorarioEntrada, setFormHorarioEntrada] = useState("");
+  const [formHorarioSaida, setFormHorarioSaida] = useState("");
 
   const { toast } = useToast();
 
@@ -147,6 +152,8 @@ export default function UserManagement() {
     setOpen(isOpen);
     if (!isOpen) {
       resetForm();
+      setIsEditing(false);
+      setEditId(null);
     }
   };
 
@@ -156,9 +163,9 @@ export default function UserManagement() {
     setFormPassword("");
     setFormRole("");
     setFormNivel(null);
-    setFormIsSupervisor(false);
-    setFormCpf("");
     setFormTelefone("");
+    setFormHorarioEntrada("");
+    setFormHorarioSaida("");
     setError("");
   };
 
@@ -178,15 +185,45 @@ export default function UserManagement() {
     }
   };
 
+  const openEditModal = (member: TeamMember) => {
+    setIsEditing(true);
+    setEditId(member.id);
+    setFormName(member.full_name || "");
+    setFormEmail(member.email || "");
+    setFormPassword(""); // Don't pre-fill password for security
+    setFormRole(member.role || "");
+    setFormNivel(member.nivel || null);
+    setFormIsSupervisor(member.is_supervisor || false);
+    setFormCpf(member.cpf || "");
+    setFormTelefone(member.telefone || "");
+    
+    if (member.horario_trabalho && member.horario_trabalho.includes(" - ")) {
+      const [entrada, saida] = member.horario_trabalho.split(" - ");
+      setFormHorarioEntrada(entrada.trim());
+      setFormHorarioSaida(saida.trim());
+    } else {
+      setFormHorarioEntrada("");
+      setFormHorarioSaida("");
+    }
+    
+    setError("");
+    setDetailOpen(false); // Close detail modal if open
+    setOpen(true);
+  };
+
   const handleCreate = async () => {
-    if (!formName || !formEmail || !formPassword || !formRole) {
+    if (!formName || !formEmail || (!isEditing && !formPassword) || !formRole) {
       setError("Preencha todos os campos obrigatórios");
       return;
     }
 
-    setCreating(true);
+    setSaving(true);
     setError("");
     console.log("Creating user...");
+    const horarioCombinado = formHorarioEntrada && formHorarioSaida 
+      ? `${formHorarioEntrada} - ${formHorarioSaida}` 
+      : formHorarioEntrada || formHorarioSaida || "";
+
     console.log("Form data:", {
       name: formName,
       email: formEmail,
@@ -196,11 +233,15 @@ export default function UserManagement() {
       is_supervisor: formIsSupervisor,
       cpf: formCpf,
       telefone: formTelefone,
+      horario_trabalho: horarioCombinado,
     });
 
     try {
-      const res = await fetch(`${BACKEND_URL}/auth/register`, {
-        method: "POST",
+      const url = isEditing ? `${BACKEND_URL}/auth/team/${editId}` : `${BACKEND_URL}/auth/register`;
+      const method = isEditing ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -208,28 +249,33 @@ export default function UserManagement() {
         body: JSON.stringify({
           name: formName,
           email: formEmail,
-          password: formPassword,
+          ...(!isEditing ? { password: formPassword } : {}),
           role: formRole,
           nivel: formNivel,
           is_supervisor: formIsSupervisor,
           cpf: formCpf,
           telefone: formTelefone,
+          horario_trabalho: horarioCombinado,
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Erro ao criar colaborador");
+        setError(data.error || `Erro ao ${isEditing ? 'atualizar' : 'criar'} colaborador`);
       } else {
         setOpen(false);
         resetForm();
         fetchTeam(); // Recarregar lista
+        toast({
+          title: "Sucesso",
+          description: `Colaborador ${isEditing ? 'atualizado' : 'criado'} com sucesso!`,
+        });
       }
     } catch (err) {
       setError("Erro de conexão com o servidor");
     } finally {
-      setCreating(false);
+      setSaving(false);
     }
   };
 
@@ -343,9 +389,11 @@ export default function UserManagement() {
           </DialogTrigger>
           <DialogContent className="bg-card border-border">
             <DialogHeader>
-              <DialogTitle className="text-foreground">Registrar Colaborador</DialogTitle>
+              <DialogTitle className="text-foreground">
+                {isEditing ? "Editar Colaborador" : "Registrar Colaborador"}
+              </DialogTitle>
               <DialogDescription className="text-muted-foreground">
-                Adicione um novo membro à equipe
+                {isEditing ? "Altere os dados do membro da equipe" : "Adicione um novo membro à equipe"}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -375,17 +423,19 @@ export default function UserManagement() {
                   className="bg-input border-border text-foreground"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-foreground">Senha</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formPassword}
-                  onChange={(e) => setFormPassword(e.target.value)}
-                  className="bg-input border-border text-foreground"
-                />
-              </div>
+              {!isEditing && (
+                <div className="space-y-2">
+                  <Label htmlFor="password" title="Obrigatório para novos usuários" className="text-foreground font-bold">Senha *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={formPassword}
+                    onChange={(e) => setFormPassword(e.target.value)}
+                    className="bg-input border-border text-foreground border-2 border-primary/20"
+                  />
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cpf" className="text-foreground">CPF</Label>
@@ -410,7 +460,7 @@ export default function UserManagement() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role" className="text-foreground">Função</Label>
-                <Select onValueChange={handleRoleChange}>
+                <Select value={formRole} onValueChange={handleRoleChange}>
                   <SelectTrigger className="bg-input border-border text-foreground">
                     <SelectValue placeholder="Selecione a função" />
                   </SelectTrigger>
@@ -433,6 +483,28 @@ export default function UserManagement() {
                   <Label htmlFor="supervisor" className="text-foreground">Usuário é supervisor?</Label>
                 </div>
               )}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="entrada" className="text-foreground">Horário de Entrada</Label>
+                  <Input
+                    id="entrada"
+                    type="time"
+                    value={formHorarioEntrada}
+                    onChange={(e) => setFormHorarioEntrada(e.target.value)}
+                    className="bg-input border-border text-foreground"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="saida" className="text-foreground">Horário de Saída</Label>
+                  <Input
+                    id="saida"
+                    type="time"
+                    value={formHorarioSaida}
+                    onChange={(e) => setFormHorarioSaida(e.target.value)}
+                    className="bg-input border-border text-foreground"
+                  />
+                </div>
+              </div>
             </div>
             <div className="flex justify-end gap-3">
               <Button
@@ -444,10 +516,10 @@ export default function UserManagement() {
               </Button>
               <Button
                 onClick={handleCreate}
-                disabled={creating}
+                disabled={saving}
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
-                {creating ? "Criando..." : "Criar"}
+                {saving ? "Salvando..." : (isEditing ? "Salvar Alterações" : "Criar")}
               </Button>
             </div>
           </DialogContent>
@@ -463,20 +535,31 @@ export default function UserManagement() {
                 <>
                   <Avatar className="h-10 w-10 bg-primary/20">
                     <AvatarFallback className="text-primary text-sm font-medium">
-                      {getInitials(selectedMember.full_name || "?")}
+                      {getInitials(selectedMember?.full_name || "?")}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <span>{selectedMember.full_name}</span>
-                    {selectedMember.is_supervisor && (
+                    <span>{selectedMember?.full_name}</span>
+                    {selectedMember?.is_supervisor && (
                       <span className="ml-2 text-xs text-amber-500 font-medium">★ Supervisor</span>
                     )}
                   </div>
                 </>
               )}
             </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
+            <DialogDescription className="text-muted-foreground flex justify-between items-center">
               Informações do colaborador
+              {selectedMember && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 gap-2"
+                  onClick={() => selectedMember && openEditModal(selectedMember)}
+                >
+                  <Pencil className="h-3 w-3" />
+                  Editar Dados
+                </Button>
+              )}
             </DialogDescription>
           </DialogHeader>
           {selectedMember && (
@@ -492,19 +575,25 @@ export default function UserManagement() {
               {/* Email */}
               <div className="flex items-center justify-between py-3 border-b border-border">
                 <span className="text-sm text-muted-foreground">Email</span>
-                <span className="text-sm text-foreground font-medium">{selectedMember.email}</span>
+                <span className="text-sm text-foreground font-medium">{selectedMember?.email}</span>
               </div>
 
               {/* CPF */}
               <div className="flex items-center justify-between py-3 border-b border-border">
                 <span className="text-sm text-muted-foreground">CPF</span>
-                <span className="text-sm text-foreground font-medium">{selectedMember.cpf || "—"}</span>
+                <span className="text-sm text-foreground font-medium">{selectedMember?.cpf || "—"}</span>
               </div>
 
               {/* Telefone */}
               <div className="flex items-center justify-between py-3 border-b border-border">
                 <span className="text-sm text-muted-foreground">Telefone</span>
-                <span className="text-sm text-foreground font-medium">{selectedMember.telefone || "—"}</span>
+                <span className="text-sm text-foreground font-medium">{selectedMember?.telefone || "—"}</span>
+              </div>
+
+              {/* Horário de Trabalho */}
+              <div className="flex items-center justify-between py-3 border-b border-border">
+                <span className="text-sm text-muted-foreground">Horário de Trabalho</span>
+                <span className="text-sm text-foreground font-medium">{selectedMember?.horario_trabalho || "—"}</span>
               </div>
 
               {/* Senha */}
@@ -575,7 +664,7 @@ export default function UserManagement() {
               {/* Registrado em */}
               <div className="flex items-center justify-between py-3">
                 <span className="text-sm text-muted-foreground">Registrado em</span>
-                <span className="text-sm text-foreground">{timeAgo(selectedMember.created_at)}</span>
+                <span className="text-sm text-foreground">{selectedMember?.created_at ? timeAgo(selectedMember.created_at) : "—"}</span>
               </div>
             </div>
           )}
@@ -637,14 +726,24 @@ export default function UserManagement() {
                     <TableCell className="text-muted-foreground">{timeAgo(member.created_at)}</TableCell>
                     <TableCell>
                       {member.role !== "super_admin" && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={(e) => { e.stopPropagation(); handleDelete(member.id, member.full_name); }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-blue-500 hover:text-blue-700"
+                            onClick={() => openEditModal(member)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive/80"
+                            onClick={() => handleDelete(member.id, member.full_name || "este colaborador")}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>

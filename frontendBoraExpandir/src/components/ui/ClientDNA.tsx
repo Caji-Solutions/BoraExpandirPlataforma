@@ -40,6 +40,10 @@ export type ClientDNAData = {
     categoria: string
     priority: 'high' | 'medium' | 'low'
     notes?: ClientNote[]
+    responsavel?: {
+        id: string
+        nome: string
+    }
     historico?: {
         data: string
         evento: string
@@ -98,36 +102,31 @@ export function ClientDNAPage() {
             const result = await response.json()
 
             if (result.data) {
-                const isSuperAdmin = activeProfile.role === 'super_admin';
-                const userId = activeProfile.id;
-                
-                const mappedClientes: ClientDNAData[] = result.data
-                    .filter((item: any) => {
-                        if (isSuperAdmin) return true;
-                        // Filtra apenas clientes que possuem processos atribuídos ao advogado logado
-                        return item.processos && item.processos.some((p: any) => p.responsavel_id === userId);
-                    })
-                    .map((item: any) => {
-                        // Encontra o processo específico deste advogado (ou o primeiro caso tenha múltiplos ou seja admin)
-                        const userProcess = item.processos?.find((p: any) => p.responsavel_id === userId) || item.processos?.[0];
+                const mappedClientes: ClientDNAData[] = result.data.map((item: any) => {
+                    // Encontra o processo mais recente para determinar o responsável e status
+                    const lastProcess = item.processos?.[0]
 
-                        return {
-                            id: item.client_id || item.id,
-                            true_id: item.id,
-                            processo_id: userProcess?.id,
-                            nome: item.nome || 'Sem nome',
-                            email: item.email || 'Sem e-mail',
-                            telefone: item.whatsapp || '',
-                            tipoAssessoria: userProcess?.tipo_servico || 'Assessoria',
-                            contratoAtivo: item.status !== 'cancelado',
-                            categoria: userProcess?.status || item.stage || (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status || 'formularios')),
-                            previsaoChegada: item.previsao_chegada || '',
-                            priority: 'medium',
-                            notes: [],
-                            historico: [],
-                            hasRequirement: item.requerimentos && item.requerimentos.length > 0
-                        }
-                    })
+                    return {
+                        id: item.client_id || item.id,
+                        true_id: item.id,
+                        processo_id: lastProcess?.id,
+                        nome: item.nome || 'Sem nome',
+                        email: item.email || 'Sem e-mail',
+                        telefone: item.whatsapp || '',
+                        tipoAssessoria: lastProcess?.tipo_servico || 'Assessoria',
+                        contratoAtivo: item.status !== 'cancelado',
+                        categoria: lastProcess?.status || item.stage || (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status || 'formularios')),
+                        previsaoChegada: item.previsao_chegada || '',
+                        priority: 'medium',
+                        notes: [],
+                        responsavel: lastProcess?.responsavel ? {
+                            id: lastProcess.responsavel.id,
+                            nome: lastProcess.responsavel.full_name
+                        } : undefined,
+                        historico: [],
+                        hasRequirement: item.requerimentos && item.requerimentos.length > 0
+                    }
+                })
                 setClientes(mappedClientes)
             }
             setError(null)
@@ -137,7 +136,7 @@ export function ClientDNAPage() {
         } finally {
             setLoading(false)
         }
-    }, [activeProfile?.id, activeProfile?.role])
+    }, [activeProfile?.id])
 
     useEffect(() => {
         fetchClientes()

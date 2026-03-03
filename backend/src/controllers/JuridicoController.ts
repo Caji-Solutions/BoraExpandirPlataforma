@@ -155,6 +155,60 @@ class JuridicoController {
         }
     }
 
+    // GET /juridico/agendamentos/delegacao - Lista agendamentos que requerem delegação
+    async getAgendamentosDelegacao(req: any, res: any) {
+        try {
+            const agendamentos = await JuridicoRepository.getAgendamentosDelegacao()
+
+            return res.status(200).json({
+                message: 'Agendamentos para delegação recuperados com sucesso',
+                data: agendamentos,
+                total: agendamentos.length
+            })
+        } catch (error: any) {
+            console.error('Erro ao buscar agendamentos para delegação:', error)
+            return res.status(500).json({ 
+                message: 'Erro ao buscar agendamentos para delegação', 
+                error: error.message 
+            })
+        }
+    }
+
+    // POST /juridico/atribuir-responsavel-agendamento - Atribuir responsável a um agendamento
+    async atribuirResponsavelAgendamento(req: any, res: any) {
+        try {
+            const { agendamentoId, responsavelId } = req.body
+
+            if (!agendamentoId) {
+                return res.status(400).json({ message: 'agendamentoId é obrigatório' })
+            }
+
+            if (responsavelId) {
+                const funcionario = await JuridicoRepository.getFuncionarioById(responsavelId)
+                if (!funcionario) {
+                    return res.status(400).json({ 
+                        message: 'responsavelId inválido - funcionário não encontrado ou não é do jurídico' 
+                    })
+                }
+            }
+
+            const agendamento = await JuridicoRepository.atribuirResponsavelAgendamento(agendamentoId, responsavelId || null)
+
+            return res.status(200).json({
+                message: responsavelId 
+                    ? 'Responsável jurídico atribuído ao agendamento com sucesso' 
+                    : 'Responsável jurídico removido do agendamento',
+                data: agendamento
+            })
+        } catch (error: any) {
+            console.error('Erro ao atribuir responsável ao agendamento:', error)
+            return res.status(500).json({ 
+                message: 'Erro ao atribuir responsável ao agendamento', 
+                error: error.message 
+            })
+        }
+    }
+
     // GET /juridico/clientes/vagos - Lista clientes sem responsável
     async getClientesVagos(req: any, res: any) {
         try {

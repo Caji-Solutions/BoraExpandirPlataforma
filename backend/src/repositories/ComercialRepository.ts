@@ -35,6 +35,41 @@ class ComercialRepository {
             throw error
         }
 
+        // Se o status for aprovado, verifica se o serviço requer delegação jurídica
+        if (status === 'aprovado' && data) {
+            try {
+                // 1. Verificar no catálogo se este serviço requer delegação
+                const { data: service } = await supabase
+                    .from('catalogo_servicos')
+                    .select('requer_delegacao_juridico, nome')
+                    .eq('id', data.produto_id)
+                    .single()
+
+                if (service?.requer_delegacao_juridico) {
+                    console.log(`Serviço "${service.nome}" requer delegação jurídica. Verificando processo...`)
+                    
+                    const JuridicoRepository = (await import('./JuridicoRepository')).default
+                    const existingProcess = await JuridicoRepository.getProcessoByClienteId(data.cliente_id)
+
+                    if (!existingProcess) {
+                        console.log('Nenhum processo ativo encontrado. Criando novo processo vago...')
+                        await JuridicoRepository.createProcess({
+                            clienteId: data.cliente_id,
+                            tipoServico: service.nome,
+                            status: 'waiting_delegation',
+                            etapaAtual: 1,
+                            responsavelId: undefined
+                        })
+                        console.log('Processo vago criado com sucesso.')
+                    } else {
+                        console.log('Processo já existente para este cliente.')
+                    }
+                }
+            } catch (err) {
+                console.error('Erro ao processar delegação jurídica automática:', err)
+            }
+        }
+
         // Se o status for aprovado, cria uma notificação para o cliente
         if (status === 'aprovado' && data && data.cliente_id) {
             try {

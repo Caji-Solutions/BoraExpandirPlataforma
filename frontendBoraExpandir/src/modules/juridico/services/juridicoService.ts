@@ -20,13 +20,17 @@ export interface FuncionarioJuridico {
   full_name: string;
   email: string;
   telefone?: string;
+  horario_trabalho?: string;
 }
 
 export interface Cliente {
   id: string;
+  client_id?: string;
   nome: string;
   email: string;
   whatsapp?: string;
+  status?: string;
+  previsao_chegada?: string;
 }
 
 export interface Processo {
@@ -134,6 +138,43 @@ export async function removerResponsavel(clienteId: string): Promise<AtribuirRes
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || 'Erro ao remover responsável jurídico');
+  }
+
+  return response.json();
+}
+
+/**
+ * Busca agendamentos que requerem delegação
+ */
+export async function getAgendamentosDelegacao(): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/juridico/agendamentos/delegacao`);
+
+  if (!response.ok) {
+    throw new Error('Erro ao buscar agendamentos para delegação');
+  }
+
+  const result = await response.json();
+  return result.data;
+}
+
+/**
+ * Atribui um responsável jurídico a um agendamento
+ */
+export async function atribuirResponsavelAgendamento(
+  agendamentoId: string, 
+  responsavelId: string
+): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/juridico/atribuir-responsavel-agendamento`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ agendamentoId, responsavelId }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Erro ao atribuir responsável ao agendamento');
   }
 
   return response.json();
@@ -618,5 +659,7 @@ export default {
 
       const result = await response.json();
       return result.data;
-    }
+    },
+    getAgendamentosDelegacao,
+    atribuirResponsavelAgendamento
 };

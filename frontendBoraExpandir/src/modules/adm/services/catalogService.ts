@@ -14,6 +14,7 @@ export interface Service {
   value: string;
   duration: string;
   showInCommercial: boolean;
+  requiresLegalDelegation: boolean;
   documents: DocumentRequirement[];
 }
 

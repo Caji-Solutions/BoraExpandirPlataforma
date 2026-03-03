@@ -11,6 +11,7 @@ import { DelegacaoDocumentos } from "./components/DelegacaoDocumentos";
 import { EquipeJuridica } from "./components/EquipeJuridica";
 import { AssessoriaJuridica } from "./components/AssessoriaJuridica";
 import { ClientDNAPage } from "../../components/ui/ClientDNA";
+import DelegacaoFila from "./pages/DelegacaoFila";
 import juridicoService, { Processo } from "./services/juridicoService";
 
 import { ProcessTable, ProcessData } from "./components/ProcessTable";
@@ -121,6 +122,7 @@ const Index = () => {
     ...(USUARIO_LOGADO.isSupervisor ? [{
       label: "Supervisão",
       items: [
+        { label: "Delegação de Processos", to: "/juridico/delegacao-processos", icon: FileStack },
         { label: "Delegação de Documentos", to: "/juridico/delegacao", icon: FileStack },
         { label: "Equipe Jurídica", to: "/juridico/equipe", icon: Users },
       ],
@@ -157,6 +159,7 @@ const Index = () => {
             {/* Rotas exclusivas para Supervisores */}
             {USUARIO_LOGADO.isSupervisor && (
               <>
+                <Route path="delegacao-processos" element={<DelegacaoFila />} />
                 <Route path="delegacao" element={<DelegacaoDocumentos />} />
                 <Route path="equipe" element={<EquipeJuridica />} />
               </>

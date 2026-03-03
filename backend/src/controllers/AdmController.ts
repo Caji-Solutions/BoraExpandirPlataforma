@@ -12,6 +12,7 @@ export class AdmController {
         value: s.valor.toString(),
         duration: s.duracao,
         showInCommercial: s.exibir_comercial,
+        requiresLegalDelegation: s.requer_delegacao_juridico || false,
         documents: s.requisitos.map((r: any) => ({
           id: r.id,
           name: r.nome,

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { FileText, ChevronRight, Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { FileText, ChevronRight, Loader2, AlertCircle, CheckCircle, Calendar, Clock } from "lucide-react";
 import { atribuirResponsavel } from "../services/juridicoService";
+import { Badge } from "../../../components/ui/Badge";
 
 // Tipos
 export interface DocumentoCliente {
@@ -18,6 +19,7 @@ export interface DocumentoCliente {
   prioridade: 'alta' | 'media' | 'baixa';
   delegadoPara: string | null;
   status: 'aguardando_delegacao' | 'delegado' | 'em_analise' | 'concluido';
+  tipo?: 'processo' | 'agendamento';
 }
 
 export interface MembroEquipe {
@@ -26,6 +28,7 @@ export interface MembroEquipe {
   cargo: string;
   processosAtivos: number;
   disponibilidade: 'disponivel' | 'ocupado' | 'ausente';
+  horario_trabalho?: string;
   avatar?: string;
 }
 
@@ -73,8 +76,12 @@ export function ModalDelegacao({
     setSelectedMembroId(membroId);
 
     try {
-      // Faz o POST para o backend com processoId (documento.id) e responsavelId (membroId)
-      await atribuirResponsavel(documento.id, membroId);
+      if (documento.tipo === 'agendamento') {
+        const { atribuirResponsavelAgendamento } = await import("../services/juridicoService");
+        await atribuirResponsavelAgendamento(documento.id, membroId);
+      } else {
+        await atribuirResponsavel(documento.id, membroId);
+      }
       
       setSuccess(true);
       
@@ -115,24 +122,57 @@ export function ModalDelegacao({
       <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
         {/* Header do Modal */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-5">
-          <h3 className="font-bold text-white text-lg">Delegar Documento</h3>
+          <h3 className="font-bold text-white text-lg">
+            {documento.tipo === 'agendamento' ? 'Delegar Reunião' : 'Delegar Documento'}
+          </h3>
           <p className="text-blue-100 text-sm mt-1">
-            Selecione um membro da equipe para analisar os documentos
+            {documento.tipo === 'agendamento' 
+              ? 'Selecione um membro da equipe para realizar este atendimento' 
+              : 'Selecione um membro da equipe para analisar os documentos'}
           </p>
         </div>
 
-        {/* Info do Documento */}
+        {/* Info do Documento / Reunião */}
         <div className="p-5 border-b bg-gray-50">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white rounded-lg border">
-              <FileText className="h-5 w-5 text-gray-500" />
+              {documento.tipo === 'agendamento' ? (
+                <Calendar className="h-5 w-5 text-blue-600" />
+              ) : (
+                <FileText className="h-5 w-5 text-gray-500" />
+              )}
             </div>
-            <div>
-              <p className="font-medium text-gray-900">{documento.clienteNome}</p>
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <p className="font-medium text-gray-900">{documento.clienteNome}</p>
+                {documento.tipo === 'agendamento' && (
+                  <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">
+                    Reunião Agendada
+                  </Badge>
+                )}
+              </div>
               <p className="text-xs text-blue-600 font-mono">{documento.clienteId}</p>
-              <p className="text-sm text-gray-500">
-                {documento.tipoServico} • {documento.documentos.length} documento(s)
-              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                <p className="text-sm text-gray-600 flex items-center gap-1">
+                  <span className="font-bold">{documento.tipoServico}</span>
+                </p>
+                {documento.tipo === 'agendamento' ? (
+                  <p className="text-sm text-blue-700 font-bold flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" />
+                    {new Date(documento.dataSubmissao).toLocaleString('pt-BR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    {documento.documentos.length} documento(s)
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -183,6 +223,11 @@ export function ModalDelegacao({
                         <DisponibilidadeBadge disponibilidade={membro.disponibilidade} />
                       </div>
                       <p className="text-sm text-gray-500">{membro.cargo}</p>
+                      {membro.horario_trabalho && (
+                        <p className="text-[10px] text-blue-600 font-medium mt-0.5">
+                          {membro.horario_trabalho}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="text-right flex items-center gap-2">

@@ -1,6 +1,7 @@
 import { supabase } from '../config/SupabaseClient'
 import type { ClienteDTO } from '../types/parceiro';
 import ComercialRepository from '../repositories/ComercialRepository';
+import AdmRepository from '../repositories/AdmRepository';
 
 
 class ComercialController {
@@ -96,6 +97,10 @@ class ComercialController {
                 })
             }
 
+            // 0. Verificar se o serviço requer delegação jurídica
+            const catalogoServico = await AdmRepository.getServiceById(produto_id)
+            const requerDelegacao = catalogoServico?.requer_delegacao_juridico || false
+
             // 1. Cria o agendamento como PENDENTE no banco
             const agendamentoPendente = {
                 nome,
@@ -105,11 +110,12 @@ class ComercialController {
                 produto_id,
                 produto_nome,
                 valor: valor,
-                is_euro: true, // Default para Mercado Pago no BR seria false, mas aqui parece que o usuário usa Euro
+                is_euro: false,
                 duracao_minutos: duracao,
-                status: 'agendado', // Agendado mas não pago (pendente para o cliente)
+                status: 'agendado',
                 usuario_id: usuario_id || null,
-                cliente_id: cliente_id || null
+                cliente_id: cliente_id || null,
+                requer_delegacao: requerDelegacao
             }
             
             const createdAgendamento = await ComercialRepository.createAgendamento(agendamentoPendente)
@@ -178,6 +184,10 @@ class ComercialController {
                 return res.status(409).json({ message: 'Horário indisponível' })
             }
 
+            // 0. Verificar se o serviço requer delegação jurídica
+            const catalogoServico = await AdmRepository.getServiceById(produto_id)
+            const requerDelegacao = catalogoServico?.requer_delegacao_juridico || false
+
             const agendamentoPendente = {
                 nome,
                 email,
@@ -190,7 +200,8 @@ class ComercialController {
                 duracao_minutos: duracao,
                 status: 'agendado',
                 usuario_id: usuario_id || null,
-                cliente_id: cliente_id || null
+                cliente_id: cliente_id || null,
+                requer_delegacao: requerDelegacao
             }
             
             const createdAgendamento = await ComercialRepository.createAgendamento(agendamentoPendente)

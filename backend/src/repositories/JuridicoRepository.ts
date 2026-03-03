@@ -7,6 +7,7 @@ interface FuncionarioJuridico {
     full_name: string | null
     email: string | null
     telefone: string | null
+    horario_trabalho: string | null
 }
 
 interface ClienteComResponsavel {
@@ -55,7 +56,7 @@ class JuridicoRepository {
     async getFuncionarios(): Promise<FuncionarioJuridico[]> {
         const { data, error } = await supabase
             .from('profiles')
-            .select('id, full_name, email, telefone')
+            .select('id, full_name, email, telefone, horario_trabalho')
             .eq('role', 'juridico')
             .order('full_name', { ascending: true })
 
@@ -71,7 +72,7 @@ class JuridicoRepository {
     async getFuncionarioById(funcionarioId: string): Promise<FuncionarioJuridico | null> {
         const { data, error } = await supabase
             .from('profiles')
-            .select('id, full_name, email, telefone')
+            .select('id, full_name, email, telefone, horario_trabalho')
             .eq('id', funcionarioId)
             .eq('role', 'juridico')
             .single()
@@ -97,8 +98,14 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
+                    client_id,
+                    client_id,
+                    client_id,
                     nome,
-                    email
+                    email,
+                    whatsapp,
+                    status,
+                    previsao_chegada
                 ),
                 documentos (*),
                 requerimentos (*)
@@ -154,8 +161,12 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
+                    client_id,
                     nome,
-                    email
+                    email,
+                    whatsapp,
+                    status,
+                    previsao_chegada
                 ),
                 documentos (*)
             `)
@@ -178,8 +189,12 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
+                    client_id,
                     nome,
-                    email
+                    email,
+                    whatsapp,
+                    status,
+                    previsao_chegada
                 ),
                 documentos (*),
                 requerimentos (*)
@@ -216,6 +231,86 @@ class JuridicoRepository {
         return data
     }
 
+    // Atribuir responsável jurídico a um agendamento
+    async atribuirResponsavelAgendamento(agendamentoId: string, responsavelId: string | null): Promise<any> {
+        const { data, error } = await supabase
+            .from('agendamentos')
+            .update({   
+                responsavel_juridico_id: responsavelId,
+                status: responsavelId ? 'confirmado' : 'agendado' // Se delegar, já podemos considerar confirmado se necessário
+            })
+            .eq('id', agendamentoId)
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro ao atribuir responsável jurídico ao agendamento:', error)
+            throw error
+        }
+
+        return data
+    }
+
+    // Listar agendamentos que requerem delegação
+    async getAgendamentosDelegacao(): Promise<any[]> {
+        const { data: agendamentos, error } = await supabase
+            .from('agendamentos')
+            .select(`
+                *,
+                clientes:clientes!cliente_id (
+                    id,
+                    client_id,
+                    client_id,
+                    client_id,
+                    nome,
+                    email,
+                    whatsapp,
+                    status,
+                    previsao_chegada
+                )
+            `)
+            .eq('requer_delegacao', true)
+            .order('data_hora', { ascending: true })
+
+        if (error) {
+            console.error('Erro ao buscar agendamentos para delegação:', error)
+            throw error
+        }
+
+        if (!agendamentos || agendamentos.length === 0) return []
+
+        // Buscar responsáveis únicos
+        const responsavelIds = [...new Set(
+            agendamentos
+                .filter(a => a.responsavel_juridico_id)
+                .map(a => a.responsavel_juridico_id)
+        )]
+
+        let responsaveisMap: Record<string, FuncionarioJuridico> = {}
+
+        if (responsavelIds.length > 0) {
+            const { data: responsaveis } = await supabase
+                .from('profiles')
+                .select('id, full_name, email, telefone, horario_trabalho')
+                .in('id', responsavelIds)
+
+            if (responsaveis) {
+                responsaveisMap = responsaveis.reduce((acc, r) => {
+                    acc[r.id] = r as FuncionarioJuridico
+                    return acc
+                }, {} as Record<string, FuncionarioJuridico>)
+            }
+        }
+
+        // Mapear com seus responsáveis
+        return agendamentos.map(agendamento => ({
+            ...agendamento,
+            responsavel: agendamento.responsavel_juridico_id 
+                ? responsaveisMap[agendamento.responsavel_juridico_id] || null 
+                : null
+        }))
+    }
+
     // Atualizar etapa do processo
     async updateEtapaProcesso(processoId: string, etapa: number): Promise<any> {
         const { data, error } = await supabase
@@ -242,6 +337,7 @@ class JuridicoRepository {
             .from('processos')
             .select(`
                 cliente_id,
+                    client_id,
                 clientes:clientes!cliente_id (*)
             `)
             .eq('responsavel_id', responsavelId)
@@ -271,6 +367,7 @@ class JuridicoRepository {
             .from('processos')
             .select(`
                 cliente_id,
+                    client_id,
                 clientes:clientes!cliente_id (*)
             `)
             .is('responsavel_id', null)
@@ -522,11 +619,13 @@ class JuridicoRepository {
 
         return (data || []).map(f => ({
             id: f.id,
+                    client_id,
             name: f.nome_original?.replace(/\.[^/.]+$/, '') || 'Documento',
             fileName: f.nome_original,
             fileSize: f.tamanho,
             uploadDate: f.criado_em,
             memberId: f.membro_id,
+                    client_id,
             downloadUrl: f.public_url,
             funcionarioId: f.funcionario_juridico_id
         }))
@@ -617,13 +716,16 @@ class JuridicoRepository {
             const resposta = respostasMap[f.id]
             return {
                 id: f.id,
+                    client_id,
                 name: f.nome_original?.replace(/\.[^/.]+$/, '') || 'Formulário',
                 fileName: f.nome_original,
                 fileSize: f.tamanho,
                 uploadDate: f.criado_em,
                 memberId: f.membro_id,
+                    client_id,
                 downloadUrl: f.public_url,
                 funcionarioId: f.funcionario_juridico_id,
+                    client_id,
                 // Response status
                 status: resposta ? 'received' : 'waiting',
                 // Response approval status (pendente/aprovado/rejeitado)
@@ -632,6 +734,7 @@ class JuridicoRepository {
                 // Response data (if exists)
                 response: resposta ? {
                     id: resposta.id,
+                    client_id,
                     fileName: resposta.nome_original,
                     downloadUrl: resposta.public_url,
                     uploadDate: resposta.criado_em
@@ -700,6 +803,7 @@ class JuridicoRepository {
                 *,
                 autor:profiles!autor_id (
                     id,
+                    client_id,
                     full_name,
                     role
                 )
@@ -723,6 +827,7 @@ class JuridicoRepository {
                 *,
                 autor:profiles!autor_id (
                     id,
+                    client_id,
                     full_name,
                     role
                 )

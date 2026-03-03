@@ -10,6 +10,7 @@ function buildFullProfile(profile: any, authUserMetadata: any) {
         ...profile,
         is_supervisor: authUserMetadata?.is_supervisor || false,
         nivel: authUserMetadata?.nivel || null,
+        horario_trabalho: profile?.horario_trabalho || null,
     }
 }
 
@@ -134,7 +135,7 @@ router.post('/register', async (req: Request, res: Response) => {
             return res.status(403).json({ error: 'Apenas Super Admin pode registrar colaboradores' })
         }
 
-        const { name, email, password, role, nivel, is_supervisor, cpf, telefone } = req.body
+        const { name, email, password, role, nivel, is_supervisor, cpf, telefone, horario_trabalho } = req.body
 
         if (!name || !email || !password || !role) {
             return res.status(400).json({ error: 'Nome, email, senha e função são obrigatórios' })
@@ -180,6 +181,7 @@ router.post('/register', async (req: Request, res: Response) => {
                 role,
                 cpf: cpf || null,
                 telefone: telefone || null,
+                horario_trabalho: horario_trabalho || null,
             })
             .select()
             .single()
@@ -408,6 +410,80 @@ router.patch('/team/:id/password', async (req: Request, res: Response) => {
         })
     } catch (error: any) {
         console.error('Erro ao atualizar senha:', error)
+        return res.status(500).json({ error: 'Erro interno do servidor' })
+    }
+})
+
+// ============================================
+// PATCH /auth/team/:id — Atualizar dados de um colaborador
+// ============================================
+router.patch('/team/:id', async (req: Request, res: Response) => {
+    try {
+        const authHeader = req.headers.authorization
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Token não fornecido' })
+        }
+
+        const token = authHeader.split(' ')[1]
+        const { data: { user: adminUser }, error: adminError } = await supabase.auth.getUser(token)
+
+        if (adminError || !adminUser) {
+            return res.status(401).json({ error: 'Token inválido' })
+        }
+
+        const { data: adminProfile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', adminUser.id)
+            .single()
+
+        if (!adminProfile || adminProfile.role !== 'super_admin') {
+            return res.status(403).json({ error: 'Apenas Super Admin pode alterar colaboradores' })
+        }
+
+        const { id } = req.params
+        const { name, email, role, nivel, is_supervisor, cpf, telefone, horario_trabalho } = req.body
+
+        // 1. Atualizar dados no Auth
+        const updateData: any = {
+            user_metadata: {
+                full_name: name,
+                role,
+                is_supervisor: role === 'tradutor' ? false : (is_supervisor || false),
+                nivel: nivel || null,
+            }
+        }
+
+        if (email) updateData.email = email
+
+        const { error: authError } = await supabase.auth.admin.updateUserById(id, updateData)
+
+        if (authError) {
+            console.error('Erro ao atualizar auth user:', authError.message)
+            return res.status(400).json({ error: authError.message })
+        }
+
+        // 2. Atualizar na tabela profiles
+        const { error: profileError } = await supabase
+            .from('profiles')
+            .update({
+                full_name: name,
+                role,
+                cpf: cpf || null,
+                telefone: telefone || null,
+                horario_trabalho: horario_trabalho || null,
+                email: email || undefined // Só atualiza se email for enviado
+            })
+            .eq('id', id)
+
+        if (profileError) {
+            console.error('Erro ao atualizar profile:', profileError.message)
+            return res.status(500).json({ error: 'Erro ao atualizar perfil' })
+        }
+
+        return res.json({ message: 'Colaborador atualizado com sucesso' })
+    } catch (error: any) {
+        console.error('Erro ao atualizar colaborador:', error)
         return res.status(500).json({ error: 'Erro interno do servidor' })
     }
 })
