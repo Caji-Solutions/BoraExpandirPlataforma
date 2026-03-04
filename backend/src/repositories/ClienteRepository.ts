@@ -642,17 +642,26 @@ class ClienteRepository {
 
         if (!data || data.length === 0) return []
 
-        // Fetch profiles to get CPF/documento
+        // Fetch profiles to get CPF/documento and responsaveis
         const { data: profiles } = await supabase
             .from('profiles')
-            .select('email, cpf')
-        
-        const cpfMap = new Map(profiles?.map(p => [p.email, p.cpf]) || [])
+            .select('id, email, cpf, full_name')
 
-        return data.map(c => ({
-            ...c,
-            documento: cpfMap.get(c.email) || ''
-        }))
+        const cpfMap = new Map(profiles?.map(p => [p.email, p.cpf]) || [])
+        const responsavelMap = new Map(profiles?.map(p => [p.id, { id: p.id, full_name: p.full_name }]) || [])
+
+        return data.map(c => {
+            const processosPopulated = c.processos?.map((p: any) => ({
+                ...p,
+                responsavel: p.responsavel_id ? responsavelMap.get(p.responsavel_id) : null
+            }))
+
+            return {
+                ...c,
+                processos: processosPopulated,
+                documento: cpfMap.get(c.email) || ''
+            }
+        })
     }
 
     // ========== PROFILE PHOTO ==========
@@ -665,7 +674,7 @@ class ClienteRepository {
     }): Promise<any> {
         const BUCKET = 'profile-photos'
         const documentType = 'profile_photo'
-        
+
         // 1. Upload file to Supabase Storage
         // Path structure: clienteId/profile_timestamp.ext to avoid cache issues or just profile.ext
         const filePath = `${params.clienteId}/avatar`

@@ -18,6 +18,7 @@ import { ProtectedRoute, roleRouteMap } from './components/ProtectedRoute'
 import LoginPage from './modules/shared/pages/LoginPage'
 import PaymentSuccess from './modules/shared/pages/PaymentSuccess'
 import PaymentCancel from './modules/shared/pages/PaymentCancel'
+import FormularioConsultoria from './pages/FormularioConsultoria'
 
 import { useParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
@@ -113,6 +114,10 @@ function AppRouter() {
           <Route path="/parceiro/cadastro" element={<CadastroParceiro />} />
           <Route path="/indicado/:partnerId" element={<TelaIndicadoWrapper />} />
           <Route path="/r/:partnerId" element={<TelaIndicadoWrapper />} />
+
+          {/* Formulário público de consultoria */}
+          <Route path="/formulario/consultoria/:agendamentoId" element={<FormularioConsultoria />} />
+          <Route path="/formulario/consultoria" element={<FormularioConsultoria />} />
 
           {/* Rotas de Pagamento */}
           <Route path="/agendamento/sucesso" element={<PaymentSuccess />} />

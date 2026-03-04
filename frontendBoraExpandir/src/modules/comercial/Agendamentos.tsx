@@ -4,10 +4,18 @@ import { useNavigate } from 'react-router-dom'
 import type { Agendamento } from '../../types/comercial'
 import { Badge } from '../../components/ui/Badge'
 
-const statusConfig: Record<Agendamento['status'], { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'; label: string }> = {
+const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'; label: string }> = {
+	pendente: {
+		variant: 'warning',
+		label: 'Pendente',
+	},
 	agendado: {
 		variant: 'success',
 		label: 'Agendado',
+	},
+	confirmado: {
+		variant: 'success',
+		label: 'Confirmado',
 	},
 	realizado: {
 		variant: 'default',
@@ -18,6 +26,9 @@ const statusConfig: Record<Agendamento['status'], { variant: 'default' | 'second
 		label: 'Cancelado',
 	},
 }
+
+const getStatusConfig = (status: string) =>
+	statusConfig[status] || { variant: 'secondary' as const, label: status }
 
 interface AgendamentosPageProps {
 	agendamentos: Agendamento[]
@@ -89,7 +100,9 @@ export default function AgendamentosPage({ agendamentos }: AgendamentosPageProps
 							className="px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
 						>
 							<option value="todos">Todos</option>
+							<option value="pendente">Pendentes</option>
 							<option value="agendado">Agendados</option>
+							<option value="confirmado">Confirmados</option>
 							<option value="realizado">Realizados</option>
 							<option value="cancelado">Cancelados</option>
 						</select>
@@ -135,8 +148,8 @@ export default function AgendamentosPage({ agendamentos }: AgendamentosPageProps
 											{agendamento.produto}
 										</td>
 										<td className="px-6 py-4">
-											<Badge variant={statusConfig[agendamento.status].variant}>
-												{statusConfig[agendamento.status].label}
+											<Badge variant={getStatusConfig(agendamento.status).variant}>
+												{getStatusConfig(agendamento.status).label}
 											</Badge>
 										</td>
 									</tr>

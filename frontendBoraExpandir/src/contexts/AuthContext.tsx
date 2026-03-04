@@ -48,7 +48,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading: true,
         error: null,
     })
-    const [impersonatedProfile, setImpersonatedProfile] = useState<UserProfile | null>(null)
+    const [impersonatedProfile, setImpersonatedProfileState] = useState<UserProfile | null>(() => {
+        const saved = sessionStorage.getItem('impersonated_profile')
+        return saved ? JSON.parse(saved) : null
+    })
+
+    const setImpersonatedProfile = (profile: UserProfile | null) => {
+        setImpersonatedProfileState(profile)
+        if (profile) {
+            sessionStorage.setItem('impersonated_profile', JSON.stringify(profile))
+        } else {
+            sessionStorage.removeItem('impersonated_profile')
+        }
+    }
 
     // Verificar token salvo ao carregar
     const checkAuth = useCallback(async () => {
@@ -125,6 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const logout = () => {
         localStorage.removeItem('auth_token')
         setImpersonatedProfile(null)
+        sessionStorage.removeItem('impersonated_profile')
         setState({ user: null, profile: null, token: null, loading: false, error: null })
         window.location.href = '/login'
     }

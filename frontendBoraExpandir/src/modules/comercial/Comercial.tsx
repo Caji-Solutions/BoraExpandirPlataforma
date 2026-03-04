@@ -238,8 +238,8 @@ function ClientesPage({
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-neutral-700">
                 {filteredClientes.map(cliente => (
-                  <tr 
-                    key={cliente.id} 
+                  <tr
+                    key={cliente.id}
                     className="hover:bg-gray-50 dark:hover:bg-neutral-700 cursor-pointer transition-colors"
                     onClick={() => onRowClick(cliente)}
                     title="Clique para ver credenciais de acesso"
@@ -478,7 +478,8 @@ export default function Comercial() {
       try {
         setLoading(true)
         const data = await comercialService.getAllClientes()
-        setClientes(data)
+        // Filtrar leads — leads não são clientes
+        setClientes(data.filter((c: any) => c.status !== 'LEAD'))
       } catch (err) {
         console.error("Erro ao carregar clientes reais:", err);
       } finally {

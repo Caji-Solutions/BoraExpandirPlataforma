@@ -52,25 +52,25 @@ export function DNAClientListView({
 
     const serviceTypes = useMemo(() => Array.from(new Set(clientes.map(c => c.tipoAssessoria))), [clientes])
 
-    const highPriorityClients = useMemo(() => clientes.filter(c => 
-        c.priority === 'high' || 
+    const highPriorityClients = useMemo(() => clientes.filter(c =>
+        c.priority === 'high' ||
         (c.deadline && new Date(c.deadline) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
     ), [clientes])
 
     const filteredClientes = useMemo(() => {
         const filtered = clientes.filter(c => {
-            const matchesSearch = 
+            const matchesSearch =
                 c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 c.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 c.id.toLowerCase().includes(searchTerm.toLowerCase())
-            
+
             const matchesId = !filters.id || c.id.toLowerCase().includes(filters.id.toLowerCase())
             const matchesNome = !filters.nome || c.nome.toLowerCase().includes(filters.nome.toLowerCase())
             const matchesServico = filters.tipoServico === '' || c.tipoAssessoria === filters.tipoServico
             const matchesStatus = filters.status === 'todos' || (filters.status === 'ativo' ? c.contratoAtivo : !c.contratoAtivo)
             const matchesPriority = filters.prioridade === 'todos' || c.priority === filters.prioridade
             const matchesRequerimento = filters.requerimento === 'todos' || (filters.requerimento === 'sim' ? c.hasRequirement : !c.hasRequirement)
-            
+
             // Filtro de Responsável
             let matchesResponsavel = true
             if (filters.responsavel !== 'todos') {
@@ -82,7 +82,7 @@ export function DNAClientListView({
                     matchesResponsavel = c.responsavel?.id === filters.responsavel
                 }
             }
-            
+
             let matchesPrazo = true
             if (filters.prazos === 'critico') {
                 matchesPrazo = !!(c.deadline && new Date(c.deadline) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
@@ -103,7 +103,7 @@ export function DNAClientListView({
     const [currentPage, setCurrentPage] = useState(1)
     const ITEMS_PER_PAGE = 10
     const totalPages = Math.ceil(filteredClientes.length / ITEMS_PER_PAGE)
-    
+
     const paginatedClientes = useMemo(() => {
         const start = (currentPage - 1) * ITEMS_PER_PAGE
         return filteredClientes.slice(start, start + ITEMS_PER_PAGE)
@@ -205,21 +205,22 @@ export function DNAClientListView({
                                 <option value="nao">Sem Requerimento</option>
                             </select>
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Responsável</label>
-                            <select
-                                value={filters.responsavel}
-                                onChange={e => setFilters(f => ({ ...f, responsavel: e.target.value }))}
-                                className="w-full bg-muted/30 border border-border px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"
-                            >
-                                <option value="todos">Todos os Responsáveis</option>
-                                <option value="meus">Meus Clientes</option>
-                                <option value="vagos">Sem Responsável</option>
-                                {equipe.map(membro => (
-                                    <option key={membro.id} value={membro.id}>{membro.full_name}</option>
-                                ))}
-                            </select>
-                        </div>
+                        {activeProfile?.role === 'juridico' && (
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Responsável</label>
+                                <select
+                                    value={filters.responsavel}
+                                    onChange={e => setFilters(f => ({ ...f, responsavel: e.target.value }))}
+                                    className="w-full bg-muted/30 border border-border px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"
+                                >
+                                    <option value="todos">Todos os Responsáveis</option>
+                                    <option value="meus">Meus Clientes</option>
+                                    {equipe.filter(membro => membro.id !== activeProfile?.id).map(membro => (
+                                        <option key={membro.id} value={membro.id}>{membro.full_name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                     </div>
 
                     {/* Barra de Pesquisa Integrada abaixo dos seletores */}
@@ -233,16 +234,16 @@ export function DNAClientListView({
                             className="w-full pl-12 pr-4 py-3.5 bg-muted/50 border-2 border-transparent focus:border-primary/20 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/5 shadow-inner text-base"
                         />
                         {(searchTerm || filters.id || filters.nome || filters.tipoServico !== '' || filters.status !== 'todos' || filters.prioridade !== 'todos' || filters.responsavel !== 'todos') && (
-                            <button 
+                            <button
                                 onClick={() => {
                                     setSearchTerm('')
-                                    setFilters({ 
-                                        id: '', 
-                                        nome: '', 
-                                        tipoServico: '', 
-                                        status: 'todos', 
-                                        prioridade: 'todos', 
-                                        prazos: 'todos', 
+                                    setFilters({
+                                        id: '',
+                                        nome: '',
+                                        tipoServico: '',
+                                        status: 'todos',
+                                        prioridade: 'todos',
+                                        prazos: 'todos',
                                         requerimento: 'todos',
                                         responsavel: 'todos'
                                     })
@@ -373,8 +374,8 @@ export function DNAClientListView({
                                                 onClick={() => onSelectClient(cliente)}
                                                 className={cn(
                                                     "px-3 py-1.5 rounded-lg text-xs font-medium transition shadow-sm",
-                                                    urgent 
-                                                        ? "bg-red-600 text-white hover:bg-red-700" 
+                                                    urgent
+                                                        ? "bg-red-600 text-white hover:bg-red-700"
                                                         : "bg-primary text-primary-foreground hover:bg-primary/90"
                                                 )}
                                             >
@@ -386,7 +387,7 @@ export function DNAClientListView({
                             })}
                         </div>
                     )
-                }</div>
+                    }</div>
 
                 {/* Paginação */}
                 {filteredClientes.length > ITEMS_PER_PAGE && (
@@ -402,7 +403,7 @@ export function DNAClientListView({
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </button>
-                            
+
                             <div className="flex items-center gap-1">
                                 {[...Array(totalPages)].map((_, i) => (
                                     <button
@@ -410,8 +411,8 @@ export function DNAClientListView({
                                         onClick={() => setCurrentPage(i + 1)}
                                         className={cn(
                                             "w-8 h-8 rounded-xl text-xs font-bold transition-all",
-                                            currentPage === i + 1 
-                                                ? "bg-primary text-primary-foreground shadow-sm" 
+                                            currentPage === i + 1
+                                                ? "bg-primary text-primary-foreground shadow-sm"
                                                 : "hover:bg-muted text-muted-foreground"
                                         )}
                                     >

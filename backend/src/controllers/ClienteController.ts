@@ -117,10 +117,10 @@ class ClienteController {
   async createDependent(req: any, res: any) {
     try {
       const { clienteId } = req.params
-      const { 
-        nomeCompleto, 
-        parentesco, 
-        documento, 
+      const {
+        nomeCompleto,
+        parentesco,
+        documento,
         dataNascimento,
         rg,
         passaporte,
@@ -212,7 +212,7 @@ class ClienteController {
             .select('*')
             .eq('email', profile.email)
             .maybeSingle();
-          
+
           if (clientePorEmail) {
             cliente = clientePorEmail;
           }
@@ -292,14 +292,14 @@ class ClienteController {
       }
 
       // 4. Registrar na tabela clientes
-      const clienteData: any = { 
-        nome, 
-        email, 
-        whatsapp, 
-        parceiro_id: parceiro_id || null, 
+      const clienteData: any = {
+        nome,
+        email,
+        whatsapp,
+        parceiro_id: parceiro_id || null,
         status: status || 'cadastrado'
       }
-      
+
       const createdData = await ClienteRepository.register(clienteData)
 
       return res.status(201).json({
@@ -542,7 +542,7 @@ class ClienteController {
     console.log('============= DEBUG STATUS UPDATE =============');
     console.log('Documento ID:', req.params.documentoId);
     console.log('Body recebido:', req.body);
-    
+
     try {
       const { documentoId } = req.params
       const { status, motivoRejeicao, analisadoPor } = req.body
@@ -553,7 +553,7 @@ class ClienteController {
 
       const validStatuses = [
         'PENDING', 'ANALYZING', 'WAITING_APOSTILLE', 'ANALYZING_APOSTILLE',
-        'WAITING_TRANSLATION', 'ANALYZING_TRANSLATION', 'WAITING_TRANSLATION_QUOTE', 
+        'WAITING_TRANSLATION', 'ANALYZING_TRANSLATION', 'WAITING_TRANSLATION_QUOTE',
         'WAITING_ADM_APPROVAL', 'WAITING_QUOTE_APPROVAL', 'APPROVED', 'REJECTED',
         'solicitado', 'em_analise', 'disponivel'
       ];
@@ -600,7 +600,7 @@ class ClienteController {
       try {
         const canNotify = status === 'REJECTED' || status === 'WAITING_APOSTILLE' || status === 'WAITING_TRANSLATION' || solicitado_pelo_juridico;
         console.log('Pode notificar?', canNotify, { status, solicitado_pelo_juridico });
-        
+
         if (canNotify) {
           let titulo = '';
           let mensagem = '';
@@ -1041,8 +1041,8 @@ class ClienteController {
 
   async registerLead(req: any, res: any) {
     try {
-      const { nome, email, whatsapp, parceiro_id } = req.body
-      
+      const { nome, email, whatsapp, parceiro_id, criado_por, criado_por_nome } = req.body
+
       if (!nome || !whatsapp) {
         return res.status(400).json({ message: 'Nome e WhatsApp são obrigatórios' })
       }
@@ -1053,16 +1053,18 @@ class ClienteController {
         whatsapp,
         parceiro_id: parceiro_id || null,
         status: 'LEAD',
+        criado_por: criado_por || null,
+        criado_por_nome: criado_por_nome || null,
       }
 
       const createdData = await ClienteRepository.register(leadData as any)
-      
+
       return res.status(201).json(createdData)
     } catch (error: any) {
       console.error('Erro ao registrar lead:', error)
-      return res.status(500).json({ 
-        message: 'Erro ao registrar lead', 
-        error: error.message 
+      return res.status(500).json({
+        message: 'Erro ao registrar lead',
+        error: error.message
       })
     }
   }
@@ -1076,33 +1078,33 @@ class ClienteController {
       }
 
       const { supabase } = await import('../config/SupabaseClient');
-      
+
       // 1. Primeiro busca o ID na tabela profiles pelo email
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('id')
         .eq('email', email)
         .single();
-      
+
       if (profileError || !profile) {
         // Fallback: Tenta listar usuários se não achar no profile (pode acontecer com usuários recém-criados ou sem profile)
         const { data: usersData, error: listError } = await supabase.auth.admin.listUsers();
         if (listError) throw listError;
-        
+
         const targetUser = usersData.users.find(u => u.email === email);
         if (!targetUser) {
           return res.status(404).json({ message: 'Usuário não encontrado' });
         }
-        
+
         return res.status(200).json({
           email: targetUser.email,
           password: targetUser.user_metadata?.temp_password || null
         });
       }
-      
+
       // 2. Com o ID, busca os metadados do Auth
       const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(profile.id);
-      
+
       if (authError || !authUser.user) {
         return res.status(404).json({ message: 'Credenciais não encontradas no Auth' });
       }

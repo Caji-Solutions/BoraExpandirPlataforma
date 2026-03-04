@@ -94,7 +94,7 @@ export function ClientDNAPage() {
 
     const fetchClientes = useCallback(async () => {
         if (!activeProfile?.id) return;
-        
+
         try {
             setLoading(true)
             const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
@@ -102,7 +102,8 @@ export function ClientDNAPage() {
             const result = await response.json()
 
             if (result.data) {
-                const mappedClientes: ClientDNAData[] = result.data.map((item: any) => {
+                const clientesReais = result.data.filter((item: any) => item.status !== 'LEAD')
+                const mappedClientes: ClientDNAData[] = clientesReais.map((item: any) => {
                     // Encontra o processo mais recente para determinar o responsável e status
                     const lastProcess = item.processos?.[0]
 
@@ -168,7 +169,7 @@ export function ClientDNAPage() {
                     <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
                     <h2 className="text-xl font-bold text-red-900 mb-2">Ops! Algo deu errado</h2>
                     <p className="text-red-700 mb-6">{error}</p>
-                    <button 
+                    <button
                         onClick={fetchClientes}
                         className="bg-red-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-red-700 transition"
                     >
