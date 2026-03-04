@@ -15,4 +15,10 @@ const supabaseKey = process.env.SUPABASE_SERVICE;
 if (!supabaseKey) {
     throw new Error('SUPABASE_SERVICE environment variable is not set');
 }
-exports.supabase = (0, supabase_js_1.createClient)(supabaseUrl, supabaseKey);
+exports.supabase = (0, supabase_js_1.createClient)(supabaseUrl, supabaseKey, {
+    auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+    }
+});

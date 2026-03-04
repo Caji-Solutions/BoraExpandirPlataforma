@@ -598,6 +598,26 @@ export async function getProcessoByCliente(clienteId: string): Promise<any> {
   return result.data;
 }
 
+/**
+ * Solicita o apostilamento de um documento ao administrativo
+ */
+export async function requestApostille(documentoId: string, documentoUrl?: string, observacoes?: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/apostilamentos/solicitar`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ documentoId, documentoUrl, observacoes }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Erro ao solicitar apostilamento');
+  }
+
+  return response.json();
+}
+
 export default {
     getProcessos,
     getProcessosByResponsavel,
@@ -605,6 +625,8 @@ export default {
     atribuirResponsavel,
     removerResponsavel,
     getFuncionariosJuridico,
+    getAgendamentosDelegacao,
+    atribuirResponsavelAgendamento,
     getClientesVagos,
     getAllClientesComResponsavel,
     getClientesByResponsavel,
@@ -660,6 +682,5 @@ export default {
       const result = await response.json();
       return result.data;
     },
-    getAgendamentosDelegacao,
-    atribuirResponsavelAgendamento
+    requestApostille,
 };

@@ -44,9 +44,12 @@ class StripeService {
                 valor: valor.toString(),
                 moeda: isEuro ? 'eur' : 'brl',
                 duracao_minutos: duracao_minutos.toString(),
+                usuario_id: params.usuario_id || '',
+                cliente_id: params.cliente_id || '',
+                agendamento_id: params.agendamento_id || '',
             },
-            success_url: `${process.env.FRONTEND_URL}/agendamento/sucesso?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${process.env.FRONTEND_URL}/agendamento/cancelado`,
+            success_url: params.successUrl || `${process.env.FRONTEND_URL}/agendamento/sucesso?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: params.cancelUrl || `${process.env.FRONTEND_URL}/agendamento/cancelado`,
         });
         if (!session.url) {
             throw new Error('Não foi possível criar a sessão de checkout');

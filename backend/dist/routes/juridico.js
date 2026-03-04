@@ -43,12 +43,18 @@ juridico.get('/funcionario/:funcionarioId', JuridicoController_1.default.getFunc
 // =============================================
 // Lista todos os processos
 juridico.get('/processos', JuridicoController_1.default.getProcessos.bind(JuridicoController_1.default));
+juridico.get('/estatisticas', JuridicoController_1.default.getEstatisticas.bind(JuridicoController_1.default));
+juridico.post('/assessoria', JuridicoController_1.default.createAssessoria.bind(JuridicoController_1.default));
+juridico.get('/assessoria/:clienteId', JuridicoController_1.default.getLatestAssessoria.bind(JuridicoController_1.default));
+juridico.get('/processo-cliente/:clienteId', JuridicoController_1.default.getProcessoByCliente.bind(JuridicoController_1.default));
 // Lista processos sem responsável (vagos)
 juridico.get('/processos/vagos', JuridicoController_1.default.getProcessosVagos.bind(JuridicoController_1.default));
 // Lista processos de um responsável específico
 juridico.get('/processos/por-responsavel/:responsavelId', JuridicoController_1.default.getProcessosByResponsavel.bind(JuridicoController_1.default));
 // Atualizar etapa do processo
 juridico.patch('/processo/:processoId/etapa', JuridicoController_1.default.updateEtapaProcesso.bind(JuridicoController_1.default));
+// Criar processo manualmente
+juridico.post('/processo', JuridicoController_1.default.createProcess.bind(JuridicoController_1.default));
 // =============================================
 // ROTAS DE CLIENTES
 // =============================================
@@ -61,12 +67,13 @@ juridico.get('/clientes/por-responsavel/:responsavelId', JuridicoController_1.de
 // Buscar cliente específico com dados do responsável
 juridico.get('/cliente/:clienteId', JuridicoController_1.default.getClienteComResponsavel.bind(JuridicoController_1.default));
 juridico.post('/atribuir-responsavel', JuridicoController_1.default.atribuirResponsavel.bind(JuridicoController_1.default));
-juridico.get('/estatisticas', JuridicoController_1.default.getEstatisticas.bind(JuridicoController_1.default));
+juridico.get('/agendamentos/delegacao', JuridicoController_1.default.getAgendamentosDelegacao.bind(JuridicoController_1.default));
+juridico.post('/atribuir-responsavel-agendamento', JuridicoController_1.default.atribuirResponsavelAgendamento.bind(JuridicoController_1.default));
 // =============================================
 // ROTAS DE SOLICITAÇÕES
 // =============================================
 juridico.post('/documentos/solicitar', JuridicoController_1.default.solicitarDocumento.bind(JuridicoController_1.default));
-juridico.post('/requerimentos/solicitar', JuridicoController_1.default.solicitarRequerimento.bind(JuridicoController_1.default));
+juridico.post('/requerimentos/solicitar', upload.array('files'), JuridicoController_1.default.solicitarRequerimento.bind(JuridicoController_1.default));
 // =============================================
 // ROTAS DE FORMULÁRIOS DO JURÍDICO (enviados para clientes)
 // =============================================

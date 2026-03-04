@@ -2,10 +2,15 @@ import { useState } from 'react'
 import { FamilyFolders } from './FamilyFolders'
 // import { TraducaoModal } from './TraducaoModal'
 import { TraducaoModal } from './TraducaoModal'
-import { mockFamilyMembers, mockDocuments, mockRequiredDocuments } from '../lib/mock-data'
-import type { ApprovedDocument, TranslatedDocument } from '../types'
+import { mockRequiredDocuments } from '../lib/mock-data'
+import { Document, RequiredDocument, ApprovedDocument, TranslatedDocument } from '../types'
 
 interface TraduzaoProps {
+    clienteId: string
+    clientName: string
+    members: { id: string, name: string, type: string }[]
+    documents: Document[]
+    requiredDocuments: RequiredDocument[]
     approvedDocuments: ApprovedDocument[]
     translatedDocuments: TranslatedDocument[]
     onUploadTranslation: (file: File, approvedDocumentId: string, targetLanguage: string) => void
@@ -13,6 +18,11 @@ interface TraduzaoProps {
 }
 
 export function Traducao({
+    clienteId,
+    clientName,
+    members,
+    documents,
+    requiredDocuments,
     approvedDocuments,
     translatedDocuments,
     onUploadTranslation,
@@ -30,10 +40,14 @@ export function Traducao({
             </div>
 
             <FamilyFolders
-                members={mockFamilyMembers}
-                documents={mockDocuments} // Fixed: Passing documents
-                requiredDocuments={mockRequiredDocuments} // Fixed: Passing requiredDocuments
-                onSelectMember={setSelectedMember}
+                clienteId={clienteId}
+                clientName={clientName}
+                members={members}
+                documents={documents}
+                requiredDocuments={requiredDocuments}
+                onMemberClick={setSelectedMember}
+                onUpload={async () => {}} // Traducao uses its own upload logic via TraducaoModal
+                onDelete={() => {}} // Traducao doesn't delete here
             />
 
             {selectedMember && (

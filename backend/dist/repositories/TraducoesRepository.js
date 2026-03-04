@@ -185,5 +185,113 @@ class TraducoesRepository {
         }
         return true;
     }
+    async getFilaDeTrabalho() {
+        // Fetch documents that are approved for translation (translator needs to work on them)
+        const { data: documentos, error: docError } = await SupabaseClient_1.supabase
+            .from('documentos')
+            .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id')
+            .in('status', ['ANALYZING_TRANSLATION'])
+            .order('criado_em', { ascending: true });
+        if (docError) {
+            console.error('Erro ao buscar fila de trabalho:', docError);
+            throw docError;
+        }
+        if (!documentos || documentos.length === 0)
+            return [];
+        const clienteIds = [...new Set(documentos.map(d => d.cliente_id))];
+        const documentoIds = documentos.map(d => d.id);
+        const dependenteIds = [...new Set(documentos.map(d => d.dependente_id).filter(id => id !== null))];
+        const [clientesRes, orcamentosRes, dependentesRes] = await Promise.all([
+            SupabaseClient_1.supabase.from('clientes').select('id, nome, email, whatsapp').in('id', clienteIds),
+            SupabaseClient_1.supabase.from('orcamentos').select('*').in('documento_id', documentoIds).order('criado_em', { ascending: false }),
+            SupabaseClient_1.supabase.from('dependentes').select('id, nome_completo, parentesco').in('id', dependenteIds)
+        ]);
+        const clientes = clientesRes.data || [];
+        const orcamentos = orcamentosRes.data || [];
+        const dependentes = dependentesRes.data || [];
+        return documentos.map(doc => {
+            const orcamento = orcamentos.find(o => o.documento_id === doc.id);
+            const dependente = doc.dependente_id ? dependentes.find(dep => dep.id === doc.dependente_id) : null;
+            return {
+                ...doc,
+                clientes: clientes.find(c => c.id === doc.cliente_id) || null,
+                orcamento: orcamento || null,
+                dependente: dependente || null
+            };
+        });
+    }
+    async getEntregues() {
+        // Fetch documents that have been translated and delivered
+        const { data: documentos, error: docError } = await SupabaseClient_1.supabase
+            .from('documentos')
+            .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id')
+            .in('status', ['APPROVED'])
+            .order('atualizado_em', { ascending: false });
+        if (docError) {
+            console.error('Erro ao buscar entregues:', docError);
+            throw docError;
+        }
+        if (!documentos || documentos.length === 0)
+            return [];
+        const clienteIds = [...new Set(documentos.map(d => d.cliente_id))];
+        const documentoIds = documentos.map(d => d.id);
+        const dependenteIds = [...new Set(documentos.map(d => d.dependente_id).filter(id => id !== null))];
+        const [clientesRes, orcamentosRes, dependentesRes] = await Promise.all([
+            SupabaseClient_1.supabase.from('clientes').select('id, nome, email, whatsapp').in('id', clienteIds),
+            SupabaseClient_1.supabase.from('orcamentos').select('*').in('documento_id', documentoIds).order('criado_em', { ascending: false }),
+            SupabaseClient_1.supabase.from('dependentes').select('id, nome_completo, parentesco').in('id', dependenteIds)
+        ]);
+        const clientes = clientesRes.data || [];
+        const orcamentos = orcamentosRes.data || [];
+        const dependentes = dependentesRes.data || [];
+        return documentos.map(doc => {
+            const orcamento = orcamentos.find(o => o.documento_id === doc.id);
+            const dependente = doc.dependente_id ? dependentes.find(dep => dep.id === doc.dependente_id) : null;
+            return {
+                ...doc,
+                clientes: clientes.find(c => c.id === doc.cliente_id) || null,
+                orcamento: orcamento || null,
+                dependente: dependente || null
+            };
+        });
+    }
+    async submitTraducao(dados) {
+        // 1. Upload the translated file to Supabase Storage
+        const { error: uploadError } = await SupabaseClient_1.supabase
+            .storage
+            .from('documentos')
+            .upload(dados.filePath, dados.fileBuffer, {
+            contentType: dados.contentType,
+            upsert: true
+        });
+        if (uploadError) {
+            console.error('Erro ao fazer upload da tradução:', uploadError);
+            throw uploadError;
+        }
+        // 2. Get public URL
+        const { data: urlData } = SupabaseClient_1.supabase
+            .storage
+            .from('documentos')
+            .getPublicUrl(dados.filePath);
+        const publicUrl = urlData?.publicUrl || '';
+        // 3. Update document status and add translated file info
+        const { data: doc, error: updateError } = await SupabaseClient_1.supabase
+            .from('documentos')
+            .update({
+            status: 'APPROVED',
+            traducao_url: publicUrl,
+            traducao_storage_path: dados.filePath,
+            traducao_nome_original: dados.nomeOriginal,
+            atualizado_em: new Date().toISOString()
+        })
+            .eq('id', dados.documentoId)
+            .select()
+            .single();
+        if (updateError) {
+            console.error('Erro ao atualizar documento com tradução:', updateError);
+            throw updateError;
+        }
+        return doc;
+    }
 }
 exports.default = new TraducoesRepository();

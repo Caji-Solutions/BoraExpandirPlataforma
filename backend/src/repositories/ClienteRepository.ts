@@ -104,7 +104,7 @@ class ClienteRepository {
     async getProcessosByClienteId(clienteId: string) {
         const { data, error } = await supabase
             .from('processos')
-            .select('id, tipo_servico, status, etapa_atual, criado_em, atualizado_em')
+            .select('id, tipo_servico, status, etapa_atual, criado_em, atualizado_em, servico_id')
             .eq('cliente_id', clienteId)
             .order('criado_em', { ascending: false })
 

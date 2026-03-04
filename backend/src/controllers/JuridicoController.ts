@@ -1,4 +1,5 @@
 import JuridicoRepository from '../repositories/JuridicoRepository'
+import AdmRepository from '../repositories/AdmRepository'
 
 class JuridicoController {
 
@@ -780,6 +781,7 @@ class JuridicoController {
                 })
             }
 
+            // 1. Criar a assessoria
             const assessoria = await JuridicoRepository.createAssessoria({
                 clienteId,
                 responsavelId,
@@ -788,8 +790,71 @@ class JuridicoController {
                 observacoes
             })
 
+            // 2. Sincronizar com a tabela processos
+            try {
+                // Tenta descobrir o nome do serviço e requisitos se houver servicoId
+                let tipoServico = 'Assessoria Jurídica'
+                let documentosRequisitados: any[] = []
+
+                if (servicoId) {
+                    const servicoData = await AdmRepository.getServiceById(servicoId)
+                    if (servicoData) {
+                        if (servicoData.nome) tipoServico = servicoData.nome
+                        
+                        // Mapear requisitos para o estado inicial de documentos no processo
+                        if (servicoData.requisitos && Array.isArray(servicoData.requisitos)) {
+                            documentosRequisitados = servicoData.requisitos.map((r: any) => ({
+                                id: BigInt(Math.floor(Math.random() * 1000000)).toString(), // ID temporário ou UUID
+                                nome: r.nome,
+                                etapa: r.etapa,
+                                obrigatorio: r.obrigatorio,
+                                status: 'pendente',
+                                enviado: false
+                            }))
+                        }
+                    }
+                }
+
+                // Verifica se já existe um processo para este cliente
+                const processoExistente = await JuridicoRepository.getProcessoByClienteId(clienteId)
+
+                if (processoExistente) {
+                    // Atualiza processo existente
+                    const updateParams: any = {
+                        tipoServico,
+                        assessoriaId: assessoria.id,
+                        servicoId: servicoId || null,
+                        responsavelId: responsavelId
+                    }
+
+                    // Se o processo ainda não tem documentos ou se queremos "resetar/adicionar" os novos
+                    // Aqui decidimos manter os que já existem e adicionar novos se necessário, ou apenas subscrever
+                    // Para simplificar agora vindo da assessoria (que redefine o serviço), vamos atualizar os documentos
+                    if (documentosRequisitados.length > 0) {
+                        updateParams.documentos = documentosRequisitados
+                    }
+
+                    await JuridicoRepository.updateProcess(processoExistente.id, updateParams)
+                } else {
+                    // Cria novo processo
+                    await JuridicoRepository.createProcess({
+                        clienteId,
+                        tipoServico,
+                        status: 'formularios',
+                        etapaAtual: 1,
+                        responsavelId: responsavelId,
+                        assessoriaId: assessoria.id,
+                        servicoId: servicoId || null,
+                        documentos: documentosRequisitados
+                    })
+                }
+            } catch (procError) {
+                console.error('Erro ao sincronizar processo com assessoria:', procError)
+                // Não falha a requisição da assessoria se o processo falhar
+            }
+
             return res.status(201).json({
-                message: 'Assessoria jurídica criada com sucesso',
+                message: 'Assessoria jurídica criada com sucesso e processo sincronizado',
                 data: assessoria
             })
         } catch (error: any) {

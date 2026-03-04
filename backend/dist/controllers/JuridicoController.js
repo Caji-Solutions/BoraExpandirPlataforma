@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const JuridicoRepository_1 = __importDefault(require("../repositories/JuridicoRepository"));
+const AdmRepository_1 = __importDefault(require("../repositories/AdmRepository"));
 class JuridicoController {
     constructor() {
         // =============================================
@@ -145,6 +146,55 @@ class JuridicoController {
             console.error('Erro ao atribuir responsável jurídico:', error);
             return res.status(500).json({
                 message: 'Erro ao atribuir responsável jurídico',
+                error: error.message
+            });
+        }
+    }
+    // GET /juridico/agendamentos/delegacao - Lista agendamentos que requerem delegação
+    async getAgendamentosDelegacao(req, res) {
+        try {
+            const agendamentos = await JuridicoRepository_1.default.getAgendamentosDelegacao();
+            return res.status(200).json({
+                message: 'Agendamentos para delegação recuperados com sucesso',
+                data: agendamentos,
+                total: agendamentos.length
+            });
+        }
+        catch (error) {
+            console.error('Erro ao buscar agendamentos para delegação:', error);
+            return res.status(500).json({
+                message: 'Erro ao buscar agendamentos para delegação',
+                error: error.message
+            });
+        }
+    }
+    // POST /juridico/atribuir-responsavel-agendamento - Atribuir responsável a um agendamento
+    async atribuirResponsavelAgendamento(req, res) {
+        try {
+            const { agendamentoId, responsavelId } = req.body;
+            if (!agendamentoId) {
+                return res.status(400).json({ message: 'agendamentoId é obrigatório' });
+            }
+            if (responsavelId) {
+                const funcionario = await JuridicoRepository_1.default.getFuncionarioById(responsavelId);
+                if (!funcionario) {
+                    return res.status(400).json({
+                        message: 'responsavelId inválido - funcionário não encontrado ou não é do jurídico'
+                    });
+                }
+            }
+            const agendamento = await JuridicoRepository_1.default.atribuirResponsavelAgendamento(agendamentoId, responsavelId || null);
+            return res.status(200).json({
+                message: responsavelId
+                    ? 'Responsável jurídico atribuído ao agendamento com sucesso'
+                    : 'Responsável jurídico removido do agendamento',
+                data: agendamento
+            });
+        }
+        catch (error) {
+            console.error('Erro ao atribuir responsável ao agendamento:', error);
+            return res.status(500).json({
+                message: 'Erro ao atribuir responsável ao agendamento',
                 error: error.message
             });
         }
@@ -295,7 +345,8 @@ class JuridicoController {
                 storagePath: filePath,
                 publicUrl: uploadResult.publicUrl,
                 contentType: file.mimetype,
-                tamanho: file.size
+                tamanho: file.size,
+                notificar: req.body.notificar !== undefined ? req.body.notificar === 'true' || req.body.notificar === true : true
             });
             return res.status(200).json({
                 message: 'Documento enviado para o cliente com sucesso',
@@ -501,7 +552,7 @@ class JuridicoController {
     // POST /juridico/documentos/solicitar - Solicitar documento
     async solicitarDocumento(req, res) {
         try {
-            const { clienteId, tipo, processoId, membroId, notificar, prazo } = req.body;
+            const { clienteId, tipo, processoId, membroId, requerimentoId, notificar, prazo } = req.body;
             if (!clienteId || !tipo) {
                 return res.status(400).json({
                     message: 'clienteId e tipo são obrigatórios'
@@ -514,6 +565,7 @@ class JuridicoController {
                 tipo,
                 processoId,
                 membroId,
+                requerimentoId,
                 notificar,
                 prazo,
                 criadorId
@@ -534,7 +586,8 @@ class JuridicoController {
     // POST /juridico/requerimentos/solicitar - Solicitar requerimento
     async solicitarRequerimento(req, res) {
         try {
-            const { clienteId, tipo, processoId, observacoes } = req.body;
+            const { clienteId, tipo, processoId, observacoes, documentosAcoplados } = req.body;
+            const files = req.files; // Multer array of files
             if (!clienteId || !tipo) {
                 return res.status(400).json({
                     message: 'clienteId e tipo são obrigatórios'
@@ -542,12 +595,28 @@ class JuridicoController {
             }
             // TODO: Pegar do middleware de auth
             const criadorId = req.body.criadorId || this.MOCKED_FUNCIONARIO_JURIDICO_ID;
+            // Parse documentosAcoplados if it's a string (from FormData)
+            let parsedDocs = [];
+            if (documentosAcoplados) {
+                try {
+                    parsedDocs = typeof documentosAcoplados === 'string'
+                        ? JSON.parse(documentosAcoplados)
+                        : documentosAcoplados;
+                }
+                catch (e) {
+                    console.error('Erro ao fazer parse de documentosAcoplados:', e);
+                }
+            }
             const requerimento = await JuridicoRepository_1.default.solicitarRequerimento({
                 clienteId,
                 tipo,
                 processoId,
                 observacoes,
-                criadorId
+                criadorId,
+                documentosAcoplados: parsedDocs,
+                files: files || [],
+                notificar: req.body.notificar !== undefined ? req.body.notificar === 'true' || req.body.notificar === true : true,
+                prazo: req.body.prazo ? parseInt(req.body.prazo) : undefined
             });
             return res.status(201).json({
                 message: 'Solicitação de requerimento criada com sucesso',
@@ -583,6 +652,164 @@ class JuridicoController {
             console.error('Erro ao atualizar etapa do processo:', error);
             return res.status(500).json({
                 message: 'Erro ao atualizar etapa do processo',
+                error: error.message
+            });
+        }
+    }
+    // POST /juridico/processo - Criar processo manualmente
+    async createProcess(req, res) {
+        try {
+            const { clienteId, tipoServico, status, etapaAtual, responsavelId } = req.body;
+            if (!clienteId || !tipoServico) {
+                return res.status(400).json({
+                    message: 'clienteId e tipoServico são obrigatórios'
+                });
+            }
+            const processo = await JuridicoRepository_1.default.createProcess({
+                clienteId,
+                tipoServico,
+                status,
+                etapaAtual,
+                responsavelId
+            });
+            return res.status(201).json({
+                message: 'Processo criado com sucesso',
+                data: processo
+            });
+        }
+        catch (error) {
+            console.error('Erro ao criar processo no controller:', error);
+            return res.status(500).json({
+                message: 'Erro ao criar processo',
+                error: error.message
+            });
+        }
+    }
+    // POST /juridico/assessoria - Criar assessoria jurídica
+    async createAssessoria(req, res) {
+        try {
+            const { clienteId, respostas, observacoes, servicoId } = req.body;
+            // TODO: Pegar do middleware de auth
+            const responsavelId = req.body.responsavelId || this.MOCKED_FUNCIONARIO_JURIDICO_ID;
+            if (!clienteId || !respostas) {
+                return res.status(400).json({
+                    message: 'clienteId e respostas são obrigatórios'
+                });
+            }
+            // 1. Criar a assessoria
+            const assessoria = await JuridicoRepository_1.default.createAssessoria({
+                clienteId,
+                responsavelId,
+                respostas,
+                servicoId,
+                observacoes
+            });
+            // 2. Sincronizar com a tabela processos
+            try {
+                // Tenta descobrir o nome do serviço e requisitos se houver servicoId
+                let tipoServico = 'Assessoria Jurídica';
+                let documentosRequisitados = [];
+                if (servicoId) {
+                    const servicoData = await AdmRepository_1.default.getServiceById(servicoId);
+                    if (servicoData) {
+                        if (servicoData.nome)
+                            tipoServico = servicoData.nome;
+                        // Mapear requisitos para o estado inicial de documentos no processo
+                        if (servicoData.requisitos && Array.isArray(servicoData.requisitos)) {
+                            documentosRequisitados = servicoData.requisitos.map((r) => ({
+                                id: BigInt(Math.floor(Math.random() * 1000000)).toString(), // ID temporário ou UUID
+                                nome: r.nome,
+                                etapa: r.etapa,
+                                obrigatorio: r.obrigatorio,
+                                status: 'pendente',
+                                enviado: false
+                            }));
+                        }
+                    }
+                }
+                // Verifica se já existe um processo para este cliente
+                const processoExistente = await JuridicoRepository_1.default.getProcessoByClienteId(clienteId);
+                if (processoExistente) {
+                    // Atualiza processo existente
+                    const updateParams = {
+                        tipoServico,
+                        assessoriaId: assessoria.id,
+                        servicoId: servicoId || null
+                    };
+                    // Se o processo ainda não tem documentos ou se queremos "resetar/adicionar" os novos
+                    // Aqui decidimos manter os que já existem e adicionar novos se necessário, ou apenas subscrever
+                    // Para simplificar agora vindo da assessoria (que redefine o serviço), vamos atualizar os documentos
+                    if (documentosRequisitados.length > 0) {
+                        updateParams.documentos = documentosRequisitados;
+                    }
+                    await JuridicoRepository_1.default.updateProcess(processoExistente.id, updateParams);
+                }
+                else {
+                    // Cria novo processo
+                    await JuridicoRepository_1.default.createProcess({
+                        clienteId,
+                        tipoServico,
+                        status: 'formularios',
+                        etapaAtual: 1,
+                        assessoriaId: assessoria.id,
+                        servicoId: servicoId || null,
+                        documentos: documentosRequisitados
+                    });
+                }
+            }
+            catch (procError) {
+                console.error('Erro ao sincronizar processo com assessoria:', procError);
+                // Não falha a requisição da assessoria se o processo falhar
+            }
+            return res.status(201).json({
+                message: 'Assessoria jurídica criada com sucesso e processo sincronizado',
+                data: assessoria
+            });
+        }
+        catch (error) {
+            console.error('Erro ao criar assessoria jurídica no controller:', error);
+            return res.status(500).json({
+                message: 'Erro ao criar assessoria jurídica',
+                error: error.message
+            });
+        }
+    }
+    // GET /juridico/assessoria/:clienteId - Buscar última assessoria
+    async getLatestAssessoria(req, res) {
+        try {
+            const { clienteId } = req.params;
+            if (!clienteId) {
+                return res.status(400).json({ message: 'clienteId é obrigatório' });
+            }
+            const assessoria = await JuridicoRepository_1.default.getLatestAssessoriaByClienteId(clienteId);
+            return res.status(200).json({
+                data: assessoria
+            });
+        }
+        catch (error) {
+            console.error('Erro ao buscar assessoria no controller:', error);
+            return res.status(500).json({
+                message: 'Erro ao buscar assessoria',
+                error: error.message
+            });
+        }
+    }
+    // GET /juridico/processo-cliente/:clienteId - Buscar processo do cliente
+    async getProcessoByCliente(req, res) {
+        try {
+            const { clienteId } = req.params;
+            if (!clienteId) {
+                return res.status(400).json({ message: 'clienteId é obrigatório' });
+            }
+            const processo = await JuridicoRepository_1.default.getProcessoByClienteId(clienteId);
+            return res.status(200).json({
+                data: processo
+            });
+        }
+        catch (error) {
+            console.error('Erro ao buscar processo no controller:', error);
+            return res.status(500).json({
+                message: 'Erro ao buscar processo',
                 error: error.message
             });
         }

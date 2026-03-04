@@ -1,5 +1,9 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+const NotificationService_1 = __importDefault(require("../services/NotificationService"));
 const SupabaseClient_1 = require("../config/SupabaseClient");
 class JuridicoRepository {
     // =============================================
@@ -9,7 +13,7 @@ class JuridicoRepository {
     async getFuncionarios() {
         const { data, error } = await SupabaseClient_1.supabase
             .from('profiles')
-            .select('id, full_name, email, telefone')
+            .select('id, full_name, email, telefone, horario_trabalho')
             .eq('role', 'juridico')
             .order('full_name', { ascending: true });
         if (error) {
@@ -22,7 +26,7 @@ class JuridicoRepository {
     async getFuncionarioById(funcionarioId) {
         const { data, error } = await SupabaseClient_1.supabase
             .from('profiles')
-            .select('id, full_name, email, telefone')
+            .select('id, full_name, email, telefone, horario_trabalho')
             .eq('id', funcionarioId)
             .eq('role', 'juridico')
             .single();
@@ -43,15 +47,18 @@ class JuridicoRepository {
             .from('processos')
             .select(`
                 *,
-                client:profiles!client_id (
+                clientes:clientes!cliente_id (
                     id,
-                    full_name,
-                    email
+                    nome,
+                    email,
+                    whatsapp,
+                    status,
+                    previsao_chegada
                 ),
                 documentos (*),
                 requerimentos (*)
             `)
-            .order('created_at', { ascending: false });
+            .order('criado_em', { ascending: false });
         if (error) {
             console.error('Erro ao buscar processos:', error);
             throw error;
@@ -89,15 +96,18 @@ class JuridicoRepository {
             .from('processos')
             .select(`
                 *,
-                client:profiles!client_id (
+                clientes:clientes!cliente_id (
                     id,
-                    full_name,
-                    email
+                    nome,
+                    email,
+                    whatsapp,
+                    status,
+                    previsao_chegada
                 ),
                 documentos (*)
             `)
             .is('responsavel_id', null)
-            .order('created_at', { ascending: false });
+            .order('criado_em', { ascending: false });
         if (error) {
             console.error('Erro ao buscar processos sem responsável:', error);
             throw error;
@@ -113,13 +123,16 @@ class JuridicoRepository {
                 clientes:clientes!cliente_id (
                     id,
                     nome,
-                    email
+                    email,
+                    whatsapp,
+                    status,
+                    previsao_chegada
                 ),
                 documentos (*),
                 requerimentos (*)
             `)
             .eq('responsavel_id', responsavelId)
-            .order('created_at', { ascending: false });
+            .order('criado_em', { ascending: false });
         if (error) {
             console.error('Erro ao buscar processos do responsável:', error);
             throw error;
@@ -133,7 +146,7 @@ class JuridicoRepository {
             .update({
             responsavel_id: responsavelId,
             delegado_em: responsavelId ? new Date().toISOString() : null,
-            updated_at: new Date().toISOString()
+            atualizado_em: new Date().toISOString()
         })
             .eq('id', processoId)
             .select()
@@ -144,13 +157,78 @@ class JuridicoRepository {
         }
         return data;
     }
+    // Atribuir responsável jurídico a um agendamento
+    async atribuirResponsavelAgendamento(agendamentoId, responsavelId) {
+        const { data, error } = await SupabaseClient_1.supabase
+            .from('agendamentos')
+            .update({
+            responsavel_juridico_id: responsavelId,
+            status: responsavelId ? 'confirmado' : 'agendado' // Se delegar, já podemos considerar confirmado se necessário
+        })
+            .eq('id', agendamentoId)
+            .select()
+            .single();
+        if (error) {
+            console.error('Erro ao atribuir responsável jurídico ao agendamento:', error);
+            throw error;
+        }
+        return data;
+    }
+    // Listar agendamentos que requerem delegação
+    async getAgendamentosDelegacao() {
+        const { data: agendamentos, error } = await SupabaseClient_1.supabase
+            .from('agendamentos')
+            .select(`
+                *,
+                clientes:clientes!cliente_id (
+                    id,
+                    nome,
+                    email,
+                    whatsapp,
+                    status,
+                    previsao_chegada
+                )
+            `)
+            .eq('requer_delegacao', true)
+            .order('data_hora', { ascending: true });
+        if (error) {
+            console.error('Erro ao buscar agendamentos para delegação:', error);
+            throw error;
+        }
+        if (!agendamentos || agendamentos.length === 0)
+            return [];
+        // Buscar responsáveis únicos
+        const responsavelIds = [...new Set(agendamentos
+                .filter(a => a.responsavel_juridico_id)
+                .map(a => a.responsavel_juridico_id))];
+        let responsaveisMap = {};
+        if (responsavelIds.length > 0) {
+            const { data: responsaveis } = await SupabaseClient_1.supabase
+                .from('profiles')
+                .select('id, full_name, email, telefone, horario_trabalho')
+                .in('id', responsavelIds);
+            if (responsaveis) {
+                responsaveisMap = responsaveis.reduce((acc, r) => {
+                    acc[r.id] = r;
+                    return acc;
+                }, {});
+            }
+        }
+        // Mapear com seus responsáveis
+        return agendamentos.map(agendamento => ({
+            ...agendamento,
+            responsavel: agendamento.responsavel_juridico_id
+                ? responsaveisMap[agendamento.responsavel_juridico_id] || null
+                : null
+        }));
+    }
     // Atualizar etapa do processo
     async updateEtapaProcesso(processoId, etapa) {
         const { data, error } = await SupabaseClient_1.supabase
             .from('processos')
             .update({
             etapa_atual: etapa,
-            updated_at: new Date().toISOString()
+            atualizado_em: new Date().toISOString()
         })
             .eq('id', processoId)
             .select()
@@ -163,29 +241,51 @@ class JuridicoRepository {
     }
     // Buscar clientes por responsável jurídico
     async getClientesByResponsavel(responsavelId) {
-        const { data, error } = await SupabaseClient_1.supabase
-            .from('clientes')
-            .select('*')
-            .eq('responsavel_juridico_id', responsavelId)
-            .order('created_at', { ascending: false });
+        const { data: processos, error } = await SupabaseClient_1.supabase
+            .from('processos')
+            .select(`
+                cliente_id,
+                clientes:clientes!cliente_id (*)
+            `)
+            .eq('responsavel_id', responsavelId);
         if (error) {
-            console.error('Erro ao buscar clientes do responsável:', error);
+            console.error('Erro ao buscar clientes do responsável via processos:', error);
             throw error;
         }
-        return data || [];
+        // Retornar clientes únicos
+        const clientsMap = new Map();
+        processos?.forEach((p) => {
+            const cliente = Array.isArray(p.clientes) ? p.clientes[0] : p.clientes;
+            if (cliente && !clientsMap.has(cliente.id)) {
+                clientsMap.set(cliente.id, cliente);
+            }
+        });
+        return Array.from(clientsMap.values());
     }
     // Buscar clientes sem responsável jurídico (vagos)
     async getClientesSemResponsavel() {
-        const { data, error } = await SupabaseClient_1.supabase
-            .from('clientes')
-            .select('*')
-            .is('responsavel_juridico_id', null)
-            .order('created_at', { ascending: false });
+        // Busca clientes que não possuem nenhum processo com responsável atribuído
+        // Ou busca processos sem responsável e pega seus clientes
+        const { data: processos, error } = await SupabaseClient_1.supabase
+            .from('processos')
+            .select(`
+                cliente_id,
+                clientes:clientes!cliente_id (*)
+            `)
+            .is('responsavel_id', null);
         if (error) {
-            console.error('Erro ao buscar clientes sem responsável:', error);
+            console.error('Erro ao buscar clientes sem responsável via processos:', error);
             throw error;
         }
-        return data || [];
+        // Retornar clientes únicos
+        const clientsMap = new Map();
+        processos?.forEach((p) => {
+            const cliente = Array.isArray(p.clientes) ? p.clientes[0] : p.clientes;
+            if (cliente && !clientsMap.has(cliente.id)) {
+                clientsMap.set(cliente.id, cliente);
+            }
+        });
+        return Array.from(clientsMap.values());
     }
     // Buscar cliente com dados do responsável jurídico
     async getClienteComResponsavel(clienteId) {
@@ -201,12 +301,20 @@ class JuridicoRepository {
             console.error('Erro ao buscar cliente:', clienteError);
             throw clienteError;
         }
-        // Se tiver responsável, busca os dados dele
-        if (cliente?.responsavel_juridico_id) {
+        // Busca o processo mais recente para ver quem é o responsável
+        const { data: processo, error: procError } = await SupabaseClient_1.supabase
+            .from('processos')
+            .select('responsavel_id')
+            .eq('cliente_id', clienteId)
+            .order('criado_em', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        // Se tiver responsável no processo, busca os dados dele
+        if (!procError && processo?.responsavel_id) {
             const { data: responsavel, error: responsavelError } = await SupabaseClient_1.supabase
                 .from('profiles')
                 .select('id, full_name, email, telefone')
-                .eq('id', cliente.responsavel_juridico_id)
+                .eq('id', processo.responsavel_id)
                 .single();
             if (!responsavelError && responsavel) {
                 return {
@@ -222,20 +330,30 @@ class JuridicoRepository {
     }
     // Buscar todos os clientes com seus responsáveis (para listagem geral)
     async getAllClientesComResponsavel() {
+        // 1. Buscar todos os clientes
         const { data: clientes, error } = await SupabaseClient_1.supabase
             .from('clientes')
             .select('*')
-            .order('created_at', { ascending: false });
+            .order('criado_em', { ascending: false });
         if (error) {
             console.error('Erro ao buscar clientes:', error);
             throw error;
         }
         if (!clientes || clientes.length === 0)
             return [];
-        // Buscar todos os responsáveis únicos
-        const responsavelIds = [...new Set(clientes
-                .filter(c => c.responsavel_juridico_id)
-                .map(c => c.responsavel_juridico_id))];
+        // 2. Buscar todos os processos para mapear responsabilidades
+        const { data: processos } = await SupabaseClient_1.supabase
+            .from('processos')
+            .select('cliente_id, responsavel_id');
+        const clientToResponsavel = new Map();
+        processos?.forEach(p => {
+            if (p.responsavel_id) {
+                // Assume o último ou primeiro responsável encontrado para o cliente
+                clientToResponsavel.set(p.cliente_id, p.responsavel_id);
+            }
+        });
+        // 3. Buscar nomes dos responsáveis
+        const responsavelIds = [...new Set(Array.from(clientToResponsavel.values()))];
         let responsaveisMap = {};
         if (responsavelIds.length > 0) {
             const { data: responsaveis } = await SupabaseClient_1.supabase
@@ -249,13 +367,14 @@ class JuridicoRepository {
                 }, {});
             }
         }
-        // Mapear clientes com seus responsáveis
-        return clientes.map(cliente => ({
-            ...cliente,
-            responsavel_juridico: cliente.responsavel_juridico_id
-                ? responsaveisMap[cliente.responsavel_juridico_id] || null
-                : null
-        }));
+        // 4. Mapear clientes com seus responsáveis
+        return clientes.map(cliente => {
+            const respId = clientToResponsavel.get(cliente.id);
+            return {
+                ...cliente,
+                responsavel_juridico: respId ? (responsaveisMap[respId] || null) : null
+            };
+        });
     }
     // =============================================
     // ESTATÍSTICAS DO JURÍDICO
@@ -328,6 +447,16 @@ class JuridicoRepository {
         if (error) {
             console.error('Erro ao criar formulário jurídico:', error);
             throw error;
+        }
+        // Criar notificação para o novo formulário/documento enviado
+        if (params.notificar !== false) { // Por padrão notifica quando envia um documento novo
+            await NotificationService_1.default.createNotification({
+                clienteId: params.clienteId,
+                criadorId: params.funcionarioJuridicoId,
+                titulo: 'Novo Documento Disponível',
+                mensagem: `O jurídico enviou um novo documento para você: ${params.nomeOriginal}. Você pode visualizá-lo em sua central.`,
+                tipo: 'info'
+            }).catch(e => console.error('Erro ao notificar envio de formulário:', e));
         }
         return data;
     }
@@ -489,7 +618,8 @@ class JuridicoRepository {
                 *,
                 autor:profiles!autor_id (
                     id,
-                    full_name
+                    full_name,
+                    role
                 )
             `)
             .single();
@@ -508,11 +638,12 @@ class JuridicoRepository {
                 *,
                 autor:profiles!autor_id (
                     id,
-                    full_name
+                    full_name,
+                    role
                 )
             `)
             .eq('cliente_id', clienteId)
-            .order('created_at', { ascending: false });
+            .order('criado_em', { ascending: false });
         if (error) {
             console.error('Erro ao buscar notas jurídicas:', error);
             throw error;
@@ -550,11 +681,13 @@ class JuridicoRepository {
                 cliente_id: params.clienteId,
                 tipo: params.tipo,
                 processo_id: params.processoId || null,
-                dependente_id: params.membroId || null,
+                dependente_id: params.membroId === params.clienteId ? null : (params.membroId || null),
+                requerimento_id: params.requerimentoId || null,
                 status: 'PENDING',
                 nome_original: params.tipo,
                 nome_arquivo: params.tipo,
                 storage_path: 'pending',
+                solicitado_pelo_juridico: true,
                 criado_em: new Date().toISOString(),
                 atualizado_em: new Date().toISOString()
             }])
@@ -567,31 +700,16 @@ class JuridicoRepository {
         console.log('Documento criado com sucesso:', doc.id);
         // 2. Criar notificação se solicitado
         if (params.notificar === true || params.notificar === 'true') {
-            console.log('Notificar é true, tentando criar notificação para o cliente...');
-            const prazoDias = params.prazo || 7;
-            const dataPrazo = new Date();
-            dataPrazo.setDate(dataPrazo.getDate() + prazoDias);
-            const notificacaoData = {
-                cliente_id: params.clienteId,
-                criador_id: params.criadorId, // Adicionando quem criou a solicitação
+            console.log('Notificar é true, tentando criar notificação via NotificationService...');
+            await NotificationService_1.default.createNotification({
+                clienteId: params.clienteId,
+                criadorId: params.criadorId,
                 titulo: params.tipo,
                 mensagem: `A equipe jurídica solicitou o seguinte documento: ${params.tipo}. Por favor, realize o envio o quanto antes.`,
-                lida: false,
-                data_prazo: dataPrazo.toISOString(),
-                criado_em: new Date().toISOString()
-            };
-            console.log('Dados da notificação (cliente_id):', notificacaoData);
-            const { data: notif, error: notifError } = await SupabaseClient_1.supabase
-                .from('notificacoes')
-                .insert([notificacaoData])
-                .select();
-            if (notifError) {
-                console.error('Erro ao criar notificação (FK violada?):', notifError);
-                // Não travamos o processo se a notificação falhar
-            }
-            else {
-                console.log('Notificação criada com sucesso:', notif);
-            }
+                prazo: params.prazo || 7
+            }).catch(error => {
+                console.error('Erro ao criar notificação via Service:', error);
+            });
         }
         else {
             console.log('Notificar está desmarcado ou não é true/boolean.');
@@ -612,8 +730,8 @@ class JuridicoRepository {
                 status: 'pendente',
                 criador_id: params.criadorId || null,
                 observacoes: params.observacoes || null,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                criado_em: new Date().toISOString(),
+                atualizado_em: new Date().toISOString()
             }])
             .select()
             .single();
@@ -622,6 +740,72 @@ class JuridicoRepository {
             throw error;
         }
         console.log('Requerimento solicitado com sucesso:', data.id);
+        // Criar notificação para o novo requerimento
+        if (params.notificar !== false) {
+            await NotificationService_1.default.createNotification({
+                clienteId: params.clienteId,
+                criadorId: params.criadorId,
+                titulo: `Novo Requerimento: ${params.tipo}`,
+                mensagem: `Um novo requerimento foi iniciado para você: ${params.tipo}. Fique atento às atualizações.`,
+                tipo: 'success',
+                prazo: params.prazo || 15 // Normalmente requerimentos tem prazos maiores
+            }).catch(e => console.error('Erro ao notificar requerimento:', e));
+        }
+        const requirementId = data.id;
+        // 3. Criar solicitações de documentos acopladas
+        if (params.documentosAcoplados && params.documentosAcoplados.length > 0) {
+            console.log(`Criando ${params.documentosAcoplados.length} solicitações acopladas...`);
+            for (const docRequest of params.documentosAcoplados) {
+                await this.solicitarDocumento({
+                    clienteId: params.clienteId,
+                    tipo: docRequest.type,
+                    processoId: params.processoId,
+                    membroId: docRequest.memberId,
+                    requerimentoId: requirementId,
+                    notificar: false, // Evitar spam de notificações se já notificamos o requerimento
+                    criadorId: params.criadorId
+                }).catch(e => console.error('Erro ao criar solicitação acoplada:', e));
+            }
+        }
+        // 4. Fazer upload de arquivos físicos e criar registros em documentos
+        if (params.files && params.files.length > 0) {
+            console.log(`Fazendo upload de ${params.files.length} arquivos físicos...`);
+            for (const file of params.files) {
+                try {
+                    const timestamp = Date.now();
+                    const fileExtension = file.originalname.split('.').pop();
+                    const fileName = `req_${requirementId}_${timestamp}_${Math.random().toString(36).substring(7)}.${fileExtension}`;
+                    const filePath = `${params.clienteId}/requerimentos/${requirementId}/${fileName}`;
+                    // Upload para o bucket
+                    const uploadResult = await this.uploadFormularioJuridico({
+                        filePath,
+                        fileBuffer: file.buffer,
+                        contentType: file.mimetype
+                    });
+                    // Criar registro na tabela documentos
+                    await SupabaseClient_1.supabase
+                        .from('documentos')
+                        .insert([{
+                            cliente_id: params.clienteId,
+                            tipo: 'Anexo de Requerimento',
+                            processo_id: params.processoId || null,
+                            requerimento_id: requirementId,
+                            status: 'ANALYZING', // Já enviado pelo jurídico
+                            nome_original: file.originalname,
+                            nome_arquivo: fileName,
+                            storage_path: filePath,
+                            public_url: uploadResult.publicUrl,
+                            content_type: file.mimetype,
+                            tamanho: file.size,
+                            criado_em: new Date().toISOString(),
+                            atualizado_em: new Date().toISOString()
+                        }]);
+                }
+                catch (e) {
+                    console.error('Erro ao processar arquivo físico do requerimento:', e);
+                }
+            }
+        }
         console.log('========================================================');
         return data;
     }
@@ -629,14 +813,126 @@ class JuridicoRepository {
     async getRequerimentosByClienteId(clienteId) {
         const { data, error } = await SupabaseClient_1.supabase
             .from('requerimentos')
-            .select('*')
+            .select(`
+                *,
+                documentos (*)
+            `)
             .eq('cliente_id', clienteId)
-            .order('created_at', { ascending: false });
+            .order('criado_em', { ascending: false });
         if (error) {
             console.error('Erro ao buscar requerimentos do cliente:', error);
             throw error;
         }
         return data || [];
+    }
+    // Criar um novo processo manualmente
+    async createProcess(params) {
+        const { data, error } = await SupabaseClient_1.supabase
+            .from('processos')
+            .insert([{
+                cliente_id: params.clienteId,
+                tipo_servico: params.tipoServico,
+                status: params.status || 'in_progress',
+                etapa_atual: params.etapaAtual || 1,
+                responsavel_id: params.responsavelId || null,
+                assessoria_id: params.assessoriaId || null,
+                servico_id: params.servicoId || null,
+                documentos: params.documentos || [],
+                criado_em: new Date().toISOString(),
+                atualizado_em: new Date().toISOString()
+            }])
+            .select()
+            .single();
+        if (error) {
+            console.error('Erro ao criar processo manualmente:', error);
+            throw error;
+        }
+        return data;
+    }
+    // Atualizar um processo
+    async updateProcess(processoId, params) {
+        const updateData = {
+            atualizado_em: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        if (params.tipoServico !== undefined)
+            updateData.tipo_servico = params.tipoServico;
+        if (params.status !== undefined)
+            updateData.status = params.status;
+        if (params.etapaAtual !== undefined)
+            updateData.etapa_atual = params.etapaAtual;
+        if (params.responsavelId !== undefined)
+            updateData.responsavel_id = params.responsavelId;
+        if (params.assessoriaId !== undefined)
+            updateData.assessoria_id = params.assessoriaId;
+        if (params.servicoId !== undefined)
+            updateData.servico_id = params.servicoId;
+        if (params.documentos !== undefined)
+            updateData.documentos = params.documentos;
+        const { data, error } = await SupabaseClient_1.supabase
+            .from('processos')
+            .update(updateData)
+            .eq('id', processoId)
+            .select()
+            .single();
+        if (error) {
+            console.error('Erro ao atualizar processo no repositório:', error);
+            throw error;
+        }
+        return data;
+    }
+    // =============================================
+    // ASSESSORIA JURÍDICA
+    // =============================================
+    // Criar um novo registro de assessoria jurídica
+    async createAssessoria(params) {
+        const { data, error } = await SupabaseClient_1.supabase
+            .from('assessorias_juridico')
+            .insert([{
+                cliente_id: params.clienteId,
+                responsavel_id: params.responsavelId,
+                servico_id: params.servicoId || null,
+                respostas: params.respostas,
+                observacoes: params.observacoes || null,
+                criado_em: new Date().toISOString()
+            }])
+            .select()
+            .single();
+        if (error) {
+            console.error('Erro ao criar assessoria jurídica no repositório:', error);
+            throw error;
+        }
+        return data;
+    }
+    // Buscar o processo ativo de um cliente
+    async getProcessoByClienteId(clienteId) {
+        const { data, error } = await SupabaseClient_1.supabase
+            .from('processos')
+            .select('*')
+            .eq('cliente_id', clienteId)
+            .order('criado_em', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        if (error) {
+            console.error('Erro ao buscar processo do cliente:', error);
+            throw error;
+        }
+        return data;
+    }
+    // Buscar a última assessoria de um cliente
+    async getLatestAssessoriaByClienteId(clienteId) {
+        const { data, error } = await SupabaseClient_1.supabase
+            .from('assessorias_juridico')
+            .select('*')
+            .eq('cliente_id', clienteId)
+            .order('criado_em', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        if (error) {
+            console.error('Erro ao buscar última assessoria:', error);
+            throw error;
+        }
+        return data;
     }
 }
 exports.default = new JuridicoRepository();

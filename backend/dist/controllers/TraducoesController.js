@@ -154,15 +154,64 @@ class TraducoesController {
                     tipo: 'orcamento',
                     documentoIds: documentoIds.join(',')
                 },
-                successUrl: successUrl || `${process.env.FRONTEND_URL}/dashboard?status=success`,
-                cancelUrl: cancelUrl || `${process.env.FRONTEND_URL}/dashboard?status=cancelled`,
-                currency: 'brl'
+                successUrl: successUrl || `${process.env.FRONTEND_URL}/agendamento/sucesso`,
+                cancelUrl: cancelUrl || `${process.env.FRONTEND_URL}/agendamento/cancelado`,
+                currency: 'eur'
             });
             return res.status(200).json(checkout);
         }
         catch (error) {
             console.error('[TraducoesController.createCheckoutSession] Error:', error);
             return res.status(500).json({ error: 'Erro ao criar sessão de checkout', details: error.message });
+        }
+    }
+    async getFilaDeTrabalho(req, res) {
+        try {
+            const fila = await TraducoesRepository_1.default.getFilaDeTrabalho();
+            return res.status(200).json(fila);
+        }
+        catch (error) {
+            console.error('[TraducoesController.getFilaDeTrabalho] Error:', error);
+            return res.status(500).json({ error: 'Erro ao buscar fila de trabalho' });
+        }
+    }
+    async getEntregues(req, res) {
+        try {
+            const entregues = await TraducoesRepository_1.default.getEntregues();
+            return res.status(200).json(entregues);
+        }
+        catch (error) {
+            console.error('[TraducoesController.getEntregues] Error:', error);
+            return res.status(500).json({ error: 'Erro ao buscar traduções entregues' });
+        }
+    }
+    async submitTraducao(req, res) {
+        try {
+            const { documentoId } = req.body;
+            const file = req.file;
+            if (!file) {
+                return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+            }
+            if (!documentoId) {
+                return res.status(400).json({ error: 'documentoId é obrigatório' });
+            }
+            // Build storage path for translated file
+            const timestamp = Date.now();
+            const fileExtension = file.originalname.split('.').pop();
+            const fileName = `traducao_${timestamp}.${fileExtension}`;
+            const filePath = `traducoes/${documentoId}/${fileName}`;
+            const result = await TraducoesRepository_1.default.submitTraducao({
+                documentoId,
+                filePath,
+                fileBuffer: file.buffer,
+                contentType: file.mimetype,
+                nomeOriginal: file.originalname
+            });
+            return res.status(200).json({ message: 'Tradução enviada com sucesso', data: result });
+        }
+        catch (error) {
+            console.error('[TraducoesController.submitTraducao] Error:', error);
+            return res.status(500).json({ error: 'Erro ao enviar tradução', details: error.message });
         }
     }
 }

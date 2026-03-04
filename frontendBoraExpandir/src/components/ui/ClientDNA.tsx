@@ -51,6 +51,8 @@ export type ClientDNAData = {
         tipo?: 'info' | 'success' | 'warning' | 'error'
     }[]
     hasRequirement?: boolean
+    documento?: string
+    passaporte?: string
 }
 
 export type DNACategory = {
@@ -100,10 +102,13 @@ export function ClientDNAPage() {
             const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
             const response = await fetch(`${baseUrl}/cliente/clientes`)
             const result = await response.json()
+            console.log("clientes da lsitagem")
+            console.log(result)
+            
 
             if (result.data) {
-                const clientesReais = result.data.filter((item: any) => item.status !== 'LEAD')
-                const mappedClientes: ClientDNAData[] = clientesReais.map((item: any) => {
+                // const clientesReais = result.data.filter((item: any) => item.status !== 'LEAD')
+                const mappedClientes: ClientDNAData[] = result.data.map((item: any) => {
                     // Encontra o processo mais recente para determinar o responsável e status
                     const lastProcess = item.processos?.[0]
 
@@ -125,7 +130,9 @@ export function ClientDNAPage() {
                             nome: lastProcess.responsavel.full_name
                         } : undefined,
                         historico: [],
-                        hasRequirement: item.requerimentos && item.requerimentos.length > 0
+                        hasRequirement: item.requerimentos && item.requerimentos.length > 0,
+                        documento: item.documento || '',
+                        passaporte: item.passaporte || ''
                     }
                 })
                 setClientes(mappedClientes)

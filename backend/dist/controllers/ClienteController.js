@@ -38,6 +38,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const ClienteRepository_1 = __importDefault(require("../repositories/ClienteRepository"));
 const JuridicoRepository_1 = __importDefault(require("../repositories/JuridicoRepository"));
+const NotificationService_1 = __importDefault(require("../services/NotificationService"));
+const AdmRepository_1 = __importDefault(require("../repositories/AdmRepository"));
 const documentosConfig_1 = require("../config/documentosConfig");
 class ClienteController {
     // GET /cliente/:clienteId/documentos-requeridos
@@ -57,10 +59,31 @@ class ClienteController {
                     processos: []
                 });
             }
-            // Para cada processo, buscar os documentos requeridos baseado no tipo_servico
+            // Para cada processo, buscar os documentos requeridos baseado no tipo_servico ou servico_id
             const documentosRequeridos = [];
             for (const processo of processos) {
-                const docsDoServico = (0, documentosConfig_1.getDocumentosPorTipoServico)(processo.tipo_servico);
+                let docsDoServico = [];
+                if (processo.servico_id) {
+                    try {
+                        const servico = await AdmRepository_1.default.getServiceById(processo.servico_id);
+                        if (servico && servico.requisitos) {
+                            docsDoServico = servico.requisitos.map((r) => ({
+                                type: r.nome, // Usando o nome como tipo para bater com o que o jurídico vê
+                                name: r.nome,
+                                description: `Documento para a etapa ${r.etapa}`,
+                                required: r.obrigatorio,
+                                examples: []
+                            }));
+                        }
+                    }
+                    catch (admError) {
+                        console.error(`Erro ao buscar serviço ${processo.servico_id}:`, admError);
+                    }
+                }
+                // Fallback para o mapeamento estático se não encontrou nada no banco
+                if (docsDoServico.length === 0) {
+                    docsDoServico = (0, documentosConfig_1.getDocumentosPorTipoServico)(processo.tipo_servico);
+                }
                 // Adicionar cada documento com as informações do processo
                 for (const doc of docsDoServico) {
                     documentosRequeridos.push({
@@ -129,6 +152,40 @@ class ClienteController {
             });
         }
     }
+    // POST /cliente/:clienteId/dependentes
+    async createDependent(req, res) {
+        try {
+            const { clienteId } = req.params;
+            const { nomeCompleto, parentesco, documento, dataNascimento, rg, passaporte, nacionalidade, email, telefone, isAncestralDireto } = req.body;
+            if (!clienteId || !nomeCompleto || !parentesco) {
+                return res.status(400).json({ message: 'clienteId, nomeCompleto e parentesco são obrigatórios' });
+            }
+            const dependente = await ClienteRepository_1.default.createDependent({
+                clienteId,
+                nomeCompleto,
+                parentesco,
+                documento,
+                dataNascimento,
+                rg,
+                passaporte,
+                nacionalidade,
+                email,
+                telefone,
+                isAncestralDireto
+            });
+            return res.status(201).json({
+                message: 'Dependente criado com sucesso',
+                data: dependente
+            });
+        }
+        catch (error) {
+            console.error('Erro ao criar dependente:', error);
+            return res.status(500).json({
+                message: 'Erro ao criar dependente',
+                error: error.message
+            });
+        }
+    }
     // GET /cliente/:clienteId/processos
     async getProcessos(req, res) {
         try {
@@ -157,7 +214,33 @@ class ClienteController {
             if (!clienteId) {
                 return res.status(400).json({ message: 'clienteId é obrigatório' });
             }
-            const cliente = await ClienteRepository_1.default.getClienteById(clienteId);
+            // 1. Tentar buscar direto pelo ID (caso coincida)
+            let cliente = await ClienteRepository_1.default.getClienteById(clienteId);
+            // 2. Se não encontrar, pode ser que o clienteId seja o ID do Profile (Auth UID)
+            // mas na tabela clientes o ID seja diferente. Vamos tentar buscar pelo profile associado.
+            if (!cliente) {
+                const { data: profile } = await (await Promise.resolve().then(() => __importStar(require('../config/SupabaseClient')))).supabase
+                    .from('profiles')
+                    .select('email')
+                    .eq('id', clienteId)
+                    .maybeSingle();
+                if (profile && profile.email) {
+                    const { data: clientePorEmail } = await (await Promise.resolve().then(() => __importStar(require('../config/SupabaseClient')))).supabase
+                        .from('clientes')
+                        .select('*')
+                        .eq('email', profile.email)
+                        .maybeSingle();
+                    if (clientePorEmail) {
+                        cliente = clientePorEmail;
+                    }
+                }
+            }
+            if (!cliente) {
+                return res.status(404).json({
+                    message: 'Cliente não encontrado',
+                    data: null
+                });
+            }
             return res.status(200).json({
                 message: 'Cliente recuperado com sucesso',
                 data: cliente
@@ -173,13 +256,68 @@ class ClienteController {
     }
     async register(req, res) {
         try {
-            const { nome, email, whatsapp, parceiro_id, status } = req.body;
-            const Cliente = { nome, email, whatsapp, parceiro_id, status };
-            const createdData = await ClienteRepository_1.default.register(Cliente);
-            return res.status(201).json(createdData);
+            const { nome, email, whatsapp, parceiro_id, status, documento, endereco } = req.body;
+            if (!nome || !email || !whatsapp) {
+                return res.status(400).json({ message: 'Nome, email e WhatsApp são obrigatórios' });
+            }
+            // 1. Gerar senha temporária
+            const tempPassword = Math.random().toString(36).substring(2, 10);
+            // 2. Criar usuário no Auth do Supabase (utilizando admin para bypassar confirmação)
+            const { data: authData, error: authError } = await (await Promise.resolve().then(() => __importStar(require('../config/SupabaseClient')))).supabase.auth.admin.createUser({
+                email,
+                password: tempPassword,
+                email_confirm: true,
+                user_metadata: {
+                    full_name: nome,
+                    role: 'cliente',
+                    temp_password: tempPassword
+                }
+            });
+            if (authError) {
+                console.error('Erro ao criar auth user para cliente:', authError.message);
+                if (authError.message.includes('already')) {
+                    return res.status(409).json({ message: 'Já existe um usuário com este e-mail' });
+                }
+                return res.status(400).json({ message: authError.message });
+            }
+            const usuarioId = authData.user.id;
+            // 3. Criar profile na tabela profiles (usando documento como cpf)
+            const { error: profileError } = await (await Promise.resolve().then(() => __importStar(require('../config/SupabaseClient')))).supabase
+                .from('profiles')
+                .upsert({
+                id: usuarioId,
+                full_name: nome,
+                email,
+                role: 'cliente',
+                telefone: whatsapp || req.body.telefone,
+                cpf: documento || null // Mapeia documento para CPF no profile
+            });
+            if (profileError) {
+                console.error('Erro ao criar profile para cliente:', profileError.message);
+                // Cleanup: deletar auth user se falhar o profile
+                await (await Promise.resolve().then(() => __importStar(require('../config/SupabaseClient')))).supabase.auth.admin.deleteUser(usuarioId);
+                return res.status(500).json({ message: 'Erro ao criar perfil de acesso' });
+            }
+            // 4. Registrar na tabela clientes
+            const clienteData = {
+                nome,
+                email,
+                whatsapp,
+                parceiro_id: parceiro_id || null,
+                status: status || 'cadastrado'
+            };
+            const createdData = await ClienteRepository_1.default.register(clienteData);
+            return res.status(201).json({
+                ...createdData,
+                loginInfo: {
+                    email,
+                    password: tempPassword
+                }
+            });
         }
         catch (error) {
-            throw error;
+            console.error('Erro no registro de cliente:', error);
+            return res.status(500).json({ message: 'Erro interno ao registrar cliente', error: error.message });
         }
     }
     async AttStatusClientebyWpp(req, res) {
@@ -379,6 +517,9 @@ class ClienteController {
     }
     // PATCH /cliente/documento/:documentoId/status
     async updateDocumentoStatus(req, res) {
+        console.log('============= DEBUG STATUS UPDATE =============');
+        console.log('Documento ID:', req.params.documentoId);
+        console.log('Body recebido:', req.body);
         try {
             const { documentoId } = req.params;
             const { status, motivoRejeicao, analisadoPor } = req.body;
@@ -407,20 +548,70 @@ class ClienteController {
                 apostilado = true;
                 traduzido = true;
             }
-            const documento = await ClienteRepository_1.default.updateDocumentoStatus(documentoId, status, motivoRejeicao, analisadoPor, apostilado, traduzido);
+            const { solicitado_pelo_juridico, prazo } = req.body;
+            console.log('Enviando para o repositório...', {
+                documentoId, status, solicitado_pelo_juridico
+            });
+            const documento = await ClienteRepository_1.default.updateDocumentoStatus(documentoId, status, motivoRejeicao, analisadoPor, apostilado, traduzido, solicitado_pelo_juridico);
+            console.log('Documento atualizado no repositório com sucesso.');
+            // Criar notificação se o status exigir ação do cliente ou se foi solicitado pelo jurídico
+            try {
+                const canNotify = status === 'REJECTED' || status === 'WAITING_APOSTILLE' || status === 'WAITING_TRANSLATION' || solicitado_pelo_juridico;
+                console.log('Pode notificar?', canNotify, { status, solicitado_pelo_juridico });
+                if (canNotify) {
+                    let titulo = '';
+                    let mensagem = '';
+                    let tipo = 'info';
+                    if (status === 'REJECTED') {
+                        titulo = `Documento Rejeitado: ${documento.tipo}`;
+                        mensagem = `O documento "${documento.tipo}" foi rejeitado. Motivo: ${motivoRejeicao || 'Não especificado'}. Por favor, envie uma nova versão.`;
+                        tipo = 'error';
+                    }
+                    else if (status === 'WAITING_APOSTILLE' || (solicitado_pelo_juridico && status.includes('APOSTILLE'))) {
+                        titulo = 'Apostilamento Necessário';
+                        mensagem = `O documento "${documento.tipo}" foi analisado e agora precisa ser apostilado. Por favor, providencie o apostilamento.`;
+                        tipo = 'warning';
+                    }
+                    else if (status === 'WAITING_TRANSLATION' || (solicitado_pelo_juridico && status.includes('TRANSLATION'))) {
+                        titulo = 'Tradução Necessária';
+                        mensagem = `O documento "${documento.tipo}" foi analisado e agora precisa ser traduzido. Por favor, providencie a tradução.`;
+                        tipo = 'warning';
+                    }
+                    if (titulo && mensagem) {
+                        await NotificationService_1.default.createNotification({
+                            clienteId: documento.cliente_id,
+                            criadorId: analisadoPor,
+                            titulo,
+                            mensagem,
+                            tipo,
+                            prazo: Number(prazo) || 15
+                        });
+                        console.log(`Notificação "${titulo}" enviada com sucesso para o cliente ${documento.cliente_id} (Prazo: ${prazo || 15} dias)`);
+                    }
+                }
+            }
+            catch (notifyError) {
+                console.error('Erro ao enviar notificação de status:', notifyError);
+            }
+            console.log('Finalizando resposta de sucesso.');
             return res.status(200).json({
                 message: 'Status do documento atualizado com sucesso',
                 data: documento
             });
         }
         catch (error) {
-            console.error('Erro ao atualizar status do documento:', error);
+            console.error('ERRO NO updateDocumentoStatus:', error);
             return res.status(500).json({
-                message: `Erro ao atualizar status do documento: ${error.message} (ID: ${req.params.documentoId}, Status: ${req.body.status})`,
+                message: `Erro ao atualizar status do documento: ${error.message}`,
                 error: error.message,
-                documentoId: req.params.documentoId,
-                status: req.body.status
+                debug_info: {
+                    documentoId: req.params.documentoId,
+                    status: req.body.status
+                }
             });
+        }
+        finally {
+            console.log('===============================================');
         }
     }
     // GET /cliente/processo/:processoId/formularios
@@ -715,6 +906,116 @@ class ClienteController {
                 message: 'Erro ao buscar requerimentos',
                 error: error.message
             });
+        }
+    }
+    // PATCH /cliente/notificacoes/:notificacaoId/status
+    async updateNotificacaoStatus(req, res) {
+        try {
+            const { notificacaoId } = req.params;
+            const { lida } = req.body;
+            if (!notificacaoId) {
+                return res.status(400).json({ message: 'notificacaoId é obrigatório' });
+            }
+            const notification = await ClienteRepository_1.default.updateNotificacaoStatus(notificacaoId, lida);
+            return res.status(200).json({
+                message: 'Status da notificação atualizado com sucesso',
+                data: notification
+            });
+        }
+        catch (error) {
+            console.error('Erro ao atualizar status da notificação:', error);
+            return res.status(500).json({
+                message: 'Erro ao atualizar status da notificação',
+                error: error.message
+            });
+        }
+    }
+    // POST /cliente/:clienteId/notificacoes/read-all
+    async markAllNotificacoesAsRead(req, res) {
+        try {
+            const { clienteId } = req.params;
+            if (!clienteId) {
+                return res.status(400).json({ message: 'clienteId é obrigatório' });
+            }
+            await ClienteRepository_1.default.markAllNotificacoesAsRead(clienteId);
+            return res.status(200).json({
+                message: 'Todas as notificações marcadas como lidas'
+            });
+        }
+        catch (error) {
+            console.error('Erro ao marcar todas notificações como lidas:', error);
+            return res.status(500).json({
+                message: 'Erro ao marcar todas notificações como lidas',
+                error: error.message
+            });
+        }
+    }
+    async registerLead(req, res) {
+        try {
+            const { nome, email, whatsapp, parceiro_id, criado_por, criado_por_nome } = req.body;
+            if (!nome || !whatsapp) {
+                return res.status(400).json({ message: 'Nome e WhatsApp são obrigatórios' });
+            }
+            const leadData = {
+                nome,
+                email: email || `lead_${Date.now()}@bora.com`,
+                whatsapp,
+                parceiro_id: parceiro_id || null,
+                status: 'LEAD',
+                criado_por: criado_por || null,
+                criado_por_nome: criado_por_nome || null,
+            };
+            const createdData = await ClienteRepository_1.default.register(leadData);
+            return res.status(201).json(createdData);
+        }
+        catch (error) {
+            console.error('Erro ao registrar lead:', error);
+            return res.status(500).json({
+                message: 'Erro ao registrar lead',
+                error: error.message
+            });
+        }
+    }
+    async getClienteCredentials(req, res) {
+        try {
+            const { email } = req.params;
+            if (!email) {
+                return res.status(400).json({ message: 'E-mail é obrigatório' });
+            }
+            const { supabase } = await Promise.resolve().then(() => __importStar(require('../config/SupabaseClient')));
+            // 1. Primeiro busca o ID na tabela profiles pelo email
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('email', email)
+                .single();
+            if (profileError || !profile) {
+                // Fallback: Tenta listar usuários se não achar no profile (pode acontecer com usuários recém-criados ou sem profile)
+                const { data: usersData, error: listError } = await supabase.auth.admin.listUsers();
+                if (listError)
+                    throw listError;
+                const targetUser = usersData.users.find(u => u.email === email);
+                if (!targetUser) {
+                    return res.status(404).json({ message: 'Usuário não encontrado' });
+                }
+                return res.status(200).json({
+                    email: targetUser.email,
+                    password: targetUser.user_metadata?.temp_password || null
+                });
+            }
+            // 2. Com o ID, busca os metadados do Auth
+            const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(profile.id);
+            if (authError || !authUser.user) {
+                return res.status(404).json({ message: 'Credenciais não encontradas no Auth' });
+            }
+            return res.status(200).json({
+                email: authUser.user.email,
+                password: authUser.user.user_metadata?.temp_password || null
+            });
+        }
+        catch (error) {
+            console.error('Erro ao buscar credenciais:', error);
+            return res.status(500).json({ message: 'Erro ao buscar credenciais', error: error.message });
         }
     }
 }

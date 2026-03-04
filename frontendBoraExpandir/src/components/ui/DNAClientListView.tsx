@@ -62,6 +62,9 @@ export function DNAClientListView({
             const matchesSearch =
                 c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 c.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                c.telefone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                c.documento?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                c.passaporte?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 c.id.toLowerCase().includes(searchTerm.toLowerCase())
 
             const matchesId = !filters.id || c.id.toLowerCase().includes(filters.id.toLowerCase())

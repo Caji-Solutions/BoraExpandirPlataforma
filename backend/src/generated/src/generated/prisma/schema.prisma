@@ -1,0 +1,237 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+// 1. Enumeração para tipos de usuário
+enum TipoUsuario {
+  CLIENTE
+  FINANCEIRO
+  JURIDICO
+  SUPER_ADMIN
+}
+
+model Usuario {
+  // ID vem do Supabase Auth (UUID). Não geramos default aqui.
+  id             String      @id @db.Uuid
+  email          String      @unique
+  nome           String?
+  tipo           TipoUsuario @default(CLIENTE)
+  bucketRootPath String?     @map("bucket_root_path")
+
+  notificacoes Notificacao[]
+  agendamentos Agendamento[]
+
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@map("usuarios")
+}
+
+model Notificacao {
+  id        String    @id @default(uuid()) // Gerado pelo Prisma
+  titulo    String
+  mensagem  String
+  lida      Boolean   @default(false)
+  tipo      String    @default("info")
+  dataPrazo DateTime? @map("data_prazo")
+  criadoEm  DateTime  @default(now()) @map("criado_em")
+
+  clienteId String? @map("cliente_id") @db.Uuid
+  criadorId String? @map("criador_id") @db.Uuid
+
+  usuarioId String?  @map("usuario_id") @db.Uuid
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("notificacoes")
+}
+
+// Enumeração para status do documento
+enum StatusDocumento {
+  PENDING // Aguardando análise
+  ANALYZING // Em análise técnica
+  WAITING_APOSTILLE // Aguardando apostilamento (cliente)
+  ANALYZING_APOSTILLE // Validando apostilamento (jurídico)
+  WAITING_TRANSLATION // Aguardando tradução (cliente)
+  ANALYZING_TRANSLATION // Validando tradução (jurídico)
+  WAITING_TRANSLATION_QUOTE // Aguardando orçamento de tradução
+  WAITING_QUOTE_APPROVAL // Aguardando aprovação de orçamento
+  APPROVED // Aprovado
+  REJECTED // Rejeitado
+}
+
+// Modelo para Processos
+model Processo {
+  id String @id @default(uuid()) @db.Uuid
+
+  documentos Documento[]
+
+  @@map("processos")
+}
+
+// Modelo para Dependentes (Membros da Família)
+model Dependente {
+  id String @id @default(uuid()) @db.Uuid
+
+  documentos Documento[]
+
+  @@map("dependentes")
+}
+
+// Modelo para Requerimentos estruturados
+model Requerimento {
+  id          String  @id @default(uuid()) @db.Uuid
+  clienteId   String  @map("cliente_id") @db.Uuid
+  processoId  String? @map("processo_id") @db.Uuid
+  tipo        String
+  status      String  @default("pendente")
+  observacoes String?
+  criadorId   String? @map("criador_id") @db.Uuid
+
+  documentos Documento[]
+
+  createdAt  DateTime @default(now()) @map("created_at")
+  updated_at DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("requerimentos")
+}
+
+// Modelo para armazenar documentos dos clientes
+model Documento {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Relacionamento com o cliente (UUID do Supabase)
+  clienteId String @map("cliente_id") @db.Uuid
+
+  // Novos relacionamentos
+  processoId String?   @map("processo_id") @db.Uuid
+  processo   Processo? @relation(fields: [processoId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  dependenteId String?     @map("dependente_id") @db.Uuid
+  dependente   Dependente? @relation(fields: [dependenteId], references: [id], onDelete: SetNull)
+
+  requerimentoId String?       @map("requerimento_id") @db.Uuid
+  requerimento   Requerimento? @relation(fields: [requerimentoId], references: [id], onDelete: SetNull)
+
+  // Informações do arquivo
+  tipo         String // Tipo do documento (passport, identity, proof_of_address, etc.)
+  nomeOriginal String  @map("nome_original") // Nome original do arquivo
+  nomeArquivo  String  @map("nome_arquivo") // Nome salvo no storage
+  storagePath  String  @map("storage_path") // Caminho completo no Supabase Storage
+  publicUrl    String? @map("public_url") // URL pública do arquivo
+  contentType  String? @map("content_type") // MIME type do arquivo
+  tamanho      Int? // Tamanho em bytes
+
+  // Status e análise
+  status                  StatusDocumento @default(PENDING)
+  apostilado              Boolean         @default(false)
+  traduzido               Boolean         @default(false)
+  motivoRejeicao          String?         @map("motivo_rejeicao")
+  analisadoPor            String?         @map("analisado_por") @db.Uuid // ID do usuário que analisou
+  analisadoEm             DateTime?       @map("analisado_em")
+  solicitadoPeloJuridico  Boolean         @default(false) @map("solicitado_pelo_juridico")
+  dataSolicitacaoJuridico DateTime?       @map("data_solicitacao_juridico")
+
+  // Timestamps
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  apostilamento Apostilamento?
+
+  @@index([clienteId])
+  @@index([tipo])
+  @@index([status])
+  @@index([processoId])
+  @@index([dependenteId])
+  @@index([requerimentoId])
+  @@map("documentos")
+}
+
+model Configuracao {
+  chave        String   @id
+  valor        String
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@map("configuracoes")
+}
+
+model Agendamento {
+  id             String   @id @default(uuid()) @db.Uuid
+  nome           String
+  email          String
+  telefone       String
+  dataHora       DateTime @map("data_hora")
+  produtoId      String   @map("produto_id")
+  duracaoMinutos Int      @default(60) @map("duracao_minutos")
+  status         String   @default("agendado")
+
+  usuarioId String?  @map("usuario_id") @db.Uuid
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id])
+
+  clienteId String? @map("cliente_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("agendamentos")
+}
+
+model CatalogoServico {
+  id              String  @id @default(uuid()) @db.Uuid
+  nome            String
+  valor           Decimal @default(0.00) @db.Decimal(10, 2)
+  duracao         String?
+  exibirComercial Boolean @default(true) @map("exibir_comercial")
+
+  requisitos ServicoRequisito[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("catalogo_servicos")
+}
+
+model ServicoRequisito {
+  id        String          @id @default(uuid()) @db.Uuid
+  servicoId String          @map("servico_id") @db.Uuid
+  servico   CatalogoServico @relation(fields: [servicoId], references: [id], onDelete: Cascade)
+
+  nome        String
+  etapa       String
+  obrigatorio Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("servico_requisitos")
+}
+
+model AssessoriaJuridica {
+  id            String   @id @default(uuid()) @db.Uuid
+  clienteId     String   @map("cliente_id") @db.Uuid
+  responsavelId String   @map("responsavel_id") @db.Uuid
+  servicoId     String?  @map("servico_id") @db.Uuid
+  respostas     Json
+  observacoes   String?
+  criadoEm      DateTime @default(now()) @map("criado_em")
+
+  @@map("assessorias_juridico")
+}
+
+model Apostilamento {
+  id           String    @id @default(uuid()) @db.Uuid
+  documentoId  String    @unique @map("documento_id") @db.Uuid
+  documento    Documento @relation(fields: [documentoId], references: [id])
+  status       String    @default("pendente") // pendente, em_processamento, concluido, erro
+  observacoes  String?
+  solicitadoEm DateTime  @default(now()) @map("solicitado_em")
+  concluidoEm  DateTime? @map("concluido_em")
+
+  @@map("apostilamentos")
+}

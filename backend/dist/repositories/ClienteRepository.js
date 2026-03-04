@@ -1,5 +1,9 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+const NotificationService_1 = __importDefault(require("../services/NotificationService"));
 const SupabaseClient_1 = require("../config/SupabaseClient");
 class ClienteRepository {
     async getClienteByWppNumber(wppNumber) {
@@ -7,7 +11,7 @@ class ClienteRepository {
             .from('clientes')
             .select('*')
             .eq('whatsapp', wppNumber)
-            .single();
+            .maybeSingle();
         if (error) {
             throw error;
         }
@@ -18,7 +22,7 @@ class ClienteRepository {
             .from('clientes')
             .select('*')
             .eq('id', id)
-            .single();
+            .maybeSingle();
         if (error) {
             console.error('Erro ao buscar cliente por ID:', error);
             throw error;
@@ -31,7 +35,7 @@ class ClienteRepository {
             .from('clientes')
             .select('*')
             .eq('parceiro_id', parceiroId)
-            .order('created_at', { ascending: false });
+            .order('criado_em', { ascending: false });
         if (error) {
             throw error;
         }
@@ -41,9 +45,9 @@ class ClienteRepository {
     async getProcessosByClienteId(clienteId) {
         const { data, error } = await SupabaseClient_1.supabase
             .from('processos')
-            .select('id, tipo_servico, status, etapa_atual, created_at, updated_at')
+            .select('id, tipo_servico, status, etapa_atual, criado_em, atualizado_em, servico_id')
             .eq('cliente_id', clienteId)
-            .order('created_at', { ascending: false });
+            .order('criado_em', { ascending: false });
         if (error) {
             console.error('Erro ao buscar processos do cliente:', error);
             throw error;
@@ -52,19 +56,43 @@ class ClienteRepository {
     }
     // Buscar dependentes de um cliente
     async getDependentesByClienteId(clienteId) {
-        console.log('Repository: Buscando dependentes para clienteId:', clienteId);
         const { data, error } = await SupabaseClient_1.supabase
             .from('dependentes')
-            .select('id, nome_completo, parentesco')
+            .select('*')
             .eq('cliente_id', clienteId)
-            //.eq('status', 'ativo') // Comentado para debug - trazer todos
             .order('nome_completo', { ascending: true });
         if (error) {
             console.error('Erro ao buscar dependentes do cliente:', error);
             throw error;
         }
-        console.log('Repository: Dependentes encontrados:', data?.length, data);
         return data || [];
+    }
+    // Criar dependente para um cliente
+    async createDependent(params) {
+        const { data, error } = await SupabaseClient_1.supabase
+            .from('dependentes')
+            .insert([{
+                cliente_id: params.clienteId,
+                nome_completo: params.nomeCompleto,
+                parentesco: params.parentesco,
+                cpf: params.documento,
+                data_nascimento: params.dataNascimento,
+                rg: params.rg,
+                passaporte: params.passaporte,
+                nacionalidade: params.nacionalidade,
+                email: params.email,
+                telefone: params.telefone,
+                is_ancestral_direto: params.isAncestralDireto || false,
+                status: 'ativo',
+                criado_em: new Date().toISOString()
+            }])
+            .select()
+            .single();
+        if (error) {
+            console.error('Erro ao criar dependente:', error);
+            throw error;
+        }
+        return data;
     }
     async register(cliente) {
         const { data: createdData, error } = await SupabaseClient_1.supabase
@@ -127,6 +155,7 @@ class ClienteRepository {
                 tamanho: params.tamanho || null,
                 status: params.status || 'PENDING',
                 dependente_id: params.dependenteId || null,
+                solicitado_pelo_juridico: params.solicitado_pelo_juridico || false,
                 atualizado_em: new Date().toISOString()
             }])
             .select()
@@ -195,14 +224,16 @@ class ClienteRepository {
             throw deleteError;
         }
     }
-    // Atualizar status do documento
-    async updateDocumentoStatus(documentoId, status, motivoRejeicao, analisadoPor, apostilado, traduzido) {
+    async updateDocumentoStatus(documentoId, status, motivoRejeicao, analisadoPor, apostilado, traduzido, solicitadoPeloJuridico) {
         const updateData = {
             status,
             atualizado_em: new Date().toISOString()
         };
         if (motivoRejeicao) {
             updateData.motivo_rejeicao = motivoRejeicao;
+        }
+        if (solicitadoPeloJuridico !== undefined) {
+            updateData.solicitado_pelo_juridico = solicitadoPeloJuridico;
         }
         if (analisadoPor) {
             updateData.analisado_por = analisadoPor;
@@ -416,12 +447,30 @@ class ClienteRepository {
                 ),
                 requerimentos (*)
             `)
-            .order('created_at', { ascending: false });
+            .order('criado_em', { ascending: false });
         if (error) {
             console.error('Erro ao buscar todos os clientes:', error);
             throw error;
         }
-        return data || [];
+        if (!data || data.length === 0)
+            return [];
+        // Fetch profiles to get CPF/documento and responsaveis
+        const { data: profiles } = await SupabaseClient_1.supabase
+            .from('profiles')
+            .select('id, email, cpf, full_name');
+        const cpfMap = new Map(profiles?.map(p => [p.email, p.cpf]) || []);
+        const responsavelMap = new Map(profiles?.map(p => [p.id, { id: p.id, full_name: p.full_name }]) || []);
+        return data.map(c => {
+            const processosPopulated = c.processos?.map((p) => ({
+                ...p,
+                responsavel: p.responsavel_id ? responsavelMap.get(p.responsavel_id) : null
+            }));
+            return {
+                ...c,
+                processos: processosPopulated,
+                documento: cpfMap.get(c.email) || ''
+            };
+        });
     }
     // ========== PROFILE PHOTO ==========
     async upsertProfilePhoto(params) {
@@ -449,7 +498,7 @@ class ClienteRepository {
             .from('clientes')
             .update({
             foto_perfil: publicUrl,
-            updated_at: new Date().toISOString()
+            atualizado_em: new Date().toISOString()
         })
             .eq('id', params.clienteId)
             .select()
@@ -461,17 +510,13 @@ class ClienteRepository {
         return updatedCliente;
     }
     async getNotificacoes(clienteId) {
-        // Buscamos notificações vinculadas ao ID do cliente
-        const { data, error } = await SupabaseClient_1.supabase
-            .from('notificacoes')
-            .select('*')
-            .eq('cliente_id', clienteId)
-            .order('criado_em', { ascending: false });
-        if (error) {
-            console.error('Erro ao buscar notificações do cliente:', error);
-            throw error;
-        }
-        return data || [];
+        return NotificationService_1.default.getNotificationsByCliente(clienteId);
+    }
+    async updateNotificacaoStatus(notificacaoId, lida) {
+        return NotificationService_1.default.updateStatus(notificacaoId, lida);
+    }
+    async markAllNotificacoesAsRead(clienteId) {
+        return NotificationService_1.default.markAllAsRead(clienteId);
     }
 }
 exports.default = new ClienteRepository();

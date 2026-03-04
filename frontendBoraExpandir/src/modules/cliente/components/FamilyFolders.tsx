@@ -34,6 +34,7 @@ interface FamilyFoldersProps {
     requerimentos?: any[]
     onUpload: (file: File, documentType: string, memberId: string, documentoId?: string) => Promise<void>
     onDelete: (documentId: string) => void
+    onMemberClick?: (member: FamilyMember) => void
 }
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
@@ -48,6 +49,7 @@ export function FamilyFolders({
     requerimentos = [],
     onUpload,
     onDelete,
+    onMemberClick,
 }: FamilyFoldersProps) {
     // Selected member for document view (null = show member selection)
     const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null)
@@ -204,7 +206,13 @@ export function FamilyFolders({
         return (
             <button
                 key={member.id}
-                onClick={() => setSelectedMember(member)}
+                onClick={() => {
+                    if (onMemberClick) {
+                        onMemberClick(member)
+                    } else {
+                        setSelectedMember(member)
+                    }
+                }}
                 className={cn(
                     'w-full text-left p-5 rounded-2xl border-2 transition-all duration-200 group',
                     'bg-white dark:bg-gray-800 hover:shadow-lg hover:scale-[1.01]',

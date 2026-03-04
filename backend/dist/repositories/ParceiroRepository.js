@@ -4,47 +4,78 @@ const SupabaseClient_1 = require("../config/SupabaseClient");
 // Implementação temporária em memória até existir o modelo Prisma `Parceiro`.
 const store = new Map();
 class ParceiroRepository {
+    static generateClientId() {
+        const chars = '0123456789abcdef';
+        let result = 'be';
+        for (let i = 0; i < 4; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    }
     static async register(payload) {
-        const { data, error } = await SupabaseClient_1.supabase
-            .from('parceiros')
+        const { nome, email, telefone, documento, senha } = payload;
+        const clientId = this.generateClientId();
+        // 1. Criar Auth User no Supabase
+        const { data: authData, error: authError } = await SupabaseClient_1.supabase.auth.admin.createUser({
+            email,
+            password: senha,
+            email_confirm: true,
+            user_metadata: {
+                full_name: nome,
+                role: 'cliente'
+            }
+        });
+        if (authError)
+            throw authError;
+        const userId = authData.user.id;
+        // 2. Criar Profile
+        const { error: profileError } = await SupabaseClient_1.supabase.from('profiles').upsert({
+            id: userId,
+            full_name: nome,
+            email: email,
+            role: 'cliente',
+            telefone: telefone || null,
+            cpf: documento || null
+        });
+        if (profileError)
+            throw profileError;
+        // 3. Criar registro na tabela clientes (Todo cliente é parceiro)
+        const { data: cliente, error: cliError } = await SupabaseClient_1.supabase
+            .from('clientes')
             .insert({
-            nome: payload.nome,
-            email: payload.email,
-            telefone: payload.telefone ?? null,
-            documento: payload.documento ?? null,
+            id: userId,
+            nome,
+            email,
+            whatsapp: telefone || '',
+            status: 'parceiro',
+            client_id: clientId
         })
             .select()
             .single();
-        if (error)
-            throw error;
-        const parceiro = {
-            id: data.id,
-            nome: data.nome,
-            email: data.email,
-            telefone: data.telefone ?? undefined,
-            documento: data.documento ?? undefined,
-            criadoEm: new Date(data.created_at),
-            atualizadoEm: new Date(data.updated_at),
-        };
-        store.set(parceiro.id, parceiro);
-        return parceiro;
+        if (cliError)
+            throw cliError;
+        return cliente;
     }
     static async findById(id) {
-        const { data, error } = await SupabaseClient_1.supabase
-            .from('parceiros')
-            .select('*')
-            .eq('id', id)
-            .single();
-        if (error || !data)
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+        let query = SupabaseClient_1.supabase.from('clientes').select('*');
+        if (isUuid) {
+            query = query.eq('id', id);
+        }
+        else {
+            query = query.ilike('client_id', id);
+        }
+        const { data: cliente, error } = await query.single();
+        if (error || !cliente)
             return null;
         return {
-            id: data.id,
-            nome: data.nome,
-            email: data.email,
-            telefone: data.telefone ?? undefined,
-            documento: data.documento ?? undefined,
-            criadoEm: new Date(data.created_at),
-            atualizadoEm: new Date(data.updated_at),
+            id: cliente.id,
+            nome: cliente.nome,
+            email: cliente.email,
+            telefone: cliente.whatsapp ?? undefined,
+            clientId: cliente.client_id,
+            criadoEm: new Date(cliente.criado_em),
+            atualizadoEm: new Date(cliente.atualizado_em),
         };
     }
     static async update(id, data) {
@@ -66,7 +97,7 @@ class ParceiroRepository {
         const { data, error } = await SupabaseClient_1.supabase
             .from('parceiros')
             .select('*')
-            .order('created_at', { ascending: false });
+            .order('criado_em', { ascending: false });
         if (error || !data)
             return [];
         return data.map(row => ({
@@ -75,9 +106,48 @@ class ParceiroRepository {
             email: row.email,
             telefone: row.telefone ?? undefined,
             documento: row.documento ?? undefined,
-            criadoEm: new Date(row.created_at),
-            atualizadoEm: new Date(row.updated_at),
+            criadoEm: new Date(row.criado_em),
+            atualizadoEm: new Date(row.atualizado_em),
         }));
+    }
+    static async getMetrics(parceiroId) {
+        // Buscar clientes indicados por este parceiro
+        const { data: clients, error } = await SupabaseClient_1.supabase
+            .from('clientes')
+            .select('*')
+            .eq('parceiro_id', parceiroId);
+        if (error)
+            throw error;
+        const now = new Date();
+        const last30DaysDate = new Date();
+        last30DaysDate.setDate(now.getDate() - 30);
+        const referrals = clients?.length || 0;
+        const conversions = clients?.filter(c => ['confirmado', 'concluido'].includes(c.status)).length || 0;
+        // No momento a receita não está em uma coluna direta, 
+        // poderíamos somar de uma tabela de faturas se existisse.
+        // Como o foco é retirar os mocks, vamos retornar os dados reais de indicação disponíveis.
+        const totalRevenue = 0;
+        const last30DaysClients = clients?.filter(c => new Date(c.criado_em) >= last30DaysDate) || [];
+        const last30DaysReferrals = last30DaysClients.length;
+        const last30DaysConversions = last30DaysClients.filter(c => ['confirmado', 'concluido'].includes(c.status)).length;
+        return {
+            referrals,
+            conversions,
+            revenue: totalRevenue,
+            last30Days: {
+                referrals: last30DaysReferrals,
+                conversions: last30DaysConversions,
+                revenue: 0
+            },
+            referralList: clients?.map(c => ({
+                id: c.id,
+                name: c.nome,
+                email: c.email,
+                service: 'Jurídico', // Default service
+                status: c.status,
+                referredDate: c.criado_em
+            })) || []
+        };
     }
     static async remove(id) {
         return store.delete(id);

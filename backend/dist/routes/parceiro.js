@@ -9,4 +9,5 @@ const parceiro = (0, express_1.Router)();
 parceiro.post('/register', ParceiroController_1.default.register.bind(ParceiroController_1.default));
 parceiro.get('/parceirobyid/:id', ParceiroController_1.default.getParceiroById.bind(ParceiroController_1.default));
 parceiro.get('/clients/:id', ParceiroController_1.default.getClientsByParceiroId.bind(ParceiroController_1.default));
+parceiro.get('/metrics/:id', ParceiroController_1.default.getMetrics.bind(ParceiroController_1.default));
 exports.default = parceiro;

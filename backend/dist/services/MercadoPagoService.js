@@ -42,11 +42,14 @@ class MercadoPagoService {
                     telefone,
                     data_hora,
                     produto_id,
-                    duracao_minutos: duracao_minutos.toString()
+                    duracao_minutos: duracao_minutos.toString(),
+                    usuario_id: params.usuario_id || '',
+                    cliente_id: params.cliente_id || '',
+                    agendamento_id: params.agendamento_id || ''
                 },
                 back_urls: {
-                    success: `${process.env.FRONTEND_URL}/agendamento/sucesso`,
-                    failure: `${process.env.FRONTEND_URL}/agendamento/falha`,
+                    success: params.successUrl || `${process.env.FRONTEND_URL}/agendamento/sucesso`,
+                    failure: params.failureUrl || `${process.env.FRONTEND_URL}/agendamento/falha`,
                     pending: `${process.env.FRONTEND_URL}/agendamento/pendente`
                 },
                 auto_return: 'approved',

@@ -51,13 +51,15 @@ export function ClienteApp() {
       .replace(/\s+/g, '_');
   }
 
-  const fetchDocuments = async (clientId: string = client.id) => {
+  const fetchDocuments = async (clientId: string = client.id, reqDocs?: any[]) => {
     try {
       const response = await fetch(`${API_BASE_URL}/cliente/${clientId}/documentos`)
       if (!response.ok) throw new Error('Falha ao buscar documentos')
 
       const result = await response.json()
       const apiDocs = result.data || []
+
+      const currentReqDocs = reqDocs && reqDocs.length > 0 ? reqDocs : (requiredDocuments.length > 0 ? requiredDocuments : mockRequiredDocuments)
 
       // Map API documents to frontend format and infer memberId
       const mappedDocs: Document[] = apiDocs.map((doc: any) => {
@@ -78,7 +80,7 @@ export function ClienteApp() {
           id: doc.id,
           clientId: doc.cliente_id,
           memberId: memberId,
-          name: mockRequiredDocuments.find(r => r.type === doc.tipo)?.name || doc.tipo,
+          name: currentReqDocs.find((r: any) => r.type === doc.tipo)?.name || doc.tipo,
           type: doc.tipo,
           status: doc.status ? doc.status.toLowerCase() : 'pending',
           isApostilled: doc.apostilado,
@@ -145,8 +147,10 @@ export function ClienteApp() {
     try {
       const result = await clienteService.getDocumentosRequeridos(clientId)
       setRequiredDocuments(result || [])
+      return result || []
     } catch (error) {
       console.error('Erro ao buscar documentos requeridos:', error)
+      return []
     }
   }
 
@@ -249,10 +253,10 @@ export function ClienteApp() {
         }
 
         // Fetch other data using the final active ID
-        await fetchDocuments(finalActiveId)
+        const reqs = await fetchRequiredDocuments(finalActiveId)
+        await fetchDocuments(finalActiveId, reqs)
         await fetchRequerimentos(finalActiveId)
         await fetchNotificacoes(finalActiveId)
-        await fetchRequiredDocuments(finalActiveId)
       } catch (error) {
         console.error('Erro ao buscar dados iniciais:', error)
       } finally {
@@ -633,6 +637,11 @@ export function ClienteApp() {
             path="traducao"
             element={
               <Traducao
+                clienteId={client.id}
+                clientName={client.name}
+                members={familyMembers}
+                documents={documents}
+                requiredDocuments={requiredDocuments}
                 approvedDocuments={approvedDocuments}
                 translatedDocuments={translatedDocuments}
                 onUploadTranslation={handleUploadTranslation}

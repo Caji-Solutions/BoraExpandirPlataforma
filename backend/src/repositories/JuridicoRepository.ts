@@ -98,9 +98,6 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
-                    client_id,
-                    client_id,
-                    client_id,
                     nome,
                     email,
                     whatsapp,
@@ -161,7 +158,6 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
-                    client_id,
                     nome,
                     email,
                     whatsapp,
@@ -189,7 +185,6 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
-                    client_id,
                     nome,
                     email,
                     whatsapp,
@@ -259,9 +254,6 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
-                    client_id,
-                    client_id,
-                    client_id,
                     nome,
                     email,
                     whatsapp,
@@ -337,7 +329,6 @@ class JuridicoRepository {
             .from('processos')
             .select(`
                 cliente_id,
-                    client_id,
                 clientes:clientes!cliente_id (*)
             `)
             .eq('responsavel_id', responsavelId)
@@ -367,7 +358,6 @@ class JuridicoRepository {
             .from('processos')
             .select(`
                 cliente_id,
-                    client_id,
                 clientes:clientes!cliente_id (*)
             `)
             .is('responsavel_id', null)
@@ -619,13 +609,11 @@ class JuridicoRepository {
 
         return (data || []).map(f => ({
             id: f.id,
-                    client_id,
             name: f.nome_original?.replace(/\.[^/.]+$/, '') || 'Documento',
             fileName: f.nome_original,
             fileSize: f.tamanho,
             uploadDate: f.criado_em,
             memberId: f.membro_id,
-                    client_id,
             downloadUrl: f.public_url,
             funcionarioId: f.funcionario_juridico_id
         }))
@@ -716,16 +704,13 @@ class JuridicoRepository {
             const resposta = respostasMap[f.id]
             return {
                 id: f.id,
-                    client_id,
                 name: f.nome_original?.replace(/\.[^/.]+$/, '') || 'Formulário',
                 fileName: f.nome_original,
                 fileSize: f.tamanho,
                 uploadDate: f.criado_em,
                 memberId: f.membro_id,
-                    client_id,
                 downloadUrl: f.public_url,
                 funcionarioId: f.funcionario_juridico_id,
-                    client_id,
                 // Response status
                 status: resposta ? 'received' : 'waiting',
                 // Response approval status (pendente/aprovado/rejeitado)
@@ -734,7 +719,6 @@ class JuridicoRepository {
                 // Response data (if exists)
                 response: resposta ? {
                     id: resposta.id,
-                    client_id,
                     fileName: resposta.nome_original,
                     downloadUrl: resposta.public_url,
                     uploadDate: resposta.criado_em
@@ -803,7 +787,6 @@ class JuridicoRepository {
                 *,
                 autor:profiles!autor_id (
                     id,
-                    client_id,
                     full_name,
                     role
                 )
@@ -827,7 +810,6 @@ class JuridicoRepository {
                 *,
                 autor:profiles!autor_id (
                     id,
-                    client_id,
                     full_name,
                     role
                 )
@@ -1045,6 +1027,10 @@ class JuridicoRepository {
         status?: string
         etapaAtual?: number
         responsavelId?: string
+        vendedor_id?: string
+        assessoriaId?: string
+        servicoId?: string
+        documentos?: any[]
     }): Promise<any> {
         const { data, error } = await supabase
             .from('processos')
@@ -1054,6 +1040,9 @@ class JuridicoRepository {
                 status: params.status || 'in_progress',
                 etapa_atual: params.etapaAtual || 1,
                 responsavel_id: params.responsavelId || null,
+                assessoria_id: params.assessoriaId || null,
+                servico_id: params.servicoId || null,
+                documentos: params.documentos || [],
                 criado_em: new Date().toISOString(),
                 atualizado_em: new Date().toISOString()
             }])
@@ -1062,6 +1051,44 @@ class JuridicoRepository {
 
         if (error) {
             console.error('Erro ao criar processo manualmente:', error)
+            throw error
+        }
+
+        return data
+    }
+
+    // Atualizar um processo
+    async updateProcess(processoId: string, params: {
+        tipoServico?: string
+        status?: string
+        etapaAtual?: number
+        responsavelId?: string
+        assessoriaId?: string
+        servicoId?: string
+        documentos?: any[]
+    }): Promise<any> {
+        const updateData: any = {
+            atualizado_em: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        }
+
+        if (params.tipoServico !== undefined) updateData.tipo_servico = params.tipoServico
+        if (params.status !== undefined) updateData.status = params.status
+        if (params.etapaAtual !== undefined) updateData.etapa_atual = params.etapaAtual
+        if (params.responsavelId !== undefined) updateData.responsavel_id = params.responsavelId
+        if (params.assessoriaId !== undefined) updateData.assessoria_id = params.assessoriaId
+        if (params.servicoId !== undefined) updateData.servico_id = params.servicoId
+        if (params.documentos !== undefined) updateData.documentos = params.documentos
+
+        const { data, error } = await supabase
+            .from('processos')
+            .update(updateData)
+            .eq('id', processoId)
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro ao atualizar processo no repositório:', error)
             throw error
         }
 

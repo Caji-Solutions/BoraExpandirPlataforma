@@ -36,7 +36,8 @@ import {
   getRequerimentosByCliente,
   updateRequerimentoStatus,
   getDependentes,
-  updateDocumentStatus
+  updateDocumentStatus,
+  requestApostille
 } from '../services/juridicoService';
 import { ReviewActionButtons } from './ReviewActionButtons';
 import { RejectModal } from './RejectModal';
@@ -359,8 +360,16 @@ export function ProcessAnalysis({
         LAWYER_ID
       );
       
-      // Atualiza o estado local via onUpdateDocument para refletir as mudanças na UI
-      // Passamos skipBackend: true para o pai saber que NÃO deve chamar o fetch de novo
+      // Se for etapa de apostilamento, cria também o registro na nova tabela de apostilamentos (Administrativo)
+      if (selectedDoc.currentStage === 'apostille_check') {
+        try {
+          await requestApostille(selectedDoc.id, selectedDoc.url || undefined, "Solicitado via análise de processo pelo jurídico");
+        } catch (apostilleError) {
+          console.error('Erro ao criar registro de apostilamento administrativo:', apostilleError);
+          // Não paramos o fluxo aqui, pois a notificação ao cliente/status já foi atualizado
+        }
+      }
+      
       await onUpdateDocument(selectedDoc.id, {
         status: statusFinal.toLowerCase() as any,
         solicitado_pelo_juridico: true,

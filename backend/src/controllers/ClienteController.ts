@@ -2,6 +2,7 @@ import type { ClienteDTO } from '../types/parceiro';
 import ClienteRepository from '../repositories/ClienteRepository';
 import JuridicoRepository from '../repositories/JuridicoRepository';
 import NotificationService from '../services/NotificationService';
+import AdmRepository from '../repositories/AdmRepository';
 import { getDocumentosPorTipoServico, DocumentoRequeridoConfig } from '../config/documentosConfig';
 
 // Interface para o documento requerido com informações do processo
@@ -34,11 +35,33 @@ class ClienteController {
         })
       }
 
-      // Para cada processo, buscar os documentos requeridos baseado no tipo_servico
+      // Para cada processo, buscar os documentos requeridos baseado no tipo_servico ou servico_id
       const documentosRequeridos: DocumentoRequeridoComProcesso[] = []
 
       for (const processo of processos) {
-        const docsDoServico = getDocumentosPorTipoServico(processo.tipo_servico)
+        let docsDoServico: DocumentoRequeridoConfig[] = []
+
+        if (processo.servico_id) {
+          try {
+            const servico = await AdmRepository.getServiceById(processo.servico_id)
+            if (servico && servico.requisitos) {
+              docsDoServico = servico.requisitos.map((r: any) => ({
+                type: r.nome, // Usando o nome como tipo para bater com o que o jurídico vê
+                name: r.nome,
+                description: `Documento para a etapa ${r.etapa}`,
+                required: r.obrigatorio,
+                examples: []
+              }))
+            }
+          } catch (admError) {
+            console.error(`Erro ao buscar serviço ${processo.servico_id}:`, admError)
+          }
+        }
+
+        // Fallback para o mapeamento estático se não encontrou nada no banco
+        if (docsDoServico.length === 0) {
+          docsDoServico = getDocumentosPorTipoServico(processo.tipo_servico)
+        }
 
         // Adicionar cada documento com as informações do processo
         for (const doc of docsDoServico) {
