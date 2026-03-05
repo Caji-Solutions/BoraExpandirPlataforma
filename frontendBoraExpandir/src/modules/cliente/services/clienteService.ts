@@ -111,5 +111,22 @@ export const clienteService = {
     
     const result = await response.json();
     return result.checkoutUrl;
+  },
+
+  async solicitarApostilamento(documentoId: string, documentoUrl: string, observacoes?: string) {
+    const response = await fetch(`${API_BASE_URL}/apostilamentos/solicitar`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ documentoId, documentoUrl, observacoes }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Falha ao solicitar apostilamento');
+    }
+
+    return response.json();
   }
 };
