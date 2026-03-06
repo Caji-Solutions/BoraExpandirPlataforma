@@ -60,6 +60,7 @@ export default function ServiceCatalog() {
     value: "",
     duration: "",
     showInCommercial: true,
+    showToClient: true,
     requiresLegalDelegation: false,
     documents: [],
   });
@@ -92,6 +93,7 @@ export default function ServiceCatalog() {
       value: "",
       duration: "",
       showInCommercial: true,
+      showToClient: true,
       requiresLegalDelegation: false,
       documents: [],
     });
@@ -107,6 +109,7 @@ export default function ServiceCatalog() {
       value: service.value,
       duration: service.duration,
       showInCommercial: service.showInCommercial,
+      showToClient: service.showToClient,
       requiresLegalDelegation: service.requiresLegalDelegation,
       documents: service.documents,
     });
@@ -236,6 +239,7 @@ export default function ServiceCatalog() {
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Valor</TableHead>
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Duração Est.</TableHead>
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Agendamento</TableHead>
+                <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Visib. Cliente</TableHead>
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Documentos</TableHead>
                 <TableHead className="w-[100px] py-5 pr-8"></TableHead>
               </TableRow>
@@ -278,6 +282,18 @@ export default function ServiceCatalog() {
                       ) : (
                         <Badge variant="outline" className="text-muted-foreground border-dashed border-muted-foreground/30 px-2.5 py-1 rounded-lg w-fit">
                           Privado
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-4">
+                      {service.showToClient ? (
+                        <Badge variant="success" className="bg-blue-500/10 text-blue-600 border-blue-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1.5 w-fit">
+                          <Plus className="h-3.5 w-3.5" />
+                          Visível
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground border-dashed border-muted-foreground/30 px-2.5 py-1 rounded-lg w-fit">
+                          Oculto
                         </Badge>
                       )}
                     </TableCell>
@@ -396,6 +412,17 @@ export default function ServiceCatalog() {
                 <Switch
                   checked={formData.showInCommercial}
                   onCheckedChange={(val) => setFormData({ ...formData, showInCommercial: val })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-xl">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-bold">Exibir para Cliente</Label>
+                  <p className="text-xs text-muted-foreground">Visível no painel do cliente</p>
+                </div>
+                <Switch
+                  checked={formData.showToClient}
+                  onCheckedChange={(val) => setFormData({ ...formData, showToClient: val })}
                 />
               </div>
 

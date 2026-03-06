@@ -97,9 +97,15 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
         setClientes(mappedClientes)
 
         // Map Produtos (Services) transformando para a interface Produto
-        // Filtrar apenas os que possuem showInCommercial === true
+        // Se for visualização do cliente (isClientView), filtrar APENAS por showToClient
+        // Se for visualização administrativa, filtrar por showInCommercial
         const mappedProdutos = produtosData
-          .filter((s: Service) => s.showInCommercial)
+          .filter((s: Service) => {
+            if (isClientView) {
+              return s.showToClient;
+            }
+            return s.showInCommercial;
+          })
           .map((s: Service) => ({
             id: s.id,
             nome: s.name,

@@ -313,12 +313,14 @@ export function ProcessAnalysis({
     if (selectedDoc.currentStage === 'initial_analysis') {
       updates = {
         currentStage: 'apostille_check',
-        status: 'waiting_apostille'
+        status: 'analyzing_apostille',
+        solicitado_pelo_juridico: false
       };
     } else if (selectedDoc.currentStage === 'apostille_check') {
       updates = {
         currentStage: 'translation_check',
-        status: 'waiting_translation'
+        status: 'analyzing_translation',
+        solicitado_pelo_juridico: false
       };
     } else if (selectedDoc.currentStage === 'translation_check') {
       updates = {
@@ -406,6 +408,8 @@ export function ProcessAnalysis({
   };
 
   const currentStageIndex = selectedDoc ? getStageIndex(selectedDoc.currentStage) : 0;
+  const isApostilleWaiting = selectedDoc?.status === 'waiting_apostille';
+  const isTranslationWaiting = selectedDoc?.status === 'waiting_translation';
 
   return (
     <>
@@ -838,17 +842,17 @@ export function ProcessAnalysis({
 
                         {selectedDoc.currentStage === 'apostille_check' && (
                           <Button
-                            variant={selectedDoc.solicitado_pelo_juridico ? "outline" : "secondary"}
+                            variant={isApostilleWaiting ? "outline" : "secondary"}
                             className={cn(
                               "flex-1 h-12 text-base border-2 active:scale-[0.98]",
-                              selectedDoc.solicitado_pelo_juridico 
+                              isApostilleWaiting 
                                 ? "bg-white border-amber-200 text-amber-600 cursor-default" 
                                 : "bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-700"
                             )}
-                            onClick={selectedDoc.solicitado_pelo_juridico ? undefined : () => handleAction('request_action')}
+                            onClick={isApostilleWaiting ? undefined : () => handleAction('request_action')}
                           >
                             <Stamp className="w-5 h-5 mr-2" />
-                            {selectedDoc.solicitado_pelo_juridico 
+                            {isApostilleWaiting 
                               ? 'Apostilamento já solicitado'
                               : 'Solicitar Apostilamento'
                             }
@@ -857,17 +861,17 @@ export function ProcessAnalysis({
 
                         {selectedDoc.currentStage === 'translation_check' && (
                           <Button
-                            variant={selectedDoc.solicitado_pelo_juridico ? "outline" : "secondary"}
+                            variant={isTranslationWaiting ? "outline" : "secondary"}
                             className={cn(
                               "flex-1 h-12 text-base border-2 active:scale-[0.98]",
-                              selectedDoc.solicitado_pelo_juridico 
+                              isTranslationWaiting 
                                 ? "bg-white border-purple-200 text-purple-600 cursor-default" 
                                 : "bg-purple-50 hover:bg-purple-100 border-purple-300 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-700"
                             )}
-                            onClick={selectedDoc.solicitado_pelo_juridico ? undefined : () => handleAction('request_action')}
+                            onClick={isTranslationWaiting ? undefined : () => handleAction('request_action')}
                           >
                             <Languages className="w-5 h-5 mr-2" />
-                            {selectedDoc.solicitado_pelo_juridico 
+                            {isTranslationWaiting 
                               ? 'Tradução já solicitada'
                               : 'Solicitar Tradução'
                             }

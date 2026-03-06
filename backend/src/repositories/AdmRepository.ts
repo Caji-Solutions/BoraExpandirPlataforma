@@ -29,6 +29,7 @@ export class AdmRepository {
         valor: value,
         duracao: duration,
         exibir_comercial: showInCommercial,
+        exibir_cliente: data.showToClient ?? true,
         requer_delegacao_juridico: data.requiresLegalDelegation || false
       }])
       .select()
@@ -73,6 +74,7 @@ export class AdmRepository {
         valor: value,
         duracao: duration,
         exibir_comercial: showInCommercial,
+        exibir_cliente: data.showToClient,
         requer_delegacao_juridico: data.requiresLegalDelegation,
         updated_at: new Date().toISOString()
       })
