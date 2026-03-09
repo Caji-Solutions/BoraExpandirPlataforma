@@ -3,6 +3,7 @@ import { Calendar, Clock, Filter, Search, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Agendamento } from '../../types/comercial'
 import { Badge } from '../../components/ui/Badge'
+import { GerenciamentoAgendamentoModal } from './components/GerenciamentoAgendamentoModal'
 
 const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'; label: string }> = {
 	pendente: {
@@ -38,6 +39,7 @@ export default function AgendamentosPage({ agendamentos }: AgendamentosPageProps
 	const navigate = useNavigate()
 	const [search, setSearch] = useState('')
 	const [status, setStatus] = useState<'todos' | Agendamento['status']>('todos')
+	const [agendamentoSelecionado, setAgendamentoSelecionado] = useState<Agendamento | null>(null)
 
 	const filtered = useMemo(() => {
 		return agendamentos
@@ -131,23 +133,29 @@ export default function AgendamentosPage({ agendamentos }: AgendamentosPageProps
 							</thead>
 							<tbody className="divide-y divide-gray-200 dark:divide-neutral-700">
 								{filtered.map(agendamento => (
-									<tr key={agendamento.id} className="hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors">
-										<td className="px-6 py-4">
+									<tr
+										key={agendamento.id}
+										className="hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors cursor-pointer"
+										onClick={() => setAgendamentoSelecionado(agendamento)}
+									>
+										<td className="px-6 py-4 align-middle">
 											<p className="font-medium text-gray-900 dark:text-white">{agendamento.cliente?.nome || 'Cliente'}</p>
 											<p className="text-xs text-gray-500 dark:text-gray-400">ID: {agendamento.id}</p>
 										</td>
-										<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
+										<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 align-middle">
 											{new Date(agendamento.data).toLocaleDateString('pt-BR')}
 										</td>
-										<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 flex items-center gap-1">
-											<Clock className="h-4 w-4 text-gray-400" />
-											{agendamento.hora}
+										<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 align-middle">
+											<div className="flex items-center gap-1">
+												<Clock className="h-4 w-4 text-gray-400" />
+												{agendamento.hora}
+											</div>
 										</td>
-										<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{agendamento.duracao_minutos} min</td>
-										<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 max-w-xs truncate" title={agendamento.produto}>
+										<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 align-middle">{agendamento.duracao_minutos} min</td>
+										<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 max-w-xs truncate align-middle" title={agendamento.produto}>
 											{agendamento.produto}
 										</td>
-										<td className="px-6 py-4">
+										<td className="px-6 py-4 align-middle">
 											<Badge variant={getStatusConfig(agendamento.status).variant}>
 												{getStatusConfig(agendamento.status).label}
 											</Badge>
@@ -159,6 +167,17 @@ export default function AgendamentosPage({ agendamentos }: AgendamentosPageProps
 					</div>
 				)}
 			</div>
+
+			{agendamentoSelecionado && (
+				<GerenciamentoAgendamentoModal
+					agendamento={agendamentoSelecionado}
+					onClose={() => setAgendamentoSelecionado(null)}
+					onAtualizado={() => {
+						// Optionally trigger a re-fetch of data here
+						// if we had a fetch prop, but currently data is passed by prop
+					}}
+				/>
+			)}
 		</div>
 	)
 }

@@ -13,5 +13,6 @@ comercial.get('/agendamentos/usuario/:usuarioId', ComercialController.getAgendam
 comercial.get('/agendamentos/:data', ComercialController.getAgendamentosByData.bind(ComercialController))
 comercial.get('/agendamentos/cliente/:clienteId', ComercialController.getAgendamentosByCliente.bind(ComercialController))
 comercial.post('/agendamento/:id/checkout', ComercialController.regenerateCheckout.bind(ComercialController))
+comercial.post('/agendamento/:id/confirmar-pix', ComercialController.confirmarPix.bind(ComercialController))
 
 export default comercial

@@ -357,7 +357,7 @@ Obrigado! 🚀
                   </button>
 
                   {/* Pré-visualização da mensagem */}
-                  <details className="group">
+                  <details className="group" open>
                     <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600 transition-colors">
                       Ver pré-visualização da mensagem
                     </summary>

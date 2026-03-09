@@ -196,39 +196,61 @@ class FormularioController {
                 console.warn('[FormularioController] Tabela formularios_consultoria pode não existir. Dados serão salvos no metadata do cliente.')
             }
 
-            // 6. Confirmar o agendamento (se existir)
+            // 6. Confirmar o agendamento e verificar se já estava pago
+            let isPago = false
             if (agendamento_id) {
+                const { data: agendamentoAtual } = await supabase
+                    .from('agendamentos')
+                    .select('status, comprovante_url')
+                    .eq('id', agendamento_id)
+                    .single()
+
+                isPago = (agendamentoAtual?.comprovante_url != null) || (agendamentoAtual?.status === 'confirmado')
+
                 await supabase
                     .from('agendamentos')
                     .update({
-                        status: 'confirmado',
+                        status: isPago ? 'confirmado' : 'pendente',
                         cliente_id: clienteId
                     })
                     .eq('id', agendamento_id)
-                console.log('[FormularioController] Agendamento confirmado:', agendamento_id)
+                console.log(`[FormularioController] Agendamento atualizado para: ${isPago ? 'confirmado' : 'pendente'}, ID: ${agendamento_id}`)
+            } else {
+                // Se não há agendamento, assumimos que pode liberar o email
+                isPago = true
             }
 
-            // 7. Enviar email de boas-vindas com credenciais
+            // 7. Enviar email de boas-vindas com credenciais apenas se pago/confirmado
+            let emailEnviado = false
             const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3010'
-            try {
-                await EmailService.sendWelcomeEmail({
-                    to: email,
-                    clientName: nome_completo,
-                    loginUrl: `${frontendUrl}/login`,
-                    email,
-                    senha: senhaGerada
-                })
-            } catch (emailError) {
-                console.error('[FormularioController] Erro ao enviar email (continuando):', emailError)
+
+            if (isPago) {
+                try {
+                    await EmailService.sendWelcomeEmail({
+                        to: email,
+                        clientName: nome_completo,
+                        loginUrl: `${frontendUrl}/login`,
+                        email,
+                        senha: senhaGerada
+                    })
+                    emailEnviado = true
+                } catch (emailError) {
+                    console.error('[FormularioController] Erro ao enviar email (continuando):', emailError)
+                }
+            } else {
+                console.log('[FormularioController] Email de boas-vindas retido. Aguardando confirmação do pagamento pelo Comercial.')
             }
 
             console.log('[FormularioController] Formulário processado com sucesso para:', nome_completo)
 
             return res.status(201).json({
                 success: true,
-                message: 'Formulário processado com sucesso. As informações da consultoria foram enviadas para o seu email.',
+                message: emailEnviado
+                    ? 'Formulário processado com sucesso. As informações da consultoria foram enviadas para o seu email.'
+                    : 'Formulário processado com sucesso. O acesso será liberado após a confirmação do pagamento pelo setor Comercial.',
                 clienteId,
-                email
+                email,
+                emailEnviado
             })
 
         } catch (error: any) {

@@ -18,6 +18,7 @@ import { Plus, Home, Users, FileText, CreditCard, AlertCircle, PenTool, CheckCir
 import { ClientDNAPage } from '../../components/ui/ClientDNA'
 import { TimeRangeFilter, filterByTimeRange, type TimeRange } from '../../components/ui/TimeRangeFilter'
 import { SortControl, sortData, type SortDirection, type SortOption } from '../../components/ui/SortControl'
+import { catalogService } from '../adm/services/catalogService'
 import type {
   Cliente,
   ClienteFormData,
@@ -496,7 +497,13 @@ export default function Comercial() {
       if (!activeProfile?.id) return
 
       try {
-        const data = await comercialService.getAgendamentosByUsuario(activeProfile.id)
+        const [data, catalog] = await Promise.all([
+          comercialService.getAgendamentosByUsuario(activeProfile.id),
+          catalogService.getCatalogServices().catch(() => [])
+        ])
+
+        const catalogMap = new Map(catalog.map((s: any) => [s.id, s.name]))
+
         const mapped = data.map((b: any) => ({
           id: b.id,
           cliente_id: b.cliente_id || '',
@@ -512,7 +519,7 @@ export default function Comercial() {
           data: (b.data_hora || '').split('T')[0],
           hora: (b.data_hora || '').includes('T') ? b.data_hora.split('T')[1].substring(0, 5) : '00:00',
           duracao_minutos: b.duracao_minutos || 60,
-          produto: b.produto_id || 'Serviço',
+          produto: catalogMap.get(b.produto_id) || b.produto_id || 'Serviço',
           status: b.status as any,
           created_at: b.created_at,
           updated_at: b.updated_at

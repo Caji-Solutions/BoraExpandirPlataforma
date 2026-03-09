@@ -10,14 +10,14 @@ class ComercialController {
         console.log('Body completo recebido:', req.body)
         try {
             const { nome, email, telefone, data_hora, produto_id, duracao_minutos, status, usuario_id, cliente_id } = req.body
-            
+
             console.log('IDs recebidos:', { usuario_id, cliente_id })
 
             // Validação básica
             if (!nome || !email || !telefone || !data_hora || !produto_id) {
                 console.error('Campos obrigatórios faltando:', { nome, email, telefone, data_hora, produto_id })
-                return res.status(400).json({ 
-                    message: 'Campos obrigatórios: nome, email, telefone, data_hora, produto_id' 
+                return res.status(400).json({
+                    message: 'Campos obrigatórios: nome, email, telefone, data_hora, produto_id'
                 })
             }
 
@@ -30,34 +30,34 @@ class ComercialController {
             console.log('Disponibilidade verificada:', disponibilidade)
 
             if (!disponibilidade.disponivel) {
-                return res.status(409).json({ 
+                return res.status(409).json({
                     message: 'Horário indisponível',
-                    conflitos: disponibilidade.agendamentos 
+                    conflitos: disponibilidade.agendamentos
                 })
             }
 
-            const agendamento = { 
-                nome, 
-                email, 
-                telefone, 
-                data_hora: dataHoraIso, 
-                produto_id, 
+            const agendamento = {
+                nome,
+                email,
+                telefone,
+                data_hora: dataHoraIso,
+                produto_id,
                 duracao_minutos: duracao,
                 status: status || 'agendado',
                 usuario_id: usuario_id || null,
                 cliente_id: cliente_id || null
             }
-            
-            console.log('Objeto agendamento final para envio ao DB:', agendamento)     
-            const createdData = await ComercialRepository.createAgendamento(agendamento)  
+
+            console.log('Objeto agendamento final para envio ao DB:', agendamento)
+            const createdData = await ComercialRepository.createAgendamento(agendamento)
             console.log('Agendamento criado com sucesso:', createdData)
-            return res.status(201).json(createdData)   
-            
+            return res.status(201).json(createdData)
+
         } catch (error: any) {
             console.error('Erro ao criar agendamento:', error)
-            return res.status(500).json({ 
-                message: 'Erro ao criar agendamento', 
-                error: error.message 
+            return res.status(500).json({
+                message: 'Erro ao criar agendamento',
+                error: error.message
             })
         } finally {
             console.log('================================================')
@@ -73,13 +73,13 @@ class ComercialController {
         console.log('Body recebido:', req.body)
         try {
             const { nome, email, telefone, data_hora, produto_id, produto_nome, valor, duracao_minutos, usuario_id, cliente_id } = req.body
-            
+
             console.log('IDs recebidos:', { usuario_id, cliente_id })
-            
+
             // Validação básica
             if (!nome || !email || !telefone || !data_hora || !produto_id || !produto_nome || !valor) {
-                return res.status(400).json({ 
-                    message: 'Campos obrigatórios: nome, email, telefone, data_hora, produto_id, produto_nome, valor' 
+                return res.status(400).json({
+                    message: 'Campos obrigatórios: nome, email, telefone, data_hora, produto_id, produto_nome, valor'
                 })
             }
 
@@ -91,9 +91,9 @@ class ComercialController {
             const disponibilidade = await this.verificarDisponibilidade(dataHoraIso, duracao)
 
             if (!disponibilidade.disponivel) {
-                return res.status(409).json({ 
+                return res.status(409).json({
                     message: 'Horário indisponível',
-                    conflitos: disponibilidade.agendamentos 
+                    conflitos: disponibilidade.agendamentos
                 })
             }
 
@@ -117,7 +117,7 @@ class ComercialController {
                 cliente_id: cliente_id || null,
                 requer_delegacao: requerDelegacao
             }
-            
+
             const createdAgendamento = await ComercialRepository.createAgendamento(agendamentoPendente)
             console.log('Agendamento PENDENTE criado no banco:', createdAgendamento.id)
 
@@ -152,17 +152,17 @@ class ComercialController {
                 agendamentoId: createdAgendamento.id,
                 message: 'Agendamento reservado. Aguardando pagamento.'
             })
-            
+
         } catch (error: any) {
             console.error('Erro ao criar checkout MercadoPago:', error)
-            return res.status(500).json({ 
-                message: 'Erro ao criar checkout', 
-                error: error.message 
+            return res.status(500).json({
+                message: 'Erro ao criar checkout',
+                error: error.message
             })
         } finally {
             console.log('========================================================')
         }
-    }   
+    }
 
     /**
      * Cria sessão de checkout do Stripe e retorna o link
@@ -171,7 +171,7 @@ class ComercialController {
         console.log('========== CREATE STRIPE CHECKOUT DEBUG ==========')
         try {
             const { nome, email, telefone, data_hora, produto_id, produto_nome, valor, duracao_minutos, isEuro, usuario_id, cliente_id } = req.body
-            
+
             if (!nome || !email || !telefone || !data_hora || !produto_id || !produto_nome || !valor) {
                 return res.status(400).json({ message: 'Campos obrigatórios ausentes' })
             }
@@ -203,7 +203,7 @@ class ComercialController {
                 cliente_id: cliente_id || null,
                 requer_delegacao: requerDelegacao
             }
-            
+
             const createdAgendamento = await ComercialRepository.createAgendamento(agendamentoPendente)
 
             const StripeService = (await import('../services/StripeService')).default
@@ -233,7 +233,7 @@ class ComercialController {
                 sessionId: checkout.sessionId,
                 agendamentoId: createdAgendamento.id
             })
-            
+
         } catch (error: any) {
             console.error('Erro ao criar checkout Stripe:', error)
             return res.status(500).json({ message: 'Erro ao criar checkout' })
@@ -331,7 +331,7 @@ class ComercialController {
                     try {
                         console.log('========== STRIPE WEBHOOK AGENDAMENTO DEBUG ==========')
                         console.log('Metadata recebido do Stripe:', metadata)
-                        
+
                         const status = 'aprovado'; // Pagamento confirmado para o cliente
                         const agendamentoId = metadata.agendamento_id;
 
@@ -354,7 +354,7 @@ class ComercialController {
                             }
                             await ComercialRepository.createAgendamento(agendamento)
                         }
-                        
+
                         console.log('Agendamento processado com sucesso via Webhook Stripe')
                     } catch (error: any) {
                         console.error('Erro ao processar agendamento via Webhook Stripe:', error)
@@ -362,14 +362,14 @@ class ComercialController {
                     } finally {
                         console.log('========================================================')
                     }
-                } 
-else if (metadata && metadata.tipo === 'orcamento') {
+                }
+                else if (metadata && metadata.tipo === 'orcamento') {
                     try {
                         const documentoIds = metadata.documentoIds?.split(',') || []
                         console.log('Pagamento Stripe confirmado para orçamentos:', documentoIds)
-                        
+
                         const TraducoesRepository = (await import('../repositories/TraducoesRepository')).default
-                        
+
                         for (const docId of documentoIds) {
                             const orcamento = await TraducoesRepository.getOrcamentoByDocumento(docId)
                             if (orcamento) {
@@ -394,26 +394,26 @@ else if (metadata && metadata.tipo === 'orcamento') {
 
     async verificarDisponibilidade(data_hora: string, duracao_minutos: number) {
         console.log('Verificando disponibilidade para:', data_hora, duracao_minutos)
-        
+
         // Garante parsing em UTC
         const inicioUTC = data_hora.endsWith('Z') ? data_hora : `${data_hora}Z`
         const inicio = new Date(inicioUTC)
         const fim = new Date(inicio.getTime() + duracao_minutos * 60000)
-        
+
         const inicioIso = inicio.toISOString()
         const fimIso = fim.toISOString()
-        
+
         // Busca agendamentos conflitantes no repository (intervalo fechado no início, aberto no fim)
         const agendamentos = await ComercialRepository.getAgendamentosByIntervalo(
             inicioIso,
             fimIso
         )
-        
+
         // Se encontrou algum agendamento, o horário está ocupado
         const disponivel = agendamentos.length === 0
-        
+
         console.log('Disponibilidade:', disponivel, 'Conflitos:', agendamentos.length)
-        
+
         return {
             disponivel,
             agendamentos
@@ -423,7 +423,7 @@ else if (metadata && metadata.tipo === 'orcamento') {
     async checkDisponibilidade(req: any, res: any) {
         try {
             const { data_hora, duracao_minutos } = req.query
-            
+
             if (!data_hora) {
                 return res.status(400).json({ message: 'data_hora é obrigatório' })
             }
@@ -438,12 +438,12 @@ else if (metadata && metadata.tipo === 'orcamento') {
             )
 
             return res.status(200).json(resultado)
-            
+
         } catch (error: any) {
             console.error('Erro ao verificar disponibilidade:', error)
-            return res.status(500).json({ 
-                message: 'Erro ao verificar disponibilidade', 
-                error: error.message 
+            return res.status(500).json({
+                message: 'Erro ao verificar disponibilidade',
+                error: error.message
             })
         }
     }
@@ -451,7 +451,7 @@ else if (metadata && metadata.tipo === 'orcamento') {
     async getAgendamentosByUsuario(req: any, res: any) {
         try {
             const { usuarioId } = req.params
-            
+
             if (!usuarioId) {
                 return res.status(400).json({ message: 'usuarioId é obrigatório' })
             }
@@ -462,12 +462,12 @@ else if (metadata && metadata.tipo === 'orcamento') {
                 message: 'Agendamentos recuperados com sucesso',
                 data: agendamentos
             })
-            
+
         } catch (error: any) {
             console.error('Erro ao buscar agendamentos do usuário:', error)
-            return res.status(500).json({ 
-                message: 'Erro ao buscar agendamentos do usuário', 
-                error: error.message 
+            return res.status(500).json({
+                message: 'Erro ao buscar agendamentos do usuário',
+                error: error.message
             })
         }
     }
@@ -475,7 +475,7 @@ else if (metadata && metadata.tipo === 'orcamento') {
     async getAgendamentosByData(req: any, res: any) {
         try {
             const { data } = req.params
-            
+
             if (!data) {
                 return res.status(400).json({ message: 'data é obrigatório' })
             }
@@ -483,12 +483,12 @@ else if (metadata && metadata.tipo === 'orcamento') {
             const agendamentos = await ComercialRepository.getAgendamentosByData(data)
 
             return res.status(200).json(agendamentos)
-            
+
         } catch (error: any) {
             console.error('Erro ao buscar agendamentos:', error)
-            return res.status(500).json({ 
-                message: 'Erro ao buscar agendamentos', 
-                error: error.message 
+            return res.status(500).json({
+                message: 'Erro ao buscar agendamentos',
+                error: error.message
             })
         }
     }
@@ -496,7 +496,7 @@ else if (metadata && metadata.tipo === 'orcamento') {
     async getAgendamentosByCliente(req: any, res: any) {
         try {
             const { clienteId } = req.params
-            
+
             if (!clienteId) {
                 return res.status(400).json({ message: 'clienteId é obrigatório' })
             }
@@ -504,12 +504,12 @@ else if (metadata && metadata.tipo === 'orcamento') {
             const agendamentos = await ComercialRepository.getAgendamentosByCliente(clienteId)
 
             return res.status(200).json(agendamentos)
-            
+
         } catch (error: any) {
             console.error('Erro ao buscar agendamentos do cliente:', error)
-            return res.status(500).json({ 
-                message: 'Erro ao buscar agendamentos do cliente', 
-                error: error.message 
+            return res.status(500).json({
+                message: 'Erro ao buscar agendamentos do cliente',
+                error: error.message
             })
         }
     }
@@ -564,6 +564,67 @@ else if (metadata && metadata.tipo === 'orcamento') {
 
         return res.status(200).send('OK')
     }
+
+    /**
+     * Confirmação manual de PIX por parte do admin (Convertendo Lead -> Cliente final)
+     */
+    async confirmarPix(req: any, res: any) {
+        try {
+            const { id } = req.params;
+
+            // 1. Get agendamento
+            const agendamento = await ComercialRepository.getAgendamentoById(id);
+            if (!agendamento) {
+                return res.status(404).json({ message: 'Agendamento não encontrado' });
+            }
+
+            // 2. Verifica se já está confirmado
+            if (agendamento.status === 'confirmado' || agendamento.status === 'aprovado') {
+                return res.status(400).json({ message: 'Este agendamento já está confirmado.' });
+            }
+
+            // 3. Verifica se tem email/cliente validou formulário (heurística básica por enquanto)
+            if (!agendamento.email) {
+                return res.status(400).json({ message: 'Agendamento não possui email vinculado para envio da senha.' });
+            }
+
+            // 4. Update status para confirmado
+            await ComercialRepository.updateAgendamentoStatus(id, 'confirmado');
+
+            // 5. Gerar link de recuperação de senha pelo Supabase (para atuar como setup de conta)
+            const { data: linkData, error: authError } = await supabase.auth.admin.generateLink({
+                type: 'recovery',
+                email: agendamento.email
+            });
+
+            if (authError) {
+                console.error('[ComercialController] Erro ao gerar link de setup de senha:', authError);
+                return res.status(500).json({
+                    message: 'Agendamento confirmado, mas falhou ao gerar link de acesso.',
+                    error: authError.message
+                });
+            }
+
+            // 6. Enviar email para o cliente
+            const EmailService = (await import('../services/EmailService')).default;
+            await EmailService.sendPasswordSetupEmail({
+                to: agendamento.email,
+                clientName: agendamento.nome || 'Cliente',
+                resetLink: linkData.properties.action_link,
+                email: agendamento.email
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: 'Agendamento confirmado e email enviado com sucesso!'
+            });
+
+        } catch (error: any) {
+            console.error('Erro ao confirmar PIX manualmente:', error);
+            return res.status(500).json({ message: 'Erro ao confirmar PIX', error: error.message });
+        }
+    }
+
 
 }
 
