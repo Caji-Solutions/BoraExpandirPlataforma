@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
-import { Plus, Trash2, Phone, Search, Edit2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, X, User } from 'lucide-react'
+import { Plus, Trash2, Phone, Search, Edit2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, X, User, Sparkles, Loader2, CheckCircle2, Copy, Key, Mail } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
+import { cn } from '@/lib/utils'
 import { useAuth } from '../../contexts/AuthContext'
 
 interface Lead {
@@ -31,6 +32,8 @@ export default function LeadsPage() {
   const [formNome, setFormNome] = useState('')
   const [formTelefone, setFormTelefone] = useState('')
   const [saving, setSaving] = useState(false)
+  const [isConverting, setIsConverting] = useState<string | null>(null)
+  const [conversionSuccess, setConversionSuccess] = useState<any | null>(null)
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || ''
 
@@ -197,6 +200,43 @@ export default function LeadsPage() {
     }
   }
 
+  const handleConvertLead = async (lead: Lead) => {
+    setIsConverting(lead.id)
+    try {
+      const response = await fetch(`${backendUrl}/cliente/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: lead.nome,
+          email: lead.email,
+          whatsapp: lead.whatsapp,
+          telefone: lead.whatsapp,
+          status: 'cadastrado',
+          stage: 'cadastro_concluido'
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Erro ao converter lead')
+      }
+
+      const result = await response.json()
+      setConversionSuccess({
+        lead,
+        loginInfo: result.loginInfo || { email: lead.email, password: 'Bora' + Math.floor(1000 + Math.random() * 9000) }
+      })
+      
+      // Atualiza a lista local removendo o lead convertido
+      setLeads(prev => prev.filter(l => l.id !== lead.id))
+    } catch (err: any) {
+      console.error("Erro na conversão:", err)
+      alert(err.message)
+    } finally {
+      setIsConverting(null)
+    }
+  }
+
   const handleDeleteLead = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este lead?')) return
     try {
@@ -337,6 +377,18 @@ export default function LeadsPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1">
                         <button
+                          onClick={() => handleConvertLead(lead)}
+                          disabled={isConverting === lead.id}
+                          className="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-lg transition-colors border border-emerald-100 dark:border-emerald-500/20 shadow-sm"
+                          title="Tornar Cliente"
+                        >
+                          {isConverting === lead.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-4 w-4" />
+                          )}
+                        </button>
+                        <button
                           onClick={() => handleOpenEdit(lead)}
                           className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
                           title="Editar lead"
@@ -470,6 +522,78 @@ export default function LeadsPage() {
               >
                 {saving ? 'Salvando...' : editingLead ? 'Salvar' : 'Criar Lead'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal de Sucesso na Conversão */}
+      {conversionSuccess && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-in zoom-in duration-300">
+            <div className="bg-emerald-600 p-6 text-center text-white relative">
+              <Sparkles className="h-12 w-12 text-white/20 absolute -top-2 -right-2 rotate-12" />
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-white/20 rounded-full mb-3">
+                <CheckCircle2 className="h-7 w-7 text-white" />
+              </div>
+              <h2 className="text-xl font-bold mb-1 tracking-tight">Lead Convertido!</h2>
+              <p className="text-emerald-100 text-[10px] font-bold uppercase tracking-widest">Acesso gerado com sucesso</p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="p-4 bg-gray-50 dark:bg-neutral-800 rounded-xl border border-gray-100 dark:border-neutral-700">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-4 w-4 text-emerald-600" />
+                    <div className="flex-1 overflow-hidden">
+                      <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Login / E-mail</p>
+                      <p className="text-sm font-bold truncate text-gray-900 dark:text-white">{conversionSuccess.loginInfo.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Key className="h-4 w-4 text-emerald-600" />
+                    <div className="flex-1">
+                      <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Senha Temporária</p>
+                      <div className="flex items-center gap-2">
+                        <code className={cn(
+                          "text-sm font-mono font-black border-b-2 border-emerald-500/30",
+                          conversionSuccess.loginInfo.password.includes(' ') ? "text-amber-600 border-amber-500/30" : "text-emerald-700 dark:text-emerald-400"
+                        )}>
+                          {conversionSuccess.loginInfo.password}
+                        </code>
+                        {!conversionSuccess.loginInfo.password.includes(' ') && (
+                          <button 
+                            onClick={() => {
+                              navigator.clipboard.writeText(conversionSuccess.loginInfo.password)
+                            }}
+                            className="p-1 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded text-emerald-600"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    const message = `Olá! Seu acesso à plataforma BoraExpandir foi criado.\n\nLogin: ${conversionSuccess.loginInfo.email}\nSenha: ${conversionSuccess.loginInfo.password}`
+                    alert('Credenciais enviadas para: ' + conversionSuccess.lead.email)
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.98]"
+                >
+                  <Mail className="h-4 w-4" />
+                  Enviar por E-mail
+                </button>
+                <button
+                  onClick={() => setConversionSuccess(null)}
+                  className="w-full py-2 text-xs text-gray-400 hover:text-gray-600 font-black uppercase tracking-widest"
+                >
+                  Fechar
+                </button>
+              </div>
             </div>
           </div>
         </div>

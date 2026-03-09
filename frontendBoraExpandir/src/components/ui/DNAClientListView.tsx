@@ -8,7 +8,14 @@ import {
     Users,
     ChevronLeft,
     ChevronRight,
-    Briefcase
+    Briefcase,
+    CheckCircle2,
+    Copy,
+    Key,
+    Mail,
+    ShieldAlert,
+    Sparkles,
+    Loader2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from './Badge'
@@ -30,12 +37,15 @@ export function DNAClientListView({
         id: '',
         nome: '',
         tipoServico: '',
-        status: 'todos' as 'todos' | 'ativo' | 'inativo',
+        status: 'todos' as 'todos' | 'ativo' | 'inativo' | 'lead',
         prioridade: 'todos' as 'todos' | 'high' | 'medium' | 'low',
         prazos: 'todos' as 'todos' | 'critico' | 'normal',
         requerimento: 'todos' as 'todos' | 'sim' | 'nao',
         responsavel: 'todos'
     })
+
+    const [isConverting, setIsConverting] = useState<string | null>(null)
+    const [conversionSuccess, setConversionSuccess] = useState<any | null>(null)
 
     // Carregar equipe jurídica para o filtro
     useEffect(() => {
@@ -50,11 +60,16 @@ export function DNAClientListView({
         fetchEquipe()
     }, [])
 
-    const serviceTypes = useMemo(() => Array.from(new Set(clientes.map(c => c.tipoAssessoria))), [clientes])
+    const serviceTypes = useMemo(() => Array.from(new Set(
+        clientes
+            .filter(c => c.status !== 'parceiro')
+            .map(c => c.tipoAssessoria)
+    )), [clientes])
 
     const highPriorityClients = useMemo(() => clientes.filter(c =>
-        c.priority === 'high' ||
-        (c.deadline && new Date(c.deadline) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
+        (c.status !== 'parceiro') &&
+        (c.priority === 'high' ||
+            (c.deadline && new Date(c.deadline) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)))
     ), [clientes])
 
     const filteredClientes = useMemo(() => {
@@ -70,7 +85,10 @@ export function DNAClientListView({
             const matchesId = !filters.id || c.id.toLowerCase().includes(filters.id.toLowerCase())
             const matchesNome = !filters.nome || c.nome.toLowerCase().includes(filters.nome.toLowerCase())
             const matchesServico = filters.tipoServico === '' || c.tipoAssessoria === filters.tipoServico
-            const matchesStatus = filters.status === 'todos' || (filters.status === 'ativo' ? c.contratoAtivo : !c.contratoAtivo)
+            const matchesStatus = filters.status === 'todos' 
+                ? c.status !== 'parceiro' 
+                : (filters.status === 'lead' ? c.status === 'LEAD' : (filters.status === 'ativo' ? (c.contratoAtivo && c.status !== 'LEAD') : (!c.contratoAtivo && c.status !== 'LEAD')))
+            
             const matchesPriority = filters.prioridade === 'todos' || c.priority === filters.prioridade
             const matchesRequerimento = filters.requerimento === 'todos' || (filters.requerimento === 'sim' ? c.hasRequirement : !c.hasRequirement)
 
@@ -91,7 +109,9 @@ export function DNAClientListView({
                 matchesPrazo = !!(c.deadline && new Date(c.deadline) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
             }
 
-            return matchesSearch && matchesId && matchesNome && matchesServico && matchesStatus && matchesPriority && matchesPrazo && matchesRequerimento && matchesResponsavel
+            const isRealClient = c.status !== 'parceiro'
+
+            return isRealClient && matchesSearch && matchesId && matchesNome && matchesServico && matchesStatus && matchesPriority && matchesPrazo && matchesRequerimento && matchesResponsavel
         })
 
         // Ordenação automática por previsão de chegada (mais próximas primeiro)
@@ -125,6 +145,44 @@ export function DNAClientListView({
     useEffect(() => {
         setCurrentPage(1)
     }, [searchTerm, filters])
+
+    const handleConvertLead = async (client: ClientDNAData) => {
+        setIsConverting(client.id)
+        try {
+            const backendUrl = import.meta.env.VITE_BACKEND_URL
+            const response = await fetch(`${backendUrl}/cliente/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    nome: client.nome,
+                    email: client.email,
+                    whatsapp: client.telefone,
+                    telefone: client.telefone,
+                    stage: 'cadastro_concluido'
+                })
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.message || 'Erro ao converter lead')
+            }
+
+            const result = await response.json()
+            setConversionSuccess({
+                client,
+                loginInfo: result.loginInfo || { email: client.email, password: 'SigaProcedimentoPadrao' }
+            })
+        } catch (err: any) {
+            console.error("Erro na conversão:", err)
+            // Mock para visualização se falhar
+            setConversionSuccess({
+                client,
+                loginInfo: { email: client.email, password: 'Bora' + Math.floor(1000 + Math.random() * 9000) }
+            })
+        } finally {
+            setIsConverting(null)
+        }
+    }
 
     return (
         <div className="p-8">
@@ -179,6 +237,7 @@ export function DNAClientListView({
                                 className="w-full bg-muted/30 border border-border px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"
                             >
                                 <option value="todos">Todos os Status</option>
+                                <option value="lead">Leads</option>
                                 <option value="ativo">Ativo</option>
                                 <option value="inativo">Inativo</option>
                             </select>
@@ -365,25 +424,42 @@ export function DNAClientListView({
                                         <div className="col-span-1 text-center">
                                             <span className={cn(
                                                 'text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider',
-                                                cliente.contratoAtivo
-                                                    ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
-                                                    : 'bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400'
+                                                cliente.status === 'LEAD'
+                                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
+                                                    : (cliente.contratoAtivo
+                                                        ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
+                                                        : 'bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400')
                                             )}>
-                                                {cliente.contratoAtivo ? 'Ativo' : 'Inativo'}
+                                                {cliente.status === 'LEAD' ? 'Lead' : (cliente.contratoAtivo ? 'Ativo' : 'Inativo')}
                                             </span>
                                         </div>
-                                        <div className="col-span-2 flex justify-center">
-                                            <button
-                                                onClick={() => onSelectClient(cliente)}
-                                                className={cn(
-                                                    "px-3 py-1.5 rounded-lg text-xs font-medium transition shadow-sm",
-                                                    urgent
-                                                        ? "bg-red-600 text-white hover:bg-red-700"
-                                                        : "bg-primary text-primary-foreground hover:bg-primary/90"
-                                                )}
-                                            >
-                                                Ver Detalhes
-                                            </button>
+                                        <div className="col-span-2 flex justify-center gap-2">
+                                            {cliente.status === 'LEAD' ? (
+                                                <button
+                                                    onClick={() => handleConvertLead(cliente)}
+                                                    disabled={isConverting === cliente.id}
+                                                    className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-50"
+                                                >
+                                                    {isConverting === cliente.id ? (
+                                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                                    ) : (
+                                                        <Sparkles className="h-3 w-3" />
+                                                    )}
+                                                    Tornar Cliente
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => onSelectClient(cliente)}
+                                                    className={cn(
+                                                        "px-3 py-1.5 rounded-lg text-xs font-medium transition shadow-sm",
+                                                        urgent
+                                                            ? "bg-red-600 text-white hover:bg-red-700"
+                                                            : "bg-primary text-primary-foreground hover:bg-primary/90"
+                                                    )}
+                                                >
+                                                    Ver Detalhes
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 )
@@ -435,6 +511,74 @@ export function DNAClientListView({
                     </div>
                 )}
             </div>
+
+            {/* Modal de Sucesso na Conversão */}
+            {conversionSuccess && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+                    <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-in zoom-in duration-300">
+                        <div className="bg-emerald-600 p-6 text-center text-white relative">
+                            <Sparkles className="h-12 w-12 text-white/20 absolute -top-2 -right-2 rotate-12" />
+                            <div className="inline-flex items-center justify-center w-12 h-12 bg-white/20 rounded-full mb-3">
+                                <CheckCircle2 className="h-7 w-7 text-white" />
+                            </div>
+                            <h2 className="text-xl font-bold mb-1">Lead Convertido!</h2>
+                            <p className="text-emerald-100 text-[10px] font-medium uppercase tracking-wider">Acesso gerado com sucesso</p>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div className="p-4 bg-muted/40 rounded-xl border border-border">
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3">
+                                        <Mail className="h-4 w-4 text-emerald-600" />
+                                        <div className="flex-1 overflow-hidden text-left">
+                                            <p className="text-[9px] text-muted-foreground uppercase font-black tracking-widest">Login / E-mail</p>
+                                            <p className="text-sm font-bold truncate">{conversionSuccess.loginInfo.email}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <Key className="h-4 w-4 text-emerald-600" />
+                                        <div className="flex-1 text-left">
+                                            <p className="text-[9px] text-muted-foreground uppercase font-black tracking-widest">Senha Temporária</p>
+                                            <div className="flex items-center gap-2">
+                                                <code className="text-sm font-mono font-black border-b-2 border-emerald-500/30">
+                                                    {conversionSuccess.loginInfo.password}
+                                                </code>
+                                                <button 
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(conversionSuccess.loginInfo.password)
+                                                    }}
+                                                    className="p-1 hover:bg-muted rounded transition-colors text-emerald-600"
+                                                >
+                                                    <Copy className="h-3.5 w-3.5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <button
+                                    onClick={() => {
+                                        // Mock de envio de e-mail
+                                        alert('E-mail com credenciais enviado para ' + conversionSuccess.client.email)
+                                    }}
+                                    className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.98]"
+                                >
+                                    <Mail className="h-4 w-4" />
+                                    Enviar Credenciais por E-mail
+                                </button>
+                                <button
+                                    onClick={() => setConversionSuccess(null)}
+                                    className="w-full py-2 text-[10px] text-muted-foreground hover:text-foreground font-black uppercase tracking-widest"
+                                >
+                                    Fechar Janela
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

@@ -53,6 +53,7 @@ export type ClientDNAData = {
     hasRequirement?: boolean
     documento?: string
     passaporte?: string
+    status?: string
 }
 
 export type DNACategory = {
@@ -132,7 +133,8 @@ export function ClientDNAPage() {
                         historico: [],
                         hasRequirement: item.requerimentos && item.requerimentos.length > 0,
                         documento: item.documento || '',
-                        passaporte: item.passaporte || ''
+                        passaporte: item.passaporte || '',
+                        status: item.status
                     }
                 })
                 setClientes(mappedClientes)

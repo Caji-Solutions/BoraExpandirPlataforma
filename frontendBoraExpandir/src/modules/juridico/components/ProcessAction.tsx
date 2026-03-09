@@ -1,72 +1,139 @@
-import { FileText, ExternalLink, ClipboardCheck, Files, LayoutDashboard, GitBranch, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useAuth } from '../../../contexts/AuthContext';
+import { 
+    FileText, 
+    ExternalLink, 
+    Files, 
+    LayoutDashboard, 
+    Eye, 
+    ShieldCheck, 
+    DollarSign, 
+    Calendar,
+} from 'lucide-react';
 
 interface ProcessActionProps {
     clienteId: string;
     processoId?: string;
+    responsavel?: { id: string, nome: string }; // Novo prop: Responsável pelo processo
     onActionClick?: (action: string, ids: { clienteId: string, processoId?: string }) => void;
 }
 
 export function ProcessAction({
     clienteId,
     processoId,
+    responsavel,
     onActionClick
 }: ProcessActionProps) {
     const navigate = useNavigate();
+    const { activeProfile, profile, setImpersonatedProfile } = useAuth();
 
-    const handleAction = (action: string) => {
-        if (action === 'ver_processo' && processoId) {
-            navigate(`/juridico/processos?expand=${processoId}`);
-            return;
-        }
-
-        if (action === 'ver_documentos' && processoId) {
-            navigate(`/juridico/analise?processoId=${processoId}`);
-            return;
-        }
-
-        if (onActionClick) {
-            onActionClick(action, { clienteId, processoId });
-        }
-    };
-
-    const ACTION_BUTTONS = [
+    const ALL_BUTTONS = [
         {
             id: 'solicitar_documentos',
             name: 'Solicitar Documento',
             icon: FileText,
             color: 'blue',
-            description: 'Registrar pendência de arquivo no sistema'
+            description: 'Registrar pendência de arquivo no sistema',
+            roles: ['super_admin', 'juridico', 'comercial', 'administrativo', 'tradutor'],
+            isJuridico: true
         },
         {
             id: 'solicitar_formulario',
             name: 'Enviar Formulário',
             icon: Files,
             color: 'orange',
-            description: 'Coletar dados via formulário PDF'
+            description: 'Coletar dados via formulário PDF',
+            roles: ['super_admin', 'juridico'],
+            isJuridico: true
         },
         {
             id: 'ver_documentos',
             name: 'Analisar Documentos',
             icon: Eye,
             color: 'green',
-            description: 'Verificar envios e aprovar etapas'
+            description: 'Verificar envios e aprovar etapas',
+            roles: ['super_admin', 'juridico'],
+            isJuridico: true
         },
         {
             id: 'ver_processo',
             name: 'Dados do Processo',
             icon: LayoutDashboard,
             color: 'slate',
-            description: 'Acessar painel completo do caso'
+            description: 'Acessar painel completo do caso',
+            roles: ['super_admin', 'juridico', 'comercial', 'administrativo', 'tradutor'],
+            isJuridico: true
+        },
+        {
+            id: 'admin_config',
+            name: 'Gestão de Permissões',
+            icon: ShieldCheck,
+            color: 'purple',
+            description: 'Painel de controle administrativo',
+            roles: ['super_admin'],
+            isJuridico: false
+        },
+        {
+            id: 'comercial_agenda',
+            name: 'Agendar Reunião',
+            icon: Calendar,
+            color: 'blue',
+            description: 'Marcar call de boas-vindas comercial',
+            roles: ['comercial', 'super_admin'],
+            isJuridico: false
+        },
+        {
+            id: 'financeiro_fatura',
+            name: 'Gerar Fatura',
+            icon: DollarSign,
+            color: 'green',
+            description: 'Emitir cobrança administrativa',
+            roles: ['administrativo', 'super_admin'],
+            isJuridico: false
         }
     ];
+
+    const handleAction = (actionId: string) => {
+        const btn = ALL_BUTTONS.find(b => b.id === actionId);
+        
+        // Regra de Impersonation: Se for admin clicando em função jurídica e houver um responsável
+        if (profile?.role === 'super_admin' && btn?.isJuridico && responsavel) {
+            // Se já não estivermos visualizando como esse responsável
+            if (activeProfile?.id !== responsavel.id) {
+                setImpersonatedProfile({
+                    id: responsavel.id,
+                    full_name: responsavel.nome,
+                    email: 'juridico@sistema.com',
+                    role: 'juridico'
+                });
+            }
+        }
+
+        if (actionId === 'ver_processo' && processoId) {
+            navigate(`/juridico/processos?expand=${processoId}`);
+            return;
+        }
+
+        if (actionId === 'ver_documentos' && processoId) {
+            navigate(`/juridico/analise?processoId=${processoId}`);
+            return;
+        }
+
+        if (onActionClick) {
+            onActionClick(actionId, { clienteId, processoId });
+        }
+    };
+
+    const ACTION_BUTTONS = ALL_BUTTONS.filter(btn => 
+        !activeProfile?.role || btn.roles.includes(activeProfile.role)
+    );
 
     return (
         <div className="space-y-4">
             <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-primary/40 animate-pulse" />
-                Ações Rápidas
+                Ações Rápidas ({activeProfile?.full_name || 'Visitante'})
             </h4>
             
             <div className="grid grid-cols-1 gap-3">

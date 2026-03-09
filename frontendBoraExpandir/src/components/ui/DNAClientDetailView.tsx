@@ -410,6 +410,7 @@ export function DNAClientDetailView({
                             <ProcessAction
                                 clienteId={client.true_id || client.id}
                                 processoId={client.processo_id}
+                                responsavel={client.responsavel}
                                 onActionClick={(action) => {
                                     if (action === 'solicitar_documentos') {
                                         setIsDocModalOpen(true)
