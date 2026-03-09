@@ -270,33 +270,54 @@ class ClienteController {
         return res.status(400).json({ message: 'Nome, email e WhatsApp são obrigatórios' })
       }
 
-      // 1. Gerar senha temporária
-      const tempPassword = Math.random().toString(36).substring(2, 10)
+      const supabase = (await import('../config/SupabaseClient')).supabase;
+      
+      // 1. Verificar se já existe um profile para este e-mail
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
 
-      // 2. Criar usuário no Auth do Supabase (utilizando admin para bypassar confirmação)
-      const { data: authData, error: authError } = await (await import('../config/SupabaseClient')).supabase.auth.admin.createUser({
-        email,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: {
-          full_name: nome,
-          role: 'cliente',
-          temp_password: tempPassword
-        }
-      })
+      let usuarioId = existingProfile?.id;
+      let tempPassword = Math.random().toString(36).substring(2, 10);
+      let isNewUser = !usuarioId;
 
-      if (authError) {
-        console.error('Erro ao criar auth user para cliente:', authError.message)
-        if (authError.message.includes('already')) {
-          return res.status(409).json({ message: 'Já existe um usuário com este e-mail' })
+      if (isNewUser) {
+        // 2. Tentar criar usuário no Auth do Supabase
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+          email,
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: {
+            full_name: nome,
+            role: 'cliente',
+            temp_password: tempPassword
+          }
+        });
+
+        if (authError) {
+          console.error('Erro ao criar ou recuperar auth user:', authError.message);
+          
+          if (authError.message.includes('already')) {
+            // Se já existe no auth mas não no profile (raro mas possível), tentamos listar para achar o ID
+            const { data: usersData } = await supabase.auth.admin.listUsers();
+            const foundUser = usersData.users.find(u => u.email === email);
+            if (foundUser) {
+              usuarioId = foundUser.id;
+            } else {
+              return res.status(409).json({ message: 'Conflito de credenciais: usuário já existe no sistema.' });
+            }
+          } else {
+            return res.status(400).json({ message: authError.message });
+          }
+        } else {
+          usuarioId = authData.user.id;
         }
-        return res.status(400).json({ message: authError.message })
       }
 
-      const usuarioId = authData.user.id
-
-      // 3. Criar profile na tabela profiles (usando documento como cpf)
-      const { error: profileError } = await (await import('../config/SupabaseClient')).supabase
+      // 3. Upsert profile na tabela profiles
+      const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
           id: usuarioId,
@@ -304,17 +325,15 @@ class ClienteController {
           email,
           role: 'cliente',
           telefone: whatsapp || req.body.telefone,
-          cpf: documento || null // Mapeia documento para CPF no profile
-        })
+          cpf: documento || null
+        });
 
       if (profileError) {
-        console.error('Erro ao criar profile para cliente:', profileError.message)
-        // Cleanup: deletar auth user se falhar o profile
-        await (await import('../config/SupabaseClient')).supabase.auth.admin.deleteUser(usuarioId)
-        return res.status(500).json({ message: 'Erro ao criar perfil de acesso' })
+        console.error('Erro ao upsert profile para cliente:', profileError.message);
+        return res.status(500).json({ message: 'Erro ao configurar perfil de acesso' });
       }
 
-      // 4. Registrar na tabela clientes
+      // 4. Upsert na tabela clientes (usando email como chave de conflito no repositório)
       const clienteData: any = {
         nome,
         email,
@@ -323,13 +342,14 @@ class ClienteController {
         status: status || 'cadastrado'
       }
 
-      const createdData = await ClienteRepository.register(clienteData)
+      const createdData = await ClienteRepository.register(clienteData);
 
       return res.status(201).json({
         ...createdData,
+        message: isNewUser ? 'Cliente registrado com sucesso' : 'Cliente convertido/ativado com sucesso',
         loginInfo: {
           email,
-          password: tempPassword
+          password: isNewUser ? tempPassword : 'Usa sua senha cadastrada' // Se for antigo, não sabemos a senha
         }
       })
     } catch (error: any) {

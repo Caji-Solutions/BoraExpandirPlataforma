@@ -174,16 +174,57 @@ class ClienteRepository {
     }
 
     async register(cliente: ClienteDTO) {
-        const { data: createdData, error } = await supabase
+        console.log('ClienteRepository.register - Payload inicial:', cliente)
+        
+        // 1. Verificar se já existe um registro com este e-mail ou WhatsApp
+        const { data: existing } = await supabase
             .from('clientes')
-            .insert([cliente])
-            .select()
-            .single()
+            .select('id, email, whatsapp')
+            .or(`email.eq.${cliente.email},whatsapp.eq.${cliente.whatsapp}`)
+            .maybeSingle()
 
-        if (error) {
-            throw error
+        console.log('ClienteRepository.register - Registro existente encontrado:', existing)
+
+        if (existing) {
+            // 2. Se existe, atualiza (Upsert manual)
+            // Removemos campos nulos para não sobrescrever dados existentes com null acidentalmente
+            const dataToUpdate = {
+                ...Object.fromEntries(
+                    Object.entries(cliente).filter(([_, v]) => v !== null && v !== undefined)
+                ),
+                atualizado_em: new Date().toISOString()
+            }
+
+            console.log('ClienteRepository.register - Executando UPDATE com payload:', dataToUpdate)
+
+            const { data: updatedData, error } = await supabase
+                .from('clientes')
+                .update(dataToUpdate)
+                .eq('id', existing.id)
+                .select()
+                .single()
+
+            if (error) {
+                console.error('Erro ao atualizar cliente no register:', error)
+                console.error('Detalhes do erro do banco:', error.message, error.code)
+                throw error
+            }
+            return updatedData
+        } else {
+            console.log('ClienteRepository.register - Executando INSERT novo registro')
+            // 3. Se não existe, cria novo
+            const { data: createdData, error } = await supabase
+                .from('clientes')
+                .insert([cliente])
+                .select()
+                .single()
+
+            if (error) {
+                console.error('Erro ao inserir novo cliente no register:', error)
+                throw error
+            }
+            return createdData
         }
-        return createdData
     }
     async attStatusById(id: string, status: string) {
         const { data: updatedData, error } = await supabase
