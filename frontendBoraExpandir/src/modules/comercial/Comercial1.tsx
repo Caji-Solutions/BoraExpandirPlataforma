@@ -157,10 +157,10 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const [emailTemporario, setEmailTemporario] = useState<string>('')
   const [showEmailPopup, setShowEmailPopup] = useState(false)
 
-  // Novo fluxo: Produto -> Data -> Hora -> Lead (ou apenas Produto -> Data -> Hora se for cliente)
-  const [passo, setPasso] = useState<'cliente' | 'calendario' | 'horario' | 'produto' | 'confirmacao'>(
-    'produto'
-  )
+  // Novo fluxo: Produto -> Data/Hora -> Lead (ou apenas Produto -> Data/Hora se for cliente)
+  const [passo, setPasso] = useState<
+    'produto' | 'data_hora' | 'cliente'
+  >('produto')
 
   useEffect(() => {
     if (preSelectedClient) {
@@ -178,6 +178,11 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const [showModalPagamento, setShowModalPagamento] = useState(false)
   const [paymentLink, setPaymentLink] = useState('')
   const [shareMessage, setShareMessage] = useState('')
+
+  // Paginação de Leads
+  const [paginaLeads, setPaginaLeads] = useState(1)
+  const leadsPorPagina = 8 // 2 colunas x 4 linhas
+
   const [novoCliente, setNovoCliente] = useState<Cliente>({
     id: '',
     nome: '',
@@ -193,9 +198,22 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     return clientes.filter(
       (cliente) =>
         cliente.nome.toLowerCase().includes(searchCliente.toLowerCase()) ||
-        (cliente.email && cliente.email.toLowerCase().includes(searchCliente.toLowerCase()))
+        (cliente.email && cliente.email.toLowerCase().includes(searchCliente.toLowerCase())) ||
+        (cliente.telefone && cliente.telefone.includes(searchCliente))
     )
   }, [searchCliente, clientes])
+
+  // Paginação dos clientes filtrados
+  const clientesPaginados = useMemo(() => {
+    const inicio = (paginaLeads - 1) * leadsPorPagina
+    return clientesFiltrados.slice(inicio, inicio + leadsPorPagina)
+  }, [clientesFiltrados, paginaLeads])
+
+  const totalPaginasLeads = Math.ceil(clientesFiltrados.length / leadsPorPagina)
+
+  useEffect(() => {
+    setPaginaLeads(1)
+  }, [searchCliente])
 
   const agendamentoPreview = useMemo<Agendamento | null>(() => {
     // Debug log para identificar campos faltando
@@ -241,46 +259,44 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     }
   }, [])
 
+  // Ref para auto-scroll aos horários
+  const horariosRef = useRef<HTMLDivElement | null>(null)
+
   const handleSelecionarData = (data: Date) => {
     setDataSelecionada(data)
     setHoraSelecionada('')
     const dataIso = data.toISOString().split('T')[0]
     setDataSelecionadaIso(dataIso)
     carregarAgendamentosDoDia(dataIso)
-    setPasso('horario')
+
+    // Auto-scroll aos horários após breve render cycle
+    setTimeout(() => {
+      horariosRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
   }
 
   const handleSelecionarHora = (hora: string) => {
     setHoraSelecionada(hora)
-    // Se for cliente (já tem lead), finaliza. Senão, vai para seleção de lead
-    if (isClientView || preSelectedClient) {
-      setPasso('confirmacao')
-    } else {
-      setPasso('cliente')
-    }
+    // O avanço de etapa agora é controlado pelo botão "Próximo"
   }
 
   const handleRemoverData = () => {
     setDataSelecionada(undefined)
     setHoraSelecionada('')
-    setPasso('calendario')
   }
 
   const handleRemoverHora = () => {
     setHoraSelecionada('')
-    setPasso('horario')
   }
 
   const handleRemoverProduto = () => {
     setProdutoSelecionado(null)
     setDataSelecionada(undefined)
     setHoraSelecionada('')
-    setPasso('produto')
   }
 
   const handleRemoverCliente = () => {
     setClienteSelecionado(null)
-    setPasso('cliente')
     setMostrarListaClientes(false)
     setShowNovoCliente(false)
     setSearchCliente('')
@@ -298,7 +314,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
   const handleSelecionarProduto = (produto: Produto) => {
     setProdutoSelecionado(produto)
-    setPasso('calendario')
+    // O avanço de etapa agora é controlado pelo botão "Próximo"
   }
 
   const handleSelecionarCliente = (cliente: Cliente) => {
@@ -311,27 +327,49 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     } else {
       setEmailTemporario('')
     }
-    // Abre popup para preencher email
-    setShowEmailPopup(true)
+    // Abre popup para preencher email se faltar, mas deixa fechar depois
+    if (!cliente.email) {
+      setShowEmailPopup(true)
+    }
+  }
+
+  const handleProxPasso = () => {
+    switch (passo) {
+      case 'produto':
+        if (produtoSelecionado) setPasso('data_hora')
+        break
+      case 'data_hora':
+        if (dataSelecionada && horaSelecionada) {
+          if (isClientView || preSelectedClient) {
+            // Se já tem tudo pronto, submete direto
+            handleFinalizarAgendamento()
+          } else {
+            setPasso('cliente')
+          }
+        }
+        break
+      case 'cliente':
+        // Ação de finalizar direto (substituindo a confirmação)
+        if (clienteSelecionado) {
+          if (!clienteSelecionado.email && !emailTemporario) {
+            setShowEmailPopup(true)
+          } else {
+            handleFinalizarAgendamento()
+          }
+        }
+        break
+      default:
+        break
+    }
   }
 
   const handleVoltar = () => {
     switch (passo) {
-      case 'calendario':
+      case 'data_hora':
         setPasso('produto')
         break
-      case 'horario':
-        setPasso('calendario')
-        break
       case 'cliente':
-        setPasso('horario')
-        break
-      case 'confirmacao':
-        if (isClientView || preSelectedClient) {
-          setPasso('horario')
-        } else {
-          setPasso('cliente')
-        }
+        setPasso('data_hora')
         break
       default:
         break
@@ -449,7 +487,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       setMostrarListaClientes(false)
       setNovoCliente({ id: '', nome: '', email: '', telefone: '' })
       success('Lead cadastrado e selecionado.')
-      setPasso('calendario')
+      // O avanço de etapa agora é controlado pelo botão "Próximo"
       return
     }
 
@@ -505,7 +543,33 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     }
   }
 
-  const mostrarFluxo = passo === 'produto' || passo === 'calendario' || (passo === 'horario' && dataSelecionada) || passo === 'cliente' || passo === 'confirmacao'
+  // Componente Reutilizável de Botões de Navegação
+  const BotoesNavegacao = ({ canNext = false }: { canNext?: boolean }) => (
+    <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-100 dark:border-neutral-800">
+      {passo !== 'produto' ? (
+        <button
+          onClick={handleVoltar}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-gray-300 dark:border-neutral-600 font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-800 transition"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Voltar
+        </button>
+      ) : (
+        <div /> // Espaçador
+      )}
+      <button
+        onClick={handleProxPasso}
+        disabled={!canNext}
+        className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold transition ${canNext
+          ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-500/20'
+          : 'bg-gray-100 dark:bg-neutral-800 text-gray-400 dark:text-neutral-500 cursor-not-allowed'
+          }`}
+      >
+        Próximo
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
+  )
 
   return (
     <div className="w-full bg-gray-50 dark:bg-neutral-900 min-h-screen">
@@ -515,394 +579,319 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
 
         {/* Fluxo de agendamento: Produto → Data → Hora → Lead */}
-        {mostrarFluxo ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
-              {/* PASSO 1: Seleção de Produto */}
-              {passo === 'produto' && (
-                <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Selecione o Serviço</h3>
-                  {loadingProdutos ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                      <Loader2 className="h-10 w-10 animate-spin mb-4 opacity-20" />
-                      <p>Carregando catálogo de serviços...</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {produtos.map((produto: any) => (
-                        <button
-                          key={produto.id}
-                          onClick={() => handleSelecionarProduto(produto)}
-                          className={`w-full p-4 rounded-lg border-2 text-left transition-all ${produtoSelecionado?.id === produto.id
-                            ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-500/10'
-                            : 'border-gray-200 dark:border-neutral-600 hover:border-emerald-300 bg-gray-50 dark:bg-neutral-700 hover:bg-white dark:hover:bg-neutral-600'}`}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h4 className="font-semibold text-gray-900 dark:text-white">{produto.nome}</h4>
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{produto.descricao}</p>
-                            </div>
-                            <div className="text-right">
-                              {produto.isEuro ? (
-                                <>
-                                  <p className="text-xl font-bold text-emerald-600">€ {produto.valor.toFixed(2)}</p>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    (Aprox. R$ {(produto.valor * (exchangeRate || 6.27)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
-                                  </p>
-                                </>
-                              ) : (
-                                <p className="text-xl font-bold text-emerald-600">R$ {produto.valor}</p>
-                              )}
-                            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            {/* PASSO 1: Seleção de Produto */}
+            {passo === 'produto' && (
+              <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Selecione o Serviço</h3>
+                {loadingProdutos ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                    <Loader2 className="h-10 w-10 animate-spin mb-4 opacity-20" />
+                    <p>Carregando catálogo de serviços...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {produtos.map((produto: any) => (
+                      <button
+                        key={produto.id}
+                        onClick={() => handleSelecionarProduto(produto)}
+                        className={`w-full p-4 rounded-lg border-2 text-left transition-all ${produtoSelecionado?.id === produto.id
+                          ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 shadow-sm'
+                          : 'border-gray-200 dark:border-neutral-600 hover:border-emerald-300 bg-gray-50 dark:bg-neutral-700 hover:bg-white dark:hover:bg-neutral-600'}`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-semibold text-gray-900 dark:text-white">{produto.nome}</h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{produto.descricao}</p>
                           </div>
-                        </button>
-                      ))}
-                      {produtos.length === 0 && (
-                        <div className="text-center py-12 border-2 border-dashed rounded-xl opacity-30">
-                          <Search className="h-12 w-12 mx-auto mb-2" />
-                          <p className="font-bold">Nenhum serviço disponível no catálogo.</p>
+                          <div className="text-right">
+                            {produto.isEuro ? (
+                              <>
+                                <p className="text-xl font-bold text-emerald-600">€ {produto.valor.toFixed(2)}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  (Aprox. R$ {(produto.valor * (exchangeRate || 6.27)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                                </p>
+                              </>
+                            ) : (
+                              <p className="text-xl font-bold text-emerald-600">R$ {produto.valor}</p>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  )}
+                      </button>
+                    ))}
+                    {produtos.length === 0 && (
+                      <div className="text-center py-12 border-2 border-dashed rounded-xl opacity-30">
+                        <Search className="h-12 w-12 mx-auto mb-2" />
+                        <p className="font-bold">Nenhum serviço disponível no catálogo.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <BotoesNavegacao canNext={!!produtoSelecionado} />
+              </div>
+            )}
+
+            {/* PASSO 2: Seleção de Data e Hora */}
+            {passo === 'data_hora' && (
+              <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Escolha a Data e Horário</h3>
+                  <CalendarPicker
+                    onDateSelect={handleSelecionarData}
+                    selectedDate={dataSelecionada || undefined}
+                    disabledDates={[]}
+                    disablePastDates={true}
+                    minDate={(() => {
+                      // Impede agendamento para o dia atual, apenas dia seguinte em diante
+                      const tomorrow = new Date()
+                      tomorrow.setDate(tomorrow.getDate() + 1)
+                      return tomorrow
+                    })()}
+                  />
                 </div>
-              )}
 
-              {/* PASSO 2: Seleção de Data */}
-              {passo === 'calendario' && (
-                <CalendarPicker
-                  onDateSelect={handleSelecionarData}
-                  selectedDate={dataSelecionada || undefined}
-                  disabledDates={[]}
-                  disablePastDates={true}
-                  minDate={(() => {
-                    // Impede agendamento para o dia atual, apenas dia seguinte em diante
-                    const tomorrow = new Date()
-                    tomorrow.setDate(tomorrow.getDate() + 1)
-                    return tomorrow
-                  })()}
-                />
-              )}
-
-              {/* PASSO 3: Seleção de Horário */}
-              {passo === 'horario' && dataSelecionada && (
-                <div className="mt-6 bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Selecione o Horário</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Escolha o início e a duração do atendimento</p>
+                {dataSelecionada && (
+                  <div ref={horariosRef} className="pt-6 mt-6 border-t border-gray-100 dark:border-neutral-700 scroll-mt-6">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Horários em {dataSelecionada.toLocaleDateString()}</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Escolha o início e a duração do atendimento</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isClientView ? (
+                          <div className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 px-3 py-2 rounded-lg text-sm font-bold border border-emerald-200 dark:border-emerald-800">
+                            40 min
+                          </div>
+                        ) : (
+                          [30, 60, 90].map((duracao) => (
+                            <button
+                              key={duracao}
+                              onClick={() => setDuracaoMinutos(duracao)}
+                              className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-all ${duracaoMinutos === duracao
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/20'
+                                : 'bg-white dark:bg-neutral-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-neutral-600 hover:border-emerald-400'}`}
+                            >
+                              {duracao} min
+                            </button>
+                          ))
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {isClientView ? (
-                        <div className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 px-3 py-2 rounded-lg text-sm font-bold border border-emerald-200 dark:border-emerald-800">
-                          40 min
-                        </div>
-                      ) : (
-                        [30, 60, 90].map((duracao) => (
+
+                    {horaSelecionada && (
+                      <div className="mb-4 p-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-lg text-sm text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                        <Clock className="h-5 w-5" />
+                        <span className="font-medium">
+                          Agendamento das {horaSelecionada} às {calcularHoraFim(horaSelecionada, duracaoMinutos)}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {(isClientView ? [
+                        '08:00', '09:00', '10:00', '11:00',
+                        '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
+                      ] : HORARIOS_DISPONIVEIS).map((hora) => {
+                        const disponivel = isHorarioDisponivel(hora)
+                        return (
                           <button
-                            key={duracao}
-                            onClick={() => setDuracaoMinutos(duracao)}
-                            className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-all ${duracaoMinutos === duracao
-                              ? 'bg-emerald-600 text-white border-emerald-600 shadow'
-                              : 'bg-white dark:bg-neutral-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-neutral-600 hover:border-emerald-400'}`}
+                            key={hora}
+                            onClick={() => disponivel && handleSelecionarHora(hora)}
+                            disabled={!disponivel}
+                            className={`py-3 px-4 rounded-lg font-medium transition-all ${!disponivel
+                              ? 'bg-gray-100 dark:bg-neutral-800 text-gray-400 dark:text-neutral-500 border border-gray-200 dark:border-neutral-700 cursor-not-allowed opacity-60'
+                              : horaSelecionada === hora
+                                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30 border-emerald-600'
+                                : 'bg-white dark:bg-neutral-700 text-gray-700 dark:text-gray-200 hover:border-emerald-500 hover:text-emerald-700 border border-gray-300 dark:border-neutral-600'}`}
                           >
-                            {duracao} min
+                            <Clock className="h-4 w-4 inline mr-2 opacity-70" />
+                            {hora}
                           </button>
-                        ))
-                      )}
+                        )
+                      })}
                     </div>
                   </div>
+                )}
 
-                  {horaSelecionada && (
-                    <div className="mb-3 text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-emerald-600" />
-                      <span>
-                        Início {horaSelecionada} · Término {calcularHoraFim(horaSelecionada, duracaoMinutos)}
-                      </span>
-                    </div>
-                  )}
+                <BotoesNavegacao canNext={!!dataSelecionada && !!horaSelecionada} />
+              </div>
+            )}
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {(isClientView ? [
-                      '08:00', '09:00', '10:00', '11:00',
-                      '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
-                    ] : HORARIOS_DISPONIVEIS).map((hora) => {
-                      const disponivel = isHorarioDisponivel(hora)
-                      return (
-                        <button
-                          key={hora}
-                          onClick={() => disponivel && handleSelecionarHora(hora)}
-                          disabled={!disponivel}
-                          className={`py-3 px-4 rounded-lg font-medium transition-all ${!disponivel
-                            ? 'bg-gray-200 dark:bg-neutral-700 text-gray-400 dark:text-neutral-500 border border-gray-200 dark:border-neutral-600 cursor-not-allowed'
-                            : horaSelecionada === hora
-                              ? 'bg-emerald-600 text-white shadow-md'
-                              : 'bg-gray-100 dark:bg-neutral-700 text-gray-900 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-neutral-600 border border-gray-300 dark:border-neutral-600'}`}
-                        >
-                          <Clock className="h-4 w-4 inline mr-2" />
-                          {hora}
-                        </button>
-                      )
-                    })}
+            {/* PASSO 4: Seleção de Lead (apenas no módulo comercial) */}
+            {passo === 'cliente' && !isClientView && !preSelectedClient && (
+              <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Lead</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Busque um lead ou cadastre um novo</p>
                   </div>
+                  <button
+                    onClick={() => setShowNovoCliente((v) => !v)}
+                    className="px-4 py-2 rounded-lg border border-emerald-300 dark:border-emerald-500 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition"
+                  >
+                    {showNovoCliente ? 'Cancelar cadastro' : 'Cadastrar novo lead'}
+                  </button>
                 </div>
-              )}
 
-              {/* PASSO 4: Seleção de Lead (apenas no módulo comercial) */}
-              {passo === 'cliente' && !isClientView && !preSelectedClient && (
-                <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Lead</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Busque um lead ou cadastre um novo</p>
-                    </div>
-                    <button
-                      onClick={() => setShowNovoCliente((v) => !v)}
-                      className="px-4 py-2 rounded-lg border border-emerald-300 dark:border-emerald-500 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition"
-                    >
-                      {showNovoCliente ? 'Cancelar cadastro' : 'Cadastrar novo lead'}
-                    </button>
+                {/* Busca de lead */}
+                <div className="relative mb-4" ref={clienteSelectorRef}>
+                  <div className="flex items-center gap-2 relative">
+                    <Search className="w-5 h-5 text-gray-400 dark:text-gray-500 absolute left-3 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={searchCliente}
+                      onChange={(e) => {
+                        setSearchCliente(e.target.value)
+                      }}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                      placeholder="Digite o nome, email ou telefone do lead..."
+                    />
                   </div>
 
-                  {/* Busca de lead */}
-                  <div className="relative mb-4" ref={clienteSelectorRef}>
-                    <div className="flex items-center gap-2 relative">
-                      <Search className="w-5 h-5 text-gray-400 dark:text-gray-500 absolute left-3 pointer-events-none" />
-                      <input
-                        type="text"
-                        value={searchCliente}
-                        onChange={(e) => {
-                          setSearchCliente(e.target.value)
-                          setMostrarListaClientes(true)
-                        }}
-                        onFocus={() => setMostrarListaClientes(true)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                        placeholder="Digite o nome ou email do lead..."
-                      />
-                    </div>
+                  <div>
+                    {clienteSelecionado && (
+                      <div className="mt-4 border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl p-5 relative overflow-hidden flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-4">
+                          <div className="h-12 w-12 flex-shrink-0 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 rounded-full flex items-center justify-center font-bold text-xl">
+                            {clienteSelecionado.nome.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-gray-900 dark:text-gray-100 text-lg">{clienteSelecionado.nome}</div>
+                            <div className="text-gray-500 dark:text-gray-400">{clienteSelecionado.email || 'Sem e-mail'}</div>
+                            <div className="text-sm text-gray-400 dark:text-neutral-500 mt-1">{clienteSelecionado.telefone}</div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleRemoverCliente}
+                          className="p-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-full transition"
+                          title="Remover esse lead"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
+                    )}
 
-                    {mostrarListaClientes && clientesFiltrados.length > 0 && (
-                      <div className="absolute top-14 left-0 right-0 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-                        {clientesFiltrados.map((cliente) => (
+                    <div className={`mt-4 grid gap-3 pr-2 pb-2 ${!clienteSelecionado ? 'min-h-[360px]' : ''} ${clientesPaginados.length === 1 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-2 items-start content-start' : 'grid-cols-1 sm:grid-cols-2'}`}>
+                      {clientesPaginados.length > 0 ? (
+                        clientesPaginados.map((cliente) => (
                           <button
                             key={cliente.id}
                             onClick={() => handleSelecionarCliente(cliente)}
-                            className="w-full text-left px-4 py-3 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border-b border-gray-200 dark:border-neutral-700 last:border-b-0 transition-colors"
+                            className={`text-left p-4 rounded-xl border-2 transition-all ${clienteSelecionado?.id === cliente.id
+                              ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10'
+                              : 'border-transparent bg-gray-50 dark:bg-neutral-700/50 hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-white dark:hover:bg-neutral-700'
+                              }`}
                           >
-                            <div className="font-medium text-gray-800 dark:text-gray-200">{cliente.nome}</div>
-                            <div className="text-sm text-gray-600 dark:text-gray-400">{cliente.email}</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-500">{cliente.telefone}</div>
+                            <div className="flex items-center gap-4">
+                              <div className="h-10 w-10 flex-shrink-0 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 rounded-full flex items-center justify-center font-bold text-lg">
+                                {cliente.nome.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="overflow-hidden">
+                                <div className="font-semibold text-gray-900 dark:text-gray-100 truncate">{cliente.nome}</div>
+                                <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{cliente.email || 'Sem e-mail'}</div>
+                                <div className="text-xs text-gray-400 dark:text-neutral-500 mt-0.5">{cliente.telefone}</div>
+                              </div>
+                            </div>
                           </button>
-                        ))}
-                      </div>
-                    )}
+                        ))
+                      ) : (
+                        searchCliente ? (
+                          <div className="col-span-1 border-2 border-dashed border-gray-200 dark:border-neutral-700 rounded-xl p-8 text-center sm:col-span-2 flex flex-col items-center justify-center h-[200px]">
+                            <p className="text-gray-500 dark:text-gray-400 font-medium pb-2">Nenhum lead encontrado com esse dado.</p>
+                            <button
+                              onClick={() => {
+                                setShowNovoCliente(true)
+                                setNovoCliente(prev => ({ ...prev, nome: searchCliente }))
+                              }}
+                              className="mt-3 text-emerald-600 hover:text-emerald-700 font-semibold"
+                            >
+                              Deseja cadastrá-lo agora?
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="col-span-1 border-2 border-dashed border-gray-200 dark:border-neutral-700 rounded-xl p-8 text-center sm:col-span-2 flex flex-col items-center justify-center h-[200px]">
+                            <p className="text-gray-500 dark:text-gray-400 font-medium">Você ainda não tem leads na plataforma.</p>
+                          </div>
+                        )
+                      )}
+                    </div>
 
-                    {mostrarListaClientes && searchCliente && clientesFiltrados.length === 0 && (
-                      <div className="absolute top-14 left-0 right-0 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded-lg shadow-lg z-10 p-4">
-                        <p className="text-gray-500 dark:text-gray-400 text-center">Nenhum lead encontrado</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Cadastro rápido de lead */}
-                  {showNovoCliente && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                      <input
-                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
-                        placeholder="Nome"
-                        value={novoCliente.nome}
-                        onChange={(e) => setNovoCliente((p) => ({ ...p, nome: e.target.value }))}
-                      />
-                      <input
-                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
-                        placeholder="E-mail"
-                        value={novoCliente.email || ''}
-                        onChange={(e) => setNovoCliente((p) => ({ ...p, email: e.target.value }))}
-                      />
-                      <input
-                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
-                        placeholder="Telefone"
-                        value={novoCliente.telefone}
-                        onChange={(e) => setNovoCliente((p) => ({ ...p, telefone: e.target.value }))}
-                      />
-                      <div className="md:col-span-3 flex justify-end">
+                    {/* Controles de Paginação */}
+                    {totalPaginasLeads > 1 && (
+                      <div className="flex items-center justify-between mt-4 py-2 border-t border-gray-100 dark:border-neutral-800">
                         <button
-                          onClick={handleCadastrarNovoCliente}
-                          className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                          onClick={() => setPaginaLeads(p => Math.max(1, p - 1))}
+                          disabled={paginaLeads === 1}
+                          className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-neutral-700 text-gray-600 dark:text-gray-300 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-neutral-800 transition text-sm font-medium flex items-center gap-1"
                         >
-                          Salvar e selecionar
+                          <ChevronLeft className="h-4 w-4" /> Anterior
+                        </button>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          Página {paginaLeads} de {totalPaginasLeads}
+                        </span>
+                        <button
+                          onClick={() => setPaginaLeads(p => Math.min(totalPaginasLeads, p + 1))}
+                          disabled={paginaLeads === totalPaginasLeads}
+                          className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-neutral-700 text-gray-600 dark:text-gray-300 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-neutral-800 transition text-sm font-medium flex items-center gap-1"
+                        >
+                          Próxima <ChevronRight className="h-4 w-4" />
                         </button>
                       </div>
-                    </div>
-                  )}
-
-                </div>
-              )}
-            </div>
-
-            <div className="lg:col-span-1 flex justify-center">
-              <div className="w-full max-w-md bg-white dark:bg-neutral-900 rounded-xl border border-gray-200 dark:border-neutral-800 p-6 shadow-sm sticky top-8">
-
-                {/* Header com Voltar e Título */}
-                <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-neutral-800 pb-4">
-                  {passo !== 'produto' && (
-                    <button
-                      onClick={handleVoltar}
-                      className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-500 transition-colors"
-                      aria-label="Voltar etapa"
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </button>
-                  )}
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Resumo</h3>
-                </div>
-
-                {/* Informações dos Envolvidos */}
-                {(clienteSelecionado || activeProfile) && (
-                  <div className="mb-6 p-4 bg-gray-50 dark:bg-neutral-800/50 rounded-lg border border-gray-100 dark:border-neutral-800">
-                    <div className="mb-4">
-                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Agendado por</p>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {activeProfile?.full_name || 'Administrador'}
-                      </p>
-                      {activeProfile?.email && (
-                        <p className="text-xs text-gray-500">{activeProfile.email}</p>
-                      )}
-                    </div>
-
-                    {clienteSelecionado && (
-                      <div className="pt-4 border-t border-gray-100 dark:border-neutral-700">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Lead</p>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{clienteSelecionado.nome}</p>
-                        {emailTemporario && (
-                          <p className="text-xs text-gray-500">{emailTemporario}</p>
-                        )}
-                      </div>
                     )}
                   </div>
-                )}
-
-                {/* Produto */}
-                {produtoSelecionado ? (
-                  <div className="mb-4 pb-4 border-b border-gray-100 dark:border-neutral-800 flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Produto</p>
-                      <p className="text-lg font-semibold text-gray-900 dark:text-white">{produtoSelecionado.nome}</p>
-
-                      {(produtoSelecionado as any).isEuro ? (
-                        <div className="mt-2">
-                          <p className="text-2xl font-bold text-emerald-600">
-                            € {produtoSelecionado.valor.toFixed(2)}
-                          </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Aprox. R$ {(produtoSelecionado.valor * (exchangeRate || 6.27)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </p>
-                          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
-                            * Cotação estimada: €1 = R${(exchangeRate || 6.27).toFixed(2)}
-                          </p>
-                        </div>
-                      ) : (
-                        <p className="text-2xl font-bold text-emerald-600 mt-2">
-                          R$ {produtoSelecionado.valor}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      onClick={handleRemoverProduto}
-                      className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
-                      aria-label="Alterar produto"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="mb-4 pb-4 border-b border-dashed border-gray-200 dark:border-neutral-700">
-                    <p className="text-xs text-gray-400 mb-1 italic">Produto não selecionado</p>
-                    <button onClick={() => setPasso('produto')} className="text-xs text-blue-500 hover:underline">Selecionar agora</button>
-                  </div>
-                )}
-
-                {/* Data */}
-                {dataSelecionada && (
-                  <div className="mb-4 pb-4 border-b border-gray-100 dark:border-neutral-800 flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Data</p>
-                      <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {dataSelecionada.toLocaleDateString('pt-BR')}
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleRemoverData}
-                      className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
-                      aria-label="Alterar data"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                )}
-
-                {/* Hora */}
-                {horaSelecionada && (
-                  <div className="mb-4 pb-4 border-b border-gray-100 dark:border-neutral-800 flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Horário</p>
-                      <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {horaSelecionada} - {calcularHoraFim(horaSelecionada, duracaoMinutos)}
-                      </p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">Duração: {duracaoMinutos} min</p>
-                    </div>
-                    <button
-                      onClick={handleRemoverHora}
-                      className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
-                      aria-label="Alterar horário"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                )}
-
-
-                <div className="pt-2">
-                  <button
-                    onClick={handleFinalizarAgendamento}
-                    disabled={!agendamentoPreview}
-                    className={`w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors ${agendamentoPreview
-                      ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
-                  >
-                    <Check className="h-5 w-5" />
-                    {!clienteSelecionado ? 'Incompleto: Selecione o Lead' :
-                      !produtoSelecionado ? 'Incompleto: Selecione o Produto' :
-                        !dataSelecionada ? 'Incompleto: Selecione a Data' :
-                          !horaSelecionada ? 'Incompleto: Selecione o Horário' :
-                            'Criar agendamento'}
-                  </button>
-                  {!agendamentoPreview && (
-                    <div className="text-xs text-red-500 font-medium text-center mt-2 space-y-1">
-                      {!produtoSelecionado && <p>• Selecione um Produto na primeira etapa</p>}
-                      {!dataSelecionada && <p>• Escolha uma data no calendário</p>}
-                      {!horaSelecionada && <p>• Escolha um horário disponível</p>}
-                      {!clienteSelecionado && <p>• Identifique o Lead (Cliente)</p>}
-                      {clienteSelecionado && !clienteSelecionado.email && !emailTemporario && <p>• O lead selecionado não possui e-mail cadastrado</p>}
-                    </div>
-                  )}
                 </div>
+
+                {/* Cadastro rápido de lead */}
+                {showNovoCliente && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <input
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
+                      placeholder="Nome"
+                      value={novoCliente.nome}
+                      onChange={(e) => setNovoCliente((p) => ({ ...p, nome: e.target.value }))}
+                    />
+                    <input
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
+                      placeholder="E-mail"
+                      value={novoCliente.email || ''}
+                      onChange={(e) => setNovoCliente((p) => ({ ...p, email: e.target.value }))}
+                    />
+                    <input
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
+                      placeholder="Telefone"
+                      value={novoCliente.telefone}
+                      onChange={(e) => setNovoCliente((p) => ({ ...p, telefone: e.target.value }))}
+                    />
+                    <div className="md:col-span-3 flex justify-end">
+                      <button
+                        onClick={handleCadastrarNovoCliente}
+                        className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
+                      >
+                        Salvar e selecionar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
               </div>
-            </div>
+            )}
           </div>
-        ) : (
-          <div className="flex justify-center">
-            <div className="w-full max-w-xl bg-white dark:bg-neutral-900 rounded-xl border border-gray-200 dark:border-neutral-800 p-6 shadow-sm">
+
+          <div className="lg:col-span-1 flex justify-center">
+            <div className="w-full max-w-md bg-white dark:bg-neutral-900 rounded-xl border border-gray-200 dark:border-neutral-800 p-6 shadow-sm sticky top-8">
 
               {/* Header com Voltar e Título */}
               <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-neutral-800 pb-4">
-                <button
-                  onClick={handleVoltar}
-                  className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-500 transition-colors"
-                  aria-label="Voltar etapa"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
+                {passo !== 'produto' && (
+                  <button
+                    onClick={handleVoltar}
+                    className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-500 transition-colors"
+                    aria-label="Voltar etapa"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                )}
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Resumo</h3>
               </div>
 
@@ -932,14 +921,29 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
               )}
 
               {/* Produto */}
-              {produtoSelecionado && (
+              {produtoSelecionado ? (
                 <div className="mb-4 pb-4 border-b border-gray-100 dark:border-neutral-800 flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Produto</p>
                     <p className="text-lg font-semibold text-gray-900 dark:text-white">{produtoSelecionado.nome}</p>
-                    <p className="text-2xl font-bold text-emerald-600 mt-2">
-                      R$ {produtoSelecionado.valor}
-                    </p>
+
+                    {(produtoSelecionado as any).isEuro ? (
+                      <div className="mt-2">
+                        <p className="text-2xl font-bold text-emerald-600">
+                          € {produtoSelecionado.valor.toFixed(2)}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Aprox. R$ {(produtoSelecionado.valor * (exchangeRate || 6.27)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+                          * Cotação estimada: €1 = R${(exchangeRate || 6.27).toFixed(2)}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-2xl font-bold text-emerald-600 mt-2">
+                        R$ {produtoSelecionado.valor}
+                      </p>
+                    )}
                   </div>
                   <button
                     onClick={handleRemoverProduto}
@@ -948,6 +952,11 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
+                </div>
+              ) : (
+                <div className="mb-4 pb-4 border-b border-dashed border-gray-200 dark:border-neutral-700">
+                  <p className="text-xs text-gray-400 mb-1 italic">Produto não selecionado</p>
+                  <button onClick={() => setPasso('produto')} className="text-xs text-blue-500 hover:underline">Selecionar agora</button>
                 </div>
               )}
 
@@ -990,35 +999,53 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                 </div>
               )}
 
-              <div className="pt-2">
-                <button
-                  onClick={handleFinalizarAgendamento}
-                  disabled={!agendamentoPreview}
-                  className={`w-full py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${agendamentoPreview
-                    ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-500/20'
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'}`}
-                >
-                  <Check className="h-5 w-5" />
-                  {!clienteSelecionado ? 'Incompleto: Selecione o Lead' :
-                    !produtoSelecionado ? 'Incompleto: Selecione o Produto' :
-                      !dataSelecionada ? 'Incompleto: Selecione a Data' :
-                        !horaSelecionada ? 'Incompleto: Selecione o Horário' :
-                          (!clienteSelecionado.email && !emailTemporario) ? 'Incompleto: Informe o E-mail' :
-                            'Criar agendamento'}
-                </button>
-                {!agendamentoPreview && (
-                  <div className="text-xs text-red-500 font-medium text-center mt-3 space-y-1">
-                    {!produtoSelecionado && <p>• Selecione um Produto</p>}
-                    {!dataSelecionada && <p>• Escolha uma data</p>}
-                    {!horaSelecionada && <p>• Escolha um horário</p>}
-                    {!clienteSelecionado && <p>• Identifique o Lead (Cliente)</p>}
-                    {clienteSelecionado && !clienteSelecionado.email && !emailTemporario && <p>• Informe o e-mail do lead</p>}
+
+              <div className="pt-4 border-t border-gray-100 dark:border-neutral-800">
+                {!agendamentoPreview ? (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 block">Próximos Passos</p>
+                    <ul className="space-y-3">
+                      <li className={`flex items-center gap-3 text-sm ${produtoSelecionado ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
+                        <div className={`h-5 w-5 rounded-full flex items-center justify-center border ${produtoSelecionado ? 'bg-emerald-100 border-emerald-200 dark:bg-emerald-900/30' : 'bg-gray-100 border-gray-200 dark:bg-neutral-800 dark:border-neutral-700'}`}>
+                          {produtoSelecionado ? <Check className="h-3 w-3" /> : '1'}
+                        </div>
+                        Escolher Produto
+                      </li>
+                      <li className={`flex items-center gap-3 text-sm ${(dataSelecionada && horaSelecionada) ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
+                        <div className={`h-5 w-5 rounded-full flex items-center justify-center border ${(dataSelecionada && horaSelecionada) ? 'bg-emerald-100 border-emerald-200 dark:bg-emerald-900/30' : 'bg-gray-100 border-gray-200 dark:bg-neutral-800 dark:border-neutral-700'}`}>
+                          {(dataSelecionada && horaSelecionada) ? <Check className="h-3 w-3" /> : '2'}
+                        </div>
+                        Definir Data e Horário
+                      </li>
+                      {!isClientView && (
+                        <li className={`flex items-center gap-3 text-sm ${(clienteSelecionado && (clienteSelecionado.email || emailTemporario)) ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
+                          <div className={`h-5 w-5 rounded-full flex items-center justify-center border ${(clienteSelecionado && (clienteSelecionado.email || emailTemporario)) ? 'bg-emerald-100 border-emerald-200 dark:bg-emerald-900/30' : 'bg-gray-100 border-gray-200 dark:bg-neutral-800 dark:border-neutral-700'}`}>
+                            {(clienteSelecionado && (clienteSelecionado.email || emailTemporario)) ? <Check className="h-3 w-3" /> : '3'}
+                          </div>
+                          Identificar o Lead (E-mail)
+                        </li>
+                      )}
+                      <li className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+                        <div className="h-5 w-5 rounded-full flex items-center justify-center border bg-gray-100 border-gray-200 dark:bg-neutral-800 dark:border-neutral-700">
+                          {isClientView ? '3' : '4'}
+                        </div>
+                        Confirmação
+                      </li>
+                    </ul>
                   </div>
+                ) : (
+                  <button
+                    onClick={handleProxPasso}
+                    className="w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-500/20"
+                  >
+                    <Check className="h-5 w-5" />
+                    Criar Agendamento
+                  </button>
                 )}
               </div>
             </div>
           </div>
-        )}
+        </div>
 
         {/* Modal Pagamento / Compartilhar */}
         {showModalPagamento && (
@@ -1081,64 +1108,66 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
         )}
 
         {/* Popup de E-mail do Lead */}
-        {showEmailPopup && clienteSelecionado && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
-            <div className="w-full max-w-md bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-gray-200 dark:border-neutral-700 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                E-mail do Lead
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Informe o e-mail de <span className="font-semibold text-gray-700 dark:text-gray-200">{clienteSelecionado.nome}</span> para prosseguir com o agendamento.
-              </p>
+        {
+          showEmailPopup && clienteSelecionado && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+              <div className="w-full max-w-md bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-gray-200 dark:border-neutral-700 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                  E-mail do Lead
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Informe o e-mail de <span className="font-semibold text-gray-700 dark:text-gray-200">{clienteSelecionado.nome}</span> para prosseguir com o agendamento.
+                </p>
 
-              <div className="mb-5">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  E-mail <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={emailTemporario}
-                  onChange={e => setEmailTemporario(e.target.value)}
-                  placeholder="email@exemplo.com"
-                  className="w-full px-3 py-2.5 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                  autoFocus
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && emailTemporario.trim()) {
+                <div className="mb-5">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    E-mail <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={emailTemporario}
+                    onChange={e => setEmailTemporario(e.target.value)}
+                    placeholder="email@exemplo.com"
+                    className="w-full px-3 py-2.5 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    autoFocus
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && emailTemporario.trim()) {
+                        setShowEmailPopup(false)
+                        handleFinalizarAgendamento()
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => {
                       setShowEmailPopup(false)
-                      setPasso('confirmacao')
-                    }
-                  }}
-                />
-              </div>
-
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => {
-                    setShowEmailPopup(false)
-                    handleRemoverCliente()
-                  }}
-                  className="px-4 py-2 border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors text-sm"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => {
-                    if (!emailTemporario.trim()) {
-                      error('Informe o e-mail do lead.')
-                      return
-                    }
-                    setShowEmailPopup(false)
-                    setPasso('confirmacao')
-                  }}
-                  disabled={!emailTemporario.trim()}
-                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Confirmar
-                </button>
+                      handleRemoverCliente()
+                    }}
+                    className="px-4 py-2 border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors text-sm"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!emailTemporario.trim()) {
+                        error('Informe o e-mail do lead.')
+                        return
+                      }
+                      setShowEmailPopup(false)
+                      handleFinalizarAgendamento()
+                    }}
+                    disabled={!emailTemporario.trim()}
+                    className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Confirmar
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )
+        }
 
         {showConfirmacao && agendamentoPayload && (
           <AgendamentoConfirmacaoModal
@@ -1151,7 +1180,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
           />
         )}
       </div>
-    </div>
+    </div >
   )
 }
-
