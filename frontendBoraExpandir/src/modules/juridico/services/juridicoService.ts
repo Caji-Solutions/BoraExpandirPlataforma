@@ -599,6 +599,34 @@ export async function getProcessoByCliente(clienteId: string): Promise<any> {
 }
 
 /**
+ * Busca todos os agendamentos (Consultorias)
+ */
+export async function getAgendamentos(): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/comercial/agendamentos`);
+
+  if (!response.ok) {
+    throw new Error('Erro ao buscar agendamentos');
+  }
+
+  const result = await response.json();
+  return result; // ComercialController returns blood array directly (not wrapped in data for this one, based on code check)
+}
+
+/**
+ * Busca assessorias delegadas a um responsável
+ */
+export async function getAssessoriasByResponsavel(responsavelId: string): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/juridico/assessorias/por-responsavel/${responsavelId}`);
+
+  if (!response.ok) {
+    throw new Error('Erro ao buscar assessorias do responsável');
+  }
+
+  const result = await response.json();
+  return result.data;
+}
+
+/**
  * Solicita o apostilamento de um documento ao administrativo
  */
 export async function requestApostille(documentoId: string, documentoUrl?: string, observacoes?: string): Promise<any> {
@@ -648,6 +676,8 @@ export default {
     createAssessoria,
     getLatestAssessoria,
     getProcessoByCliente,
+    getAgendamentos,
+    getAssessoriasByResponsavel,
     createDependent: async (
       clienteId: string, 
       nomeCompleto: string, 

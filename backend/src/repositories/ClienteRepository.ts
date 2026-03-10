@@ -195,7 +195,9 @@ class ClienteRepository {
                 atualizado_em: new Date().toISOString()
             }
 
-            console.log('ClienteRepository.register - Executando UPDATE com payload:', dataToUpdate)
+            console.log('ClienteRepository.register - ID existente:', existing.id)
+            console.log('ClienteRepository.register - Campos originais do cliente:', Object.keys(cliente))
+            console.log('ClienteRepository.register - Payload para UPDATE (filtrado):', dataToUpdate)
 
             const { data: updatedData, error } = await supabase
                 .from('clientes')
@@ -205,8 +207,12 @@ class ClienteRepository {
                 .single()
 
             if (error) {
-                console.error('Erro ao atualizar cliente no register:', error)
-                console.error('Detalhes do erro do banco:', error.message, error.code)
+                console.error('CRITICAL ERROR in ClienteRepository.register (UPDATE):')
+                console.error('- Message:', error.message)
+                console.error('- Code:', error.code)
+                console.error('- Details:', error.details)
+                console.error('- Hint:', error.hint)
+                console.error('- Full Payload attempted:', JSON.stringify(dataToUpdate, null, 2))
                 throw error
             }
             return updatedData
@@ -215,7 +221,10 @@ class ClienteRepository {
             // 3. Se não existe, cria novo
             const { data: createdData, error } = await supabase
                 .from('clientes')
-                .insert([cliente])
+                .insert([{
+                    ...cliente,
+                    id: cliente.id || undefined // Usa o ID do Auth se fornecido
+                }])
                 .select()
                 .single()
 
@@ -700,7 +709,7 @@ class ClienteRepository {
             return {
                 ...c,
                 processos: processosPopulated,
-                documento: cpfMap.get(c.email) || ''
+                documento: c.cpf || cpfMap.get(c.email) || '' // Prioriza campo cpf na tabela clientes
             }
         })
     }

@@ -211,8 +211,8 @@ export default function LeadsPage() {
           email: lead.email,
           whatsapp: lead.whatsapp,
           telefone: lead.whatsapp,
-          status: 'cadastrado',
-          stage: 'cadastro_concluido'
+          status: 'cliente',
+          stage: 'aguardando_consultoria'
         })
       })
 

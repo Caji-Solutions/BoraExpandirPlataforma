@@ -734,6 +734,19 @@ class ComercialController {
         }
     }
 
+    async getAllAgendamentos(req: any, res: any) {
+        try {
+            const agendamentos = await ComercialRepository.getAllAgendamentos()
+            return res.status(200).json(agendamentos)
+        } catch (error: any) {
+            console.error('Erro ao buscar todos os agendamentos:', error)
+            return res.status(500).json({
+                message: 'Erro ao buscar todos os agendamentos',
+                error: error.message
+            })
+        }
+    }
+
 }
 
 export default new ComercialController()

@@ -46,6 +46,7 @@ export function DNAClientDetailView({
     const [loadingMembers, setLoadingMembers] = useState(false)
     const [selectedRequerimentoId, setSelectedRequerimentoId] = useState<string | undefined>(undefined)
     const [areaFilter, setAreaFilter] = useState<'todos' | 'juridico' | 'comercial' | 'administrativo'>('todos')
+    const [activeTab, setActiveTab] = useState<'timeline' | 'formularios'>('timeline')
 
     // Handle adding document to a specific requirement
     const handleAddDocToReq = (reqId: string) => {
@@ -243,165 +244,223 @@ export function DNAClientDetailView({
                     </div>
                 </div>
 
+                {/* Unified Tab Navigation & Filters */}
+                <div className="bg-card/50 backdrop-blur-md border border-border p-2 rounded-2xl flex flex-wrap items-center justify-between gap-4 sticky top-4 z-40 shadow-sm">
+                    <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-xl">
+                        <button
+                            onClick={() => setActiveTab('timeline')}
+                            className={cn(
+                                "px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
+                                activeTab === 'timeline'
+                                    ? "bg-background text-primary shadow-sm border border-border"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            <History className="h-4 w-4" />
+                            Timeline do Processo
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('formularios')}
+                            className={cn(
+                                "px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
+                                activeTab === 'formularios'
+                                    ? "bg-background text-primary shadow-sm border border-border"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            <FileText className="h-4 w-4" />
+                            Formulários
+                        </button>
+                    </div>
+
+                    <div className="flex items-center gap-2 pr-2">
+                        <span className="text-[10px] uppercase font-bold text-muted-foreground mr-2 hidden sm:block">Filtrar Área:</span>
+                        <div className="flex items-center gap-1.5 bg-muted/30 p-1 rounded-xl">
+                            {(['todos', 'juridico', 'comercial', 'administrativo'] as const).map((area) => (
+                                <button
+                                    key={area}
+                                    onClick={() => {
+                                        setAreaFilter(area)
+                                        if (activeTab !== 'timeline') setActiveTab('timeline')
+                                    }}
+                                    className={cn(
+                                        "px-3 py-1.5 rounded-lg text-xs font-bold transition-all capitalize",
+                                        areaFilter === area && activeTab === 'timeline'
+                                            ? "bg-primary text-primary-foreground shadow-sm"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                    )}
+                                >
+                                    {area === 'todos' ? 'Todas' : area}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    {/* Linha do Tempo (Timeline) */}
+                    {/* Main Content Column */}
                     <div className="lg:col-span-8 space-y-6">
-                        <div className="bg-card border border-border rounded-2xl p-8 relative">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                                <h3 className="text-xl font-bold text-foreground flex items-center gap-3">
-                                    <History className="h-6 w-6 text-primary" />
-                                    Timeline do Processo
-                                </h3>
-
-                                <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-xl border border-border">
-                                    {(['todos', 'juridico', 'comercial', 'administrativo'] as const).map((area) => (
-                                        <button
-                                            key={area}
-                                            onClick={() => setAreaFilter(area)}
-                                            className={cn(
-                                                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all capitalize",
-                                                areaFilter === area
-                                                    ? "bg-primary text-primary-foreground shadow-sm"
-                                                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                                            )}
-                                        >
-                                            {area === 'todos' ? 'Todas Áreas' : area}
-                                        </button>
-                                    ))}
+                        {activeTab === 'timeline' ? (
+                            <div className="bg-card border border-border rounded-2xl p-8 relative">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                                    <h3 className="text-xl font-bold text-foreground flex items-center gap-3">
+                                        <History className="h-6 w-6 text-primary" />
+                                        Timeline do Processo
+                                    </h3>
                                 </div>
-                            </div>
 
-                            <div className="space-y-0 relative ml-4">
-                                {/* Linha vertical decorativa */}
-                                <div className="absolute left-[15px] top-2 bottom-6 w-0.5 bg-border" />
+                                <div className="space-y-0 relative ml-4">
+                                    {/* Linha vertical decorativa */}
+                                    <div className="absolute left-[15px] top-2 bottom-6 w-0.5 bg-border" />
 
-                                {CATEGORIAS_LIST.map((stage, index) => {
-                                    const isCurrent = stage.id === client.categoria
-                                    const isCompleted = index < currentStageIndex
-                                    const isFuture = index > currentStageIndex
+                                    {CATEGORIAS_LIST.map((stage, index) => {
+                                        const isCurrent = stage.id === client.categoria
+                                        const isCompleted = index < currentStageIndex
+                                        const isFuture = index > currentStageIndex
 
-                                    const stageNotes = notes.filter(n => {
-                                        const matchesStage = n.stageId === stage.id
-                                        const matchesArea = areaFilter === 'todos' || n.area === areaFilter
-                                        return matchesStage && matchesArea
-                                    })
+                                        const stageNotes = notes.filter(n => {
+                                            const matchesStage = n.stageId === stage.id
+                                            const matchesArea = areaFilter === 'todos' || n.area === areaFilter
+                                            return matchesStage && matchesArea
+                                        })
 
-                                    return (
-                                        <div key={stage.id} className="relative pl-12 pb-10 group last:pb-0">
-                                            {/* Dot / Indicator */}
-                                            <div className={cn(
-                                                "absolute left-0 top-1 w-8 h-8 rounded-full border-4 z-10 flex items-center justify-center transition-all",
-                                                isCurrent ? "bg-primary border-primary-foreground shadow-[0_0_10px_rgba(var(--primary),0.5)] animate-pulse" :
-                                                    isCompleted ? "bg-green-500 border-green-200" : "bg-muted border-card"
-                                            )}>
-                                                {isCompleted ? <Check className="h-4 w-4 text-white" /> :
-                                                    isCurrent ? <Clock className="h-4 w-4 text-white" /> :
-                                                        <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />}
-                                            </div>
-
-                                            <div className="flex flex-col gap-2">
-                                                <div className="flex items-center justify-between">
-                                                    <h4 className={cn(
-                                                        "font-bold transition-colors",
-                                                        isCurrent ? "text-primary text-lg" :
-                                                            isCompleted ? "text-foreground" : "text-muted-foreground"
-                                                    )}>
-                                                        {stage.label.split('-')[1] || stage.label}
-                                                    </h4>
-
-                                                    <div className="flex items-center gap-2">
-                                                        {stageNotes.length > 0 && (
-                                                            <button
-                                                                onClick={() => toggleStage(stage.id)}
-                                                                className={cn(
-                                                                    "flex items-center gap-1 px-2 py-1 rounded-lg transition-all border border-transparent hover:bg-muted font-bold text-[10px]",
-                                                                    expandedStages.has(stage.id) ? "text-primary bg-primary/5 border-primary/10" : "text-muted-foreground"
-                                                                )}
-                                                            >
-                                                                <ChevronDown className={cn(
-                                                                    "h-3.5 w-3.5 transition-transform duration-300",
-                                                                    expandedStages.has(stage.id) && "rotate-180"
-                                                                )} />
-                                                                {stageNotes.length} {stageNotes.length === 1 ? 'Nota' : 'Notas'}
-                                                            </button>
-                                                        )}
-
-                                                        <button
-                                                            onClick={() => setNoteStageId(stage.id === noteStageId ? null : stage.id)}
-                                                            className="text-xs font-semibold text-primary hover:bg-primary/5 px-3 py-1.5 rounded-lg border border-primary/20 transition-all flex items-center gap-1.5"
-                                                        >
-                                                            <FileText className="h-3.5 w-3.5" />
-                                                            Adicionar Nota
-                                                        </button>
-                                                    </div>
+                                        return (
+                                            <div key={stage.id} className="relative pl-12 pb-10 group last:pb-0">
+                                                {/* Dot / Indicator */}
+                                                <div className={cn(
+                                                    "absolute left-0 top-1 w-8 h-8 rounded-full border-4 z-10 flex items-center justify-center transition-all",
+                                                    isCurrent ? "bg-primary border-primary-foreground shadow-[0_0_10px_rgba(var(--primary),0.5)] animate-pulse" :
+                                                        isCompleted ? "bg-green-500 border-green-200" : "bg-muted border-card"
+                                                )}>
+                                                    {isCompleted ? <Check className="h-4 w-4 text-white" /> :
+                                                        isCurrent ? <Clock className="h-4 w-4 text-white" /> :
+                                                            <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />}
                                                 </div>
 
-                                                {/* Form de Nota para esta etapa */}
-                                                {noteStageId === stage.id && (
-                                                    <form
-                                                        onSubmit={(e) => {
-                                                            handleAddNote(e, stage.id)
-                                                            if (!expandedStages.has(stage.id)) toggleStage(stage.id)
-                                                        }}
-                                                        className="mt-4 bg-muted/30 p-4 rounded-xl border border-primary/10 animate-in zoom-in-95 duration-200"
-                                                    >
-                                                        <textarea
-                                                            autoFocus
-                                                            value={newNote}
-                                                            onChange={(e) => setNewNote(e.target.value)}
-                                                            placeholder={`Detalhes para a etapa: ${stage.label}...`}
-                                                            className="w-full bg-card border border-border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 min-h-[80px] resize-none"
-                                                        />
-                                                        <div className="flex justify-end gap-2 mt-3">
+                                                <div className="flex flex-col gap-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <h4 className={cn(
+                                                            "font-bold transition-colors",
+                                                            isCurrent ? "text-primary text-lg" :
+                                                                isCompleted ? "text-foreground" : "text-muted-foreground"
+                                                        )}>
+                                                            {stage.label.split('-')[1] || stage.label}
+                                                        </h4>
+
+                                                        <div className="flex items-center gap-2">
+                                                            {stageNotes.length > 0 && (
+                                                                <button
+                                                                    onClick={() => toggleStage(stage.id)}
+                                                                    className={cn(
+                                                                        "flex items-center gap-1 px-2 py-1 rounded-lg transition-all border border-transparent hover:bg-muted font-bold text-[10px]",
+                                                                        expandedStages.has(stage.id) ? "text-primary bg-primary/5 border-primary/10" : "text-muted-foreground"
+                                                                    )}
+                                                                >
+                                                                    <ChevronDown className={cn(
+                                                                        "h-3.5 w-3.5 transition-transform duration-300",
+                                                                        expandedStages.has(stage.id) && "rotate-180"
+                                                                    )} />
+                                                                    {stageNotes.length} {stageNotes.length === 1 ? 'Nota' : 'Notas'}
+                                                                </button>
+                                                            )}
+
                                                             <button
-                                                                type="button"
-                                                                onClick={() => setNoteStageId(null)}
-                                                                className="px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-muted rounded-lg"
+                                                                onClick={() => setNoteStageId(stage.id === noteStageId ? null : stage.id)}
+                                                                className="text-xs font-semibold text-primary hover:bg-primary/5 px-3 py-1.5 rounded-lg border border-primary/20 transition-all flex items-center gap-1.5"
                                                             >
-                                                                Cancelar
-                                                            </button>
-                                                            <button
-                                                                type="submit"
-                                                                className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-xs font-bold hover:bg-primary/90 shadow-sm"
-                                                            >
-                                                                Salvar na Etapa
+                                                                <FileText className="h-3.5 w-3.5" />
+                                                                Adicionar Nota
                                                             </button>
                                                         </div>
-                                                    </form>
-                                                )}
-
-                                                {/* Notas desta etapa (Colapsáveis) */}
-                                                {(stageNotes.length > 0 && expandedStages.has(stage.id)) && (
-                                                    <div className="mt-3 space-y-3 animate-in slide-in-from-top-2 duration-300">
-                                                        {stageNotes.map(note => (
-                                                            <div key={note.id} className="bg-muted/30 border border-border/50 rounded-xl p-4 text-sm relative">
-                                                                <div className="flex justify-between items-center mb-2 opacity-70">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <span className="font-bold flex items-center gap-1.5"><User className="h-3 w-3" /> {note.author}</span>
-                                                                        <span className={cn(
-                                                                            "text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-tight",
-                                                                            note.area === 'juridico' ? "bg-purple-100 text-purple-700" :
-                                                                                note.area === 'comercial' ? "bg-blue-100 text-blue-700" :
-                                                                                    "bg-amber-100 text-amber-700"
-                                                                        )}>
-                                                                            {note.area}
-                                                                        </span>
-                                                                    </div>
-                                                                    <span className="text-[10px]">{new Date(note.createdAt).toLocaleDateString('pt-BR')}</span>
-                                                                </div>
-                                                                <p className="text-foreground/90 leading-relaxed italic border-l-2 border-primary/20 pl-3">
-                                                                    "{note.text}"
-                                                                </p>
-                                                            </div>
-                                                        ))}
                                                     </div>
-                                                )}
+
+                                                    {/* Form de Nota para esta etapa */}
+                                                    {noteStageId === stage.id && (
+                                                        <form
+                                                            onSubmit={(e) => {
+                                                                handleAddNote(e, stage.id)
+                                                                if (!expandedStages.has(stage.id)) toggleStage(stage.id)
+                                                            }}
+                                                            className="mt-4 bg-muted/30 p-4 rounded-xl border border-primary/10 animate-in zoom-in-95 duration-200"
+                                                        >
+                                                            <textarea
+                                                                autoFocus
+                                                                value={newNote}
+                                                                onChange={(e) => setNewNote(e.target.value)}
+                                                                placeholder={`Detalhes para a etapa: ${stage.label}...`}
+                                                                className="w-full bg-card border border-border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 min-h-[80px] resize-none"
+                                                            />
+                                                            <div className="flex justify-end gap-2 mt-3">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setNoteStageId(null)}
+                                                                    className="px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-muted rounded-lg"
+                                                                >
+                                                                    Cancelar
+                                                                </button>
+                                                                <button
+                                                                    type="submit"
+                                                                    className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-xs font-bold hover:bg-primary/90 shadow-sm"
+                                                                >
+                                                                    Salvar na Etapa
+                                                                </button>
+                                                            </div>
+                                                        </form>
+                                                    )}
+
+                                                    {/* Notas desta etapa (Colapsáveis) */}
+                                                    {(stageNotes.length > 0 && expandedStages.has(stage.id)) && (
+                                                        <div className="mt-3 space-y-3 animate-in slide-in-from-top-2 duration-300">
+                                                            {stageNotes.map(note => (
+                                                                <div key={note.id} className="bg-muted/30 border border-border/50 rounded-xl p-4 text-sm relative">
+                                                                    <div className="flex justify-between items-center mb-2 opacity-70">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <span className="font-bold flex items-center gap-1.5"><User className="h-3 w-3" /> {note.author}</span>
+                                                                            <span className={cn(
+                                                                                "text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-tight",
+                                                                                note.area === 'juridico' ? "bg-purple-100 text-purple-700" :
+                                                                                    note.area === 'comercial' ? "bg-blue-100 text-blue-700" :
+                                                                                        "bg-amber-100 text-amber-700"
+                                                                            )}>
+                                                                                {note.area}
+                                                                            </span>
+                                                                        </div>
+                                                                        <span className="text-[10px]">{new Date(note.createdAt).toLocaleDateString('pt-BR')}</span>
+                                                                    </div>
+                                                                    <p className="text-foreground/90 leading-relaxed italic border-l-2 border-primary/20 pl-3">
+                                                                        "{note.text}"
+                                                                    </p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )
-                                })}
+                                        )
+                                    })}
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="bg-card border border-border rounded-2xl p-0 overflow-hidden relative">
+                                <div className="p-6 border-b border-border bg-muted/20">
+                                    <h3 className="text-xl font-bold text-foreground flex items-center gap-3">
+                                        <FileText className="h-6 w-6 text-primary" />
+                                        Formulários e Declarações
+                                    </h3>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        Gerencie os documentos e formulários enviados para o cliente.
+                                    </p>
+                                </div>
+                                <FormsDeclarationsSection
+                                    isOpen={isFormModalOpen}
+                                    onOpenChange={setIsFormModalOpen}
+                                    clienteId={client.true_id || client.id}
+                                    processoId={client.processo_id || ''}
+                                    clientName={client.nome}
+                                    members={members}
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {/* Coluna Direita: Informações Extras */}
@@ -431,15 +490,7 @@ export function DNAClientDetailView({
                             onAddDocumentToRequirement={handleAddDocToReq}
                         />
 
-                        <FormsDeclarationsSection
-                            isOpen={isFormModalOpen}
-                            onOpenChange={setIsFormModalOpen}
-                            clienteId={client.true_id || client.id}
-                            processoId={client.processo_id || ''}
-                            clientName={client.nome}
-                            members={members}
-                            hideTrigger={true}
-                        />
+                        {/* FormsDeclarationsSection moved to main column as a tab */}
                     </div>
                 </div>
             </div>

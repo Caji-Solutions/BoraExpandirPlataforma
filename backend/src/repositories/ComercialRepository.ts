@@ -237,6 +237,22 @@ class ComercialRepository {
 
         return data
     }
+    async getAllAgendamentos() {
+        console.log('Buscando todos os agendamentos')
+        
+        const { data: agendamentos, error } = await supabase
+            .from('agendamentos')
+            .select('*')
+            .neq('status', 'cancelado')
+            .order('data_hora', { ascending: true })
+        
+        if (error) {
+            console.error('Erro ao buscar todos os agendamentos:', error)
+            throw error
+        }
+        
+        return agendamentos || []
+    }
 }
 
 export default new ComercialRepository()

@@ -795,10 +795,13 @@ class JuridicoRepository {
 
         if (error) {
             console.error('[JuridicoRepository] Erro do Supabase ao inserir nota:', error)
+            console.error('- Error Message:', error.message)
+            console.error('- Error Details:', error.details)
             throw error
         }
 
         console.log('[JuridicoRepository] Nota inserida com sucesso:', data?.id)
+        console.log('[JuridicoRepository] Colunas retornadas da nota:', data ? Object.keys(data) : 'null')
         return data
     }
 
@@ -815,7 +818,7 @@ class JuridicoRepository {
                 )
             `)
             .eq('cliente_id', clienteId)
-            .order('criado_em', { ascending: false })
+            .order('created_at', { ascending: false })
 
         if (error) {
             console.error('Erro ao buscar notas jurídicas:', error)
@@ -1161,6 +1164,24 @@ class JuridicoRepository {
         }
 
         return data
+    }
+    // Buscar assessorias por responsável
+    async getAssessoriasByResponsavel(responsavelId: string): Promise<any[]> {
+        const { data, error } = await supabase
+            .from('assessorias_juridico')
+            .select(`
+                *,
+                clientes:clientes!cliente_id (*)
+            `)
+            .eq('responsavel_id', responsavelId)
+            .order('criado_em', { ascending: false })
+
+        if (error) {
+            console.error('Erro ao buscar assessorias por responsável:', error)
+            throw error
+        }
+
+        return data || []
     }
 }
 

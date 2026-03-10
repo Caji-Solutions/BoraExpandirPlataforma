@@ -17,7 +17,7 @@ export type Parceiro = {
   atualizadoEm: Date
 }
 
-export type ClienteStatus = 'LEAD' | 'cadastrado' | 'parceiro' | 'em_conversa' | 'proposta_enviada' | 'fechado_pago' | 'confirmado' | 'concluido';
+export type ClienteStatus = 'LEAD' | 'cliente' | 'cadastrado' | 'parceiro' | 'em_conversa' | 'proposta_enviada' | 'fechado_pago' | 'confirmado' | 'concluido';
 
 export interface ClienteDTO {
   nome: string
@@ -28,4 +28,6 @@ export interface ClienteDTO {
   stage?: 'formularios' | 'aguardando_consultoria' | 'clientes_c2' | 'aguardando_assessoria' | 'assessoria_andamento' | 'assessoria_finalizada' | 'cancelado'
   previsao_chegada?: string
   foto_perfil?: string
+  cpf?: string
+  id?: string
 }

@@ -37,7 +37,6 @@ export function DNAClientListView({
         id: '',
         nome: '',
         tipoServico: '',
-        status: 'todos' as 'todos' | 'ativo' | 'inativo' | 'lead',
         prioridade: 'todos' as 'todos' | 'high' | 'medium' | 'low',
         prazos: 'todos' as 'todos' | 'critico' | 'normal',
         requerimento: 'todos' as 'todos' | 'sim' | 'nao',
@@ -85,9 +84,7 @@ export function DNAClientListView({
             const matchesId = !filters.id || c.id.toLowerCase().includes(filters.id.toLowerCase())
             const matchesNome = !filters.nome || c.nome.toLowerCase().includes(filters.nome.toLowerCase())
             const matchesServico = filters.tipoServico === '' || c.tipoAssessoria === filters.tipoServico
-            const matchesStatus = filters.status === 'todos' 
-                ? c.status !== 'parceiro' 
-                : (filters.status === 'lead' ? c.status === 'LEAD' : (filters.status === 'ativo' ? (c.contratoAtivo && c.status !== 'LEAD') : (!c.contratoAtivo && c.status !== 'LEAD')))
+            const matchesStatus = true // A listagem já é filtrada pelo status 'cliente' abaixo
             
             const matchesPriority = filters.prioridade === 'todos' || c.priority === filters.prioridade
             const matchesRequerimento = filters.requerimento === 'todos' || (filters.requerimento === 'sim' ? c.hasRequirement : !c.hasRequirement)
@@ -109,7 +106,7 @@ export function DNAClientListView({
                 matchesPrazo = !!(c.deadline && new Date(c.deadline) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
             }
 
-            const isRealClient = c.status !== 'parceiro'
+            const isRealClient = c.status === 'cliente'
 
             return isRealClient && matchesSearch && matchesId && matchesNome && matchesServico && matchesStatus && matchesPriority && matchesPrazo && matchesRequerimento && matchesResponsavel
         })
@@ -231,16 +228,10 @@ export function DNAClientListView({
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Status</label>
-                            <select
-                                value={filters.status}
-                                onChange={e => setFilters(f => ({ ...f, status: e.target.value as any }))}
-                                className="w-full bg-muted/30 border border-border px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"
-                            >
-                                <option value="todos">Todos os Status</option>
-                                <option value="lead">Leads</option>
-                                <option value="ativo">Ativo</option>
-                                <option value="inativo">Inativo</option>
-                            </select>
+                            <div className="px-3 py-2 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-xl text-blue-700 dark:text-blue-400 text-xs font-bold flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                Clientes
+                            </div>
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Prioridade</label>
@@ -295,7 +286,7 @@ export function DNAClientListView({
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full pl-12 pr-4 py-3.5 bg-muted/50 border-2 border-transparent focus:border-primary/20 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/5 shadow-inner text-base"
                         />
-                        {(searchTerm || filters.id || filters.nome || filters.tipoServico !== '' || filters.status !== 'todos' || filters.prioridade !== 'todos' || filters.responsavel !== 'todos') && (
+                        {(searchTerm || filters.id || filters.nome || filters.tipoServico !== '' || filters.prioridade !== 'todos' || filters.responsavel !== 'todos') && (
                             <button
                                 onClick={() => {
                                     setSearchTerm('')
@@ -303,7 +294,6 @@ export function DNAClientListView({
                                         id: '',
                                         nome: '',
                                         tipoServico: '',
-                                        status: 'todos',
                                         prioridade: 'todos',
                                         prazos: 'todos',
                                         requerimento: 'todos',
@@ -316,6 +306,27 @@ export function DNAClientListView({
                             </button>
                         )}
                     </div>
+                    {Object.values(filters).some(v => v !== '' && v !== 'todos') && (
+                <div className="mt-4 pt-4 border-t border-border flex justify-between items-center">
+                    <span className="text-xs text-muted-foreground italic">
+                        {filteredClientes.length} resultados encontrados
+                    </span>
+                    <button
+                        onClick={() => setFilters({
+                            id: '',
+                            nome: '',
+                            tipoServico: '',
+                            prioridade: 'todos',
+                            prazos: 'todos',
+                            requerimento: 'todos',
+                            responsavel: ''
+                        })}
+                        className="text-xs font-bold text-primary hover:underline"
+                    >
+                        Limpar Filtros
+                    </button>
+                </div>
+            )}
                 </div>
                 {highPriorityClients.length > 0 && (
                     <div className="bg-red-50/50 dark:bg-red-500/5 border border-red-100 dark:border-red-500/10 rounded-2xl p-6 shadow-sm">
@@ -422,15 +433,8 @@ export function DNAClientListView({
                                             </div>
                                         </div>
                                         <div className="col-span-1 text-center">
-                                            <span className={cn(
-                                                'text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider',
-                                                cliente.status === 'LEAD'
-                                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
-                                                    : (cliente.contratoAtivo
-                                                        ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
-                                                        : 'bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400')
-                                            )}>
-                                                {cliente.status === 'LEAD' ? 'Lead' : (cliente.contratoAtivo ? 'Ativo' : 'Inativo')}
+                                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">
+                                                Cliente
                                             </span>
                                         </div>
                                         <div className="col-span-2 flex justify-center gap-2">

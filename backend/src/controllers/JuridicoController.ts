@@ -910,6 +910,30 @@ class JuridicoController {
             })
         }
     }
+    // GET /juridico/assessorias/por-responsavel/:responsavelId - Assessorias de um responsável
+    async getAssessoriasByResponsavel(req: any, res: any) {
+        try {
+            const { responsavelId } = req.params
+
+            if (!responsavelId) {
+                return res.status(400).json({ message: 'responsavelId é obrigatório' })
+            }
+
+            const assessorias = await JuridicoRepository.getAssessoriasByResponsavel(responsavelId)
+
+            return res.status(200).json({
+                message: 'Assessorias do responsável recuperadas com sucesso',
+                data: assessorias,
+                total: assessorias.length
+            })
+        } catch (error: any) {
+            console.error('Erro ao buscar assessorias do responsável:', error)
+            return res.status(500).json({ 
+                message: 'Erro ao buscar assessorias do responsável', 
+                error: error.message 
+            })
+        }
+    }
 }
 
 export default new JuridicoController()

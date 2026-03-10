@@ -13,6 +13,7 @@ comercial.get('/agendamentos/usuario/:usuarioId', ComercialController.getAgendam
 comercial.get('/agendamentos/:data', ComercialController.getAgendamentosByData.bind(ComercialController))
 comercial.get('/agendamentos/cliente/:clienteId', ComercialController.getAgendamentosByCliente.bind(ComercialController))
 comercial.post('/agendamento/:id/checkout', ComercialController.regenerateCheckout.bind(ComercialController))
+comercial.get('/agendamentos', ComercialController.getAllAgendamentos.bind(ComercialController))
 comercial.post('/agendamento/:id/confirmar-pix', ComercialController.confirmarPix.bind(ComercialController))
 comercial.get('/agendamento/:id/status-formulario', ComercialController.verificarStatusFormulario.bind(ComercialController))
 comercial.get('/agendamento/:id', ComercialController.getAgendamentoById.bind(ComercialController))

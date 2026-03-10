@@ -121,7 +121,7 @@ export function ClientDNAPage() {
                         email: item.email || 'Sem e-mail',
                         telefone: item.whatsapp || '',
                         tipoAssessoria: lastProcess?.tipo_servico || 'Assessoria',
-                        contratoAtivo: item.status !== 'cancelado',
+                        contratoAtivo: true, // Padronizado para true para evitar quebras, mas não é mais usado na listagem
                         categoria: lastProcess?.status || item.stage || (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status || 'formularios')),
                         previsaoChegada: item.previsao_chegada || '',
                         priority: 'medium',

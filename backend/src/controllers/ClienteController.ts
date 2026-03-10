@@ -272,18 +272,38 @@ class ClienteController {
 
       const supabase = (await import('../config/SupabaseClient')).supabase;
       
-      // 1. Verificar se já existe um profile para este e-mail
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', email)
+      const normalizedEmail = email.trim().toLowerCase();
+      console.log('ClienteController.register - Iniciando busca por e-mail (normalizado):', normalizedEmail);
+      
+      // 1. Verificar se o cliente já existe na tabela 'clientes' (Insensível a maiúsculas)
+      const { data: existingCliente, error: clienteError } = await supabase
+        .from('clientes')
+        .select('id, email, status')
+        .ilike('email', normalizedEmail)
         .maybeSingle();
 
-      let usuarioId = existingProfile?.id;
+      if (clienteError) {
+         console.error('ClienteController.register - Erro ao buscar na tabela clientes:', clienteError);
+      }
+
+      console.log('ClienteController.register - Resultado da busca:', existingCliente);
+
+      let usuarioId = existingCliente?.id;
       let tempPassword = Math.random().toString(36).substring(2, 10);
       let isNewUser = !usuarioId;
+      
+      console.log('ClienteController.register - Detalhes da busca na tabela [clientes]:', {
+        encontrado: !!existingCliente,
+        id: existingCliente?.id,
+        status_atual: existingCliente?.status,
+        isNewUser
+      })
 
       if (isNewUser) {
+        console.log('========== REGISTRO DE NOVO USUÁRIO ==========')
+        console.log('Email:', email)
+        console.log('Senha Temporária Gerada:', tempPassword)
+        console.log('==============================================')
         // 2. Tentar criar usuário no Auth do Supabase
         const { data: authData, error: authError } = await supabase.auth.admin.createUser({
           email,
@@ -297,59 +317,44 @@ class ClienteController {
         });
 
         if (authError) {
-          console.error('Erro ao criar ou recuperar auth user:', authError.message);
-          
-          if (authError.message.includes('already')) {
-            // Se já existe no auth mas não no profile (raro mas possível), tentamos listar para achar o ID
-            const { data: usersData } = await supabase.auth.admin.listUsers();
-            const foundUser = usersData.users.find(u => u.email === email);
-            if (foundUser) {
-              usuarioId = foundUser.id;
-            } else {
-              return res.status(409).json({ message: 'Conflito de credenciais: usuário já existe no sistema.' });
-            }
+          // Se o erro for de "usuário já existe" (mesmo que não esteja em clientes ou profiles)
+          if (authError.message.toLowerCase().includes('already') || authError.status === 422) {
+            console.log('ClienteController.register - Usuário já existe no Auth (Auth-only). Buscando ID...');
+            
+           
+            
+
           } else {
-            return res.status(400).json({ message: authError.message });
+            console.error('Erro fatal ao criar auth user:', authError.message);
+            return res.status(authError.status || 400).json({ message: authError.message });
           }
         } else {
           usuarioId = authData.user.id;
+          console.log('ClienteController.register - Novo usuário criado com ID:', usuarioId);
         }
       }
 
-      // 3. Upsert profile na tabela profiles
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: usuarioId,
-          full_name: nome,
-          email,
-          role: 'cliente',
-          telefone: whatsapp || req.body.telefone,
-          cpf: documento || null
-        });
-
-      if (profileError) {
-        console.error('Erro ao upsert profile para cliente:', profileError.message);
-        return res.status(500).json({ message: 'Erro ao configurar perfil de acesso' });
-      }
-
-      // 4. Upsert na tabela clientes (usando email como chave de conflito no repositório)
+      // 3. Upsert na tabela clientes (usando email como chave de conflito no repositório)
       const clienteData: any = {
+        id: usuarioId, // Mantendo o vínculo com Auth
         nome,
         email,
         whatsapp,
         parceiro_id: parceiro_id || null,
-        status: status || 'cadastrado'
+        status: status || 'cliente',
+        cpf: documento || req.body.cpf || null
       }
 
       const createdData = await ClienteRepository.register(clienteData);
 
+      console.log('ClienteController.register - Registro em [clientes] concluído com sucesso');
+
       return res.status(201).json({
         ...createdData,
-        message: isNewUser ? 'Cliente registrado com sucesso' : 'Cliente convertido/ativado com sucesso',
+        message: 'Registro de cliente processado com sucesso',
         loginInfo: {
           email,
-          password: isNewUser ? tempPassword : 'Usa sua senha cadastrada' // Se for antigo, não sabemos a senha
+          password: isNewUser || email.startsWith('lead_') ? tempPassword : 'Usa sua senha cadastrada' // Se for lead sem email real, sempre mostramos a senha gerada
         }
       })
     } catch (error: any) {
