@@ -625,6 +625,52 @@ class ComercialController {
         }
     }
 
+    /**
+     * Verifica se o formulário foi preenchido pelo cliente (Lead -> Cadastro)
+     */
+    async verificarStatusFormulario(req: any, res: any) {
+        try {
+            const { id } = req.params;
+
+            // 1. Get agendamento
+            const agendamento = await ComercialRepository.getAgendamentoById(id);
+            if (!agendamento) {
+                return res.status(404).json({ message: 'Agendamento não encontrado' });
+            }
+
+            // 2. Verifica se o cliente já virou user_id
+            if (agendamento.cliente_id) {
+                const { data: cliente, error } = await supabase
+                    .from('clientes')
+                    .select('user_id')
+                    .eq('id', agendamento.cliente_id)
+                    .single()
+
+                if (!error && cliente?.user_id) {
+                    return res.status(200).json({ preenchido: true })
+                }
+            }
+
+            // Alternativa: ver se já existe email atrelado à tabela clientes que virou user_id
+            if (agendamento.email) {
+                const { data: clientePorEmail, error: errEmail } = await supabase
+                    .from('clientes')
+                    .select('user_id')
+                    .eq('email', agendamento.email)
+                    .maybeSingle()
+
+                if (!errEmail && clientePorEmail?.user_id) {
+                    return res.status(200).json({ preenchido: true })
+                }
+            }
+
+            return res.status(200).json({ preenchido: false });
+
+        } catch (error: any) {
+            console.error('Erro ao verificar status do formulário:', error);
+            return res.status(500).json({ preenchido: false, error: error.message });
+        }
+    }
 
 }
 

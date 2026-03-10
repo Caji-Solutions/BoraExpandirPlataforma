@@ -521,6 +521,7 @@ export default function Comercial() {
           duracao_minutos: b.duracao_minutos || 60,
           produto: catalogMap.get(b.produto_id) || b.produto_id || 'Serviço',
           status: b.status as any,
+          cliente_is_user: b.cliente_is_user,
           created_at: b.created_at,
           updated_at: b.updated_at
         }))

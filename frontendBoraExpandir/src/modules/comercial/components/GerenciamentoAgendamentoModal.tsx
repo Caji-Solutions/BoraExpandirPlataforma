@@ -19,14 +19,20 @@ export function GerenciamentoAgendamentoModal({ agendamento, onClose, onAtualiza
     const [loadingFormCheck, setLoadingFormCheck] = useState(true)
     const [loadingConvert, setLoadingConvert] = useState(false)
 
-    // TODO: Buscar o status do formulário do backend
     useEffect(() => {
         async function checkFormulario() {
-            // Mock verificação
-            setTimeout(() => {
-                setFormularioPreenchido(true) // Assumindo true para testar
+            setLoadingFormCheck(true)
+            try {
+                const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/comercial/agendamento/${agendamento.id}/status-formulario`)
+                if (response.ok) {
+                    const data = await response.json()
+                    setFormularioPreenchido(data.preenchido || false)
+                }
+            } catch (err) {
+                console.error('Erro ao verificar formulário:', err)
+            } finally {
                 setLoadingFormCheck(false)
-            }, 1000)
+            }
         }
         checkFormulario()
     }, [agendamento.id])

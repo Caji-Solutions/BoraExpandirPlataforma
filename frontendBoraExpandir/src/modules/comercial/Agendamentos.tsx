@@ -132,36 +132,39 @@ export default function AgendamentosPage({ agendamentos }: AgendamentosPageProps
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-gray-200 dark:divide-neutral-700">
-								{filtered.map(agendamento => (
-									<tr
-										key={agendamento.id}
-										className="hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors cursor-pointer"
-										onClick={() => setAgendamentoSelecionado(agendamento)}
-									>
-										<td className="px-6 py-4 align-middle">
-											<p className="font-medium text-gray-900 dark:text-white">{agendamento.cliente?.nome || 'Cliente'}</p>
-											<p className="text-xs text-gray-500 dark:text-gray-400">ID: {agendamento.id}</p>
-										</td>
-										<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 align-middle">
-											{new Date(agendamento.data).toLocaleDateString('pt-BR')}
-										</td>
-										<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 align-middle">
-											<div className="flex items-center gap-1">
-												<Clock className="h-4 w-4 text-gray-400" />
-												{agendamento.hora}
-											</div>
-										</td>
-										<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 align-middle">{agendamento.duracao_minutos} min</td>
-										<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 max-w-xs truncate align-middle" title={agendamento.produto}>
-											{agendamento.produto}
-										</td>
-										<td className="px-6 py-4 align-middle">
-											<Badge variant={getStatusConfig(agendamento.status).variant}>
-												{getStatusConfig(agendamento.status).label}
-											</Badge>
-										</td>
-									</tr>
-								))}
+								{filtered.map(agendamento => {
+									const isLocked = agendamento.cliente_is_user && (agendamento.status === 'pendente' || agendamento.status === 'agendado')
+									return (
+										<tr
+											key={agendamento.id}
+											className={`transition-colors ${isLocked ? 'opacity-50 pointer-events-none bg-gray-50/50 dark:bg-neutral-800/50' : 'hover:bg-gray-50 dark:hover:bg-neutral-700/50 cursor-pointer'}`}
+											onClick={() => !isLocked && setAgendamentoSelecionado(agendamento)}
+										>
+											<td className="px-6 py-4 align-middle">
+												<p className="font-medium text-gray-900 dark:text-white">{agendamento.cliente?.nome || 'Cliente'}</p>
+												<p className="text-xs text-gray-500 dark:text-gray-400">ID: {agendamento.id}</p>
+											</td>
+											<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 align-middle">
+												{new Date(agendamento.data).toLocaleDateString('pt-BR')}
+											</td>
+											<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 align-middle">
+												<div className="flex items-center gap-1">
+													<Clock className="h-4 w-4 text-gray-400" />
+													{agendamento.hora}
+												</div>
+											</td>
+											<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 align-middle">{agendamento.duracao_minutos} min</td>
+											<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 max-w-xs truncate align-middle" title={agendamento.produto}>
+												{agendamento.produto}
+											</td>
+											<td className="px-6 py-4 align-middle">
+												<Badge variant={getStatusConfig(agendamento.status).variant}>
+													{getStatusConfig(agendamento.status).label}
+												</Badge>
+											</td>
+										</tr>
+									)
+								})}
 							</tbody>
 						</table>
 					</div>

@@ -114,13 +114,13 @@ export interface LeadFormData {
 
 export interface Agendamento {
   id: string
-  cliente_id: string
-  cliente?: Cliente
   data: string
   hora: string
+  cliente: Cliente
   duracao_minutos: number
-  produto: string
-  status: 'agendado' | 'realizado' | 'cancelado'
+  produto: string // O nome do produto (substituiu o ID)
+  status: 'pendente' | 'agendado' | 'confirmado' | 'realizado' | 'cancelado'
+  cliente_is_user?: boolean
   observacoes?: string
   created_at: string
   updated_at: string
