@@ -10,6 +10,7 @@ import AssinaturaDigital from './AssinaturaDigital'
 import Comercial1 from './Comercial1'
 import LeadsPage from './Leads'
 import AgendamentosPage from './Agendamentos'
+import { AgendamentoEditPage } from './AgendamentoEditPage'
 import GanhosPage from './Ganhos'
 import ProximosAgendamentosCard from './components/ProximosAgendamentosCard'
 import CadastroRapidoLeadCard from './components/CadastroRapidoLeadCard'
@@ -668,6 +669,10 @@ export default function Comercial() {
           <Route
             path="/agendamento"
             element={<Comercial1 />}
+          />
+          <Route
+            path="/agendamento/:id"
+            element={<AgendamentoEditPage />}
           />
           <Route
             path="/meus-agendamentos"

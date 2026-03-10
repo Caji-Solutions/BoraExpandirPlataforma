@@ -165,6 +165,48 @@ class ComercialController {
     }
 
     /**
+     * Atualiza um agendamento existente
+     */
+    async updateAgendamento(req: any, res: any) {
+        console.log('========== UPDATE AGENDAMENTO (PIX) DEBUG ==========')
+        try {
+            const { id } = req.params
+            const { nome, email, telefone, data_hora, produto_id, produto_nome, valor, duracao_minutos, usuario_id, cliente_id, metodo_pagamento } = req.body
+
+            if (!nome || !email || !telefone || !data_hora || !produto_id || !produto_nome || !valor) {
+                return res.status(400).json({ message: 'Campos obrigatórios ausentes' })
+            }
+
+            const dataHoraIso = data_hora?.endsWith('Z') ? data_hora : `${data_hora}Z`
+            const duracao = duracao_minutos || 60
+
+            // Opcional: verificar disponibilidade novamente se a data/hora mudou,
+            // mas para simplificar, permitimos a edição por ser uma ação do consultor
+
+            const agendamentoAtualizado = {
+                nome,
+                email,
+                telefone,
+                data_hora: dataHoraIso,
+                produto_id,
+                produto_nome,
+                valor,
+                duracao_minutos: duracao,
+                usuario_id: usuario_id || null,
+                cliente_id: cliente_id || null,
+                metodo_pagamento: metodo_pagamento || 'pix'
+            }
+
+            const updatedData = await ComercialRepository.updateAgendamentoFull(id, agendamentoAtualizado)
+
+            return res.status(200).json(updatedData)
+        } catch (error: any) {
+            console.error('Erro ao atualizar agendamento:', error)
+            return res.status(500).json({ message: 'Erro ao atualizar agendamento' })
+        }
+    }
+
+    /**
      * Cria sessão de checkout do Stripe e retorna o link
      */
     async createAgendamentoStripe(req: any, res: any) {
@@ -622,6 +664,26 @@ class ComercialController {
         } catch (error: any) {
             console.error('Erro ao confirmar PIX manualmente:', error);
             return res.status(500).json({ message: 'Erro ao confirmar PIX', error: error.message });
+        }
+    }
+
+    /**
+     * Buscar um agendamento específico por ID
+     */
+    async getAgendamentoById(req: any, res: any) {
+        try {
+            const { id } = req.params
+
+            const agendamento = await ComercialRepository.getAgendamentoById(id)
+
+            if (!agendamento) {
+                return res.status(404).json({ message: 'Agendamento não encontrado' })
+            }
+
+            return res.status(200).json(agendamento)
+        } catch (error: any) {
+            console.error('Erro ao buscar agendamento por ID:', error)
+            return res.status(500).json({ message: 'Erro ao buscar agendamento', error: error.message })
         }
     }
 

@@ -133,16 +133,35 @@ export default function AgendamentosPage({ agendamentos }: AgendamentosPageProps
 							</thead>
 							<tbody className="divide-y divide-gray-200 dark:divide-neutral-700">
 								{filtered.map(agendamento => {
-									const isLocked = agendamento.cliente_is_user && (agendamento.status === 'pendente' || agendamento.status === 'agendado')
+									// Tratamento para não ser clicável quando "confirmado" (ou concluído/realizado)
+									const isConfirmed = agendamento.status === 'confirmado' || agendamento.status === 'realizado'
+
+									// Se o lead já é um cliente (cliente_is_user) e o agendamento ainda está pendente/agendado,
+									// consideramos bloqueado para evitar duplicidade de conversão.
+									const isLocked = !!agendamento.cliente_is_user && (agendamento.status === 'pendente' || agendamento.status === 'agendado')
+
+									// Agendamentos pendentes ou bloqueados/atrasados serão editáveis,
+									// EXCETO se já estiverem confirmados ou se o cliente já existir no sistema (isLocked).
+									const isEditable = !isConfirmed && !isLocked
+
 									return (
 										<tr
 											key={agendamento.id}
-											className={`transition-colors ${isLocked ? 'opacity-50 pointer-events-none bg-gray-50/50 dark:bg-neutral-800/50' : 'hover:bg-gray-50 dark:hover:bg-neutral-700/50 cursor-pointer'}`}
-											onClick={() => !isLocked && setAgendamentoSelecionado(agendamento)}
+											className={`transition-colors ${isEditable
+													? 'hover:bg-gray-50 dark:hover:bg-neutral-700/50 cursor-pointer'
+													: isLocked
+														? 'opacity-40 grayscale-[0.5] cursor-not-allowed pointer-events-none'
+														: ''
+												}`}
+											onClick={() => {
+												if (isEditable) {
+													navigate(`/comercial/agendamento/${agendamento.id}`)
+												}
+											}}
 										>
 											<td className="px-6 py-4 align-middle">
 												<p className="font-medium text-gray-900 dark:text-white">{agendamento.cliente?.nome || 'Cliente'}</p>
-												<p className="text-xs text-gray-500 dark:text-gray-400">ID: {agendamento.id}</p>
+												<p className="text-xs text-gray-500 dark:text-gray-400">ID: {agendamento.cliente?.id || 'Desconhecido'}</p>
 											</td>
 											<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 align-middle">
 												{new Date(agendamento.data).toLocaleDateString('pt-BR')}

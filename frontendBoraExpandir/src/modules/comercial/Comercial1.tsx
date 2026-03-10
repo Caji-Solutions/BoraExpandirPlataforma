@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
-import { Clock, ShoppingCart, Check, ChevronLeft, ChevronRight, Search, X, Trash2, Loader2 } from 'lucide-react'
+import { Clock, ShoppingCart, Check, ChevronLeft, ChevronRight, Search, X, Trash2, Loader2, AlertCircle } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
 // import { useToast } from '../../components/Toast'
 // Update the import path below if Toast is located elsewhere:
 import { useToast } from '../../components/ui/Toast'
@@ -162,6 +163,67 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     'produto' | 'data_hora' | 'cliente'
   >('produto')
 
+  const { id: editId } = useParams<{ id: string }>()
+  const [loadingEdit, setLoadingEdit] = useState(false)
+
+  // Carregar dados para edição se ID estiver presente
+  useEffect(() => {
+    if (!editId || produtos.length === 0) return
+
+    async function carregarAgendamento() {
+      setLoadingEdit(true)
+      try {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/comercial/agendamento/${editId}`)
+        if (response.ok) {
+          const ag = await response.json()
+
+          // Preencher Data e Hora
+          if (ag.data_hora) {
+            const dt = new Date(ag.data_hora)
+            // Ajustar timezone fixo se necessário para preencher o dia corretamente no calendário local
+            setDataSelecionada(new Date(dt.getTime() + dt.getTimezoneOffset() * 60000))
+            setHoraSelecionada(ag.data_hora.includes('T') ? ag.data_hora.split('T')[1].substring(0, 5) : '')
+          }
+
+          // Preencher Produto (do catálogo carregado)
+          if (ag.produto_id) {
+            const pEncontrado = produtos.find(p => p.id === ag.produto_id)
+            if (pEncontrado) setProdutoSelecionado(pEncontrado)
+          }
+
+          // Preencher Cliente (da lista de clientes carregada via props)
+          if (ag.cliente_id) {
+            const cEncontrado = clientes.find(c => c.id === ag.cliente_id)
+            if (cEncontrado) {
+              setClienteSelecionado(cEncontrado)
+            } else if (ag.nome) { // Fallback se não estiver na lista de props
+              setClienteSelecionado({
+                id: ag.cliente_id,
+                nome: ag.nome,
+                email: ag.email,
+                telefone: ag.telefone || ''
+              })
+            }
+          } else if (ag.nome) { // Caso seja lead sem ID fixo
+            setClienteSelecionado({
+              id: 'lead_temporario',
+              nome: ag.nome,
+              email: ag.email,
+              telefone: ag.telefone || ''
+            })
+          }
+
+        }
+      } catch (err) {
+        console.error('Erro ao carregar agendamento para edição', err)
+      } finally {
+        setLoadingEdit(false)
+      }
+    }
+
+    carregarAgendamento()
+  }, [editId, produtos, clientes])
+
   useEffect(() => {
     if (preSelectedClient) {
       setClienteSelecionado(preSelectedClient as Cliente)
@@ -192,6 +254,21 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const [showConfirmacao, setShowConfirmacao] = useState(false)
   const [agendamentoPayload, setAgendamentoPayload] = useState<any>(null)
   const clienteSelectorRef = useRef<HTMLDivElement | null>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
+
+  // Popup de conflito ao clicar num horário indisponível
+  const [conflictPopup, setConflictPopup] = useState<{ agendamento: any, horasOcupadas: string[], x: number, y: number } | null>(null)
+
+  // Calcula quais slots estão diretamente ocupados por um agendamento
+  function getDirectlyOccupiedSlots(ag: any, allSlots: string[], dateIso: string): string[] {
+    const inicio = new Date(ag.data_hora)
+    const fim = new Date(inicio.getTime() + (ag.duracao_minutos || 60) * 60000)
+    return allSlots.filter(hora => {
+      const slotTime = new Date(`${dateIso}T${hora}:00Z`)
+      return slotTime >= inicio && slotTime < fim
+    })
+  }
+
 
   // Filtrar clientes por busca
   const clientesFiltrados = useMemo(() => {
@@ -245,8 +322,14 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   // Fechar a lista de clientes ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      // Fecha lista de clientes
       if (clienteSelectorRef.current && !clienteSelectorRef.current.contains(event.target as Node)) {
         setMostrarListaClientes(false)
+      }
+
+      // Fecha popup de conflito
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+        setConflictPopup(null)
       }
     }
 
@@ -265,6 +348,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const handleSelecionarData = (data: Date) => {
     setDataSelecionada(data)
     setHoraSelecionada('')
+    setConflictPopup(null)
     const dataIso = data.toISOString().split('T')[0]
     setDataSelecionadaIso(dataIso)
     carregarAgendamentosDoDia(dataIso)
@@ -277,6 +361,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
   const handleSelecionarHora = (hora: string) => {
     setHoraSelecionada(hora)
+    setConflictPopup(null)
     // O avanço de etapa agora é controlado pelo botão "Próximo"
   }
 
@@ -326,10 +411,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       setEmailTemporario(cliente.email)
     } else {
       setEmailTemporario('')
-    }
-    // Abre popup para preencher email se faltar, mas deixa fechar depois
-    if (!cliente.email) {
-      setShowEmailPopup(true)
     }
   }
 
@@ -415,6 +496,37 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     })
   }
 
+  const handleUnavailableSlotClick = (e: React.MouseEvent, hora: string) => {
+    if (!dataSelecionadaIso) return
+
+    const rect = e.currentTarget.getBoundingClientRect()
+    const parentRect = e.currentTarget.closest('.relative')?.getBoundingClientRect()
+
+    // Calcular posição relativa ao container .relative
+    const x = rect.left - (parentRect?.left || 0) + rect.width / 2
+    const y = rect.top - (parentRect?.top || 0) + rect.height + 10
+
+    const inicioNovo = new Date(`${dataSelecionadaIso}T${hora}:00Z`)
+    const fimNovo = new Date(inicioNovo.getTime() + duracaoMinutos * 60000)
+
+    const conflito = agendamentosDia.find((agendamento) => {
+      const inicioExistente = new Date(agendamento.data_hora)
+      const duracaoExistente = agendamento.duracao_minutos || 60
+      const fimExistente = new Date(inicioExistente.getTime() + duracaoExistente * 60000)
+
+      return inicioExistente < fimNovo && inicioNovo < fimExistente
+    })
+
+    if (conflito) {
+      const horasOcupadas = getDirectlyOccupiedSlots(
+        conflito,
+        isClientView ? ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'] : HORARIOS_DISPONIVEIS,
+        dataSelecionadaIso
+      )
+      setConflictPopup({ agendamento: conflito, horasOcupadas, x, y })
+    }
+  }
+
   const handleFinalizarAgendamento = async () => {
     if (!agendamentoPreview) return
 
@@ -432,7 +544,8 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       duracao_minutos: agendamentoPreview.duracaoMinutos,
       status: agendamentoPreview.status,
       usuario_id: activeProfile?.id,
-      cliente_id: agendamentoPreview.cliente.id
+      cliente_id: agendamentoPreview.cliente.id,
+      id: editId || undefined
     })
 
     console.log('DEBUG AGENDAMENTO: Iniciando processo de finalização. Payload gerado:', {
@@ -535,8 +648,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       } else {
         setEmailTemporario('')
       }
-      setShowEmailPopup(true)
-      success('Lead cadastrado. Informe o e-mail.')
+      success('Lead cadastrado. Pronto para concluir agendamento.')
     } catch (err) {
       console.error('Erro ao registrar lead:', err)
       error('Erro ao registrar lead. Tente novamente.')
@@ -688,19 +800,21 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                       </div>
                     )}
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 min-h-[200px]">
                       {(isClientView ? [
                         '08:00', '09:00', '10:00', '11:00',
                         '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
                       ] : HORARIOS_DISPONIVEIS).map((hora) => {
                         const disponivel = isHorarioDisponivel(hora)
+                        const isDirectlyOccupied = conflictPopup?.horasOcupadas.includes(hora)
                         return (
                           <button
                             key={hora}
-                            onClick={() => disponivel && handleSelecionarHora(hora)}
-                            disabled={!disponivel}
+                            onClick={(e) => disponivel ? handleSelecionarHora(hora) : handleUnavailableSlotClick(e, hora)}
                             className={`py-3 px-4 rounded-lg font-medium transition-all ${!disponivel
-                              ? 'bg-gray-100 dark:bg-neutral-800 text-gray-400 dark:text-neutral-500 border border-gray-200 dark:border-neutral-700 cursor-not-allowed opacity-60'
+                              ? isDirectlyOccupied
+                                ? 'bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 border-2 border-red-400 dark:border-red-500 cursor-pointer ring-2 ring-red-300/50 dark:ring-red-500/30'
+                                : 'bg-gray-100 dark:bg-neutral-800 text-gray-400 dark:text-neutral-500 border border-gray-200 dark:border-neutral-700 cursor-pointer opacity-60'
                               : horaSelecionada === hora
                                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30 border-emerald-600'
                                 : 'bg-white dark:bg-neutral-700 text-gray-700 dark:text-gray-200 hover:border-emerald-500 hover:text-emerald-700 border border-gray-300 dark:border-neutral-600'}`}
@@ -711,6 +825,80 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                         )
                       })}
                     </div>
+
+                    {/* Popup de Conflito */}
+                    {conflictPopup && (
+                      <div
+                        ref={popupRef}
+                        className="mt-4 animate-in fade-in slide-in-from-bottom-2 duration-300"
+                      >
+                        <div className="bg-white/80 dark:bg-neutral-800/80 rounded-xl border-2 border-red-300 dark:border-red-700 shadow-2xl p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-semibold text-sm">
+                              <AlertCircle className="w-5 h-5" />
+                              Horário Ocupado
+                            </div>
+                            <button
+                              onClick={() => setConflictPopup(null)}
+                              className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-700 text-gray-400 transition"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400 text-xs">Cliente</span>
+                              <p className="font-medium text-gray-900 dark:text-white">{conflictPopup.agendamento.nome || '—'}</p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400 text-xs">E-mail</span>
+                              <p className="font-medium text-gray-900 dark:text-white truncate">{conflictPopup.agendamento.email || '—'}</p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400 text-xs">Telefone</span>
+                              <p className="font-medium text-gray-900 dark:text-white">{conflictPopup.agendamento.telefone || '—'}</p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400 text-xs">Status</span>
+                              <p className="font-medium text-gray-900 dark:text-white capitalize">{conflictPopup.agendamento.status || '—'}</p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400 text-xs">Horário</span>
+                              <p className="font-medium text-gray-900 dark:text-white">
+                                {(() => { try { const dt = new Date(conflictPopup.agendamento.data_hora); return `${dt.toLocaleDateString('pt-BR')} às ${dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` } catch { return conflictPopup.agendamento.data_hora } })()}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400 text-xs">Duração</span>
+                              <p className="font-medium text-gray-900 dark:text-white">{conflictPopup.agendamento.duracao_minutos || 60} min</p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400 text-xs">Produto</span>
+                              <p className="font-medium text-gray-900 dark:text-white">{conflictPopup.agendamento.produto_nome || conflictPopup.agendamento.produto_id || '—'}</p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400 text-xs">Pagamento</span>
+                              <p className="font-medium text-gray-900 dark:text-white capitalize">{conflictPopup.agendamento.metodo_pagamento || '—'}</p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400 text-xs">Valor</span>
+                              <p className="font-medium text-gray-900 dark:text-white">
+                                {conflictPopup.agendamento.valor ? `R$ ${Number(conflictPopup.agendamento.valor).toFixed(2)}` : '—'}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 dark:text-gray-400 text-xs">Criado por (ID)</span>
+                              <p className="font-medium text-gray-900 dark:text-white truncate text-xs">{conflictPopup.agendamento.usuario_id || '—'}</p>
+                            </div>
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-neutral-700">
+                            <p className="text-xs text-red-500 dark:text-red-400">
+                              Slots ocupados: <strong>{conflictPopup.horasOcupadas.join(', ')}</strong>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

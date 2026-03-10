@@ -19,6 +19,7 @@ interface AgendamentoConfirmacaoModalProps {
     status: string
     usuario_id?: string
     cliente_id?: string
+    id?: string
   }
   exchangeRate?: number
 }
@@ -117,14 +118,23 @@ Obrigado! 🚀
     }
 
     try {
-      const response = await fetch(`${backendUrl}/comercial/agendamento`, {
-        method: 'POST',
+      const isEditing = !!payload.id
+      const method = isEditing ? 'PUT' : 'POST'
+      const endpoint = isEditing ? `${backendUrl}/comercial/agendamento/${payload.id}` : `${backendUrl}/comercial/agendamento`
+
+      const requestPayload = {
+        ...payload,
+        status: 'pendente',
+        metodo_pagamento: 'pix'
+      }
+
+      // Remover ID do payload stringificado se for edição, já que está na URL
+      if (isEditing) delete requestPayload.id
+
+      const response = await fetch(endpoint, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...payload,
-          status: 'pendente',
-          metodo_pagamento: 'pix'
-        })
+        body: JSON.stringify(requestPayload)
       })
 
       if (response.status === 409) {
@@ -136,7 +146,7 @@ Obrigado! 🚀
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({}))
-        setLocalError(body?.message || 'Não foi possível criar o agendamento.')
+        setLocalError(body?.message || 'Não foi possível salvar o agendamento.')
         setIsLoading(false)
         return
       }

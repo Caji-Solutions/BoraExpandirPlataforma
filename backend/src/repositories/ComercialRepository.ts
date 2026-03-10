@@ -20,6 +20,24 @@ class ComercialRepository {
         return createdData
     }
 
+    async updateAgendamentoFull(id: string, payload: any) {
+        console.log('Atualizando agendamento no banco:', id, payload)
+
+        const { data, error } = await supabase
+            .from('agendamentos')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro do Supabase ao atualizar agendamento completo:', error)
+            throw error
+        }
+
+        return data
+    }
+
     async updateAgendamentoStatus(id: string, status: string) {
         console.log('Atualizando status do agendamento:', { id, status })
 
