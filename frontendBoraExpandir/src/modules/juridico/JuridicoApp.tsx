@@ -117,7 +117,7 @@ const Index = () => {
         { label: "Fila de Análise", to: "/juridico/analise", icon: FileSearch },
         { label: "Tarefas", to: "/juridico/tarefas", icon: CheckSquare },
         { label: "Assessoria Jurídica", to: "/juridico/assessoria", icon: ClipboardCheck },
-        { label: "Meus Agendamentos", to: "/juridico/meus-agendamentos", icon: Clock },
+        { label: "(Agendamentos)", to: "/juridico/meus-agendamentos", icon: Clock },
       ],
     },
     // Grupo exclusivo para Supervisores

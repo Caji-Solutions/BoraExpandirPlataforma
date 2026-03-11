@@ -614,7 +614,7 @@ export default function Comercial() {
         { label: 'Dashboard', to: '/comercial', icon: Home },
         { label: 'DNA do Cliente', to: '/comercial/dna', icon: Dna },
         { label: 'Agendamento', to: '/comercial/agendamento', icon: Calendar },
-        { label: 'Meus Agendamentos', to: '/comercial/meus-agendamentos', icon: Calendar },
+        { label: '(Agendamentos)', to: '/comercial/meus-agendamentos', icon: Calendar },
         { label: 'Clientes', to: '/comercial/clientes', icon: Users },
         { label: 'Leads', to: '/comercial/leads', icon: Users },
         { label: 'Ganhos', to: '/comercial/ganhos', icon: DollarSign },
