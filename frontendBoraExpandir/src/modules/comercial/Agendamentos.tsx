@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Calendar, Clock, Filter, Search, X } from 'lucide-react'
+import { Calendar, Clock, Filter, Search, X, CreditCard, FileText } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Agendamento } from '../../types/comercial'
 import { Badge } from '../../components/ui/Badge'
@@ -25,6 +25,10 @@ const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destruc
 	cancelado: {
 		variant: 'destructive',
 		label: 'Cancelado',
+	},
+	aguardando_verificacao: {
+		variant: 'warning',
+		label: 'Aguardando Verif.',
 	},
 }
 
@@ -128,6 +132,8 @@ export default function AgendamentosPage({ agendamentos }: AgendamentosPageProps
 									<th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Hora</th>
 									<th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Duração</th>
 									<th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Produto</th>
+									<th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Pagamento</th>
+									<th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Formulário</th>
 									<th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Status</th>
 								</tr>
 							</thead>
@@ -147,7 +153,10 @@ export default function AgendamentosPage({ agendamentos }: AgendamentosPageProps
 									return (
 										<tr
 											key={agendamento.id}
-											className={`transition-colors ${isEditable
+											className={`transition-colors ${agendamento.conflito_horario
+													? 'bg-amber-50 dark:bg-amber-900/10 border-l-4 border-l-amber-400'
+													: ''
+												} ${isEditable
 													? 'hover:bg-gray-50 dark:hover:bg-neutral-700/50 cursor-pointer'
 													: isLocked
 														? 'opacity-40 grayscale-[0.5] cursor-not-allowed pointer-events-none'
@@ -161,7 +170,10 @@ export default function AgendamentosPage({ agendamentos }: AgendamentosPageProps
 										>
 											<td className="px-6 py-4 align-middle">
 												<p className="font-medium text-gray-900 dark:text-white">{agendamento.cliente?.nome || 'Cliente'}</p>
-												<p className="text-xs text-gray-500 dark:text-gray-400">ID: {agendamento.cliente?.id || 'Desconhecido'}</p>
+												<p className="text-xs text-gray-500 dark:text-gray-400">ID: {agendamento.cliente?.client_id || agendamento.cliente_id || 'Desconhecido'}</p>
+												{agendamento.conflito_horario && (
+													<span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase animate-pulse">⚠ Conflito de horário</span>
+												)}
 											</td>
 											<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 align-middle">
 												{new Date(agendamento.data).toLocaleDateString('pt-BR')}
@@ -176,6 +188,45 @@ export default function AgendamentosPage({ agendamentos }: AgendamentosPageProps
 											<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 max-w-xs truncate align-middle" title={agendamento.produto}>
 												{agendamento.produto}
 											</td>
+
+											{/* Coluna Pagamento */}
+											<td className="px-6 py-4 align-middle text-center">
+												{agendamento.pagamento_status === 'aprovado' ? (
+													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+														<span className="w-2 h-2 rounded-full bg-emerald-500" /> Aprovado
+													</span>
+												) : agendamento.pagamento_status === 'pendente' ? (
+													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+														<span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse-scale" /> Pendente
+													</span>
+												) : agendamento.pagamento_status === 'recusado' ? (
+													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+														<span className="w-2 h-2 rounded-full bg-red-500" /> Recusado
+													</span>
+												) : agendamento.comprovante_url ? (
+													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+														<span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" /> Enviado
+													</span>
+												) : (
+													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500 dark:bg-neutral-700 dark:text-gray-400">
+														<span className="w-2 h-2 rounded-full bg-gray-400 animate-pulse-scale" /> Sem envio
+													</span>
+												)}
+											</td>
+
+											{/* Coluna Formulário */}
+											<td className="px-6 py-4 align-middle text-center">
+												{agendamento.cliente_is_user ? (
+													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+														<span className="w-2 h-2 rounded-full bg-emerald-500" /> Preenchido
+													</span>
+												) : (
+													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+														<span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse-scale" /> Pendente
+													</span>
+												)}
+											</td>
+
 											<td className="px-6 py-4 align-middle">
 												<Badge variant={getStatusConfig(agendamento.status).variant}>
 													{getStatusConfig(agendamento.status).label}

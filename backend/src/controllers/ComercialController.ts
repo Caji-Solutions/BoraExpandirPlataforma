@@ -608,7 +608,9 @@ class ComercialController {
     }
 
     /**
-     * Confirmação manual de PIX por parte do admin (Convertendo Lead -> Cliente final)
+     * Confirmação manual de PIX por parte do comercial.
+     * Agora apenas marca como 'aguardando_verificacao' — a confirmação real
+     * e o envio de SMTP são feitos pelo setor financeiro (FinanceiroController).
      */
     async confirmarPix(req: any, res: any) {
         try {
@@ -625,40 +627,27 @@ class ComercialController {
                 return res.status(400).json({ message: 'Este agendamento já está confirmado.' });
             }
 
-            // 3. Verifica se tem email/cliente validou formulário (heurística básica por enquanto)
-            if (!agendamento.email) {
-                return res.status(400).json({ message: 'Agendamento não possui email vinculado para envio da senha.' });
+            // 3. Verifica se tem comprovante
+            if (!agendamento.comprovante_url) {
+                return res.status(400).json({ message: 'É necessário enviar o comprovante antes de confirmar.' });
             }
 
-            // 4. Update status para confirmado
-            await ComercialRepository.updateAgendamentoStatus(id, 'confirmado');
+            // 4. Update status para aguardando_verificacao (financeiro irá aprovar/recusar)
+            await ComercialRepository.updateAgendamentoStatus(id, 'aguardando_verificacao');
 
-            // 5. Gerar link de recuperação de senha pelo Supabase (para atuar como setup de conta)
-            const { data: linkData, error: authError } = await supabase.auth.admin.generateLink({
-                type: 'recovery',
-                email: agendamento.email
-            });
+            // 5. Garantir que pagamento_status esteja como 'pendente' para o financeiro
+            const { error: updateError } = await supabase
+                .from('agendamentos')
+                .update({ pagamento_status: 'pendente' })
+                .eq('id', id);
 
-            if (authError) {
-                console.error('[ComercialController] Erro ao gerar link de setup de senha:', authError);
-                return res.status(500).json({
-                    message: 'Agendamento confirmado, mas falhou ao gerar link de acesso.',
-                    error: authError.message
-                });
+            if (updateError) {
+                console.error('[ComercialController] Erro ao atualizar pagamento_status:', updateError);
             }
-
-            // 6. Enviar email para o cliente
-            const EmailService = (await import('../services/EmailService')).default;
-            await EmailService.sendPasswordSetupEmail({
-                to: agendamento.email,
-                clientName: agendamento.nome || 'Cliente',
-                resetLink: linkData.properties.action_link,
-                email: agendamento.email
-            });
 
             return res.status(200).json({
                 success: true,
-                message: 'Agendamento confirmado e email enviado com sucesso!'
+                message: 'Comprovante enviado para verificação pelo setor financeiro.'
             });
 
         } catch (error: any) {

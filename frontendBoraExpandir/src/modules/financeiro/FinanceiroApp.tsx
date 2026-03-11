@@ -15,6 +15,7 @@ import {
   GitCompareArrows,
   Stamp,
   Dna,
+  FileCheck,
 } from 'lucide-react'
 import { Sidebar } from '../../components/ui/Sidebar'
 import type { SidebarGroup } from '../../components/ui/Sidebar'
@@ -34,9 +35,31 @@ import { Movimentos } from './pages/Movimentos'
 import { RelatoriosComparativos } from './pages/RelatoriosComparativos'
 import { AdminApostilamento } from './pages/AdminApostilamento'
 import { ClientDNAPage } from '../../components/ui/ClientDNA'
+import { ComprovantesPage } from './pages/ComprovantesPage'
 
 
 export function FinanceiroApp() {
+  const [pendentesCount, setPendentesCount] = React.useState(0)
+
+  React.useEffect(() => {
+    async function fetchPendentes() {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/financeiro/comprovantes/pendentes`)
+        if (response.ok) {
+          const data = await response.json()
+          setPendentesCount(data.length)
+        }
+      } catch (err) {
+        console.error('Erro ao buscar comprovantes pendentes list', err)
+      }
+    }
+    fetchPendentes()
+    
+    // Polling opcional para a cada X tempo:
+    // const interval = setInterval(fetchPendentes, 1000 * 60) // 1 min
+    // return () => clearInterval(interval)
+  }, [])
+
   const sidebarGroups: SidebarGroup[] = [
     {
       label: 'Geral',
@@ -58,6 +81,16 @@ export function FinanceiroApp() {
         { label: 'Visão Geral', to: '/financeiro/visao-geral', icon: PieChart },
         { label: 'Contas a Receber', to: '/financeiro/contas-receber', icon: Wallet },
         { label: 'Comissões', to: '/financeiro/comissoes', icon: HandCoins },
+        { 
+          label: 'Comprovantes', 
+          to: '/financeiro/comprovantes', 
+          icon: FileCheck,
+          badge: pendentesCount > 0 ? (
+            <span className="ml-auto inline-flex items-center justify-center bg-red-500 text-white rounded-full h-5 px-1.5 text-[10px] font-bold">
+              {pendentesCount}
+            </span>
+          ) : undefined
+        },
       ],
     },
     {
@@ -92,6 +125,7 @@ export function FinanceiroApp() {
           <Route path="visao-geral" element={<FinancialDashboard />} />
           <Route path="contas-receber" element={<FinancialProcessList />} />
           <Route path="comissoes" element={<Comissoes />} />
+          <Route path="comprovantes" element={<ComprovantesPage />} />
 
           {/* System */}
           <Route path="relatorios" element={<Relatorios />} />

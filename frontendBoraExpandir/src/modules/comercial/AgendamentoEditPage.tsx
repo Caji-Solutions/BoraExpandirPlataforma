@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ChevronLeft, Save, Loader2, Calendar, Clock, User, Mail, Phone, CreditCard, FileText, Package, X, AlertCircle } from 'lucide-react'
+import { ChevronLeft, Save, Loader2, Calendar, Clock, User, Mail, Phone, CreditCard, FileText, Package, X, AlertCircle, Upload, CheckCircle2 } from 'lucide-react'
 import { useToast } from '../../components/ui/Toast'
 import { CalendarPicker } from '../../components/ui/CalendarPicker'
 import { catalogService, Service } from '../adm/services/catalogService'
@@ -43,9 +43,14 @@ export function AgendamentoEditPage() {
     const [horaSelecionada, setHoraSelecionada] = useState<string>('')
     const [agendamentosDia, setAgendamentosDia] = useState<any[]>([])
 
-    // Popup de conflito
     const [conflictPopup, setConflictPopup] = useState<ConflictPopup | null>(null)
     const popupRef = useRef<HTMLDivElement>(null)
+
+    // Comprovante Upload States
+    const [comprovanteFile, setComprovanteFile] = useState<File | null>(null)
+    const [comprovantePreview, setComprovantePreview] = useState<string | null>(null)
+    const [uploadingComprovante, setUploadingComprovante] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
     // Fechar popup ao clicar fora
     useEffect(() => {
@@ -177,8 +182,13 @@ export function AgendamentoEditPage() {
             setSalvando(true)
             const isoDate = getDateIso()
 
-            const payload = {
+            const payload: any = {
                 data_hora: `${isoDate}T${horaSelecionada}:00`
+            }
+
+            // Se o agendamento estava em conflito e foi resolvido ao escolher nova data/hora, removemos a flag.
+            if (agendamento.conflito_horario && agendamento.pagamento_status === 'aprovado') {
+                payload.conflito_horario = false
             }
 
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/comercial/agendamento/${id}`, {
@@ -196,6 +206,61 @@ export function AgendamentoEditPage() {
             toast.error(e.message || 'Erro de conexão')
         } finally {
             setSalvando(false)
+        }
+    }
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            setComprovanteFile(file)
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader()
+                reader.onload = (ev) => setComprovantePreview(ev.target?.result as string)
+                reader.readAsDataURL(file)
+            } else {
+                setComprovantePreview(null)
+            }
+        }
+    }
+
+    const handleUploadComprovante = async () => {
+        if (!comprovanteFile || !agendamento?.id) return
+
+        setUploadingComprovante(true)
+        const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || ''
+
+        try {
+            const formData = new FormData()
+            formData.append('comprovante', comprovanteFile)
+            formData.append('agendamento_id', agendamento.id)
+            if (agendamento.cliente_id) {
+                formData.append('cliente_id', agendamento.cliente_id)
+            }
+
+            const response = await fetch(`${backendUrl}/formulario/comprovante`, {
+                method: 'POST',
+                body: formData
+            })
+
+            if (!response.ok) {
+                throw new Error('Erro ao enviar comprovante')
+            }
+
+            toast.success('Comprovante enviado com sucesso!')
+            
+            // Update local state to show it was sent
+            setAgendamento((prev: any) => ({
+                ...prev,
+                comprovante_url: 'enviado',
+                pagamento_status: 'pendente'
+            }))
+            
+            setComprovanteFile(null)
+            setComprovantePreview(null)
+        } catch (err: any) {
+            toast.error(err.message || 'Erro ao enviar comprovante. Tente novamente.')
+        } finally {
+            setUploadingComprovante(false)
         }
     }
 
@@ -246,6 +311,22 @@ export function AgendamentoEditPage() {
                     </div>
                 </div>
 
+                {/* ═══ BANNER DE CONFLITO ═══ */}
+                {agendamento.conflito_horario && (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-300 dark:border-amber-700/50 rounded-2xl shadow-sm mb-6 px-6 py-4 animate-in fade-in duration-300">
+                        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold text-base mb-2">
+                            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                            Atenção: Conflito de Horário!
+                        </div>
+                        <p className="text-sm text-amber-800 dark:text-amber-300">
+                            Após a confirmação do pagamento, verificamos que o horário selecionado (<strong>{formatDataHora(agendamento.data_hora)}</strong>) 
+                            já foi ocupado por outro cliente que teve o pagamento confirmado primeiro. 
+                            <br/><br/>
+                            <strong>Ação Necessária:</strong> Selecione um novo horário disponível abaixo para realocar este cliente. Ao salvar o novo horário, o agendamento será ativado instantaneamente no novo slot.
+                        </p>
+                    </div>
+                )}
+
                 {/* ═══ STATUS BAR (topo, full-width) ═══ */}
                 <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-gray-100 dark:border-neutral-800 shadow-sm mb-6 px-6 py-4">
                     <div className="flex flex-wrap items-center justify-between gap-4">
@@ -276,20 +357,140 @@ export function AgendamentoEditPage() {
                         <div className="flex items-center gap-3 flex-wrap">
                             <span className={`px-2.5 py-1 rounded-full text-xs font-semibold uppercase ${agendamento.status === 'confirmado' || agendamento.status === 'aprovado' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                                 agendamento.status === 'bloqueado' || agendamento.status === 'cancelado' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                                    'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                                    agendamento.status === 'aguardando_verificacao' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                                        'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
                                 }`}>
-                                {agendamento.status}
+                                {agendamento.status === 'aguardando_verificacao' ? 'Aguardando Verificação' : agendamento.status}
                             </span>
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${agendamento.comprovante_url
-                                ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400'
-                                : 'bg-gray-100 text-gray-500 dark:bg-neutral-800 dark:text-gray-400'
-                                }`}>
-                                <CreditCard className="w-3 h-3" /> Pix {agendamento.comprovante_url ? '✓' : '—'}
-                            </span>
+                            {/* Badge de pagamento_status */}
+                            {agendamento.pagamento_status === 'aprovado' && (
+                                <span className="px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400">
+                                    <CreditCard className="w-3 h-3" /> Pgto Aprovado ✓
+                                </span>
+                            )}
+                            {agendamento.pagamento_status === 'pendente' && (
+                                <span className="px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400">
+                                    <CreditCard className="w-3 h-3" /> Verificação Pendente
+                                </span>
+                            )}
+                            {agendamento.pagamento_status === 'recusado' && (
+                                <span className="px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400">
+                                    <CreditCard className="w-3 h-3" /> Pgto Recusado ✗
+                                </span>
+                            )}
+                            {!agendamento.pagamento_status && (
+                                <span className={`px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${agendamento.comprovante_url
+                                    ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400'
+                                    : 'bg-gray-100 text-gray-500 dark:bg-neutral-800 dark:text-gray-400'
+                                    }`}>
+                                    <CreditCard className="w-3 h-3" /> Pix {agendamento.comprovante_url ? '✓' : '—'}
+                                </span>
+                            )}
                             <span className="px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 bg-gray-100 text-gray-500 dark:bg-neutral-800 dark:text-gray-400">
                                 <FileText className="w-3 h-3" /> Form —
                             </span>
                         </div>
+                    </div>
+                </div>
+
+                {/* ═══ NOTA DE RECUSA DO FINANCEIRO ═══ */}
+                {agendamento.pagamento_status === 'recusado' && agendamento.pagamento_nota_recusa && (
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl shadow-sm mb-6 px-6 py-4">
+                        <div className="flex items-center gap-2 text-red-700 dark:text-red-300 font-semibold text-sm mb-2">
+                            <AlertCircle className="w-4 h-4" />
+                            Pagamento Recusado pelo Financeiro
+                        </div>
+                        <p className="text-sm text-red-600 dark:text-red-400">
+                            <strong>Motivo:</strong> {agendamento.pagamento_nota_recusa}
+                        </p>
+                    </div>
+                )}
+
+                {/* ═══ UPLOAD DE COMPROVANTE ═══ */}
+                <div className="bg-white dark:bg-neutral-900 rounded-2xl p-6 border border-gray-100 dark:border-neutral-800 shadow-sm mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-emerald-600" />
+                        Comprovante de Pagamento
+                    </h2>
+
+                    <div className="bg-gray-50 dark:bg-neutral-800/50 rounded-xl p-5 border border-gray-200 dark:border-neutral-700">
+                        {agendamento.pagamento_status === 'aprovado' ? (
+                            <div className="flex items-center gap-3 text-emerald-700 dark:text-emerald-400">
+                                <CheckCircle2 className="h-6 w-6" />
+                                <div>
+                                    <p className="font-bold">Pagamento Aprovado</p>
+                                    <p className="text-sm">O comprovante já foi verificado e aprovado pelo financeiro.</p>
+                                </div>
+                            </div>
+                        ) : agendamento.comprovante_url && agendamento.pagamento_status !== 'recusado' ? (
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3 text-amber-700 dark:text-amber-400">
+                                    <Clock className="h-6 w-6" />
+                                    <div>
+                                        <p className="font-bold">Aguardando Verificação</p>
+                                        <p className="text-sm">O comprovante foi enviado e está na fila do financeiro.</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="text-sm text-emerald-600 hover:text-emerald-700 font-semibold underline"
+                                >
+                                    Enviar outro
+                                </button>
+                            </div>
+                        ) : (
+                            <div>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*,.pdf"
+                                    onChange={handleFileSelect}
+                                    className="hidden"
+                                />
+
+                                {comprovanteFile ? (
+                                    <div className="space-y-4">
+                                        {comprovantePreview && (
+                                            <img src={comprovantePreview} alt="Comprovante" className="w-full max-h-48 object-contain rounded-lg border bg-white" />
+                                        )}
+                                        <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-neutral-800 p-3 rounded-lg border">
+                                            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                                            <span className="flex-1 truncate font-medium">{comprovanteFile.name}</span>
+                                            <button
+                                                onClick={() => { setComprovanteFile(null); setComprovantePreview(null) }}
+                                                className="text-red-500 hover:text-red-700 text-sm font-medium px-2"
+                                            >
+                                                Remover
+                                            </button>
+                                        </div>
+                                        <button
+                                            onClick={handleUploadComprovante}
+                                            disabled={uploadingComprovante}
+                                            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                        >
+                                            {uploadingComprovante ? (
+                                                <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</>
+                                            ) : (
+                                                <><Upload className="h-4 w-4" /> Enviar Comprovante para o Financeiro</>
+                                            )}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="w-full py-8 border-2 border-dashed border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 rounded-xl text-gray-500 dark:text-gray-400 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all flex flex-col items-center gap-3"
+                                    >
+                                        <div className="p-3 bg-gray-100 dark:bg-neutral-700 rounded-full">
+                                            <Upload className="h-6 w-6" />
+                                        </div>
+                                        <div className="text-center">
+                                            <span className="text-sm font-bold block mb-1">Clique para anexar o comprovante do cliente</span>
+                                            <span className="text-xs opacity-70">Formatos aceitos: JPG, PNG, WebP ou PDF (máx. 10MB)</span>
+                                        </div>
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 

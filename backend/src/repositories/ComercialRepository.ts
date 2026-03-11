@@ -112,7 +112,7 @@ class ComercialRepository {
 
         const { data: agendamentos, error } = await supabase
             .from('agendamentos')
-            .select('*')
+            .select('*, cliente:clientes(id, nome, email, whatsapp, client_id)')
             .eq('usuario_id', usuarioId)
             .neq('status', 'cancelado')
             .order('data_hora', { ascending: true })
@@ -155,7 +155,7 @@ class ComercialRepository {
         const { data: agendamentos, error } = await supabase
             .from('agendamentos')
             .select('*')
-            .neq('status', 'cancelado')
+            .in('status', ['confirmado', 'aprovado', 'realizado'])
             .gte('data_hora', data_hora_inicio)
             .lt('data_hora', data_hora_fim)
 
@@ -173,7 +173,7 @@ class ComercialRepository {
         const { data: agendamentos, error } = await supabase
             .from('agendamentos')
             .select('*')
-            .neq('status', 'cancelado')
+            .in('status', ['confirmado', 'aprovado', 'realizado'])
             .gte('data_hora', `${data}T00:00:00`)
             .lt('data_hora', `${data}T23:59:59`)
             .order('data_hora', { ascending: true })
@@ -208,7 +208,7 @@ class ComercialRepository {
 
         const { data, error } = await supabase
             .from('agendamentos')
-            .select('*')
+            .select('*, cliente:clientes(id, nome, email, whatsapp, client_id)')
             .eq('id', id)
             .single()
 
@@ -242,7 +242,7 @@ class ComercialRepository {
         
         const { data: agendamentos, error } = await supabase
             .from('agendamentos')
-            .select('*')
+            .select('*, cliente:clientes(id, nome, email, whatsapp, client_id)')
             .neq('status', 'cancelado')
             .order('data_hora', { ascending: true })
         

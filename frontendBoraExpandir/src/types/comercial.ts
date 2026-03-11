@@ -1,5 +1,6 @@
 export interface Cliente {
   id: string
+  client_id?: string
   nome: string
   email: string
   telefone: string
@@ -117,11 +118,16 @@ export interface Agendamento {
   data: string
   hora: string
   cliente: Cliente
+  cliente_id?: string
   duracao_minutos: number
   produto: string // O nome do produto (substituiu o ID)
-  status: 'pendente' | 'agendado' | 'confirmado' | 'realizado' | 'cancelado'
+  status: 'pendente' | 'agendado' | 'confirmado' | 'realizado' | 'cancelado' | 'aguardando_verificacao' | 'aprovado'
   cliente_is_user?: boolean
   observacoes?: string
+  comprovante_url?: string | null
+  pagamento_status?: 'pendente' | 'aprovado' | 'recusado' | null
+  pagamento_nota_recusa?: string | null
+  conflito_horario?: boolean
   created_at: string
   updated_at: string
 }

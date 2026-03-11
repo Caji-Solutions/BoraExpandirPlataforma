@@ -510,6 +510,7 @@ export default function Comercial() {
           cliente_id: b.cliente_id || '',
           cliente: {
             id: b.cliente_id || '',
+            client_id: b.cliente?.client_id || '',
             nome: b.nome || 'Cliente sem nome',
             email: b.email || '',
             telefone: b.telefone || '',

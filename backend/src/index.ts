@@ -17,6 +17,7 @@ import authRoutes from './routes/auth'
 import admRoutes from './routes/adm'
 import formulario from './routes/formulario'
 import apostilamentos from './routes/apostilamentos'
+import financeiroRoutes from './routes/financeiro'
 
 dotenv.config()
 
@@ -51,6 +52,7 @@ app.use('/configuracoes', config)
 app.use('/adm', admRoutes)
 app.use('/formulario', formulario)
 app.use('/apostilamentos', apostilamentos)
+app.use('/financeiro', financeiroRoutes)
 
 app.post('/leads', (req, res) => {
   const ClienteController = require('./controllers/ClienteController').default

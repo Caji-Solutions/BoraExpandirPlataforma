@@ -1144,7 +1144,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
               ) : (
                 <div className="mb-4 pb-4 border-b border-dashed border-gray-200 dark:border-neutral-700">
                   <p className="text-xs text-gray-400 mb-1 italic">Produto não selecionado</p>
-                  <button onClick={() => setPasso('produto')} className="text-xs text-blue-500 hover:underline">Selecionar agora</button>
                 </div>
               )}
 

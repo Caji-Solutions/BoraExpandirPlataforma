@@ -17,6 +17,7 @@ import { FinancialDashboard } from "../financeiro/pages/VisaoGeral";
 import { FinancialProcessList } from "../financeiro/pages/FinancialProcessList";
 import Comissoes from "../financeiro/pages/Comissoes";
 import { Relatorios } from "../financeiro/pages/Relatorios";
+import { ComprovantesPage } from "../financeiro/pages/ComprovantesPage";
 
 // Importar componentes jurídicos
 import { Dashboard as JuridicoDashboard } from "../juridico/components/Dashboard";
@@ -106,6 +107,7 @@ const App = () => (
       <Route path="financeiro/comissoes" element={<Comissoes />} />
       <Route path="financeiro/pagamentos" element={<PagamentosAdmin />} />
       <Route path="financeiro/relatorios" element={<Relatorios />} />
+      <Route path="financeiro/comprovantes" element={<ComprovantesPage />} />
 
       {/* Rotas Jurídicas */}
       <Route path="juridico" element={<JuridicoDashboard />} />

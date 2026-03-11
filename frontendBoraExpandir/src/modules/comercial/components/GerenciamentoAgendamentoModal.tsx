@@ -5,7 +5,7 @@ import { Badge } from '../../../components/ui/Badge'
 import { useToast } from '../../../components/ui/Toast'
 
 interface Props {
-    agendamento: Agendamento & { comprovante_url?: string }
+    agendamento: Agendamento
     onClose: () => void
     onAtualizado: () => void
 }
@@ -64,7 +64,7 @@ export function GerenciamentoAgendamentoModal({ agendamento, onClose, onAtualiza
                 throw new Error(errData.message || 'Erro ao processar confirmação.')
             }
 
-            success('Lead convertido em Cliente com sucesso! Link de setup de senha enviado para o e-mail.')
+            success('Comprovante enviado para verificação pelo setor financeiro!')
             onAtualizado()
             onClose()
         } catch (err: any) {
@@ -74,7 +74,11 @@ export function GerenciamentoAgendamentoModal({ agendamento, onClose, onAtualiza
         }
     }
 
-    const isCardButtonEnabled = comprovanteUrl && formularioPreenchido
+    const pagamentoStatus = agendamento.pagamento_status
+    const isPagamentoRecusado = pagamentoStatus === 'recusado'
+    const isPagamentoAprovado = pagamentoStatus === 'aprovado'
+    const isAguardandoVerificacao = pagamentoStatus === 'pendente' || agendamento.status === 'aguardando_verificacao'
+    const isCardButtonEnabled = comprovanteUrl && formularioPreenchido && !isPagamentoRecusado && !isAguardandoVerificacao && !isPagamentoAprovado
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -107,6 +111,42 @@ export function GerenciamentoAgendamentoModal({ agendamento, onClose, onAtualiza
                         </div>
                     </div>
 
+                    {/* Status de Verificação do Pagamento */}
+                    {isPagamentoRecusado && (
+                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+                            <div className="flex items-center gap-2 text-red-700 dark:text-red-300 font-semibold text-sm mb-2">
+                                <AlertCircle className="h-5 w-5" />
+                                Pagamento Recusado pelo Financeiro
+                            </div>
+                            {agendamento.pagamento_nota_recusa && (
+                                <p className="text-sm text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 rounded-lg p-3 mt-2">
+                                    <strong>Motivo:</strong> {agendamento.pagamento_nota_recusa}
+                                </p>
+                            )}
+                        </div>
+                    )}
+
+                    {isAguardandoVerificacao && (
+                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 font-semibold text-sm">
+                                <AlertCircle className="h-5 w-5" />
+                                Aguardando Verificação do Financeiro
+                            </div>
+                            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                                O comprovante foi enviado para análise do setor financeiro.
+                            </p>
+                        </div>
+                    )}
+
+                    {isPagamentoAprovado && (
+                        <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4">
+                            <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-semibold text-sm">
+                                <CheckCircle className="h-5 w-5" />
+                                Pagamento Aprovado pelo Financeiro
+                            </div>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Box: Comprovante Pix */}
                         <div className="bg-gray-50 dark:bg-neutral-800/50 p-5 rounded-xl border border-gray-200 dark:border-neutral-700">
@@ -124,10 +164,6 @@ export function GerenciamentoAgendamentoModal({ agendamento, onClose, onAtualiza
                                     <a href={comprovanteUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline">
                                         Ver Comprovante Anexado
                                     </a>
-                                    <button className="px-4 py-2 mt-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 dark:bg-yellow-500/20 dark:hover:bg-yellow-500/30 dark:text-yellow-400 font-medium text-sm rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
-                                        <AlertCircle className="h-4 w-4" />
-                                        Pedido de Revisão
-                                    </button>
                                 </div>
                             ) : (
                                 <div className="flex flex-col gap-4">
@@ -172,35 +208,51 @@ export function GerenciamentoAgendamentoModal({ agendamento, onClose, onAtualiza
 
                     {/* Call to action de conversão */}
                     <div className="pt-4 border-t border-gray-200 dark:border-neutral-800 text-center">
-                        <button
-                            onClick={handleConverterCliente}
-                            disabled={!isCardButtonEnabled || loadingConvert}
-                            className={`w-full max-w-sm mx-auto py-3 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${isCardButtonEnabled
-                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20'
-                                : 'bg-gray-200 dark:bg-neutral-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                                }`}
-                        >
-                            {loadingConvert ? (
-                                <>
-                                    <span className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                                    Convertendo...
-                                </>
-                            ) : (
-                                <>
-                                    <CheckCircle className="h-5 w-5" />
-                                    Confirmar Recebimento e Validar Cliente
-                                </>
-                            )}
-                        </button>
-                        {!isCardButtonEnabled && (
-                            <p className="text-xs text-gray-500 mt-3 max-w-sm mx-auto">
-                                É necessário confirmar o pagamento e aguardar o preenchimento do formulário antes de converter o lead.
-                            </p>
-                        )}
-                        {isCardButtonEnabled && (
-                            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-3 max-w-sm mx-auto">
-                                Pronto para conversão! O email de boas-vindas do sistema será enviado assim que confirmado.
-                            </p>
+                        {isPagamentoAprovado ? (
+                            <div className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
+                                ✓ Pagamento verificado e cliente ativado com sucesso.
+                            </div>
+                        ) : isAguardandoVerificacao ? (
+                            <div className="text-sm text-amber-600 dark:text-amber-400 font-medium">
+                                ⏳ Comprovante em análise pelo financeiro. Aguarde a verificação.
+                            </div>
+                        ) : isPagamentoRecusado ? (
+                            <div className="text-sm text-red-600 dark:text-red-400 font-medium">
+                                O comprovante foi recusado. Verifique o motivo acima e reenvie um novo comprovante.
+                            </div>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={handleConverterCliente}
+                                    disabled={!isCardButtonEnabled || loadingConvert}
+                                    className={`w-full max-w-sm mx-auto py-3 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${isCardButtonEnabled
+                                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20'
+                                        : 'bg-gray-200 dark:bg-neutral-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                                        }`}
+                                >
+                                    {loadingConvert ? (
+                                        <>
+                                            <span className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                                            Enviando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle className="h-5 w-5" />
+                                            Enviar para Verificação do Financeiro
+                                        </>
+                                    )}
+                                </button>
+                                {!isCardButtonEnabled && (
+                                    <p className="text-xs text-gray-500 mt-3 max-w-sm mx-auto">
+                                        É necessário anexar o comprovante e aguardar o preenchimento do formulário antes de enviar para verificação.
+                                    </p>
+                                )}
+                                {isCardButtonEnabled && (
+                                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-3 max-w-sm mx-auto">
+                                        Pronto para envio! O comprovante será verificado pelo setor financeiro antes da ativação.
+                                    </p>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>

@@ -1,0 +1,396 @@
+import React, { useState, useEffect, useCallback } from 'react'
+import {
+    FileCheck,
+    FileX,
+    Eye,
+    CheckCircle2,
+    XCircle,
+    Loader2,
+    ArrowLeft,
+    Send,
+    Clock,
+    User,
+    Mail,
+    Phone,
+    Package,
+    Calendar,
+    CreditCard,
+    AlertCircle,
+    RefreshCw,
+    X
+} from 'lucide-react'
+
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL
+
+interface Comprovante {
+    id: string
+    nome: string
+    email: string
+    telefone: string
+    produto_id: string
+    produto_nome?: string
+    valor?: number
+    data_hora: string
+    comprovante_url: string
+    comprovante_upload_em: string
+    pagamento_status: string
+    pagamento_nota_recusa?: string
+    status: string
+    duracao_minutos: number
+}
+
+type ActionState = 'idle' | 'aprovar' | 'recusar' | 'confirming_aprovar' | 'confirming_recusar' | 'loading'
+
+export function ComprovantesPage() {
+    const [comprovantes, setComprovantes] = useState<Comprovante[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+
+    // Estado de ação por item
+    const [actionStates, setActionStates] = useState<Record<string, ActionState>>({})
+    const [notaRecusa, setNotaRecusa] = useState<Record<string, string>>({})
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+    const [feedbackMsg, setFeedbackMsg] = useState<{ id: string; type: 'success' | 'error'; msg: string } | null>(null)
+
+    const fetchComprovantes = useCallback(async () => {
+        try {
+            setLoading(true)
+            setError(null)
+            const res = await fetch(`${API_BASE_URL}/financeiro/comprovantes/pendentes`)
+            if (!res.ok) throw new Error('Erro ao buscar comprovantes')
+            const json = await res.json()
+            setComprovantes(json.data || [])
+        } catch (err: any) {
+            setError(err.message)
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    useEffect(() => {
+        fetchComprovantes()
+    }, [fetchComprovantes])
+
+    const setAction = (id: string, state: ActionState) => {
+        setActionStates(prev => ({ ...prev, [id]: state }))
+    }
+
+    const handleAprovar = async (id: string) => {
+        try {
+            setAction(id, 'loading')
+            const res = await fetch(`${API_BASE_URL}/financeiro/comprovante/${id}/aprovar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            })
+            const json = await res.json()
+            if (!res.ok) throw new Error(json.message || 'Erro ao aprovar')
+
+            setFeedbackMsg({ id, type: 'success', msg: 'Comprovante aprovado com sucesso!' })
+            // Remove da lista após um breve delay
+            setTimeout(() => {
+                setComprovantes(prev => prev.filter(c => c.id !== id))
+                setFeedbackMsg(null)
+            }, 1500)
+        } catch (err: any) {
+            setFeedbackMsg({ id, type: 'error', msg: err.message })
+            setAction(id, 'idle')
+        }
+    }
+
+    const handleRecusar = async (id: string) => {
+        const nota = notaRecusa[id] || ''
+        if (!nota.trim()) {
+            setFeedbackMsg({ id, type: 'error', msg: 'Escreva uma nota antes de recusar.' })
+            return
+        }
+
+        try {
+            setAction(id, 'loading')
+            const res = await fetch(`${API_BASE_URL}/financeiro/comprovante/${id}/recusar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nota })
+            })
+            const json = await res.json()
+            if (!res.ok) throw new Error(json.message || 'Erro ao recusar')
+
+            setFeedbackMsg({ id, type: 'success', msg: 'Comprovante recusado. Nota registrada.' })
+            setTimeout(() => {
+                setComprovantes(prev => prev.filter(c => c.id !== id))
+                setFeedbackMsg(null)
+            }, 1500)
+        } catch (err: any) {
+            setFeedbackMsg({ id, type: 'error', msg: err.message })
+            setAction(id, 'idle')
+        }
+    }
+
+    const formatDate = (d: string) => {
+        try {
+            return new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        } catch { return d }
+    }
+
+    const formatDateTime = (d: string) => {
+        try {
+            const dt = new Date(d)
+            return `${dt.toLocaleDateString('pt-BR')} às ${dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+        } catch { return d }
+    }
+
+    const formatCurrency = (v?: number) => {
+        if (!v) return '—'
+        return `R$ ${Number(v).toFixed(2)}`
+    }
+
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-[60vh]">
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+            </div>
+        )
+    }
+
+    return (
+        <div className="p-4 md:p-8 pt-20 md:pt-8 max-w-6xl mx-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-8">
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-bold font-outfit text-gray-900 dark:text-white flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                            <FileCheck className="w-5 h-5 text-emerald-600" />
+                        </div>
+                        Comprovantes de Pagamento
+                    </h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 ml-[52px]">
+                        Verifique e aprove/recuse os comprovantes enviados pelo comercial.
+                    </p>
+                </div>
+                <div className="flex items-center gap-3">
+                    {/* Badge de pendentes */}
+                    {comprovantes.length > 0 && (
+                        <span className="px-3 py-1.5 rounded-full text-sm font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 flex items-center gap-1.5">
+                            <Clock className="w-4 h-4" />
+                            {comprovantes.length} pendente{comprovantes.length !== 1 ? 's' : ''}
+                        </span>
+                    )}
+                    <button
+                        onClick={fetchComprovantes}
+                        className="p-2.5 rounded-xl border border-gray-200 dark:border-neutral-700 hover:bg-gray-100 dark:hover:bg-neutral-800 transition text-gray-500 dark:text-gray-400"
+                        title="Atualizar"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Error state */}
+            {error && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-6 flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                    <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+                </div>
+            )}
+
+            {/* Empty state */}
+            {comprovantes.length === 0 && !error && (
+                <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-gray-100 dark:border-neutral-800 shadow-sm p-12 text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Tudo em dia!</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+                        Não há comprovantes pendentes de verificação no momento.
+                    </p>
+                </div>
+            )}
+
+            {/* List */}
+            <div className="space-y-4">
+                {comprovantes.map((c) => {
+                    const actionState = actionStates[c.id] || 'idle'
+                    const feedback = feedbackMsg?.id === c.id ? feedbackMsg : null
+
+                    return (
+                        <div
+                            key={c.id}
+                            className={`bg-white dark:bg-neutral-900 rounded-2xl border shadow-sm transition-all duration-300 ${
+                                feedback?.type === 'success'
+                                    ? 'border-emerald-300 dark:border-emerald-700 opacity-60 scale-[0.98]'
+                                    : 'border-gray-100 dark:border-neutral-800'
+                            }`}
+                        >
+                            {/* Card header */}
+                            <div className="p-5 pb-4">
+                                <div className="flex flex-wrap items-start justify-between gap-4">
+                                    {/* Info do lead */}
+                                    <div className="flex items-start gap-4 min-w-0 flex-1">
+                                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center flex-shrink-0">
+                                            <User className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-base font-semibold text-gray-900 dark:text-white truncate">
+                                                {c.nome || 'Sem nome'}
+                                            </p>
+                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                                <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {c.email || '—'}</span>
+                                                <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {c.telefone || '—'}</span>
+                                                <span className="flex items-center gap-1"><Package className="w-3 h-3" /> {c.produto_nome || c.produto_id || '—'}</span>
+                                                <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {formatDateTime(c.data_hora)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Valor + data upload */}
+                                    <div className="text-right flex-shrink-0">
+                                        <p className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(c.valor)}</p>
+                                        <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1 justify-end">
+                                            <CreditCard className="w-3 h-3" />
+                                            Enviado em {formatDate(c.comprovante_upload_em)}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Divider */}
+                            <div className="border-t border-gray-100 dark:border-neutral-800" />
+
+                            {/* Actions area */}
+                            <div className="p-5 pt-4">
+                                {/* Feedback message */}
+                                {feedback && (
+                                    <div className={`mb-3 p-3 rounded-lg text-sm font-medium flex items-center gap-2 ${
+                                        feedback.type === 'success'
+                                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
+                                            : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                                    }`}>
+                                        {feedback.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                                        {feedback.msg}
+                                    </div>
+                                )}
+
+                                {/* State: idle — show Ver / Aprovar / Recusar */}
+                                {actionState === 'idle' && (
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setPreviewUrl(c.comprovante_url)}
+                                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-neutral-700 transition"
+                                        >
+                                            <Eye className="w-4 h-4" /> Ver Comprovante
+                                        </button>
+                                        <button
+                                            onClick={() => setAction(c.id, 'confirming_aprovar')}
+                                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm shadow-emerald-600/20 transition"
+                                        >
+                                            <CheckCircle2 className="w-4 h-4" /> Aprovar
+                                        </button>
+                                        <button
+                                            onClick={() => setAction(c.id, 'confirming_recusar')}
+                                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-red-600 text-white hover:bg-red-700 shadow-sm shadow-red-600/20 transition"
+                                        >
+                                            <XCircle className="w-4 h-4" /> Recusar
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* State: confirming_aprovar — Confirmar ou Voltar */}
+                                {actionState === 'confirming_aprovar' && (
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setAction(c.id, 'idle')}
+                                            className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-700 transition"
+                                        >
+                                            <ArrowLeft className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleAprovar(c.id)}
+                                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-600/30 transition animate-in fade-in duration-200"
+                                        >
+                                            <CheckCircle2 className="w-4 h-4" /> Confirmar Aprovação
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* State: confirming_recusar — Nota + Enviar ou Voltar */}
+                                {actionState === 'confirming_recusar' && (
+                                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <textarea
+                                            placeholder="Escreva o motivo da recusa..."
+                                            value={notaRecusa[c.id] || ''}
+                                            onChange={e => setNotaRecusa(prev => ({ ...prev, [c.id]: e.target.value }))}
+                                            className="w-full p-3 rounded-xl border border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition resize-none"
+                                            rows={3}
+                                        />
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    setAction(c.id, 'idle')
+                                                    setNotaRecusa(prev => ({ ...prev, [c.id]: '' }))
+                                                }}
+                                                className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-700 transition"
+                                            >
+                                                <ArrowLeft className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleRecusar(c.id)}
+                                                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 shadow-md shadow-red-600/30 transition"
+                                            >
+                                                <Send className="w-4 h-4" /> Enviar Recusa
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* State: loading */}
+                                {actionState === 'loading' && (
+                                    <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+                                        <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                                        Processando...
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )
+                })}
+            </div>
+
+            {/* Preview Modal */}
+            {previewUrl && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setPreviewUrl(null)}>
+                    <div
+                        className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-neutral-800">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <Eye className="w-5 h-5 text-emerald-600" /> Visualizar Comprovante
+                            </h3>
+                            <button
+                                onClick={() => setPreviewUrl(null)}
+                                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-800 transition text-gray-400"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-4 flex items-center justify-center min-h-[400px] max-h-[70vh] overflow-auto">
+                            {previewUrl.toLowerCase().endsWith('.pdf') ? (
+                                <iframe
+                                    src={previewUrl}
+                                    className="w-full h-[65vh] rounded-lg border border-gray-200 dark:border-neutral-700"
+                                    title="Comprovante PDF"
+                                />
+                            ) : (
+                                <img
+                                    src={previewUrl}
+                                    alt="Comprovante de pagamento"
+                                    className="max-w-full max-h-[65vh] rounded-lg shadow-md object-contain"
+                                />
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}

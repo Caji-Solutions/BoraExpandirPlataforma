@@ -301,13 +301,14 @@ class FormularioController {
                 .from('documentos')
                 .getPublicUrl(filePath)
 
-            // Atualizar agendamento com link do comprovante
+            // Atualizar agendamento com link do comprovante e marcar como pendente de verificação
             if (agendamento_id) {
                 await supabase
                     .from('agendamentos')
                     .update({
                         comprovante_url: urlData.publicUrl,
-                        comprovante_upload_em: new Date().toISOString()
+                        comprovante_upload_em: new Date().toISOString(),
+                        pagamento_status: 'pendente'
                     })
                     .eq('id', agendamento_id)
             }
