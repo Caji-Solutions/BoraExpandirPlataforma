@@ -304,9 +304,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
     if (!clienteSelecionado || !dataSelecionada || !horaSelecionada || !produtoSelecionado) return null
 
-    // Se o cliente não tem email, verificar se o email temporário foi preenchido
-    if (!clienteSelecionado.email && !emailTemporario) return null
-
     const dataIso = dataSelecionada.toISOString().split('T')[0]
     return {
       id: Date.now().toString(),
@@ -432,7 +429,10 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       case 'cliente':
         // Ação de finalizar direto (substituindo a confirmação)
         if (clienteSelecionado) {
-          if (!clienteSelecionado.email && !emailTemporario) {
+          // Verifica se temos um e-mail real (não-placeholder de lead)
+          const temEmailReal = emailTemporario || (clienteSelecionado.email && !clienteSelecionado.email.includes('lead_'));
+          
+          if (!temEmailReal) {
             setShowEmailPopup(true)
           } else {
             handleFinalizarAgendamento()
@@ -530,7 +530,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const handleFinalizarAgendamento = async () => {
     if (!agendamentoPreview) return
 
-    const emailFinal = emailTemporario || agendamentoPreview.cliente.email
+    const emailFinal = emailTemporario || (agendamentoPreview.cliente.email && !agendamentoPreview.cliente.email.includes('lead_') ? agendamentoPreview.cliente.email : '');
 
     setAgendamentoPayload({
       nome: agendamentoPreview.cliente.nome,
@@ -874,7 +874,11 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                             </div>
                             <div>
                               <span className="text-gray-500 dark:text-gray-400 text-xs">Produto</span>
-                              <p className="font-medium text-gray-900 dark:text-white">{conflictPopup.agendamento.produto_nome || conflictPopup.agendamento.produto_id || '—'}</p>
+                              <p className="font-medium text-gray-900 dark:text-white">
+                                {conflictPopup.agendamento.produto_nome || 
+                                 produtos.find(p => p.id === conflictPopup.agendamento.produto_id)?.nome || 
+                                 conflictPopup.agendamento.produto_id || '—'}
+                              </p>
                             </div>
                             <div>
                               <span className="text-gray-500 dark:text-gray-400 text-xs">Pagamento</span>
@@ -887,7 +891,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                               </p>
                             </div>
                             <div>
-                              <span className="text-gray-500 dark:text-gray-400 text-xs">Criado por (ID)</span>
+                              <span className="text-gray-500 dark:text-gray-400 text-xs">Criado por</span>
                               <p className="font-medium text-gray-900 dark:text-white truncate text-xs">{conflictPopup.agendamento.usuario_id || '—'}</p>
                             </div>
                           </div>
@@ -1094,6 +1098,9 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                     {activeProfile?.email && (
                       <p className="text-xs text-gray-500">{activeProfile.email}</p>
                     )}
+                    {activeProfile?.telefone && (
+                      <p className="text-xs text-gray-500">{activeProfile.telefone}</p>
+                    )}
                   </div>
 
                   {clienteSelecionado && (
@@ -1102,6 +1109,9 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                       <p className="text-sm font-semibold text-gray-900 dark:text-white">{clienteSelecionado.nome}</p>
                       {emailTemporario && (
                         <p className="text-xs text-gray-500">{emailTemporario}</p>
+                      )}
+                      {clienteSelecionado.telefone && (
+                        <p className="text-xs text-gray-500">{clienteSelecionado.telefone}</p>
                       )}
                     </div>
                   )}

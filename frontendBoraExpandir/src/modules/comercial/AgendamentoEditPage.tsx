@@ -602,7 +602,11 @@ export function AgendamentoEditPage() {
                                     </div>
                                     <div>
                                         <span className="text-gray-500 dark:text-gray-400 text-xs">Produto</span>
-                                        <p className="font-medium text-gray-900 dark:text-white">{conflictPopup.agendamento.produto_nome || conflictPopup.agendamento.produto_id || '—'}</p>
+                                        <p className="font-medium text-gray-900 dark:text-white">
+                                            {conflictPopup.agendamento.produto_nome || 
+                                             produtos.find(p => p.id === conflictPopup.agendamento.produto_id)?.name || 
+                                             conflictPopup.agendamento.produto_id || '—'}
+                                        </p>
                                     </div>
                                     <div>
                                         <span className="text-gray-500 dark:text-gray-400 text-xs">Pagamento</span>
@@ -615,7 +619,7 @@ export function AgendamentoEditPage() {
                                         </p>
                                     </div>
                                     <div>
-                                        <span className="text-gray-500 dark:text-gray-400 text-xs">Criado por (ID)</span>
+                                        <span className="text-gray-500 dark:text-gray-400 text-xs">Criado por</span>
                                         <p className="font-medium text-gray-900 dark:text-white truncate text-xs">{conflictPopup.agendamento.usuario_id || '—'}</p>
                                     </div>
                                 </div>

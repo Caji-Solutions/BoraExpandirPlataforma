@@ -503,7 +503,7 @@ export default function Comercial() {
           catalogService.getCatalogServices().catch(() => [])
         ])
 
-        const catalogMap = new Map(catalog.map((s: any) => [s.id, s.name]))
+        const catalogMap = new Map(catalog.map((s: any) => [s.id, s.nome || s.name]))
 
         const mapped = data.map((b: any) => ({
           id: b.id,

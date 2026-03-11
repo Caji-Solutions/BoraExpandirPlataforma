@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
-import { CheckCircle2, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { CheckCircle2, Loader2, ChevronDown, ChevronUp, AlertCircle, Clock, XCircle, Phone } from 'lucide-react'
 
 type FormStep = 'form' | 'submitting' | 'success'
+type PagamentoStatus = 'pendente' | 'aprovado' | 'recusado' | null
 
 export default function FormularioConsultoria() {
     const { agendamentoId } = useParams<{ agendamentoId: string }>()
@@ -10,15 +11,19 @@ export default function FormularioConsultoria() {
     const [error, setError] = useState<string | null>(null)
     const [emailEnviado, setEmailEnviado] = useState('')
 
-    // Seções expandidas
+    // Dados de resposta do backend
+    const [pagamentoStatus, setPagamentoStatus] = useState<PagamentoStatus>(null)
+    const [comprovanteUrl, setComprovanteUrl] = useState<string | null>(null)
+
+    // Seções expandidas — todas abertas por padrão
     const [expandedSections, setExpandedSections] = useState({
         pessoal: true,
-        documentos: false,
-        situacao: false,
-        profissional: false,
-        imigracao: false,
-        financeiro: false,
-        extra: false
+        documentos: true,
+        situacao: true,
+        profissional: true,
+        imigracao: true,
+        financeiro: true,
+        extra: true
     })
 
     const toggleSection = (section: keyof typeof expandedSections) => {
@@ -61,6 +66,59 @@ export default function FormularioConsultoria() {
         como_conheceu: ''
     })
 
+    // ========== Verificação de seções completas ==========
+    const isPessoalComplete = useCallback(() => {
+        return !!(
+            formData.nome_completo.trim() &&
+            formData.email.trim() &&
+            formData.whatsapp.trim() &&
+            formData.data_nascimento &&
+            formData.nacionalidade.trim() &&
+            formData.estado_civil
+        )
+    }, [formData.nome_completo, formData.email, formData.whatsapp, formData.data_nascimento, formData.nacionalidade, formData.estado_civil])
+
+    const isDocumentosComplete = useCallback(() => {
+        return !!(formData.cpf.trim() || formData.passaporte.trim())
+    }, [formData.cpf, formData.passaporte])
+
+    const isProfissionalComplete = useCallback(() => {
+        return !!(formData.profissao.trim() && formData.escolaridade)
+    }, [formData.profissao, formData.escolaridade])
+
+    const isImigracaoComplete = useCallback(() => {
+        return !!(
+            formData.objetivo_imigracao.trim() &&
+            formData.pais_destino &&
+            formData.prazo_mudanca
+        )
+    }, [formData.objetivo_imigracao, formData.pais_destino, formData.prazo_mudanca])
+
+    // Auto-fechar abas completas
+    useEffect(() => {
+        if (isPessoalComplete()) {
+            setExpandedSections(prev => prev.pessoal ? { ...prev, pessoal: false } : prev)
+        }
+    }, [isPessoalComplete])
+
+    useEffect(() => {
+        if (isDocumentosComplete()) {
+            setExpandedSections(prev => prev.documentos ? { ...prev, documentos: false } : prev)
+        }
+    }, [isDocumentosComplete])
+
+    useEffect(() => {
+        if (isProfissionalComplete()) {
+            setExpandedSections(prev => prev.profissional ? { ...prev, profissional: false } : prev)
+        }
+    }, [isProfissionalComplete])
+
+    useEffect(() => {
+        if (isImigracaoComplete()) {
+            setExpandedSections(prev => prev.imigracao ? { ...prev, imigracao: false } : prev)
+        }
+    }, [isImigracaoComplete])
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target
         setFormData(prev => ({
@@ -73,8 +131,29 @@ export default function FormularioConsultoria() {
         e.preventDefault()
         setError(null)
 
-        if (!formData.nome_completo || !formData.email || !formData.whatsapp) {
-            setError('Nome completo, email e WhatsApp são obrigatórios.')
+        // Validação das seções obrigatórias
+        const erros: string[] = []
+
+        if (!isPessoalComplete()) {
+            erros.push('Dados Pessoais (nome, email, whatsapp, data de nascimento, nacionalidade e estado civil)')
+        }
+        if (!isDocumentosComplete()) {
+            erros.push('Documentos (CPF ou passaporte)')
+        }
+        if (!isProfissionalComplete()) {
+            erros.push('Informações Profissionais (profissão e escolaridade)')
+        }
+        if (!isImigracaoComplete()) {
+            erros.push('Plano de Imigração (objetivo, país de destino e prazo)')
+        }
+
+        if (erros.length > 0) {
+            setError(`Preencha as seções obrigatórias:\n• ${erros.join('\n• ')}`)
+            // Abrir a primeira seção incompleta
+            if (!isPessoalComplete()) setExpandedSections(prev => ({ ...prev, pessoal: true }))
+            else if (!isDocumentosComplete()) setExpandedSections(prev => ({ ...prev, documentos: true }))
+            else if (!isProfissionalComplete()) setExpandedSections(prev => ({ ...prev, profissional: true }))
+            else if (!isImigracaoComplete()) setExpandedSections(prev => ({ ...prev, imigracao: true }))
             return
         }
 
@@ -104,6 +183,8 @@ export default function FormularioConsultoria() {
             }
 
             setEmailEnviado(formData.email)
+            setPagamentoStatus(data.pagamento_status || null)
+            setComprovanteUrl(data.comprovante_url || null)
             setStep('success')
         } catch (err: any) {
             setError(err.message || 'Erro ao enviar formulário. Tente novamente.')
@@ -111,26 +192,101 @@ export default function FormularioConsultoria() {
         }
     }
 
-    // Tela de sucesso
+    // ========== Tela de sucesso com status de pagamento ==========
     if (step === 'success') {
         return (
             <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0d1f3c] to-[#071222] flex items-center justify-center p-6">
                 <div className="max-w-lg w-full bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-10 text-center">
-                    <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                        <CheckCircle2 className="h-10 w-10 text-emerald-400" />
-                    </div>
+                    {/* Ícone do status */}
+                    {pagamentoStatus === 'recusado' ? (
+                        <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-500/20 flex items-center justify-center">
+                            <XCircle className="h-10 w-10 text-red-400" />
+                        </div>
+                    ) : pagamentoStatus === 'pendente' ? (
+                        <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-amber-500/20 flex items-center justify-center">
+                            <Clock className="h-10 w-10 text-amber-400" />
+                        </div>
+                    ) : (
+                        <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                            <CheckCircle2 className="h-10 w-10 text-emerald-400" />
+                        </div>
+                    )}
+
                     <h1 className="text-3xl font-bold text-white mb-4">Formulário Enviado! 🎉</h1>
-                    <p className="text-gray-300 text-lg mb-2">
-                        As informações da sua consultoria foram enviadas para o seu email.
-                    </p>
-                    <p className="text-blue-400 font-semibold text-lg mb-8">
-                        📧 {emailEnviado}
-                    </p>
-                    <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
-                        <p className="text-gray-400 text-sm">
-                            Verifique sua caixa de entrada (e spam) para encontrar as credenciais de acesso à sua área do cliente na plataforma Bora Expandir.
-                        </p>
-                    </div>
+
+                    {/* Mensagem de acordo com o status do comprovante */}
+                    {comprovanteUrl && pagamentoStatus === 'pendente' ? (
+                        <>
+                            <div className="bg-amber-500/10 rounded-2xl p-5 border border-amber-500/20 mb-6">
+                                <div className="flex items-center justify-center gap-2 mb-3">
+                                    <Clock className="h-5 w-5 text-amber-400" />
+                                    <p className="text-amber-400 font-bold text-lg">Comprovante em Análise</p>
+                                </div>
+                                <p className="text-gray-300 text-sm leading-relaxed">
+                                    Seu comprovante de pagamento está sendo verificado pela nossa equipe.
+                                    Quando a análise for concluída, uma mensagem será enviada para o seu email.
+                                </p>
+                            </div>
+                            <p className="text-blue-400 font-semibold text-lg mb-4">
+                                📧 {emailEnviado}
+                            </p>
+                            <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+                                <p className="text-gray-400 text-sm">
+                                    Aguarde a verificação do comprovante. Você receberá um email com as credenciais de acesso à plataforma assim que for aprovado.
+                                </p>
+                            </div>
+                        </>
+                    ) : comprovanteUrl && pagamentoStatus === 'aprovado' ? (
+                        <>
+                            <p className="text-gray-300 text-lg mb-2">
+                                Pagamento confirmado! As informações da sua consultoria foram enviadas para o seu email.
+                            </p>
+                            <p className="text-blue-400 font-semibold text-lg mb-8">
+                                📧 {emailEnviado}
+                            </p>
+                            <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+                                <p className="text-gray-400 text-sm">
+                                    Verifique sua caixa de entrada (e spam) para encontrar as credenciais de acesso à sua área do cliente na plataforma Bora Expandir.
+                                </p>
+                            </div>
+                        </>
+                    ) : comprovanteUrl && pagamentoStatus === 'recusado' ? (
+                        <>
+                            <div className="bg-red-500/10 rounded-2xl p-5 border border-red-500/20 mb-6">
+                                <div className="flex items-center justify-center gap-2 mb-3">
+                                    <AlertCircle className="h-5 w-5 text-red-400" />
+                                    <p className="text-red-400 font-bold text-lg">Comprovante Recusado</p>
+                                </div>
+                                <p className="text-gray-300 text-sm leading-relaxed">
+                                    Infelizmente, seu comprovante de pagamento não foi aprovado.
+                                </p>
+                            </div>
+                            <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+                                <div className="flex items-center justify-center gap-2 mb-2">
+                                    <Phone className="h-4 w-4 text-blue-400" />
+                                    <p className="text-blue-400 font-semibold">Entre em contato com um de nossos consultores</p>
+                                </div>
+                                <p className="text-gray-400 text-sm">
+                                    Para resolver essa questão, entre em contato com nossa equipe pelo WhatsApp ou email.
+                                </p>
+                            </div>
+                        </>
+                    ) : (
+                        /* Sem comprovante — mensagem padrão */
+                        <>
+                            <p className="text-gray-300 text-lg mb-2">
+                                As informações da sua consultoria foram enviadas para o seu email.
+                            </p>
+                            <p className="text-blue-400 font-semibold text-lg mb-8">
+                                📧 {emailEnviado}
+                            </p>
+                            <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+                                <p className="text-gray-400 text-sm">
+                                    Verifique sua caixa de entrada (e spam) para encontrar as credenciais de acesso à sua área do cliente na plataforma Bora Expandir.
+                                </p>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
         )
@@ -152,6 +308,19 @@ export default function FormularioConsultoria() {
     const inputClass = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
     const labelClass = "block text-sm font-semibold text-gray-300 mb-1.5"
     const sectionHeaderClass = "flex items-center justify-between w-full py-3 px-4 rounded-xl bg-white/5 border border-white/10 text-white font-bold cursor-pointer hover:bg-white/10 transition-all"
+
+    // Indicador de seção completa/obrigatória
+    const sectionBadge = (isComplete: boolean, isRequired: boolean) => (
+        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+            isComplete
+                ? 'bg-emerald-500/20 text-emerald-400'
+                : isRequired
+                    ? 'bg-red-500/15 text-red-400'
+                    : 'bg-white/5 text-gray-500'
+        }`}>
+            {isComplete ? '✓ Completo' : isRequired ? '* Obrigatório' : 'Opcional'}
+        </span>
+    )
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0d1f3c] to-[#071222]">
@@ -176,7 +345,7 @@ export default function FormularioConsultoria() {
 
             <form onSubmit={handleSubmit} className="max-w-3xl mx-auto px-6 pb-16 space-y-4">
                 {error && (
-                    <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                    <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm whitespace-pre-line">
                         {error}
                     </div>
                 )}
@@ -184,7 +353,10 @@ export default function FormularioConsultoria() {
                 {/* SEÇÃO: Dados Pessoais */}
                 <div>
                     <button type="button" onClick={() => toggleSection('pessoal')} className={sectionHeaderClass}>
-                        <span>📋 Dados Pessoais</span>
+                        <div className="flex items-center gap-3">
+                            <span>📋 Dados Pessoais</span>
+                            {sectionBadge(isPessoalComplete(), true)}
+                        </div>
                         {expandedSections.pessoal ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                     </button>
                     {expandedSections.pessoal && (
@@ -205,15 +377,15 @@ export default function FormularioConsultoria() {
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                    <label className={labelClass}>Data de Nascimento</label>
+                                    <label className={labelClass}>Data de Nascimento *</label>
                                     <input name="data_nascimento" type="date" value={formData.data_nascimento} onChange={handleChange} className={inputClass} />
                                 </div>
                                 <div>
-                                    <label className={labelClass}>Nacionalidade</label>
+                                    <label className={labelClass}>Nacionalidade *</label>
                                     <input name="nacionalidade" value={formData.nacionalidade} onChange={handleChange} className={inputClass} placeholder="Brasileira" />
                                 </div>
                                 <div>
-                                    <label className={labelClass}>Estado Civil</label>
+                                    <label className={labelClass}>Estado Civil *</label>
                                     <select name="estado_civil" value={formData.estado_civil} onChange={handleChange} className={inputClass}>
                                         <option value="">Selecione</option>
                                         <option value="solteiro">Solteiro(a)</option>
@@ -231,18 +403,22 @@ export default function FormularioConsultoria() {
                 {/* SEÇÃO: Documentos */}
                 <div>
                     <button type="button" onClick={() => toggleSection('documentos')} className={sectionHeaderClass}>
-                        <span>🪪 Documentos</span>
+                        <div className="flex items-center gap-3">
+                            <span>🪪 Documentos</span>
+                            {sectionBadge(isDocumentosComplete(), true)}
+                        </div>
                         {expandedSections.documentos ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                     </button>
                     {expandedSections.documentos && (
                         <div className="mt-3 space-y-4 p-4 bg-white/[0.02] rounded-xl border border-white/5">
+                            <p className="text-xs text-gray-400">Preencha pelo menos um: CPF ou Passaporte</p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className={labelClass}>CPF</label>
+                                    <label className={labelClass}>CPF *</label>
                                     <input name="cpf" value={formData.cpf} onChange={handleChange} className={inputClass} placeholder="000.000.000-00" />
                                 </div>
                                 <div>
-                                    <label className={labelClass}>Passaporte</label>
+                                    <label className={labelClass}>Passaporte *</label>
                                     <input name="passaporte" value={formData.passaporte} onChange={handleChange} className={inputClass} placeholder="Nº do passaporte" />
                                 </div>
                             </div>
@@ -253,7 +429,10 @@ export default function FormularioConsultoria() {
                 {/* SEÇÃO: Situação Atual */}
                 <div>
                     <button type="button" onClick={() => toggleSection('situacao')} className={sectionHeaderClass}>
-                        <span>🌍 Situação Atual</span>
+                        <div className="flex items-center gap-3">
+                            <span>🌍 Situação Atual</span>
+                            {sectionBadge(false, false)}
+                        </div>
                         {expandedSections.situacao ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                     </button>
                     {expandedSections.situacao && (
@@ -285,18 +464,21 @@ export default function FormularioConsultoria() {
                 {/* SEÇÃO: Profissional */}
                 <div>
                     <button type="button" onClick={() => toggleSection('profissional')} className={sectionHeaderClass}>
-                        <span>💼 Informações Profissionais</span>
+                        <div className="flex items-center gap-3">
+                            <span>💼 Informações Profissionais</span>
+                            {sectionBadge(isProfissionalComplete(), true)}
+                        </div>
                         {expandedSections.profissional ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                     </button>
                     {expandedSections.profissional && (
                         <div className="mt-3 space-y-4 p-4 bg-white/[0.02] rounded-xl border border-white/5">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className={labelClass}>Profissão</label>
+                                    <label className={labelClass}>Profissão *</label>
                                     <input name="profissao" value={formData.profissao} onChange={handleChange} className={inputClass} placeholder="Sua profissão atual" />
                                 </div>
                                 <div>
-                                    <label className={labelClass}>Escolaridade</label>
+                                    <label className={labelClass}>Escolaridade *</label>
                                     <select name="escolaridade" value={formData.escolaridade} onChange={handleChange} className={inputClass}>
                                         <option value="">Selecione</option>
                                         <option value="fundamental">Ensino Fundamental</option>
@@ -325,18 +507,21 @@ export default function FormularioConsultoria() {
                 {/* SEÇÃO: Imigração */}
                 <div>
                     <button type="button" onClick={() => toggleSection('imigracao')} className={sectionHeaderClass}>
-                        <span>✈️ Planos de Imigração</span>
+                        <div className="flex items-center gap-3">
+                            <span>✈️ Planos de Imigração</span>
+                            {sectionBadge(isImigracaoComplete(), true)}
+                        </div>
                         {expandedSections.imigracao ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                     </button>
                     {expandedSections.imigracao && (
                         <div className="mt-3 space-y-4 p-4 bg-white/[0.02] rounded-xl border border-white/5">
                             <div>
-                                <label className={labelClass}>Qual seu objetivo com a imigração?</label>
+                                <label className={labelClass}>Qual seu objetivo com a imigração? *</label>
                                 <textarea name="objetivo_imigracao" value={formData.objetivo_imigracao} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Descreva seus objetivos..." />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className={labelClass}>País de destino</label>
+                                    <label className={labelClass}>País de destino *</label>
                                     <select name="pais_destino" value={formData.pais_destino} onChange={handleChange} className={inputClass}>
                                         <option value="">Selecione</option>
                                         <option value="espanha">Espanha 🇪🇸</option>
@@ -346,7 +531,7 @@ export default function FormularioConsultoria() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className={labelClass}>Prazo estimado para mudança</label>
+                                    <label className={labelClass}>Prazo estimado para mudança *</label>
                                     <select name="prazo_mudanca" value={formData.prazo_mudanca} onChange={handleChange} className={inputClass}>
                                         <option value="">Selecione</option>
                                         <option value="imediato">Imediato</option>
@@ -383,7 +568,10 @@ export default function FormularioConsultoria() {
                 {/* SEÇÃO: Financeiro */}
                 <div>
                     <button type="button" onClick={() => toggleSection('financeiro')} className={sectionHeaderClass}>
-                        <span>💰 Informações Financeiras</span>
+                        <div className="flex items-center gap-3">
+                            <span>💰 Informações Financeiras</span>
+                            {sectionBadge(false, false)}
+                        </div>
                         {expandedSections.financeiro ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                     </button>
                     {expandedSections.financeiro && (
@@ -410,7 +598,10 @@ export default function FormularioConsultoria() {
                 {/* SEÇÃO: Extra */}
                 <div>
                     <button type="button" onClick={() => toggleSection('extra')} className={sectionHeaderClass}>
-                        <span>💬 Observações</span>
+                        <div className="flex items-center gap-3">
+                            <span>💬 Observações</span>
+                            {sectionBadge(false, false)}
+                        </div>
                         {expandedSections.extra ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                     </button>
                     {expandedSections.extra && (

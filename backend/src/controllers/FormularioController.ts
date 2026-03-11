@@ -201,7 +201,7 @@ class FormularioController {
             if (agendamento_id) {
                 const { data: agendamentoAtual } = await supabase
                     .from('agendamentos')
-                    .select('status, comprovante_url')
+                    .select('status, comprovante_url, pagamento_status')
                     .eq('id', agendamento_id)
                     .single()
 
@@ -243,6 +243,19 @@ class FormularioController {
 
             console.log('[FormularioController] Formulário processado com sucesso para:', nome_completo)
 
+            // Recuperar status atualizado do pagamento (se houver agendamento)
+            let pagamentoStatus: string | null = null
+            let comprovanteUrl: string | null = null
+            if (agendamento_id) {
+                const { data: agendamentoFinal } = await supabase
+                    .from('agendamentos')
+                    .select('pagamento_status, comprovante_url')
+                    .eq('id', agendamento_id)
+                    .single()
+                pagamentoStatus = agendamentoFinal?.pagamento_status || null
+                comprovanteUrl = agendamentoFinal?.comprovante_url || null
+            }
+
             return res.status(201).json({
                 success: true,
                 message: emailEnviado
@@ -250,7 +263,9 @@ class FormularioController {
                     : 'Formulário processado com sucesso. O acesso será liberado após a confirmação do pagamento pelo setor Comercial.',
                 clienteId,
                 email,
-                emailEnviado
+                emailEnviado,
+                pagamento_status: pagamentoStatus,
+                comprovante_url: comprovanteUrl
             })
 
         } catch (error: any) {
