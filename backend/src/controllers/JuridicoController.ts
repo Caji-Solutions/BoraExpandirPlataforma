@@ -934,6 +934,30 @@ class JuridicoController {
             })
         }
     }
+    // GET /juridico/agendamentos/por-responsavel/:responsavelId - Agendamentos de um responsável
+    async getAgendamentosByResponsavel(req: any, res: any) {
+        try {
+            const { responsavelId } = req.params
+
+            if (!responsavelId) {
+                return res.status(400).json({ message: 'responsavelId é obrigatório' })
+            }
+
+            const agendamentos = await JuridicoRepository.getAgendamentosPorResponsavel(responsavelId)
+
+            return res.status(200).json({
+                message: 'Agendamentos do responsável recuperados com sucesso',
+                data: agendamentos,
+                total: agendamentos.length
+            })
+        } catch (error: any) {
+            console.error('Erro ao buscar agendamentos do responsável:', error)
+            return res.status(500).json({ 
+                message: 'Erro ao buscar agendamentos do responsável', 
+                error: error.message 
+            })
+        }
+    }
 }
 
 export default new JuridicoController()

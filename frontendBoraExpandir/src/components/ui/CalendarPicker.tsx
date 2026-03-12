@@ -8,6 +8,7 @@ interface CalendarPickerProps {
   disabledDates?: Date[]
   disablePastDates?: boolean
   minDate?: Date
+  occupancyData?: Record<string, number> // key: YYYY-MM-DD, value: 0-1 (percentage)
 }
 
 const dayNames = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"]
@@ -17,7 +18,8 @@ export function CalendarPicker({
   selectedDate,
   disabledDates = [],
   disablePastDates = false,
-  minDate
+  minDate,
+  occupancyData
 }: CalendarPickerProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
 
@@ -161,6 +163,20 @@ export function CalendarPicker({
           const selected = isDateSelected(day)
           const today = isToday(day)
 
+          const dateKey = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day).toISOString().split('T')[0]
+          const occupancy = occupancyData?.[dateKey] || 0
+
+          let occupancyClass = ''
+          if (!disabled && !selected && !today) {
+            if (occupancy > 0.7) {
+              occupancyClass = 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50'
+            } else if (occupancy >= 0.5) {
+              occupancyClass = 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:hover:bg-yellow-900/50'
+            } else if (occupancy > 0) {
+              occupancyClass = 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50'
+            }
+          }
+
           return (
             <button
               key={day}
@@ -174,13 +190,14 @@ export function CalendarPicker({
                     ? 'bg-blue-700 text-white shadow-md hover:bg-blue-500 hover:text-white'
                     : today
                       ? 'bg-blue-900 text-white font-bold hover:bg-blue-500 hover:text-white dark:bg-blue-900 dark:text-blue-100 dark:hover:bg-blue-500'
-                      : 'bg-gray-50 text-gray-900 hover:bg-blue-500 hover:text-white dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-blue-500 dark:hover:text-white'
+                      : occupancyClass || 'bg-gray-50 text-gray-900 hover:bg-blue-500 hover:text-white dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-blue-500 dark:hover:text-white'
                 }
               `}
             >
               {day}
             </button>
           )
+
         })}
       </div>
     </div>
