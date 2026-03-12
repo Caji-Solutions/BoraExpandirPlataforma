@@ -76,7 +76,7 @@ export class AdmRepository {
         exibir_comercial: showInCommercial,
         exibir_cliente: data.showToClient,
         requer_delegacao_juridico: data.requiresLegalDelegation,
-        updated_at: new Date().toISOString()
+        atualizado_em: new Date().toISOString()
       })
       .eq('id', id);
 

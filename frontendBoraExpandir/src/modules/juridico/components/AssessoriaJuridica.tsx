@@ -17,7 +17,7 @@ import {
   Send
 } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import juridicoService, { ClienteComResponsavel } from "../services/juridicoService";
 import { RequirementRequestModal } from './RequirementRequestModal';
 import { Badge } from "../../../components/ui/Badge";
@@ -141,15 +141,23 @@ export function AssessoriaJuridica() {
         setLoading(true);
         if (!activeProfile?.id) return;
         
-        // Buscar clientes e catálogo em paralelo
-        // O usuário solicitou que todos os clientes sejam exibidos aqui
-        const [clientesData, servicesData] = await Promise.all([
-          juridicoService.getAllClientesComResponsavel(),
+        // Buscar agendamentos delegados ao usuário e catálogo em paralelo
+        // O usuário solicitou que apenas assessorias delegadas sejam exibidas e ordenadas por data
+        const [agendamentosData, servicesData] = await Promise.all([
+          juridicoService.getAgendamentosByResponsavel(activeProfile.id),
           juridicoService.getCatalogServices()
         ]);
         
-        setClientes(clientesData);
-        setFilteredClientes(clientesData);
+        // Mapear agendamentos para o formato esperado pelo componente, incluindo a data
+        const mappedClientes = agendamentosData.map((ag: any) => ({
+          ...ag.clientes,
+          agendamento_id: ag.id,
+          data_agendamento: ag.data_hora,
+          status_agendamento: ag.status
+        }));
+        
+        setClientes(mappedClientes);
+        setFilteredClientes(mappedClientes);
         setCatalogServices(servicesData);
       } catch (err) {
         console.error("Erro ao buscar dados:", err);
@@ -160,7 +168,20 @@ export function AssessoriaJuridica() {
     };
 
     fetchData();
-  }, [activeProfile?.id, activeProfile?.role]);
+  }, [activeProfile?.id]);
+
+  // Handle auto-selection from URL params
+  const [searchParams] = useSearchParams();
+  const clienteIdParam = searchParams.get('clienteId');
+
+  useEffect(() => {
+    if (clienteIdParam && clientes.length > 0 && !selectedCliente) {
+      const target = clientes.find(c => c.id === clienteIdParam);
+      if (target) {
+        setSelectedCliente(target);
+      }
+    }
+  }, [clienteIdParam, clientes, selectedCliente]);
 
   useEffect(() => {
     const filtered = clientes.filter(c => 
@@ -270,7 +291,19 @@ export function AssessoriaJuridica() {
                         <p className={`font-semibold text-sm ${selectedCliente?.id === cliente.id ? 'text-blue-700' : 'text-gray-900'}`}>
                           {cliente.nome}
                         </p>
-                        <p className="text-xs text-gray-500 truncate max-w-[150px]">{cliente.email}</p>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
+                          <ClipboardCheck className="h-3 w-3" />
+                          <span>
+                            {cliente.data_agendamento 
+                              ? new Date(cliente.data_agendamento).toLocaleString('pt-BR', { 
+                                  day: '2-digit', 
+                                  month: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) 
+                              : 'Sem data'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <ChevronRight className={`h-4 w-4 transition-transform ${selectedCliente?.id === cliente.id ? 'text-blue-600 translate-x-1' : 'text-gray-300 group-hover:text-gray-400'}`} />

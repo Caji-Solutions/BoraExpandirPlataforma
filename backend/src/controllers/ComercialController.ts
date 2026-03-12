@@ -736,6 +736,37 @@ class ComercialController {
         }
     }
 
+    async getAllProcessos(req: any, res: any) {
+        try {
+            const processos = await ComercialRepository.getAllProcessos()
+            return res.status(200).json({
+                message: 'Processos recuperados com sucesso',
+                data: processos
+            })
+        } catch (error: any) {
+            console.error('Erro ao buscar todos os processos:', error)
+            return res.status(500).json({
+                message: 'Erro ao buscar todos os processos',
+                error: error.message
+            })
+        }
+    }
+
+    async getAllRequerimentos(req: any, res: any) {
+        try {
+            const requerimentos = await ComercialRepository.getAllRequerimentos()
+            return res.status(200).json({
+                message: 'Requerimentos recuperados com sucesso',
+                data: requerimentos
+            })
+        } catch (error: any) {
+            console.error('Erro ao buscar todos os requerimentos:', error)
+            return res.status(500).json({
+                message: 'Erro ao buscar todos os requerimentos',
+                error: error.message
+            })
+        }
+    }
 }
 
 export default new ComercialController()

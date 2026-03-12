@@ -10,7 +10,7 @@ import { Config } from "../../components/ui/Config";
 import { DelegacaoDocumentos } from "./components/DelegacaoDocumentos";
 import { EquipeJuridica } from "./components/EquipeJuridica";
 import { AssessoriaJuridica } from "./components/AssessoriaJuridica";
-import { MeusAgendamentos } from "./components/MeusAgendamentos";
+import { MeusAgendamentos } from "../../components/MeusAgendamentos";
 import { ClientDNAPage } from "../../components/ui/ClientDNA";
 import DelegacaoFila from "./pages/DelegacaoFila";
 import juridicoService, { Processo } from "./services/juridicoService";
@@ -117,7 +117,7 @@ const Index = () => {
         { label: "Fila de Análise", to: "/juridico/analise", icon: FileSearch },
         { label: "Tarefas", to: "/juridico/tarefas", icon: CheckSquare },
         { label: "Assessoria Jurídica", to: "/juridico/assessoria", icon: ClipboardCheck },
-        { label: "(Agendamentos)", to: "/juridico/meus-agendamentos", icon: Clock },
+        { label: "Agendamentos", to: "/juridico/meus-agendamentos", icon: Clock },
       ],
     },
     // Grupo exclusivo para Supervisores
@@ -155,7 +155,7 @@ const Index = () => {
             <Route path="tarefas" element={<Tarefas />} />
             <Route path="dna" element={<ClientDNAPage />} />
             <Route path="assessoria" element={<AssessoriaJuridica />} />
-            <Route path="meus-agendamentos" element={<MeusAgendamentos />} />
+            <Route path="meus-agendamentos" element={<MeusAgendamentos userId={activeProfile?.id} />} />
 
             <Route path="configuracoes" element={<Config />} />
 

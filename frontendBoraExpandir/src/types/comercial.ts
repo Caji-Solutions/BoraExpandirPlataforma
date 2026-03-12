@@ -23,11 +23,11 @@ export interface ClienteFormData {
 export interface Contrato {
   id: string
   cliente_id: string
-  cliente?: Cliente
+  cliente?: Partial<Cliente>
   titulo: string
   descricao: string
   valor: number
-  status: 'rascunho' | 'aguardando_assinatura' | 'assinado' | 'cancelado'
+  status: 'rascunho' | 'aguardando_assinatura' | 'assinado' | 'cancelado' | 'formularios' | 'aguardando_consultoria' | 'clientes_c2' | 'aguardando_assessoria' | 'assessoria_andamento' | 'assessoria_finalizada'
   template_tipo: 'servico' | 'consultoria' | 'assessoria' | 'outro'
   conteudo_html: string
   assinatura_cliente?: AssinaturaDigital

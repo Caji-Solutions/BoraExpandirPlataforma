@@ -59,6 +59,9 @@ juridico.get('/processos/por-responsavel/:responsavelId', JuridicoController.get
 // Lista assessorias de um responsável específico
 juridico.get('/assessorias/por-responsavel/:responsavelId', JuridicoController.getAssessoriasByResponsavel.bind(JuridicoController))
 
+// Lista agendamentos de um responsável específico
+juridico.get('/agendamentos/por-responsavel/:responsavelId', JuridicoController.getAgendamentosByResponsavel.bind(JuridicoController))
+
 // Atualizar etapa do processo
 juridico.patch('/processo/:processoId/etapa', JuridicoController.updateEtapaProcesso.bind(JuridicoController))
 

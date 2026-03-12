@@ -253,6 +253,34 @@ class ComercialRepository {
         
         return agendamentos || []
     }
+
+    async getAllProcessos() {
+        console.log('Buscando todos os processos')
+        const { data: processos, error } = await supabase
+            .from('processos')
+            .select('*, clientes(nome)')
+            .order('criado_em', { ascending: false })
+
+        if (error) {
+            console.error('Erro ao buscar todos os processos:', error)
+            throw error
+        }
+        return processos || []
+    }
+
+    async getAllRequerimentos() {
+        console.log('Buscando todos os requerimentos')
+        const { data: requerimentos, error } = await supabase
+            .from('requerimentos')
+            .select('*')
+            .order('criado_em', { ascending: false })
+
+        if (error) {
+            console.error('Erro ao buscar todos os requerimentos:', error)
+            throw error
+        }
+        return requerimentos || []
+    }
 }
 
 export default new ComercialRepository()

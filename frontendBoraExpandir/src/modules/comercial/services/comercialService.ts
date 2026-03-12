@@ -48,10 +48,29 @@ export async function register(clienteData: any): Promise<any> {
     return response.json();
 }
 
+export async function getAllProcessos(): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/comercial/processos`);
+    if (!response.ok) {
+        throw new Error('Erro ao buscar processos');
+    }
+    const result = await response.json();
+    return result.data || [];
+}
+
+export async function getAllRequerimentos(): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/comercial/requerimentos`);
+    if (!response.ok) {
+        throw new Error('Erro ao buscar requerimentos');
+    }
+    const result = await response.json();
+    return result.data || [];
+}
+
 export default {
     getAllClientes,
     getAgendamentosByUsuario,
     register,
-    getClienteCredentials
+    getClienteCredentials,
+    getAllProcessos,
+    getAllRequerimentos
 };
-

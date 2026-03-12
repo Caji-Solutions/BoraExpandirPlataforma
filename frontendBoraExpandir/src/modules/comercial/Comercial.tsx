@@ -9,7 +9,7 @@ import RequerimentoSuperadmin from './RequerimentoSuperadmin'
 import AssinaturaDigital from './AssinaturaDigital'
 import Comercial1 from './Comercial1'
 import LeadsPage from './Leads'
-import AgendamentosPage from './Agendamentos'
+import AgendamentosPage from '@/modules/comercial/Agendamentos'
 import { AgendamentoEditPage } from './AgendamentoEditPage'
 import GanhosPage from './Ganhos'
 import ProximosAgendamentosCard from './components/ProximosAgendamentosCard'
@@ -73,13 +73,13 @@ function DashboardPage({
 
         <div className="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Contratos Ativos</h3>
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Contratos (Processos)</h3>
             <div className="p-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg">
               <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             </div>
           </div>
           <p className="text-3xl font-bold text-gray-900 dark:text-white">
-            {contratos.filter(c => c.status === 'assinado').length}
+            {contratos.length}
           </p>
         </div>
 
@@ -92,14 +92,13 @@ function DashboardPage({
             </div>
           </div>
           <p className="text-3xl font-bold text-gray-900 dark:text-white">
-            {requerimentos.filter(r => r.status === 'pendente').length}
+            {requerimentos.length}
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <ProximosAgendamentosCard agendamentos={agendamentos} />
-        <CadastroRapidoLeadCard onSaveLead={onSaveLead} />
       </div>
     </div>
   )
@@ -476,19 +475,55 @@ export default function Comercial() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function fetchClientes() {
+    async function fetchData() {
       try {
         setLoading(true)
-        const data = await comercialService.getAllClientes()
-        // Filtrar leads — leads não são clientes
-        setClientes(data.filter((c: any) => c.status !== 'LEAD'))
+        const [clientesData, processosData, requerimentosData] = await Promise.all([
+          comercialService.getAllClientes(),
+          comercialService.getAllProcessos(),
+          comercialService.getAllRequerimentos()
+        ])
+        
+        // Clientes filtrados (sem leads)
+        setClientes(clientesData.filter((c: any) => c.status !== 'LEAD'))
+        
+        // Contratos vindos de processos
+        setContratos(processosData.map((p: any) => ({
+          id: p.id,
+          cliente_id: p.cliente_id,
+          titulo: p.tipo_servico,
+          descricao: '',
+          valor: 0,
+          status: p.status,
+          template_tipo: 'outro',
+          conteudo_html: '',
+          cliente: {
+            id: p.cliente_id,
+            nome: p.clientes?.nome || 'Cliente'
+          },
+          created_at: p.criado_em,
+          updated_at: p.atualizado_em
+        })))
+
+        // Requerimentos reais
+        setRequerimentos(requerimentosData.map((r: any) => ({
+          id: r.id,
+          comercial_usuario_id: r.criador_id || '',
+          titulo: r.tipo,
+          tipo: r.tipo,
+          descricao: r.observacoes || '',
+          status: r.status,
+          created_at: r.criado_em,
+          updated_at: r.atualizado_em
+        })))
+
       } catch (err) {
-        console.error("Erro ao carregar clientes reais:", err);
+        console.error("Erro ao carregar dados do dashboard:", err);
       } finally {
         setLoading(false)
       }
     }
-    fetchClientes()
+    fetchData()
   }, [])
 
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([])

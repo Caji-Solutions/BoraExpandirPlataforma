@@ -56,6 +56,8 @@ export interface ClienteComResponsavel {
   email: string;
   responsavel_juridico_id: string | null;
   responsavel?: FuncionarioJuridico | null;
+  data_agendamento?: string;
+  status_agendamento?: string;
 }
 
 /**
@@ -627,6 +629,20 @@ export async function getAssessoriasByResponsavel(responsavelId: string): Promis
 }
 
 /**
+ * Busca agendamentos delegados a um responsável
+ */
+export async function getAgendamentosByResponsavel(responsavelId: string): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/juridico/agendamentos/por-responsavel/${responsavelId}`);
+
+  if (!response.ok) {
+    throw new Error('Erro ao buscar agendamentos do responsável');
+  }
+
+  const result = await response.json();
+  return result.data;
+}
+
+/**
  * Solicita o apostilamento de um documento ao administrativo
  */
 export async function requestApostille(documentoId: string, documentoUrl?: string, observacoes?: string): Promise<any> {
@@ -678,6 +694,7 @@ export default {
     getProcessoByCliente,
     getAgendamentos,
     getAssessoriasByResponsavel,
+    getAgendamentosByResponsavel,
     createDependent: async (
       clienteId: string, 
       nomeCompleto: string, 

@@ -302,6 +302,34 @@ class JuridicoRepository {
                 : null
         }))
     }
+    
+    // Listar agendamentos de um responsável específico
+    async getAgendamentosPorResponsavel(responsavelId: string): Promise<any[]> {
+        const { data, error } = await supabase
+            .from('agendamentos')
+            .select(`
+                *,
+                clientes:clientes!cliente_id (
+                    id,
+                    nome,
+                    email,
+                    whatsapp,
+                    status,
+                    previsao_chegada
+                )
+            `)
+            .eq('responsavel_juridico_id', responsavelId)
+            .eq('requer_delegacao', true)
+            .neq('status', 'cancelado')
+            .order('data_hora', { ascending: true })
+
+        if (error) {
+            console.error('Erro ao buscar agendamentos do responsável:', error)
+            throw error
+        }
+
+        return data || []
+    }
 
     // Atualizar etapa do processo
     async updateEtapaProcesso(processoId: string, etapa: number): Promise<any> {

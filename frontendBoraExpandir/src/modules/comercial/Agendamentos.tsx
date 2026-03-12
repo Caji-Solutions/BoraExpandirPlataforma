@@ -1,256 +1,203 @@
-import React, { useMemo, useState } from 'react'
-import { Calendar, Clock, Filter, Search, X, CreditCard, FileText } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { 
+  Search, 
+  Filter, 
+  X, 
+  Calendar, 
+  Clock, 
+  Edit, 
+  Trash2, 
+  AlertCircle,
+  CheckCircle,
+  MoreHorizontal,
+  CreditCard,
+  FileText
+} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Agendamento } from '../../types/comercial'
 import { Badge } from '../../components/ui/Badge'
-import { GerenciamentoAgendamentoModal } from './components/GerenciamentoAgendamentoModal'
+import { TimeRangeFilter, filterByTimeRange, type TimeRange } from '../../components/ui/TimeRangeFilter'
+import { SortControl, sortData, type SortDirection, type SortOption } from '../../components/ui/SortControl'
 
-const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'; label: string }> = {
-	pendente: {
-		variant: 'warning',
-		label: 'Pendente',
-	},
-	agendado: {
-		variant: 'success',
-		label: 'Agendado',
-	},
-	confirmado: {
-		variant: 'success',
-		label: 'Confirmado',
-	},
-	realizado: {
-		variant: 'default',
-		label: 'Realizado',
-	},
-	cancelado: {
-		variant: 'destructive',
-		label: 'Cancelado',
-	},
-	aguardando_verificacao: {
-		variant: 'warning',
-		label: 'Aguardando Verif.',
-	},
+interface AgendamentosProps {
+  agendamentos: Agendamento[]
 }
 
-const getStatusConfig = (status: string) =>
-	statusConfig[status] || { variant: 'secondary' as const, label: status }
+export default function Agendamentos({ agendamentos }: AgendamentosProps) {
+  const navigate = useNavigate()
+  const [searchTerm, setSearchTerm] = useState('')
+  const [timeRange, setTimeRange] = useState<TimeRange>('all')
+  const [sortBy, setSortBy] = useState('data')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [showFilters, setShowFilters] = useState(false)
 
-interface AgendamentosPageProps {
-	agendamentos: Agendamento[]
-}
+  const sortOptions: SortOption[] = [
+    { value: 'data', label: 'Data' },
+    { value: 'cliente.nome', label: 'Cliente' },
+    { value: 'status', label: 'Status' },
+    { value: 'produto', label: 'Produto' },
+  ]
 
-export default function AgendamentosPage({ agendamentos }: AgendamentosPageProps) {
-	const navigate = useNavigate()
-	const [search, setSearch] = useState('')
-	const [status, setStatus] = useState<'todos' | Agendamento['status']>('todos')
-	const [agendamentoSelecionado, setAgendamentoSelecionado] = useState<Agendamento | null>(null)
+  const filteredAgendamentos = useMemo(() => {
+    let filtered = agendamentos.filter(
+      item =>
+        item.cliente?.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.cliente?.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.produto.toLowerCase().includes(searchTerm.toLowerCase())
+    )
 
-	const filtered = useMemo(() => {
-		return agendamentos
-			.filter(a => (status === 'todos' ? true : a.status === status))
-			.filter(a => {
-				if (!search.trim()) return true
-				const term = search.toLowerCase()
-				return (
-					a.cliente?.nome.toLowerCase().includes(term) ||
-					a.produto.toLowerCase().includes(term) ||
-					a.data.includes(term)
-				)
-			})
-			.sort((a, b) => new Date(a.data + ' ' + a.hora).getTime() - new Date(b.data + ' ' + b.hora).getTime())
-	}, [agendamentos, search, status])
+    filtered = filterByTimeRange(filtered, timeRange)
+    return sortData(filtered, sortBy, sortDirection)
+  }, [agendamentos, searchTerm, timeRange, sortBy, sortDirection])
 
-	return (
-		<div>
-			<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
-				<div>
-					<h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">Meus Agendamentos</h1>
-					<p className="text-gray-600 dark:text-gray-400">Visualize e gerencie todos os agendamentos</p>
-				</div>
-				<div className="flex gap-2">
-					<button
-						onClick={() => navigate('/comercial/agendamento')}
-						className="px-4 py-2.5 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors"
-					>
-						Novo agendamento
-					</button>
-				</div>
-			</div>
+  const handleSortChange = (newSortBy: string, newDirection: SortDirection) => {
+    setSortBy(newSortBy)
+    setSortDirection(newDirection)
+  }
 
-			<div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-4 mb-4">
-				<div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
-					<div className="flex-1 relative">
-						<Search className="h-4 w-4 text-gray-400 absolute left-3 top-3" />
-						<input
-							value={search}
-							onChange={e => setSearch(e.target.value)}
-							placeholder="Buscar por cliente, produto ou data"
-							className="w-full pl-9 pr-10 py-2 rounded-lg border border-gray-200 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-						/>
-						{search && (
-							<button
-								onClick={() => setSearch('')}
-								className="absolute right-3 top-2.5 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-								aria-label="Limpar busca"
-							>
-								<X className="h-4 w-4" />
-							</button>
-						)}
-					</div>
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'confirmado':
+      case 'realizado':
+        return <Badge variant="success" className="capitalize">{status}</Badge>
+      case 'agendado':
+      case 'pendente':
+        return <Badge variant="warning" className="capitalize">{status}</Badge>
+      case 'cancelado':
+        return <Badge variant="destructive" className="capitalize">{status}</Badge>
+      default:
+        return <Badge variant="secondary" className="capitalize">{status}</Badge>
+    }
+  }
 
-					<div className="flex items-center gap-2">
-						<Filter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-						<select
-							value={status}
-							onChange={e => setStatus(e.target.value as typeof status)}
-							className="px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-						>
-							<option value="todos">Todos</option>
-							<option value="pendente">Pendentes</option>
-							<option value="agendado">Agendados</option>
-							<option value="confirmado">Confirmados</option>
-							<option value="realizado">Realizados</option>
-							<option value="cancelado">Cancelados</option>
-						</select>
-					</div>
-				</div>
-			</div>
+  return (
+    <div className="animate-in fade-in duration-500">
+      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Meus Agendamentos</h1>
+          <p className="text-gray-600 dark:text-gray-400">Gerencie suas vendas e compromissos agendados</p>
+        </div>
+        <button
+          onClick={() => navigate('/comercial/agendamento')}
+          className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors whitespace-nowrap shadow-sm shadow-emerald-600/20"
+        >
+          <Calendar className="h-5 w-5" />
+          Novo Agendamento
+        </button>
+      </div>
 
-			<div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 overflow-hidden">
-				{filtered.length === 0 ? (
-					<div className="p-12 text-center">
-						<Calendar className="h-10 w-10 text-gray-300 dark:text-neutral-600 mx-auto mb-3" />
-						<p className="text-gray-600 dark:text-gray-400">Nenhum agendamento encontrado</p>
-					</div>
-				) : (
-					<div className="overflow-x-auto">
-						<table className="w-full">
-							<thead className="bg-gray-50 dark:bg-neutral-700/50 border-b border-gray-200 dark:border-neutral-700">
-								<tr>
-									<th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Cliente</th>
-									<th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Data</th>
-									<th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Hora</th>
-									<th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Duração</th>
-									<th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Produto</th>
-									<th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Pagamento</th>
-									<th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Formulário</th>
-									<th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Status</th>
-								</tr>
-							</thead>
-							<tbody className="divide-y divide-gray-200 dark:divide-neutral-700">
-								{filtered.map(agendamento => {
-									// Tratamento para não ser clicável quando "confirmado" (ou concluído/realizado)
-									const isConfirmed = agendamento.status === 'confirmado' || agendamento.status === 'realizado'
+      <div className="mb-6 flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Buscar por cliente ou produto..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
 
-									// Se o lead já é um cliente (cliente_is_user) e o agendamento ainda está pendente/agendado,
-									// consideramos bloqueado para evitar duplicidade de conversão.
-									const isLocked = !!agendamento.cliente_is_user && (agendamento.status === 'pendente' || agendamento.status === 'agendado')
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-colors ${showFilters
+              ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500 text-emerald-700 dark:text-emerald-300'
+              : 'bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-700'
+              }`}
+          >
+            {showFilters ? <X className="h-5 w-5" /> : <Filter className="h-5 w-5" />}
+            <span className="hidden sm:inline">{showFilters ? 'Fechar' : 'Filtros'}</span>
+          </button>
+        </div>
+      </div>
 
-									// Agendamentos pendentes ou bloqueados/atrasados serão editáveis,
-									// EXCETO se já estiverem confirmados ou se o cliente já existir no sistema (isLocked).
-									const isEditable = !isConfirmed && !isLocked
+      {showFilters && (
+        <div className="mb-6 p-4 bg-gray-50 dark:bg-neutral-800/50 rounded-xl border border-gray-200 dark:border-neutral-700 shadow-sm animate-in slide-in-from-top-2 duration-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
+            <SortControl
+              sortBy={sortBy}
+              sortDirection={sortDirection}
+              onSortChange={handleSortChange}
+              options={sortOptions}
+            />
+          </div>
+        </div>
+      )}
 
-									return (
-										<tr
-											key={agendamento.id}
-											className={`transition-colors ${agendamento.conflito_horario
-													? 'bg-amber-50 dark:bg-amber-900/10 border-l-4 border-l-amber-400'
-													: ''
-												} ${isEditable
-													? 'hover:bg-gray-50 dark:hover:bg-neutral-700/50 cursor-pointer'
-													: isLocked
-														? 'opacity-40 grayscale-[0.5] cursor-not-allowed pointer-events-none'
-														: ''
-												}`}
-											onClick={() => {
-												if (isEditable) {
-													navigate(`/comercial/agendamento/${agendamento.id}`)
-												}
-											}}
-										>
-											<td className="px-6 py-4 align-middle">
-												<p className="font-medium text-gray-900 dark:text-white">{agendamento.cliente?.nome || 'Cliente'}</p>
-												<p className="text-xs text-gray-500 dark:text-gray-400">ID: {agendamento.cliente?.client_id || agendamento.cliente_id || 'Desconhecido'}</p>
-												{agendamento.conflito_horario && (
-													<span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase animate-pulse">⚠ Conflito de horário</span>
-												)}
-											</td>
-											<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 align-middle">
-												{new Date(agendamento.data).toLocaleDateString('pt-BR')}
-											</td>
-											<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 align-middle">
-												<div className="flex items-center gap-1">
-													<Clock className="h-4 w-4 text-gray-400" />
-													{agendamento.hora}
-												</div>
-											</td>
-											<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 align-middle">{agendamento.duracao_minutos} min</td>
-											<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 max-w-xs truncate align-middle" title={agendamento.produto}>
-												{agendamento.produto}
-											</td>
-
-											{/* Coluna Pagamento */}
-											<td className="px-6 py-4 align-middle text-center">
-												{agendamento.pagamento_status === 'aprovado' ? (
-													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-														<span className="w-2 h-2 rounded-full bg-emerald-500" /> Aprovado
-													</span>
-												) : agendamento.pagamento_status === 'pendente' ? (
-													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-														<span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse-scale" /> Pendente
-													</span>
-												) : agendamento.pagamento_status === 'recusado' ? (
-													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-														<span className="w-2 h-2 rounded-full bg-red-500" /> Recusado
-													</span>
-												) : agendamento.comprovante_url ? (
-													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-														<span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" /> Enviado
-													</span>
-												) : (
-													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500 dark:bg-neutral-700 dark:text-gray-400">
-														<span className="w-2 h-2 rounded-full bg-gray-400 animate-pulse-scale" /> Sem envio
-													</span>
-												)}
-											</td>
-
-											{/* Coluna Formulário */}
-											<td className="px-6 py-4 align-middle text-center">
-												{agendamento.cliente_is_user ? (
-													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-														<span className="w-2 h-2 rounded-full bg-emerald-500" /> Preenchido
-													</span>
-												) : (
-													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-														<span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse-scale" /> Pendente
-													</span>
-												)}
-											</td>
-
-											<td className="px-6 py-4 align-middle">
-												<Badge variant={getStatusConfig(agendamento.status).variant}>
-													{getStatusConfig(agendamento.status).label}
-												</Badge>
-											</td>
-										</tr>
-									)
-								})}
-							</tbody>
-						</table>
-					</div>
-				)}
-			</div>
-
-			{agendamentoSelecionado && (
-				<GerenciamentoAgendamentoModal
-					agendamento={agendamentoSelecionado}
-					onClose={() => setAgendamentoSelecionado(null)}
-					onAtualizado={() => {
-						// Optionally trigger a re-fetch of data here
-						// if we had a fetch prop, but currently data is passed by prop
-					}}
-				/>
-			)}
-		</div>
-	)
+      <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 overflow-hidden">
+        {filteredAgendamentos.length === 0 ? (
+          <div className="p-12 text-center">
+            <Calendar className="h-12 w-12 text-gray-300 dark:text-neutral-600 mx-auto mb-4" />
+            <p className="text-gray-600 dark:text-gray-400">Nenhum agendamento encontrado</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-gray-50 dark:bg-neutral-700 border-b border-gray-200 dark:border-neutral-600">
+                <tr>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cliente</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Data / Hora</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Produto</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-neutral-700">
+                {filteredAgendamentos.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-700 dark:text-emerald-400 font-bold text-sm">
+                          {item.cliente?.nome.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-1">{item.cliente?.nome}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">{item.cliente?.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300">
+                          <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                          {new Date(item.data).toLocaleDateString('pt-BR')}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          <Clock className="h-3.5 w-3.5 text-gray-400" />
+                          {item.hora} ({item.duracao_minutos} min)
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-sm text-gray-700 dark:text-gray-300 font-medium line-clamp-1">{item.produto}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      {getStatusBadge(item.status)}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button 
+                        onClick={() => navigate(`/comercial/agendamento/${item.id}`)}
+                        className="p-2 text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                        title="Editar agendamento"
+                      >
+                        <Edit className="h-5 w-5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      
+      {filteredAgendamentos.length > 0 && (
+        <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+          Mostrando {filteredAgendamentos.length} de {agendamentos.length} agendamentos
+        </p>
+      )}
+    </div>
+  )
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   Calendar, 
   Briefcase,
@@ -8,21 +9,28 @@ import {
   X,
   CreditCard
 } from "lucide-react";
-import { useAuth } from "../../../contexts/AuthContext";
-import juridicoService from "../services/juridicoService";
-import { Badge } from "../../../components/ui/Badge";
-import { formatDate } from "../../cliente/lib/utils";
-import { CalendarPicker } from "../../../components/ui/CalendarPicker";
+import { useAuth } from "../contexts/AuthContext";
+import juridicoService from "../modules/juridico/services/juridicoService"; // Keeping the service reference for now
+import { Badge } from "./ui/Badge";
+import { formatDate } from "../modules/cliente/lib/utils";
+import { CalendarPicker } from "./ui/CalendarPicker";
 
 type TabType = 'consultorias' | 'assessorias';
 
 const HORARIOS_DISPONIVEIS = [
-  '08:00', '09:00', '10:00', '11:00',
+  '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
   '13:00', '14:00', '15:00', '16:00', 
   '17:00', '18:00'
 ];
 
-export function MeusAgendamentos() {
+interface MeusAgendamentosProps {
+  userId?: string;
+  title?: string;
+  description?: string;
+}
+
+export function MeusAgendamentos({ userId, title = "Agendamentos", description = "Gerencie suas consultorias e assessorias jurídicas." }: MeusAgendamentosProps) {
+  const navigate = useNavigate();
   const { activeProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('consultorias');
   const [dataSelecionada, setDataSelecionada] = useState<Date>(new Date());
@@ -33,39 +41,106 @@ export function MeusAgendamentos() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [usuariosSistema, setUsuariosSistema] = useState<any[]>([]);
+  const [isAssigning, setIsAssigning] = useState(false);
   
   // Modal de Detalhes
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Fetch usuarios for mapping IDs to Names
-        try {
-           const usuarios = await juridicoService.getFuncionariosJuridico();
-           setUsuariosSistema(usuarios);
-        } catch(e) { console.warn("Erro carregando funcionarios", e) }
-        
-        if (activeTab === 'consultorias') {
-          const data = await juridicoService.getAgendamentos();
-          setConsultorias(Array.isArray(data) ? data : []);
-        } else if (activeTab === 'assessorias' && activeProfile?.id) {
-          const data = await juridicoService.getAssessoriasByResponsavel(activeProfile.id);
-          setAssessorias(Array.isArray(data) ? data : []);
-        }
-      } catch (err: any) {
-        console.error("Erro ao carregar agendamentos:", err);
-        setError("Não foi possível carregar os dados. Tente novamente mais tarde.");
-      } finally {
-        setLoading(false);
-      }
-    };
+  const effectiveUserId = userId || activeProfile?.id;
 
+  const getLocalDateString = (date: Date | string) => {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const occupancyData = (activeTab === 'consultorias' ? consultorias : assessorias).reduce((acc: Record<string, number>, item) => {
+    const timeValue = item.data_hora || item.criado_em;
+    if (!timeValue) return acc;
+    const dateKey = getLocalDateString(timeValue);
+    
+    // Count occupied slots for this day
+    const dayItems = (activeTab === 'consultorias' ? consultorias : assessorias).filter(i => {
+      const iTime = i.data_hora || i.criado_em;
+      return iTime && getLocalDateString(iTime) === dateKey;
+    });
+    
+    // Total slots is HORARIOS_DISPONIVEIS.length (10)
+    acc[dateKey] = dayItems.length / HORARIOS_DISPONIVEIS.length;
+    return acc;
+  }, {});
+
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch usuarios for mapping IDs to Names
+      try {
+         const usuarios = await juridicoService.getFuncionariosJuridico();
+         setUsuariosSistema(usuarios);
+      } catch(e) { console.warn("Erro carregando funcionarios", e) }
+      
+      if (activeTab === 'consultorias') {
+        const data = await juridicoService.getAgendamentos();
+        console.log("DEBUG: Consultorias (API Response):", data);
+        const dataArr = Array.isArray(data) ? data : (data ? [data] : []);
+        console.log("DEBUG: Consultorias (Array):", dataArr);
+        
+        // Filtrar consultorias: apenas itens que NÃO requerem delegação jurídica
+        const filtered = dataArr.filter((item: any) => {
+          const req = item.requer_delegacao;
+          console.log(`DEBUG: Item ${item.id} - requer_delegacao: ${req} (${typeof req})`);
+          return !req;
+        });
+        console.log("DEBUG: Consultorias (Filtered):", filtered);
+        setConsultorias(filtered);
+      } else if (activeTab === 'assessorias' && effectiveUserId) {
+        // Buscar agendamentos que foram delegados a este responsável
+        const data = await juridicoService.getAgendamentosByResponsavel(effectiveUserId);
+        console.log("DEBUG: Assessorias (API Response):", data);
+        const dataArr = Array.isArray(data) ? data : (data ? [data] : []);
+        console.log("DEBUG: Assessorias (Array):", dataArr);
+        setAssessorias(dataArr);
+      }
+    } catch (err: any) {
+      console.error("Erro ao carregar agendamentos:", err);
+      setError("Não foi possível carregar os dados. Tente novamente mais tarde.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
-  }, [activeTab, activeProfile?.id]);
+  }, [activeTab, effectiveUserId]);
+
+  const handleAssign = async () => {
+    if (!selectedItem || !activeProfile?.id) return;
+    
+    try {
+      setIsAssigning(true);
+      await juridicoService.atribuirResponsavelAgendamento(selectedItem.id, activeProfile.id);
+      
+      // Refresh current item data and list
+      await fetchData();
+      
+      // Update selectedItem to show new responsible
+      setSelectedItem((prev: any) => ({
+        ...prev,
+        responsavel_juridico_id: activeProfile.id
+      }));
+      
+    } catch (err: any) {
+      console.error("Erro ao atribuir consultoria:", err);
+      alert("Erro ao atribuir consultoria: " + (err.message || "Tente novamente mais tarde."));
+    } finally {
+      setIsAssigning(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -83,39 +158,55 @@ export function MeusAgendamentos() {
   };
 
   // Filtrar os dados pelo dia selecionado
-  const dataSelecionadaIso = dataSelecionada.toISOString().split('T')[0];
+  const dataSelecionadaIso = getLocalDateString(dataSelecionada);
   
   const itemsDoDia = (activeTab === 'consultorias' ? consultorias : assessorias).filter(item => {
     if (!item.data_hora && !item.criado_em) return false;
-    const dateStr = (item.data_hora || item.criado_em).split('T')[0];
+    const dateStr = getLocalDateString(item.data_hora || item.criado_em);
     return dateStr === dataSelecionadaIso;
   });
+  
+  console.log("DEBUG: Renderizando grade para:", dataSelecionadaIso);
+  console.log("DEBUG: Items filtrados para o dia:", JSON.stringify(itemsDoDia));
 
   // Função auxiliar para calcular conflitos e duração nos slots
   const getItemParaHorario = (hora: string) => {
-    const inicioSlot = new Date(`${dataSelecionadaIso}T${hora}:00`);
+    // Garantir que a comparação seja feita com datas no mesmo fuso (Local)
+    const [h, m] = hora.split(':').map(Number);
+    const inicioSlot = new Date(dataSelecionada);
+    inicioSlot.setHours(h, m, 0, 0);
+    const inicioSlotTime = inicioSlot.getTime();
     
-    return itemsDoDia.find(item => {
-      if (!item.data_hora) return false;
-      const inicioAgendamento = new Date(item.data_hora);
+    const found = itemsDoDia.find(item => {
+      const timeValue = item.data_hora || item.criado_em;
+      if (!timeValue) return false;
+      const inicioAgendamento = new Date(timeValue);
       const duracao = item.duracao_minutos || 60;
       const fimAgendamento = new Date(inicioAgendamento.getTime() + duracao * 60000);
       
-      return inicioAgendamento <= inicioSlot && inicioSlot < fimAgendamento;
+      // Margem de erro de 1 minuto para evitar bugs de arredondamento
+      const match = inicioAgendamento.getTime() <= (inicioSlotTime + 60000) && inicioSlotTime < fimAgendamento.getTime();
+      return match;
     });
+
+    if (found) console.log(`DEBUG: Slot ${hora} ocupado por:`, found.id, "Início:", new Date(found.data_hora || found.criado_em).toLocaleTimeString());
+    return found;
   };
 
   const isInicioAgendamento = (hora: string, item: any) => {
-    if (!item || !item.data_hora) return false;
-    const itemHora = new Date(item.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    return itemHora === hora;
+    const timeValue = item.data_hora || item.criado_em;
+    if (!item || !timeValue) return false;
+    const d = new Date(timeValue);
+    const h = String(d.getHours()).padStart(2, '0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    return `${h}:${m}` === hora;
   };
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 lg:space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Agendamentos</h1>
-        <p className="text-muted-foreground mt-1">Gerencie suas consultorias e assessorias jurídicas.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">{title}</h1>
+        <p className="text-muted-foreground mt-1">{description}</p>
       </div>
 
       {/* Tabs Layout */}
@@ -155,6 +246,7 @@ export function MeusAgendamentos() {
               selectedDate={dataSelecionada}
               disabledDates={[]}
               disablePastDates={false}
+              occupancyData={occupancyData}
             />
           </div>
         </div>
@@ -195,12 +287,10 @@ export function MeusAgendamentos() {
                 {HORARIOS_DISPONIVEIS.map((hora) => {
                   const itemNoHorario = getItemParaHorario(hora);
                   const isOcupado = !!itemNoHorario;
-                  // Se houver duração > 30min, esse horário inicial "cobre" os próximos, mas na grid é melhor mostrar só os blocos iniciais ou preencher a grid. Mas por simplicidade do design de botões, manteremos a grid de 30 em 30min simples, mostrando o bloco.
                   
                   if (isOcupado) {
                      const isInicio = isInicioAgendamento(hora, itemNoHorario);
                      if (!isInicio) {
-                        // Se não é o início, mostramos como ocupado mas sutil, ou nem renderizamos ação.
                         return (
                           <div 
                             key={hora}
@@ -277,7 +367,7 @@ export function MeusAgendamentos() {
             </div>
             
             {/* Body */}
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
                <div className="flex justify-between items-start">
                   <div>
                     <p className="text-xs text-gray-500 uppercase font-semibold tracking-wider mb-1">Serviço / Produto</p>
@@ -286,7 +376,7 @@ export function MeusAgendamentos() {
                     </p>
                   </div>
                   <div>
-                    {getStatusBadge(activeTab === 'consultorias' ? selectedItem.status : 'Aprovado')}
+                    {getStatusBadge(activeTab === 'consultorias' ? selectedItem.status : 'confirmado')}
                   </div>
                </div>
 
@@ -294,17 +384,52 @@ export function MeusAgendamentos() {
                   <div className="bg-gray-50 dark:bg-neutral-900/50 p-3 rounded-xl border border-gray-100 dark:border-neutral-800">
                     <p className="text-xs text-gray-500 uppercase font-semibold mb-1 flex items-center gap-1.5"><Calendar className="h-3 w-3"/> Data</p>
                     <p className="font-medium text-gray-900 dark:text-white">
-                       {selectedItem.data_hora ? new Date(selectedItem.data_hora).toLocaleDateString('pt-BR') : '—'}
+                       {selectedItem.data_hora || selectedItem.criado_em ? new Date(selectedItem.data_hora || selectedItem.criado_em).toLocaleDateString('pt-BR') : '—'}
                     </p>
                   </div>
                   <div className="bg-gray-50 dark:bg-neutral-900/50 p-3 rounded-xl border border-gray-100 dark:border-neutral-800">
                     <p className="text-xs text-gray-500 uppercase font-semibold mb-1 flex items-center gap-1.5"><Clock className="h-3 w-3"/> Horário</p>
                     <p className="font-medium text-gray-900 dark:text-white">
-                       {selectedItem.data_hora ? new Date(selectedItem.data_hora).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}) : '—'}
+                       {selectedItem.data_hora || selectedItem.criado_em ? new Date(selectedItem.data_hora || selectedItem.criado_em).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}) : '—'}
                        <span className="text-xs text-gray-500 ml-1">({selectedItem.duracao_minutos || 60}m)</span>
                     </p>
                   </div>
                </div>
+
+               {/* Seção Condicional: Informações de Assessoria (Chamada) */}
+               {activeTab === 'assessorias' && selectedItem.respostas && (
+                 <div className="pt-4 border-t border-gray-100 dark:border-neutral-700">
+                    <p className="text-xs text-gray-500 uppercase font-semibold tracking-wider mb-3">Informações da Chamada</p>
+                    <div className="space-y-4">
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100/50 dark:border-blue-900/30">
+                             <p className="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase mb-1">Processos Ativos?</p>
+                             <p className="text-sm font-medium">{selectedItem.respostas.proc_ativos ? 'Sim' : 'Não'}</p>
+                          </div>
+                          <div className="p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100/50 dark:border-blue-900/30">
+                             <p className="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase mb-1">Possui Dependentes?</p>
+                             <p className="text-sm font-medium">{selectedItem.respostas.possui_dependentes ? 'Sim' : 'Não'}</p>
+                          </div>
+                       </div>
+                       
+                       {selectedItem.respostas.proc_tipos && (
+                         <div className="p-3 bg-gray-50 dark:bg-neutral-900/50 rounded-xl border border-gray-100 dark:border-neutral-800">
+                           <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Tipos de Processos</p>
+                           <p className="text-sm">{selectedItem.respostas.proc_tipos}</p>
+                         </div>
+                       )}
+
+                       {selectedItem.respostas.possui_dependentes && (
+                          <div className="p-3 bg-gray-50 dark:bg-neutral-900/50 rounded-xl border border-gray-100 dark:border-neutral-800">
+                            <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Qtd. Dependentes / Processos Dep.</p>
+                            <p className="text-sm font-medium">
+                              {selectedItem.respostas.dep_qtd || 0} dependente(s) {selectedItem.respostas.dep_processos ? '(Algum possui processo)' : '(Nenhum possui processo)'}
+                            </p>
+                          </div>
+                       )}
+                    </div>
+                 </div>
+               )}
 
                <div className="pt-4 border-t border-gray-100 dark:border-neutral-700">
                   <p className="text-xs text-gray-500 uppercase font-semibold tracking-wider mb-3">Dados do Cliente</p>
@@ -334,7 +459,7 @@ export function MeusAgendamentos() {
 
                {selectedItem.observacoes && (
                  <div className="pt-4 border-t border-gray-100 dark:border-neutral-700">
-                    <p className="text-xs text-gray-500 uppercase font-semibold tracking-wider mb-2">Observações</p>
+                    <p className="text-xs text-gray-500 uppercase font-semibold tracking-wider mb-2">Observações / Notas</p>
                     <div className="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-700/30 p-3 rounded-xl">
                       <p className="text-sm text-yellow-800 dark:text-yellow-500 italic">
                         "{selectedItem.observacoes}"
@@ -345,7 +470,31 @@ export function MeusAgendamentos() {
 
                <div className="pt-4 border-t border-gray-100 dark:border-neutral-700 grid grid-cols-2 gap-4">
                   <div>
-                    <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider block mb-1">Agendado Por</span>
+                    <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider block mb-1">Responsável pela Consultoria</span>
+                    <div className="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-xl border border-blue-100/50 dark:border-blue-900/30">
+                       <p className="font-medium text-blue-900 dark:text-blue-100 italic">
+                         {(() => {
+                           const respId = selectedItem.responsavel_juridico_id;
+                           if (!respId) return 'Aguardando Atribuição';
+                           const user = usuariosSistema.find(u => u.id === respId);
+                           if (user) return user.full_name;
+                           if (activeProfile?.id === respId) return activeProfile?.full_name;
+                           return `Usuário (${respId.substring(0,8)})`;
+                         })()}
+                       </p>
+                       {!selectedItem.responsavel_juridico_id && activeTab === 'consultorias' && (
+                         <button 
+                           onClick={handleAssign}
+                           disabled={isAssigning}
+                           className="mt-2 w-full py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                         >
+                           {isAssigning ? 'Atribuindo...' : 'Realizar Consultoria'}
+                         </button>
+                       )}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider block mb-1">Agendado / Criado Por</span>
                     <div className="bg-gray-50 dark:bg-neutral-800/50 p-3 rounded-xl border border-gray-100 dark:border-neutral-800">
                        <p className="font-medium text-gray-900 dark:text-white">
                          {(() => {
@@ -367,24 +516,42 @@ export function MeusAgendamentos() {
                        </p>
                     </div>
                   </div>
-                  {selectedItem.valor && (
-                    <div>
-                      <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider block mb-1">Pagamento (Valor)</span>
-                      <p className="text-sm font-medium flex items-center gap-1 text-gray-900 dark:text-white">
-                         <CreditCard className="h-3.5 w-3.5 text-gray-400"/>
-                         {selectedItem.metodo_pagamento || '—'} 
-                         <span className="text-emerald-600 dark:text-emerald-400 ml-1 font-bold">R$ {Number(selectedItem.valor).toFixed(2)}</span>
-                      </p>
-                    </div>
-                  )}
+               </div>
+               
+               <div className="pt-4 border-t border-gray-100 dark:border-neutral-700">
+                  <div className="grid grid-cols-2 gap-4">
+                    {(selectedItem.valor || selectedItem.pagamento_status) && (
+                      <div>
+                        <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider block mb-1">Pagamento (Valor)</span>
+                        <p className="text-sm font-medium flex items-center gap-1 text-gray-900 dark:text-white">
+                           <CreditCard className="h-3.5 w-3.5 text-gray-400"/>
+                           {selectedItem.metodo_pagamento || selectedItem.pagamento_status || '—'} 
+                           {selectedItem.valor && (
+                             <span className="text-emerald-600 dark:text-emerald-400 ml-1 font-bold">R$ {Number(selectedItem.valor).toFixed(2)}</span>
+                           )}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                </div>
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-gray-100 dark:border-neutral-700 bg-gray-50/80 dark:bg-neutral-900/50 flex justify-end">
+            <div className="p-4 border-t border-gray-100 dark:border-neutral-700 bg-gray-50/80 dark:bg-neutral-900/50 flex flex-col sm:flex-row justify-between gap-3">
+               <div>
+                  {activeTab === 'consultorias' && (
+                    <button 
+                      onClick={() => navigate(`/juridico/assessoria?clienteId=${selectedItem.cliente_id}`)}
+                      className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-all shadow-md shadow-blue-200 flex items-center justify-center gap-2"
+                    >
+                      <Briefcase className="h-4 w-4" />
+                      Iniciar Consultoria
+                    </button>
+                  )}
+               </div>
                <button 
                  onClick={() => setSelectedItem(null)}
-                 className="px-6 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors shadow-sm"
+                 className="px-6 py-2.5 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors"
                >
                  Fechar
                </button>
