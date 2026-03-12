@@ -18,11 +18,11 @@ export default function ProximosAgendamentosCard({ agendamentos }: ProximosAgend
   return (
     <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Próximos Agendamentos</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Meus Próximos Agendamentos</h3>
         <button
           onClick={() => navigate('/comercial/meus-agendamentos')}
           className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
-          title="Ver todos os agendamentos"
+          title="Ver Meus Agendamentos"
         >
           <ChevronRight className="h-5 w-5" />
         </button>
