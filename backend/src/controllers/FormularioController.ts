@@ -254,14 +254,12 @@ class FormularioController {
                         email,
                         senha: senhaGerada
                     })
-                 if (admins && admins.length > 0) {
-                    for (const admin of admins) {
-                        // send notification
-                    }
+                    emailEnviado = true
+                } catch (err: any) {
+                    console.error('[FormularioController] Erro ao enviar email', err)
                 }
-            } catch (err: any) {
-                console.error('[FormularioController] Erro no push', err)
-            }etido. Aguardando confirmação do pagamento pelo Comercial.')
+            } else {
+                console.log('[FormularioController] Formulário submetido. Aguardando confirmação do pagamento pelo Comercial.')
             }
 
             console.log('[FormularioController] Formulário processado com sucesso para:', nome_completo)
@@ -362,7 +360,7 @@ class FormularioController {
 
                 if (admins && admins.length > 0) {
                     for (const admin of admins) {
-                        await supabase
+                        const { error: notifError } = await supabase
                             .from('notificacoes')
                             .insert([{
                                 cliente_id: admin.id,
@@ -372,8 +370,10 @@ class FormularioController {
                                 lida: false,
                                 criado_em: new Date().toISOString()
                             }])
-                            .then(() => {})
-                            .catch((e: any) => console.error('Erro notificando admin:', e))
+                        
+                        if (notifError) {
+                            console.error('Erro notificando admin:', notifError)
+                        }
                     }
                     console.log(`[FormularioController] ${admins.length} admin(s) notificado(s) sobre comprovante`)
                 }
