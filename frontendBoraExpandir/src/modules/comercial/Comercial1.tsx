@@ -25,6 +25,7 @@ interface Produto {
   valor: number
   imagem?: string
   isEuro?: boolean
+  duracaoMinutos?: number
 }
 
 interface Agendamento {
@@ -40,23 +41,14 @@ interface Agendamento {
 
 const HORARIOS_DISPONIVEIS = [
   '08:00',
-  '08:30',
   '09:00',
-  '09:30',
   '10:00',
-  '10:30',
   '11:00',
-  '11:30',
   '13:00',
-  '13:30',
   '14:00',
-  '14:30',
   '15:00',
-  '15:30',
   '16:00',
-  '16:30',
   '17:00',
-  '17:30',
   '18:00',
 ]
 
@@ -115,7 +107,8 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
               : `Duração estimada: ${s.duration}`,
             valor: Number(s.value),
             show: s.showInCommercial,
-            isEuro: true // No catálogo atual os valores são em Euro
+            isEuro: true, // No catálogo atual os valores são em Euro
+            duracaoMinutos: parseInt(s.duration) || 60
           }))
         setProdutos(mappedProdutos)
 
@@ -396,6 +389,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
   const handleSelecionarProduto = (produto: Produto) => {
     setProdutoSelecionado(produto)
+    setDuracaoMinutos(produto.duracaoMinutos || 60)
     // O avanço de etapa agora é controlado pelo botão "Próximo"
   }
 
@@ -771,23 +765,9 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                         <p className="text-sm text-gray-600 dark:text-gray-400">Escolha o início e a duração do atendimento</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        {isClientView ? (
-                          <div className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 px-3 py-2 rounded-lg text-sm font-bold border border-emerald-200 dark:border-emerald-800">
-                            40 min
-                          </div>
-                        ) : (
-                          [30, 60, 90].map((duracao) => (
-                            <button
-                              key={duracao}
-                              onClick={() => setDuracaoMinutos(duracao)}
-                              className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-all ${duracaoMinutos === duracao
-                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/20'
-                                : 'bg-white dark:bg-neutral-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-neutral-600 hover:border-emerald-400'}`}
-                            >
-                              {duracao} min
-                            </button>
-                          ))
-                        )}
+                        <div className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 px-3 py-2 rounded-lg text-sm font-bold border border-emerald-200 dark:border-emerald-800">
+                          {duracaoMinutos} min
+                        </div>
                       </div>
                     </div>
 

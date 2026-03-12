@@ -336,7 +336,7 @@ class ClienteController {
 
       // 3. Upsert na tabela clientes (usando email como chave de conflito no repositório)
       const clienteData: any = {
-        id: usuarioId, // Mantendo o vínculo com Auth
+        id: usuarioId || require('crypto').randomUUID(), // Mantendo o vínculo com Auth ou garantindo um ID
         nome,
         email,
         whatsapp,
@@ -1096,6 +1096,7 @@ class ClienteController {
       }
 
       const leadData = {
+        id: require('crypto').randomUUID(),
         nome,
         email: email || `lead_${Date.now()}@bora.com`,
         whatsapp,
