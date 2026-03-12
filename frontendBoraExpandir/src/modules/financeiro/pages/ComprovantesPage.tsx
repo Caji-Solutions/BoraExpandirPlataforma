@@ -19,6 +19,7 @@ import {
     RefreshCw,
     X
 } from 'lucide-react'
+import { catalogService, Service } from '../../adm/services/catalogService'
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL
 
@@ -45,6 +46,7 @@ export function ComprovantesPage() {
     const [comprovantes, setComprovantes] = useState<Comprovante[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [services, setServices] = useState<Service[]>([])
 
     // Estado de ação por item
     const [actionStates, setActionStates] = useState<Record<string, ActionState>>({})
@@ -68,8 +70,23 @@ export function ComprovantesPage() {
     }, [])
 
     useEffect(() => {
+        const loadServices = async () => {
+            try {
+                const data = await catalogService.getCatalogServices()
+                setServices(data)
+            } catch (err) {
+                console.error('Erro ao carregar serviços', err)
+            }
+        }
+        loadServices()
         fetchComprovantes()
     }, [fetchComprovantes])
+
+    const getServiceName = (produtoId: string, produtoNome?: string) => {
+        if (produtoNome && produtoNome.trim() !== '') return produtoNome
+        const service = services.find(s => s.id === produtoId)
+        return service ? service.name : produtoId
+    }
 
     const setAction = (id: string, state: ActionState) => {
         setActionStates(prev => ({ ...prev, [id]: state }))
@@ -236,7 +253,7 @@ export function ComprovantesPage() {
                                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-gray-500 dark:text-gray-400">
                                                 <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {c.email || '—'}</span>
                                                 <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {c.telefone || '—'}</span>
-                                                <span className="flex items-center gap-1"><Package className="w-3 h-3" /> {c.produto_nome || c.produto_id || '—'}</span>
+                                                <span className="flex items-center gap-1"><Package className="w-3 h-3" /> {getServiceName(c.produto_id, c.produto_nome) || '—'}</span>
                                                 <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {formatDateTime(c.data_hora)}</span>
                                             </div>
                                         </div>

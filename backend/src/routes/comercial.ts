@@ -18,5 +18,6 @@ comercial.post('/agendamento/:id/confirmar-pix', ComercialController.confirmarPi
 comercial.get('/agendamento/:id/status-formulario', ComercialController.verificarStatusFormulario.bind(ComercialController))
 comercial.get('/agendamento/:id', ComercialController.getAgendamentoById.bind(ComercialController))
 comercial.put('/agendamento/:id', ComercialController.updateAgendamento.bind(ComercialController))
+comercial.post('/agendamento/:id/cancelar', ComercialController.cancelarAgendamento.bind(ComercialController))
 
 export default comercial

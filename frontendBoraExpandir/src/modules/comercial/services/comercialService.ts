@@ -48,10 +48,22 @@ export async function register(clienteData: any): Promise<any> {
     return response.json();
 }
 
+export async function cancelarAgendamento(id: string): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/comercial/agendamento/${id}/cancelar`, {
+        method: 'POST',
+    });
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erro ao cancelar agendamento');
+    }
+    return response.json();
+}
+
 export default {
     getAllClientes,
     getAgendamentosByUsuario,
     register,
-    getClienteCredentials
+    getClienteCredentials,
+    cancelarAgendamento
 };
 

@@ -46,8 +46,8 @@ export function FinanceiroApp() {
       try {
         const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/financeiro/comprovantes/pendentes`)
         if (response.ok) {
-          const data = await response.json()
-          setPendentesCount(data.length)
+          const json = await response.json()
+          setPendentesCount(json.data?.length || 0)
         }
       } catch (err) {
         console.error('Erro ao buscar comprovantes pendentes list', err)

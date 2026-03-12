@@ -10,7 +10,7 @@ import {
   CheckCircle,
 } from 'lucide-react'
 import { clienteService } from '../../modules/cliente/services/clienteService'
-import { mockClient } from '../../modules/cliente/lib/mock-data'
+import { useAuth } from '../../contexts/AuthContext'
 
 // Interface e dados de notificações
 interface Notificacao {
@@ -58,15 +58,18 @@ const tipoConfig = {
 }
 
 export function NotificationsDropdown() {
+  const { activeProfile } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [filter, setFilter] = useState<'unread' | 'read'>('unread')
 
   const fetchNotificacoes = async () => {
+    const userId = activeProfile?.id
+    if (!userId) return
     try {
       setIsLoading(true)
-      const data = await clienteService.getNotificacoes(mockClient.id)
+      const data = await clienteService.getNotificacoes(userId)
       
       const mapped = data.map((n: any) => {
         const isRead = n.lida === true || String(n.lida) === 'true' || n.lida === 1;
@@ -115,10 +118,11 @@ export function NotificationsDropdown() {
     .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
 
   const marcarTodasComoLidas = async () => {
+    if (!activeProfile?.id) return
     try {
       // Optimistic update
       setNotificacoes(prev => prev.map(n => ({ ...n, lida: true })))
-      await clienteService.markAllNotificacoesAsRead(mockClient.id)
+      await clienteService.markAllNotificacoesAsRead(activeProfile.id)
     } catch (error) {
       console.error('Erro ao marcar todas como lidas:', error)
     }

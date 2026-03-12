@@ -11,6 +11,29 @@ import { useAuth } from '../../contexts/AuthContext'
 import { catalogService, Service } from '../adm/services/catalogService'
 import comercialService from './services/comercialService'
 
+/**
+ * Converte string de duração do catálogo (ex: "1 horas", "30 minutos") para minutos.
+ * Suporta: minutos, horas. Demais unidades retornam o valor numérico bruto.
+ */
+function parseDurationToMinutes(duration: string): number {
+  if (!duration) return 0
+  const parts = duration.trim().split(/\s+/)
+  const value = parseInt(parts[0]) || 0
+  const unit = (parts[1] || '').toLowerCase()
+
+  switch (unit) {
+    case 'minuto':
+    case 'minutos':
+      return value
+    case 'hora':
+    case 'horas':
+      return value * 60
+    default:
+      // Se não tiver unidade reconhecida, assume minutos
+      return value
+  }
+}
+
 interface Cliente {
   id: string
   nome: string
@@ -26,6 +49,7 @@ interface Produto {
   imagem?: string
   isEuro?: boolean
   duracaoMinutos?: number
+  requiresLegalDelegation: boolean
 }
 
 interface Agendamento {
@@ -108,7 +132,8 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
             valor: Number(s.value),
             show: s.showInCommercial,
             isEuro: true, // No catálogo atual os valores são em Euro
-            duracaoMinutos: parseInt(s.duration) || 60
+            duracaoMinutos: parseDurationToMinutes(s.duration) || 60,
+            requiresLegalDelegation: s.requiresLegalDelegation
           }))
         setProdutos(mappedProdutos)
 
@@ -539,6 +564,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       status: agendamentoPreview.status,
       usuario_id: activeProfile?.id,
       cliente_id: agendamentoPreview.cliente.id,
+      requer_delegacao: agendamentoPreview.produto.requiresLegalDelegation,
       id: editId || undefined
     })
 

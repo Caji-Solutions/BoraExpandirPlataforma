@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ChevronLeft, Save, Loader2, Calendar, Clock, User, Mail, Phone, CreditCard, FileText, Package, X, AlertCircle, Upload, CheckCircle2 } from 'lucide-react'
+import { ChevronLeft, Save, Loader2, Calendar, Clock, User, Mail, Phone, CreditCard, FileText, Package, X, AlertCircle, Upload, CheckCircle2, XCircle } from 'lucide-react'
 import { useToast } from '../../components/ui/Toast'
 import { CalendarPicker } from '../../components/ui/CalendarPicker'
 import { catalogService, Service } from '../adm/services/catalogService'
+import comercialService from './services/comercialService'
 
 const HORARIOS_DISPONIVEIS = [
     '08:00', '09:00', '10:00', '11:00',
@@ -51,6 +52,10 @@ export function AgendamentoEditPage() {
     const [comprovantePreview, setComprovantePreview] = useState<string | null>(null)
     const [uploadingComprovante, setUploadingComprovante] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
+
+    // Cancel states
+    const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+    const [cancelling, setCancelling] = useState(false)
 
     // Fechar popup ao clicar fora
     useEffect(() => {
@@ -252,7 +257,7 @@ export function AgendamentoEditPage() {
             setAgendamento((prev: any) => ({
                 ...prev,
                 comprovante_url: 'enviado',
-                pagamento_status: 'pendente'
+                pagamento_status: 'em_analise'
             }))
             
             setComprovanteFile(null)
@@ -261,6 +266,20 @@ export function AgendamentoEditPage() {
             toast.error(err.message || 'Erro ao enviar comprovante. Tente novamente.')
         } finally {
             setUploadingComprovante(false)
+        }
+    }
+
+    const handleCancelarAgendamento = async () => {
+        if (!agendamento?.id) return
+        try {
+            setCancelling(true)
+            await comercialService.cancelarAgendamento(agendamento.id)
+            toast.success('Agendamento cancelado com sucesso.')
+            navigate('/comercial/meus-agendamentos')
+        } catch (err: any) {
+            toast.error(err.message || 'Erro ao cancelar agendamento.')
+        } finally {
+            setCancelling(false)
         }
     }
 
@@ -507,7 +526,11 @@ export function AgendamentoEditPage() {
                             <CalendarPicker
                                 selectedDate={dataSelecionada}
                                 onDateSelect={setDataSelecionada}
-                                minDate={new Date()}
+                                minDate={(() => {
+                                    const tomorrow = new Date()
+                                    tomorrow.setDate(tomorrow.getDate() + 1)
+                                    return tomorrow
+                                })()}
                             />
                         </div>
 
@@ -634,11 +657,50 @@ export function AgendamentoEditPage() {
                     )}
                 </div>
 
+                {/* ═══ CANCELAR AGENDAMENTO ═══ */}
+                {agendamento.status !== 'cancelado' && agendamento.status !== 'realizado' && (
+                    <div className="bg-white dark:bg-neutral-900 rounded-2xl p-6 border border-red-100 dark:border-red-900/30 shadow-sm mt-6">
+                        <h2 className="text-lg font-semibold text-red-700 dark:text-red-400 mb-2 flex items-center gap-2">
+                            <XCircle className="w-5 h-5" />
+                            Cancelar Agendamento
+                        </h2>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                            Ao cancelar, o horário será liberado e o agendamento não poderá ser reativado.
+                        </p>
+                        {showCancelConfirm ? (
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={handleCancelarAgendamento}
+                                    disabled={cancelling}
+                                    className="px-5 py-2.5 rounded-xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-all disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    {cancelling ? <><Loader2 className="h-4 w-4 animate-spin" /> Cancelando...</> : 'Confirmar Cancelamento'}
+                                </button>
+                                <button
+                                    onClick={() => setShowCancelConfirm(false)}
+                                    disabled={cancelling}
+                                    className="px-5 py-2.5 rounded-xl bg-gray-200 text-gray-700 dark:bg-neutral-700 dark:text-gray-200 font-semibold text-sm hover:bg-gray-300 dark:hover:bg-neutral-600 transition-all"
+                                >
+                                    Voltar
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => setShowCancelConfirm(true)}
+                                className="px-5 py-2.5 rounded-xl border-2 border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 font-semibold text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-all flex items-center gap-2"
+                            >
+                                <XCircle className="w-4 h-4" />
+                                Cancelar Agendamento
+                            </button>
+                        )}
+                    </div>
+                )}
+
                 {/* Botão Salvar */}
                 <div className="flex justify-end pt-6">
                     <button
                         onClick={handleSalvar}
-                        disabled={salvando || !dataSelecionada || !horaSelecionada}
+                        disabled={salvando || !dataSelecionada || !horaSelecionada || agendamento.status === 'cancelado'}
                         className="px-6 py-3 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center min-w-[200px] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {salvando ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5 mr-2" /> Salvar Alterações</>}

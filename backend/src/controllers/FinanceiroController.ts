@@ -13,7 +13,7 @@ class FinanceiroController {
                 .from('agendamentos')
                 .select('*')
                 .not('comprovante_url', 'is', null)
-                .eq('pagamento_status', 'pendente')
+                .eq('pagamento_status', 'em_analise')
                 .order('comprovante_upload_em', { ascending: true })
 
             if (error) {
@@ -67,7 +67,7 @@ class FinanceiroController {
                     .from('agendamentos')
                     .select('id')
                     .neq('id', id)
-                    .in('status', ['confirmado', 'aprovado', 'realizado'])
+                    .in('status', ['agendado', 'confirmado', 'aprovado', 'realizado'])
                     .gte('data_hora', inicio.toISOString())
                     .lt('data_hora', fim.toISOString())
                     
@@ -96,8 +96,24 @@ class FinanceiroController {
                 return res.status(500).json({ message: 'Erro ao aprovar comprovante' })
             }
 
-            // 5. Atualizar status do agendamento para 'confirmado'
-            await ComercialRepository.updateAgendamentoStatus(id, 'confirmado')
+            // 5. Verificar se o formulário já foi preenchido (cliente tem user_id)
+            let formularioPreenchido = false
+            if (agendamento.email) {
+                const { data: clientePorEmail } = await supabase
+                    .from('clientes')
+                    .select('user_id')
+                    .eq('email', agendamento.email)
+                    .maybeSingle()
+                
+                if (clientePorEmail?.user_id) {
+                    formularioPreenchido = true
+                }
+            }
+
+            // 6. Só marca 'confirmado' se pagamento E formulário estiverem OK
+            const novoStatus = formularioPreenchido ? 'confirmado' : 'agendado'
+            await ComercialRepository.updateAgendamentoStatus(id, novoStatus)
+            console.log(`[FinanceiroController] Status do agendamento atualizado para: ${novoStatus} (formulário: ${formularioPreenchido ? 'sim' : 'não'})`)
 
             // 6. Gerar link de recuperação de senha pelo Supabase (setup de conta)
             if (!agendamento.email) {

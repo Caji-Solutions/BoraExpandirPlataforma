@@ -19,6 +19,7 @@ interface AgendamentoConfirmacaoModalProps {
     status: string
     usuario_id?: string
     cliente_id?: string
+    requer_delegacao?: boolean
     id?: string
   }
   exchangeRate?: number
@@ -125,7 +126,8 @@ Obrigado! 🚀
       const requestPayload = {
         ...payload,
         status: 'pendente',
-        metodo_pagamento: 'pix'
+        metodo_pagamento: 'pix',
+        requer_delegacao: payload.requer_delegacao
       }
 
       // Remover ID do payload stringificado se for edição, já que está na URL

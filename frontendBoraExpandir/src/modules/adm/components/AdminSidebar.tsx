@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Activity, Shield, Library, FileText, Settings, ShieldAlert, Settings2, Users, ChevronDown, ChevronRight, UserCircle, LogOut, Dna, Languages, FileCheck } from "lucide-react";
+import { useState } from "react";
+import { Activity, Shield, Library, FileText, Settings, ShieldAlert, Settings2, Users, ChevronDown, ChevronRight, UserCircle, LogOut, Dna, Languages, CreditCard, PieChart, BarChart, HandCoins, Wallet } from "lucide-react";
 import { NavLink } from "./NavLink";
 import { useNavigate } from "react-router-dom";
 import {
@@ -62,22 +62,6 @@ export function AdminSidebar() {
     }))
   );
 
-  const [pendentesCount, setPendentesCount] = useState(0);
-
-  useEffect(() => {
-    async function fetchPendentes() {
-      try {
-        const response = await fetch(`${BACKEND_URL}/financeiro/comprovantes/pendentes`);
-        if (response.ok) {
-          const data = await response.json();
-          setPendentesCount(data.length);
-        }
-      } catch (err) {
-        console.error('Erro ao buscar comprovantes pendentes list', err);
-      }
-    }
-    fetchPendentes();
-  }, []);
 
   const fetchSectorTeam = async (role: string, index: number) => {
     setSectors((prev) =>

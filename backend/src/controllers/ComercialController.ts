@@ -9,7 +9,7 @@ class ComercialController {
         console.log('========== CREATE AGENDAMENTO DEBUG ==========')
         console.log('Body completo recebido:', req.body)
         try {
-            const { nome, email, telefone, data_hora, produto_id, duracao_minutos, status, usuario_id, cliente_id } = req.body
+            const { nome, email, telefone, data_hora, produto_id, duracao_minutos, status, usuario_id, cliente_id, requer_delegacao } = req.body
 
             console.log('IDs recebidos:', { usuario_id, cliente_id })
 
@@ -45,7 +45,21 @@ class ComercialController {
                 duracao_minutos: duracao,
                 status: status || 'agendado',
                 usuario_id: usuario_id || null,
-                cliente_id: cliente_id || null
+                cliente_id: cliente_id || null,
+                requer_delegacao: requer_delegacao !== undefined ? requer_delegacao : false
+            }
+
+            // Fallback: se o frontend não enviou requer_delegacao, tenta buscar do catálogo
+            if (requer_delegacao === undefined && produto_id) {
+                 try {
+                     const servico = await AdmRepository.getServiceById(produto_id)
+                     if (servico && servico.requer_delegacao_juridico) {
+                         agendamento.requer_delegacao = true;
+                         console.log('Fallbakc: requer_delegacao atribuido via catalogo para produto:', produto_id);
+                     }
+                 } catch (err) {
+                     console.error('Erro no fallback de requer_delegacao:', err);
+                 }
             }
 
             console.log('Objeto agendamento final para envio ao DB:', agendamento)
@@ -638,7 +652,7 @@ class ComercialController {
             // 5. Garantir que pagamento_status esteja como 'pendente' para o financeiro
             const { error: updateError } = await supabase
                 .from('agendamentos')
-                .update({ pagamento_status: 'pendente' })
+                .update({ pagamento_status: 'em_analise' })
                 .eq('id', id);
 
             if (updateError) {
@@ -733,6 +747,42 @@ class ComercialController {
                 message: 'Erro ao buscar todos os agendamentos',
                 error: error.message
             })
+        }
+    }
+
+    /**
+     * Cancelar um agendamento
+     * POST /comercial/agendamento/:id/cancelar
+     */
+    async cancelarAgendamento(req: any, res: any) {
+        try {
+            const { id } = req.params
+
+            const agendamento = await ComercialRepository.getAgendamentoById(id)
+            if (!agendamento) {
+                return res.status(404).json({ message: 'Agendamento não encontrado' })
+            }
+
+            if (agendamento.status === 'cancelado') {
+                return res.status(400).json({ message: 'Este agendamento já está cancelado.' })
+            }
+
+            if (agendamento.status === 'realizado') {
+                return res.status(400).json({ message: 'Não é possível cancelar um agendamento já realizado.' })
+            }
+
+            await ComercialRepository.updateAgendamentoStatus(id, 'cancelado')
+
+            console.log(`[ComercialController] Agendamento ${id} cancelado com sucesso.`)
+
+            return res.status(200).json({
+                success: true,
+                message: 'Agendamento cancelado com sucesso.'
+            })
+
+        } catch (error: any) {
+            console.error('Erro ao cancelar agendamento:', error)
+            return res.status(500).json({ message: 'Erro ao cancelar agendamento', error: error.message })
         }
     }
 

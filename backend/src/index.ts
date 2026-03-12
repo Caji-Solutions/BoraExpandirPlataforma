@@ -59,6 +59,9 @@ app.post('/leads', (req, res) => {
   ClienteController.registerLead(req, res)
 })
 
+import { startCronJobs } from './workers/cronJobs'
+startCronJobs()
+
 
 
 app.use(notFound)

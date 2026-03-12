@@ -1098,7 +1098,7 @@ class ClienteController {
       const leadData = {
         id: require('crypto').randomUUID(),
         nome,
-        email: email || `lead_${Date.now()}@bora.com`,
+        email: email || null,
         whatsapp,
         parceiro_id: parceiro_id || null,
         status: 'LEAD',

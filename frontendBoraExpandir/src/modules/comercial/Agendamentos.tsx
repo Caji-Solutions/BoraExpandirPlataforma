@@ -37,9 +37,10 @@ const getStatusConfig = (status: string) =>
 
 interface AgendamentosPageProps {
 	agendamentos: Agendamento[]
+	onRefresh?: () => void
 }
 
-export default function AgendamentosPage({ agendamentos }: AgendamentosPageProps) {
+export default function AgendamentosPage({ agendamentos, onRefresh }: AgendamentosPageProps) {
 	const navigate = useNavigate()
 	const [search, setSearch] = useState('')
 	const [status, setStatus] = useState<'todos' | Agendamento['status']>('todos')
@@ -139,16 +140,10 @@ export default function AgendamentosPage({ agendamentos }: AgendamentosPageProps
 							</thead>
 							<tbody className="divide-y divide-gray-200 dark:divide-neutral-700">
 								{filtered.map(agendamento => {
-									// Tratamento para não ser clicável quando "confirmado" (ou concluído/realizado)
 									const isConfirmed = agendamento.status === 'confirmado' || agendamento.status === 'realizado'
-
-									// Se o lead já é um cliente (cliente_is_user) e o agendamento ainda está pendente/agendado,
-									// consideramos bloqueado para evitar duplicidade de conversão.
+									const isCancelled = agendamento.status === 'cancelado'
 									const isLocked = !!agendamento.cliente_is_user && (agendamento.status === 'pendente' || agendamento.status === 'agendado')
-
-									// Agendamentos pendentes ou bloqueados/atrasados serão editáveis,
-									// EXCETO se já estiverem confirmados ou se o cliente já existir no sistema (isLocked).
-									const isEditable = !isConfirmed && !isLocked
+									const isEditable = !isConfirmed && !isLocked && !isCancelled
 
 									return (
 										<tr
@@ -158,12 +153,14 @@ export default function AgendamentosPage({ agendamentos }: AgendamentosPageProps
 													: ''
 												} ${isEditable
 													? 'hover:bg-gray-50 dark:hover:bg-neutral-700/50 cursor-pointer'
-													: isLocked
-														? 'opacity-40 grayscale-[0.5] cursor-not-allowed pointer-events-none'
-														: ''
+													: isCancelled
+														? 'opacity-50'
+														: isLocked
+															? 'opacity-40 grayscale-[0.5] cursor-not-allowed pointer-events-none'
+															: 'hover:bg-gray-50 dark:hover:bg-neutral-700/50 cursor-pointer'
 												}`}
 											onClick={() => {
-												if (isEditable) {
+												if (!isLocked) {
 													navigate(`/comercial/agendamento/${agendamento.id}`)
 												}
 											}}
@@ -195,9 +192,13 @@ export default function AgendamentosPage({ agendamentos }: AgendamentosPageProps
 													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
 														<span className="w-2 h-2 rounded-full bg-emerald-500" /> Aprovado
 													</span>
+												) : agendamento.pagamento_status === 'em_analise' ? (
+													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+														<span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" /> Em Análise
+													</span>
 												) : agendamento.pagamento_status === 'pendente' ? (
 													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-														<span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse-scale" /> Pendente
+														<span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Pendente
 													</span>
 												) : agendamento.pagamento_status === 'recusado' ? (
 													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
@@ -245,10 +246,7 @@ export default function AgendamentosPage({ agendamentos }: AgendamentosPageProps
 				<GerenciamentoAgendamentoModal
 					agendamento={agendamentoSelecionado}
 					onClose={() => setAgendamentoSelecionado(null)}
-					onAtualizado={() => {
-						// Optionally trigger a re-fetch of data here
-						// if we had a fetch prop, but currently data is passed by prop
-					}}
+					onAtualizado={() => {}}
 				/>
 			)}
 		</div>

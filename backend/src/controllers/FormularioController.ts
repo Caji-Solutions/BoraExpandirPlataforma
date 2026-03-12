@@ -58,10 +58,31 @@ class FormularioController {
             } = req.body
 
             // Validação básica
-            if (!nome_completo || !email || !whatsapp) {
-                return res.status(400).json({
-                    message: 'Nome completo, email e WhatsApp são obrigatórios'
-                })
+            if (!agendamento_id || !nome_completo || !email || !whatsapp) {
+                return res.status(400).json({ message: 'Dados essenciais faltando: nome, email ou whatsapp' })
+            }
+
+            // Validar se o agendamento existe e pode receber formulário
+            const { data: agendamentoInfo, error: agInfoErr } = await supabase
+                .from('agendamentos')
+                .select('status, data, hora')
+                .eq('id', agendamento_id)
+                .single()
+
+            if (agInfoErr || !agendamentoInfo) {
+                return res.status(404).json({ message: 'Agendamento não encontrado.' })
+            }
+
+            if (agendamentoInfo.status === 'cancelado') {
+                return res.status(403).json({ message: 'Este agendamento foi cancelado. Você deve contatar o Comercial para um novo link.' })
+            }
+
+            const agendamentoDateTime = new Date(`${agendamentoInfo.data}T${agendamentoInfo.hora}`);
+            const now = new Date();
+            const hourDiff = (agendamentoDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+            if (hourDiff < 1) {
+                return res.status(403).json({ message: 'O formulário deve ser enviado com pelo menos 1 hora de antecedência. O agendamento expirou/foi cancelado.' })
             }
 
             console.log('[FormularioController] Processando formulário de consultoria para:', nome_completo)
@@ -205,7 +226,7 @@ class FormularioController {
                     .eq('id', agendamento_id)
                     .single()
 
-                isPago = (agendamentoAtual?.comprovante_url != null) || (agendamentoAtual?.status === 'confirmado')
+                isPago = (agendamentoAtual?.pagamento_status === 'aprovado') || (agendamentoAtual?.status === 'confirmado')
 
                 await supabase
                     .from('agendamentos')
@@ -233,12 +254,14 @@ class FormularioController {
                         email,
                         senha: senhaGerada
                     })
-                    emailEnviado = true
-                } catch (emailError) {
-                    console.error('[FormularioController] Erro ao enviar email (continuando):', emailError)
+                 if (admins && admins.length > 0) {
+                    for (const admin of admins) {
+                        // send notification
+                    }
                 }
-            } else {
-                console.log('[FormularioController] Email de boas-vindas retido. Aguardando confirmação do pagamento pelo Comercial.')
+            } catch (err: any) {
+                console.error('[FormularioController] Erro no push', err)
+            }etido. Aguardando confirmação do pagamento pelo Comercial.')
             }
 
             console.log('[FormularioController] Formulário processado com sucesso para:', nome_completo)
@@ -323,12 +346,40 @@ class FormularioController {
                     .update({
                         comprovante_url: urlData.publicUrl,
                         comprovante_upload_em: new Date().toISOString(),
-                        pagamento_status: 'pendente'
+                        pagamento_status: 'em_analise'
                     })
                     .eq('id', agendamento_id)
             }
 
             console.log('[FormularioController] Comprovante salvo:', urlData.publicUrl)
+
+            // Notificar admins sobre novo comprovante pendente
+            try {
+                const { data: admins } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .in('role', ['super_admin', 'admin'])
+
+                if (admins && admins.length > 0) {
+                    for (const admin of admins) {
+                        await supabase
+                            .from('notificacoes')
+                            .insert([{
+                                cliente_id: admin.id,
+                                titulo: 'Novo comprovante recebido',
+                                mensagem: 'Um novo comprovante de pagamento foi enviado e aguarda verificação.',
+                                tipo: 'warning',
+                                lida: false,
+                                criado_em: new Date().toISOString()
+                            }])
+                            .then(() => {})
+                            .catch((e: any) => console.error('Erro notificando admin:', e))
+                    }
+                    console.log(`[FormularioController] ${admins.length} admin(s) notificado(s) sobre comprovante`)
+                }
+            } catch (notifError) {
+                console.error('[FormularioController] Erro ao notificar admins:', notifError)
+            }
 
             return res.status(200).json({
                 success: true,

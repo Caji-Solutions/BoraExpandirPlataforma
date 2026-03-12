@@ -125,7 +125,7 @@ export interface Agendamento {
   cliente_is_user?: boolean
   observacoes?: string
   comprovante_url?: string | null
-  pagamento_status?: 'pendente' | 'aprovado' | 'recusado' | null
+  pagamento_status?: 'pendente' | 'em_analise' | 'aprovado' | 'recusado' | null
   pagamento_nota_recusa?: string | null
   conflito_horario?: boolean
   created_at: string

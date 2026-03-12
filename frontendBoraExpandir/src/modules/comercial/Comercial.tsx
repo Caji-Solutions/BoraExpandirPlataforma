@@ -493,45 +493,49 @@ export default function Comercial() {
 
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([])
 
-  useEffect(() => {
-    async function fetchAgendamentos() {
-      if (!activeProfile?.id) return
+  const fetchAgendamentos = async () => {
+    if (!activeProfile?.id) return
 
-      try {
-        const [data, catalog] = await Promise.all([
-          comercialService.getAgendamentosByUsuario(activeProfile.id),
-          catalogService.getCatalogServices().catch(() => [])
-        ])
+    try {
+      const [data, catalog] = await Promise.all([
+        comercialService.getAgendamentosByUsuario(activeProfile.id),
+        catalogService.getCatalogServices().catch(() => [])
+      ])
 
-        const catalogMap = new Map(catalog.map((s: any) => [s.id, s.nome || s.name]))
+      const catalogMap = new Map(catalog.map((s: any) => [s.id, s.nome || s.name]))
 
-        const mapped = data.map((b: any) => ({
-          id: b.id,
-          cliente_id: b.cliente_id || '',
-          cliente: {
-            id: b.cliente_id || '',
-            client_id: b.cliente?.client_id || '',
-            nome: b.nome || 'Cliente sem nome',
-            email: b.email || '',
-            telefone: b.telefone || '',
-            documento: '',
-            created_at: b.created_at,
-            updated_at: b.updated_at
-          },
-          data: (b.data_hora || '').split('T')[0],
-          hora: (b.data_hora || '').includes('T') ? b.data_hora.split('T')[1].substring(0, 5) : '00:00',
-          duracao_minutos: b.duracao_minutos || 60,
-          produto: catalogMap.get(b.produto_id) || b.produto_id || 'Serviço',
-          status: b.status as any,
-          cliente_is_user: b.cliente_is_user,
+      const mapped = data.map((b: any) => ({
+        id: b.id,
+        cliente_id: b.cliente_id || '',
+        cliente: {
+          id: b.cliente_id || '',
+          client_id: b.cliente?.client_id || '',
+          nome: b.nome || 'Cliente sem nome',
+          email: b.email || '',
+          telefone: b.telefone || '',
+          documento: '',
           created_at: b.created_at,
           updated_at: b.updated_at
-        }))
-        setAgendamentos(mapped)
-      } catch (err) {
-        console.error("Erro ao carregar agendamentos reais:", err)
-      }
+        },
+        data: (b.data_hora || '').split('T')[0],
+        hora: (b.data_hora || '').includes('T') ? b.data_hora.split('T')[1].substring(0, 5) : '00:00',
+        duracao_minutos: b.duracao_minutos || 60,
+        produto: catalogMap.get(b.produto_id) || b.produto_id || 'Serviço',
+        status: b.status as any,
+        cliente_is_user: b.cliente_is_user,
+        pagamento_status: b.pagamento_status || null,
+        comprovante_url: b.comprovante_url || null,
+        conflito_horario: b.conflito_horario || false,
+        created_at: b.created_at,
+        updated_at: b.updated_at
+      }))
+      setAgendamentos(mapped)
+    } catch (err) {
+      console.error("Erro ao carregar agendamentos reais:", err)
     }
+  }
+
+  useEffect(() => {
     fetchAgendamentos()
   }, [activeProfile?.id])
 
@@ -677,7 +681,7 @@ export default function Comercial() {
           />
           <Route
             path="/meus-agendamentos"
-            element={<AgendamentosPage agendamentos={agendamentos} />}
+            element={<AgendamentosPage agendamentos={agendamentos} onRefresh={fetchAgendamentos} />}
           />
 
           <Route
