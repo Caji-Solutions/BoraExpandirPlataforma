@@ -19,9 +19,8 @@ import { CalendarPicker } from "./ui/CalendarPicker";
 type TabType = 'consultorias' | 'assessorias';
 
 const HORARIOS_DISPONIVEIS = [
-  '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
-  '13:00', '14:00', '15:00', '16:00', 
-  '17:00', '18:00'
+  '08:00', '09:00', '10:00', '11:00', '12:00',
+  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
 ];
 
 interface MeusAgendamentosProps {
@@ -95,13 +94,14 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
         const dataArr = Array.isArray(data) ? data : (data ? [data] : []);
         console.log("DEBUG: Consultorias (Array):", dataArr);
         
-        // Filtrar consultorias: apenas itens que NÃO requerem delegação jurídica
-        const filtered = dataArr.filter((item: any) => {
+        // Mostrar todos os agendamentos na aba de consultoria, 
+        // mas mantendo o log para acompanhamento
+        const filtered = dataArr.map((item: any) => {
           const req = item.requer_delegacao;
-          console.log(`DEBUG: Item ${item.id} - requer_delegacao: ${req} (${typeof req})`);
-          return !req;
+          console.log(`DEBUG: Item ${item.id} - requer_delegacao: ${req}`);
+          return item;
         });
-        console.log("DEBUG: Consultorias (Filtered):", filtered);
+        console.log("DEBUG: Consultorias (Total):", filtered.length);
         setConsultorias(filtered);
       } else if (activeTab === 'assessorias' && effectiveUserId) {
         // Buscar agendamentos que foram delegados a este responsável

@@ -18,8 +18,7 @@ export const startCronJobs = () => {
             const { data: agendamentos, error } = await supabase
                 .from('agendamentos')
                 .select('*')
-                .eq('status', 'agendado')
-                .eq('cliente_is_user', false);
+                .eq('status', 'agendado');
                 
             if (error) {
                 console.error('[CRON] Erro ao buscar agendamentos:', error);
