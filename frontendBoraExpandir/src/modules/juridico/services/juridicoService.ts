@@ -662,6 +662,21 @@ export async function requestApostille(documentoId: string, documentoUrl?: strin
   return response.json();
 }
 
+/**
+ * Busca um perfil pelo ID
+ */
+export async function getProfileById(profileId: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/juridico/funcionario/${profileId}`);
+
+  if (!response.ok) {
+    if (response.status === 404) return null;
+    throw new Error('Erro ao buscar perfil');
+  }
+
+  const result = await response.json();
+  return result.data;
+}
+
 export default {
     getProcessos,
     getProcessosByResponsavel,
@@ -730,4 +745,5 @@ export default {
       return result.data;
     },
     requestApostille,
+    getProfileById,
 };

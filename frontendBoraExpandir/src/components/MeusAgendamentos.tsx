@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import juridicoService from "../modules/juridico/services/juridicoService"; // Keeping the service reference for now
+import { catalogService, Service } from "../modules/adm/services/catalogService";
 import { Badge } from "./ui/Badge";
 import { formatDate } from "../modules/cliente/lib/utils";
 import { CalendarPicker } from "./ui/CalendarPicker";
@@ -42,9 +43,13 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
   const [error, setError] = useState<string | null>(null);
   const [usuariosSistema, setUsuariosSistema] = useState<any[]>([]);
   const [isAssigning, setIsAssigning] = useState(false);
-  
-  // Modal de Detalhes
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
+  
+  // Checks de Segurança
+  const [hasFormulario, setHasFormulario] = useState<boolean | null>(null);
+  const [checkingSecurity, setCheckingSecurity] = useState(false);
+  const [cachedProfiles, setCachedProfiles] = useState<Record<string, string>>({});
+  const [servicosCatalogo, setServicosCatalogo] = useState<Service[]>([]);
 
   const effectiveUserId = userId || activeProfile?.id;
 
@@ -100,19 +105,75 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
         setConsultorias(filtered);
       } else if (activeTab === 'assessorias' && effectiveUserId) {
         // Buscar agendamentos que foram delegados a este responsável
-        const data = await juridicoService.getAgendamentosByResponsavel(effectiveUserId);
-        console.log("DEBUG: Assessorias (API Response):", data);
-        const dataArr = Array.isArray(data) ? data : (data ? [data] : []);
+        console.log(`DEBUG: Buscando agendamentos (${activeTab}) para user: ${effectiveUserId}`);
+        const data: any = await juridicoService.getAgendamentosByResponsavel(effectiveUserId);
+      
+        console.log(`DEBUG: Dados recebidos da API (${activeTab}):`, data);
+      
+        let dataArr: any[] = [];
+        if (data && !Array.isArray(data) && data.status === 'success') {
+          dataArr = Array.isArray(data.data) ? data.data : (data.data ? [data.data] : []);
+        } else {
+          dataArr = Array.isArray(data) ? data : (data ? [data] : []);
+        }
         console.log("DEBUG: Assessorias (Array):", dataArr);
         setAssessorias(dataArr);
       }
+
+      // Buscar catálogo de serviços para mapear nomes
+      const catalog = await catalogService.getCatalogServices();
+      setServicosCatalogo(catalog);
+
     } catch (err: any) {
-      console.error("Erro ao carregar agendamentos:", err);
+      console.error("ERRO FATAL (fetchData):", err);
       setError("Não foi possível carregar os dados. Tente novamente mais tarde.");
     } finally {
       setLoading(false);
     }
   };
+
+  // Efeito para verificar segurança quando um item é selecionado
+  useEffect(() => {
+    if (selectedItem) {
+      console.log("DEBUG: Item Selecionado (Raw):", JSON.stringify(selectedItem, null, 2));
+      
+      const checkSecurity = async () => {
+        try {
+          setCheckingSecurity(true);
+          setHasFormulario(null); // Reset
+          
+          const clienteId = activeTab === 'consultorias' ? selectedItem.cliente_id : selectedItem.cliente_id;
+          
+          if (clienteId) {
+            console.log(`DEBUG: Verificando formulários para cliente: ${clienteId}`);
+            const forms = await juridicoService.getFormulariosWithStatus(clienteId);
+            console.log(`DEBUG: Formulários encontrados (${forms.length}):`, forms);
+            setHasFormulario(forms.length > 0);
+          } else {
+             console.warn("DEBUG: Item selecionado não possui cliente_id!");
+             setHasFormulario(false);
+          }
+
+          // Verificar nome de quem agendou se não estiver no cache
+          const creatorId = selectedItem.usuario_id || selectedItem.responsavel_id;
+          if (creatorId && !usuariosSistema.find(u => u.id === creatorId) && !cachedProfiles[creatorId]) {
+            console.log(`DEBUG: Buscando nome do criador ID: ${creatorId}`);
+            const profile = await juridicoService.getProfileById(creatorId);
+            if (profile) {
+              setCachedProfiles(prev => ({ ...prev, [creatorId]: profile.full_name }));
+            }
+          }
+
+        } catch (e) {
+          console.error("DEBUG: Erro ao verificar segurança:", e);
+        } finally {
+          setCheckingSecurity(false);
+        }
+      };
+
+      checkSecurity();
+    }
+  }, [selectedItem]);
 
   useEffect(() => {
     fetchData();
@@ -180,7 +241,11 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
     const found = itemsDoDia.find(item => {
       const timeValue = item.data_hora || item.criado_em;
       if (!timeValue) return false;
-      const inicioAgendamento = new Date(timeValue);
+      
+      // Normalização idêntica ao Comercial1.tsx para ignorar fuso
+      const d = new Date(timeValue);
+      const inicioAgendamento = new Date(d.getTime() + d.getTimezoneOffset() * 60000);
+      
       const duracao = item.duracao_minutos || 60;
       const fimAgendamento = new Date(inicioAgendamento.getTime() + duracao * 60000);
       
@@ -189,16 +254,26 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
       return match;
     });
 
-    if (found) console.log(`DEBUG: Slot ${hora} ocupado por:`, found.id, "Início:", new Date(found.data_hora || found.criado_em).toLocaleTimeString());
+    if (found) {
+       const rawVal = found.data_hora || found.criado_em;
+       const d = new Date(rawVal);
+       console.log(`DEBUG: Slot ${hora} ocupado por:`, found.id, 
+         "| Raw:", rawVal, 
+         "| LocalTime:", d.toLocaleTimeString(), 
+         "| ISOTime:", d.toISOString());
+    }
     return found;
   };
 
   const isInicioAgendamento = (hora: string, item: any) => {
     const timeValue = item.data_hora || item.criado_em;
     if (!item || !timeValue) return false;
+    
+    // Normalização idêntica para checar início exato
     const d = new Date(timeValue);
-    const h = String(d.getHours()).padStart(2, '0');
-    const m = String(d.getMinutes()).padStart(2, '0');
+    const normalized = new Date(d.getTime() + d.getTimezoneOffset() * 60000);
+    const h = String(normalized.getHours()).padStart(2, '0');
+    const m = String(normalized.getMinutes()).padStart(2, '0');
     return `${h}:${m}` === hora;
   };
 
@@ -292,15 +367,16 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                      const isInicio = isInicioAgendamento(hora, itemNoHorario);
                      if (!isInicio) {
                         return (
-                          <div 
+                          <button 
                             key={hora}
-                            className={`py-3 px-3 rounded-xl flex flex-col items-center justify-center border border-dashed opacity-50 ${
+                            onClick={() => setSelectedItem(itemNoHorario)}
+                            className={`py-3 px-3 rounded-xl flex flex-col items-center justify-center border border-dashed opacity-50 transition-all hover:opacity-100 hover:shadow-md ${
                               activeTab === 'consultorias' ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 text-blue-400' : 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800 text-indigo-400'
                             }`}
                           >
                              <div className="flex items-center gap-1.5 text-sm"><Clock className="h-4 w-4 opacity-50"/> {hora}</div>
                              <span className="text-[10px] uppercase font-bold tracking-wider mt-1 opacity-70">Ocupado</span>
-                          </div>
+                          </button>
                         )
                      }
 
@@ -324,9 +400,12 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                              {itemNoHorario.duracao_minutos || 60}m
                            </span>
                          </div>
-                         <div className="text-xs font-bold truncate w-full px-0.5 mt-0.5">
-                           {nomeCliente}
-                         </div>
+                          <div className="text-xs font-bold truncate w-full px-0.5 mt-0.5">
+                            {nomeCliente}
+                          </div>
+                           <div className="text-[10px] opacity-80 truncate w-full px-0.5 font-semibold">
+                             {itemNoHorario.produto?.nome || servicosCatalogo.find(s => s.id === itemNoHorario.produto_id)?.name || 'Consultoria'}
+                           </div>
                        </button>
                      )
                   }
@@ -372,7 +451,9 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                   <div>
                     <p className="text-xs text-gray-500 uppercase font-semibold tracking-wider mb-1">Serviço / Produto</p>
                     <p className="text-lg font-bold text-gray-900 dark:text-white">
-                      {activeTab === 'consultorias' ? selectedItem.produto_nome : (selectedItem.servico_nome || 'Assessoria Jurídica')}
+                      {activeTab === 'consultorias' 
+                        ? (selectedItem.produto?.nome || selectedItem.produto_nome || 'Consultoria') 
+                        : (selectedItem.produto?.nome || selectedItem.servico_nome || 'Assessoria Jurídica')}
                     </p>
                   </div>
                   <div>
@@ -388,9 +469,31 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                     </p>
                   </div>
                   <div className="bg-gray-50 dark:bg-neutral-900/50 p-3 rounded-xl border border-gray-100 dark:border-neutral-800">
+                    <p className="text-xs text-gray-500 uppercase font-semibold mb-1 flex items-center gap-1.5"><Briefcase className="h-3 w-3"/> Serviço</p>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {selectedItem.produto?.nome || servicosCatalogo.find(s => s.id === selectedItem.produto_id)?.name || selectedItem.produto_id || 'Consultoria Jurídica'}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-neutral-900/50 p-3 rounded-xl border border-gray-100 dark:border-neutral-800">
                     <p className="text-xs text-gray-500 uppercase font-semibold mb-1 flex items-center gap-1.5"><Clock className="h-3 w-3"/> Horário</p>
                     <p className="font-medium text-gray-900 dark:text-white">
-                       {selectedItem.data_hora || selectedItem.criado_em ? new Date(selectedItem.data_hora || selectedItem.criado_em).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'}) : '—'}
+                       {(() => {
+                          const timeValue = selectedItem.data_hora || selectedItem.criado_em;
+                          if (!timeValue) return '—';
+                          
+                          // Normalização idêntica ao Comercial1.tsx para ignorar fuso
+                          const d = new Date(timeValue);
+                          const normalizedDate = new Date(d.getTime() + d.getTimezoneOffset() * 60000);
+                          
+                          console.log("DEBUG: Detalhes Modal - Time Debug:", {
+                             raw: timeValue,
+                             localParsed: d.toString(),
+                             normalized: normalizedDate.toString(),
+                             formatted: normalizedDate.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})
+                          });
+                          
+                          return normalizedDate.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+                       })()}
                        <span className="text-xs text-gray-500 ml-1">({selectedItem.duracao_minutos || 60}m)</span>
                     </p>
                   </div>
@@ -498,12 +601,13 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                     <div className="bg-gray-50 dark:bg-neutral-800/50 p-3 rounded-xl border border-gray-100 dark:border-neutral-800">
                        <p className="font-medium text-gray-900 dark:text-white">
                          {(() => {
-                           const creatorId = selectedItem.usuario_id || selectedItem.responsavel_id;
-                           const user = usuariosSistema.find(u => u.id === creatorId);
-                           if (user) return user.full_name;
-                           if (activeProfile?.id === creatorId) return activeProfile?.full_name;
-                           return creatorId ? `Usuário (${creatorId.substring(0,8)})` : 'Sistema';
-                         })()}
+                            const creatorId = selectedItem.usuario_id || selectedItem.responsavel_id;
+                            const user = usuariosSistema.find(u => u.id === creatorId);
+                            if (user) return user.full_name;
+                            if (activeProfile?.id === creatorId) return activeProfile?.full_name;
+                            if (cachedProfiles[creatorId]) return cachedProfiles[creatorId];
+                            return creatorId ? `Usuário (${creatorId.substring(0,8)})` : 'Sistema';
+                          })()}
                        </p>
                        <p className="text-xs text-gray-500 truncate mt-0.5">
                          {(() => {
@@ -533,20 +637,80 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                       </div>
                     )}
                   </div>
+
+                  {/* Alertas de Segurança */}
+                  <div className="mt-4 space-y-3">
+                    {/* Conferência de Pagamento */}
+                    <div className={`p-3 rounded-xl border flex items-center gap-3 ${
+                      selectedItem.pagamento_status === 'aprovado' 
+                        ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800 text-emerald-700' 
+                        : 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800 text-amber-700'
+                    }`}>
+                      {selectedItem.pagamento_status === 'aprovado' ? (
+                        <Badge className="bg-emerald-500 text-white border-none rounded-full h-5 w-5 p-0 flex items-center justify-center">✓</Badge>
+                      ) : (
+                        <AlertCircle className="h-5 w-5 text-amber-500" />
+                      )}
+                      <div>
+                        <p className="text-sm font-bold">Pagamento: {selectedItem.pagamento_status === 'aprovado' ? 'Confirmado' : 'Pendente'}</p>
+                        <p className="text-xs opacity-80">
+                          {selectedItem.pagamento_status === 'aprovado' 
+                            ? 'O pagamento deste agendamento já foi verificado.' 
+                            : 'O agendamento ainda não consta como pago no sistema.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Conferência de Formulário Legal */}
+                    <div className={`p-3 rounded-xl border flex items-center gap-3 ${
+                      checkingSecurity ? 'bg-gray-50 border-gray-100 animate-pulse' :
+                      hasFormulario 
+                        ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800 text-emerald-700' 
+                        : 'bg-rose-50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-800 text-rose-700'
+                    }`}>
+                      {checkingSecurity ? (
+                        <div className="h-5 w-5 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin" />
+                      ) : hasFormulario ? (
+                        <Badge className="bg-emerald-500 text-white border-none rounded-full h-5 w-5 p-0 flex items-center justify-center">✓</Badge>
+                      ) : (
+                        <AlertCircle className="h-5 w-5 text-rose-500" />
+                      )}
+                      <div>
+                        <p className="text-sm font-bold">Formulário Jurídico: {hasFormulario ? 'Encontrado' : 'Não Encontrado'}</p>
+                        <p className="text-xs opacity-80">
+                          {hasFormulario 
+                            ? 'O cliente possui formulários registrados na tabela jurídica.' 
+                            : 'Atenção: Nenhum formulário encontrado na tabela formularios_juridico.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                </div>
             </div>
 
             {/* Footer */}
             <div className="p-4 border-t border-gray-100 dark:border-neutral-700 bg-gray-50/80 dark:bg-neutral-900/50 flex flex-col sm:flex-row justify-between gap-3">
-               <div>
+                <div>
                   {activeTab === 'consultorias' && (
-                    <button 
-                      onClick={() => navigate(`/juridico/assessoria?clienteId=${selectedItem.cliente_id}`)}
-                      className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-all shadow-md shadow-blue-200 flex items-center justify-center gap-2"
-                    >
-                      <Briefcase className="h-4 w-4" />
-                      Iniciar Consultoria
-                    </button>
+                    <div className="flex flex-col gap-1 w-full sm:w-auto">
+                      <button 
+                        onClick={() => navigate(`/juridico/assessoria?clienteId=${selectedItem.cliente_id}`)}
+                        disabled={selectedItem.pagamento_status !== 'aprovado' || !hasFormulario}
+                        className={`px-6 py-2.5 font-bold rounded-lg transition-all shadow-md flex items-center justify-center gap-2 ${
+                          selectedItem.pagamento_status === 'aprovado' && hasFormulario
+                            ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
+                        }`}
+                      >
+                        <Briefcase className="h-4 w-4" />
+                        Iniciar Consultoria
+                      </button>
+                      {(selectedItem.pagamento_status !== 'aprovado' || !hasFormulario) && (
+                        <p className="text-[10px] text-rose-500 font-bold text-center mt-1">
+                          Requer Pagamento Aprovado e Formulário Legal
+                        </p>
+                      )}
+                    </div>
                   )}
                </div>
                <button 

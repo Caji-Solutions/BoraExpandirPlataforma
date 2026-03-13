@@ -161,10 +161,23 @@ class JuridicoController {
         try {
             const agendamentos = await JuridicoRepository.getAgendamentosDelegacao()
 
+            // Enriquecer com dados do catálogo
+            const enrichedAgendamentos = await Promise.all(agendamentos.map(async (agendamento: any) => {
+                if (agendamento.produto_id) {
+                    try {
+                        const serviceInfo = await AdmRepository.getServiceById(agendamento.produto_id)
+                        return { ...agendamento, produto: serviceInfo }
+                    } catch (e) {
+                        console.error(`Erro ao buscar serviço ${agendamento.produto_id}:`, e)
+                    }
+                }
+                return agendamento
+            }))
+
             return res.status(200).json({
                 message: 'Agendamentos para delegação recuperados com sucesso',
-                data: agendamentos,
-                total: agendamentos.length
+                data: enrichedAgendamentos,
+                total: enrichedAgendamentos.length
             })
         } catch (error: any) {
             console.error('Erro ao buscar agendamentos para delegação:', error)
@@ -945,10 +958,23 @@ class JuridicoController {
 
             const agendamentos = await JuridicoRepository.getAgendamentosPorResponsavel(responsavelId)
 
+            // Enriquecer com dados do catálogo
+            const enrichedAgendamentos = await Promise.all(agendamentos.map(async (agendamento: any) => {
+                if (agendamento.produto_id) {
+                    try {
+                        const serviceInfo = await AdmRepository.getServiceById(agendamento.produto_id)
+                        return { ...agendamento, produto: serviceInfo }
+                    } catch (e) {
+                        console.error(`Erro ao buscar serviço ${agendamento.produto_id}:`, e)
+                    }
+                }
+                return agendamento
+            }))
+
             return res.status(200).json({
                 message: 'Agendamentos do responsável recuperados com sucesso',
-                data: agendamentos,
-                total: agendamentos.length
+                data: enrichedAgendamentos,
+                total: enrichedAgendamentos.length
             })
         } catch (error: any) {
             console.error('Erro ao buscar agendamentos do responsável:', error)

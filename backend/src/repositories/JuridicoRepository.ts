@@ -74,7 +74,6 @@ class JuridicoRepository {
             .from('profiles')
             .select('id, full_name, email, telefone, horario_trabalho')
             .eq('id', funcionarioId)
-            .eq('role', 'juridico')
             .single()
 
         if (error) {

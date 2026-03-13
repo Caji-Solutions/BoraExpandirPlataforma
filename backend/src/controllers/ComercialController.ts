@@ -538,10 +538,20 @@ class ComercialController {
 
             const agendamentos = await ComercialRepository.getAgendamentosByUsuario(usuarioId)
 
-            return res.status(200).json({
-                message: 'Agendamentos recuperados com sucesso',
-                data: agendamentos
-            })
+            // Buscar informações do catálogo para cada agendamento
+            const enrichedAgendamentos = await Promise.all(agendamentos.map(async (agendamento: any) => {
+                if (agendamento.produto_id) {
+                    try {
+                        const serviceInfo = await AdmRepository.getServiceById(agendamento.produto_id)
+                        return { ...agendamento, produto: serviceInfo }
+                    } catch (e) {
+                        console.error(`Erro ao buscar serviço ${agendamento.produto_id}:`, e)
+                    }
+                }
+                return agendamento
+            }))
+
+            return res.status(200).json(enrichedAgendamentos)
 
         } catch (error: any) {
             console.error('Erro ao buscar agendamentos do usuário:', error)
@@ -562,7 +572,20 @@ class ComercialController {
 
             const agendamentos = await ComercialRepository.getAgendamentosByData(data)
 
-            return res.status(200).json(agendamentos)
+            // Buscar informações do catálogo para cada agendamento
+            const enrichedAgendamentos = await Promise.all(agendamentos.map(async (agendamento: any) => {
+                if (agendamento.produto_id) {
+                    try {
+                        const serviceInfo = await AdmRepository.getServiceById(agendamento.produto_id)
+                        return { ...agendamento, produto: serviceInfo }
+                    } catch (e) {
+                        console.error(`Erro ao buscar serviço ${agendamento.produto_id}:`, e)
+                    }
+                }
+                return agendamento
+            }))
+
+            return res.status(200).json(enrichedAgendamentos)
 
         } catch (error: any) {
             console.error('Erro ao buscar agendamentos:', error)
@@ -583,7 +606,20 @@ class ComercialController {
 
             const agendamentos = await ComercialRepository.getAgendamentosByCliente(clienteId)
 
-            return res.status(200).json(agendamentos)
+            // Buscar informações do catálogo para cada agendamento
+            const enrichedAgendamentos = await Promise.all(agendamentos.map(async (agendamento: any) => {
+                if (agendamento.produto_id) {
+                    try {
+                        const serviceInfo = await AdmRepository.getServiceById(agendamento.produto_id)
+                        return { ...agendamento, produto: serviceInfo }
+                    } catch (e) {
+                        console.error(`Erro ao buscar serviço ${agendamento.produto_id}:`, e)
+                    }
+                }
+                return agendamento
+            }))
+
+            return res.status(200).json(enrichedAgendamentos)
 
         } catch (error: any) {
             console.error('Erro ao buscar agendamentos do cliente:', error)
@@ -701,13 +737,23 @@ class ComercialController {
         try {
             const { id } = req.params
 
-            const agendamento = await ComercialRepository.getAgendamentoById(id)
+            const data = await ComercialRepository.getAgendamentoById(id)
 
-            if (!agendamento) {
+            if (!data) {
                 return res.status(404).json({ message: 'Agendamento não encontrado' })
             }
 
-            return res.status(200).json(agendamento)
+            // Enriquecer com dados do catálogo
+            if (data.produto_id) {
+                try {
+                    const serviceInfo = await AdmRepository.getServiceById(data.produto_id)
+                    data.produto = serviceInfo
+                } catch (e) {
+                    console.error(`Erro ao buscar serviço ${data.produto_id}:`, e)
+                }
+            }
+
+            return res.status(200).json(data)
         } catch (error: any) {
             console.error('Erro ao buscar agendamento por ID:', error)
             return res.status(500).json({ message: 'Erro ao buscar agendamento', error: error.message })
