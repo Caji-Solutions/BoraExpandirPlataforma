@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Plus, Mail, Phone, User, Building2 } from 'lucide-react'
 import type { LeadFormData } from '../../../types/comercial'
-
+import { PhoneInput } from '../../../components/ui/PhoneInput'
 interface CadastroRapidoLeadCardProps {
   onSaveLead: (leadData: LeadFormData) => void
 }
@@ -83,14 +83,11 @@ export default function CadastroRapidoLeadCard({ onSaveLead }: CadastroRapidoLea
               <Phone className="h-4 w-4" />
               Telefone
             </label>
-            <input
-              type="tel"
+            <PhoneInput
               name="telefone"
               value={formData.telefone}
-              onChange={handleChange}
+              onChange={(val) => setFormData(prev => ({ ...prev, telefone: val }))}
               required
-              placeholder="(11) 99999-9999"
-              className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
