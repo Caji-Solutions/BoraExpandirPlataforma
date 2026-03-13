@@ -39,7 +39,7 @@ export default function CadastroCliente({ onClose, onSave, initialData, initialS
 
   const validate = (): string | null => {
     if (!formData.nome.trim()) return 'Nome é obrigatório'
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return 'E-mail inválido'
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return 'E-mail inválido'
     if (formData.telefone.replace(/\D/g, '').length < 10) return 'Telefone inválido'
     // const docDigits = formData.documento.replace(/\D/g, '')
     // if (docDigits.length !== 11 && docDigits.length !== 14) return 'CPF/CNPJ inválido'
@@ -226,7 +226,7 @@ export default function CadastroCliente({ onClose, onSave, initialData, initialS
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">
-                  E-mail *
+                  E-mail (opcional)
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -237,7 +237,6 @@ export default function CadastroCliente({ onClose, onSave, initialData, initialS
                     onChange={handleChange}
                     placeholder="email@exemplo.com"
                     className="w-full pl-11 pr-4 py-3 bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-gray-900 dark:text-white"
-                    required
                   />
                 </div>
               </div>

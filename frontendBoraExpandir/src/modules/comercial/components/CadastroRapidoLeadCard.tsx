@@ -22,7 +22,7 @@ export default function CadastroRapidoLeadCard({ onSaveLead }: CadastroRapidoLea
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (formData.nome && formData.email && formData.telefone) {
+    if (formData.nome && formData.telefone) {
       onSaveLead(formData)
       setFormData({ nome: '', email: '', telefone: '', empresa: '' })
       setIsOpen(false)
@@ -66,14 +66,13 @@ export default function CadastroRapidoLeadCard({ onSaveLead }: CadastroRapidoLea
           <div>
             <label className="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
               <Mail className="h-4 w-4" />
-              Email
+              Email (opcional)
             </label>
             <input
               type="email"
               name="email"
-              value={formData.email}
+              value={formData.email || ''}
               onChange={handleChange}
-              required
               placeholder="email@example.com"
               className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />

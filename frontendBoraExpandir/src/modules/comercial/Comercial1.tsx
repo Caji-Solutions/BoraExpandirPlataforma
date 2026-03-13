@@ -778,6 +778,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                       // Impede agendamento para o dia atual, apenas dia seguinte em diante
                       const tomorrow = new Date()
                       tomorrow.setDate(tomorrow.getDate() + 1)
+                      tomorrow.setHours(0, 0, 0, 0)
                       return tomorrow
                     })()}
                   />

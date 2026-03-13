@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { Calendar, Clock, Filter, Search, X, CreditCard, FileText } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Agendamento } from '../../types/comercial'
@@ -45,6 +45,11 @@ export default function AgendamentosPage({ agendamentos, onRefresh }: Agendament
 	const [search, setSearch] = useState('')
 	const [status, setStatus] = useState<'todos' | Agendamento['status']>('todos')
 	const [agendamentoSelecionado, setAgendamentoSelecionado] = useState<Agendamento | null>(null)
+
+	useEffect(() => {
+		onRefresh?.()
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [])
 
 	const filtered = useMemo(() => {
 		return agendamentos
@@ -148,13 +153,15 @@ export default function AgendamentosPage({ agendamentos, onRefresh }: Agendament
 									return (
 										<tr
 											key={agendamento.id}
-											className={`transition-colors ${agendamento.conflito_horario
+											className={`transition-colors ${isCancelled
+													? 'bg-red-50 dark:bg-red-900/10 border-l-4 border-l-red-500'
+													: agendamento.conflito_horario
 													? 'bg-amber-50 dark:bg-amber-900/10 border-l-4 border-l-amber-400'
 													: ''
 												} ${isEditable
 													? 'hover:bg-gray-50 dark:hover:bg-neutral-700/50 cursor-pointer'
 													: isCancelled
-														? 'opacity-50'
+														? 'opacity-70'
 														: isLocked
 															? 'opacity-40 grayscale-[0.5] cursor-not-allowed pointer-events-none'
 															: 'hover:bg-gray-50 dark:hover:bg-neutral-700/50 cursor-pointer'
@@ -217,7 +224,11 @@ export default function AgendamentosPage({ agendamentos, onRefresh }: Agendament
 
 											{/* Coluna Formulário */}
 											<td className="px-6 py-4 align-middle text-center">
-												{agendamento.cliente_is_user ? (
+												{isCancelled ? (
+													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+														<span className="w-2 h-2 rounded-full bg-red-500" /> Recusado
+													</span>
+												) : agendamento.cliente_is_user ? (
 													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
 														<span className="w-2 h-2 rounded-full bg-emerald-500" /> Preenchido
 													</span>

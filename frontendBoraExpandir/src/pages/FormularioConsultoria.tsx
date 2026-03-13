@@ -387,12 +387,12 @@ export default function FormularioConsultoria() {
                                 <div>
                                     <label className={labelClass}>Estado Civil *</label>
                                     <select name="estado_civil" value={formData.estado_civil} onChange={handleChange} className={inputClass}>
-                                        <option value="">Selecione</option>
-                                        <option value="solteiro">Solteiro(a)</option>
-                                        <option value="casado">Casado(a)</option>
-                                        <option value="divorciado">Divorciado(a)</option>
-                                        <option value="viuvo">Viúvo(a)</option>
-                                        <option value="uniao_estavel">União Estável</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="">Selecione</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="solteiro">Solteiro(a)</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="casado">Casado(a)</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="divorciado">Divorciado(a)</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="viuvo">Viúvo(a)</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="uniao_estavel">União Estável</option>
                                     </select>
                                 </div>
                             </div>
@@ -480,15 +480,15 @@ export default function FormularioConsultoria() {
                                 <div>
                                     <label className={labelClass}>Escolaridade *</label>
                                     <select name="escolaridade" value={formData.escolaridade} onChange={handleChange} className={inputClass}>
-                                        <option value="">Selecione</option>
-                                        <option value="fundamental">Ensino Fundamental</option>
-                                        <option value="medio">Ensino Médio</option>
-                                        <option value="tecnico">Técnico</option>
-                                        <option value="superior_incompleto">Superior Incompleto</option>
-                                        <option value="superior">Superior Completo</option>
-                                        <option value="pos_graduacao">Pós-Graduação</option>
-                                        <option value="mestrado">Mestrado</option>
-                                        <option value="doutorado">Doutorado</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="">Selecione</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="fundamental">Ensino Fundamental</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="medio">Ensino Médio</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="tecnico">Técnico</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="superior_incompleto">Superior Incompleto</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="superior">Superior Completo</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="pos_graduacao">Pós-Graduação</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="mestrado">Mestrado</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="doutorado">Doutorado</option>
                                     </select>
                                 </div>
                             </div>
@@ -523,22 +523,22 @@ export default function FormularioConsultoria() {
                                 <div>
                                     <label className={labelClass}>País de destino *</label>
                                     <select name="pais_destino" value={formData.pais_destino} onChange={handleChange} className={inputClass}>
-                                        <option value="">Selecione</option>
-                                        <option value="espanha">Espanha 🇪🇸</option>
-                                        <option value="portugal">Portugal 🇵🇹</option>
-                                        <option value="ambos">Ambos</option>
-                                        <option value="indeciso">Ainda indeciso</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="">Selecione</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="espanha">Espanha 🇪🇸</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="portugal">Portugal 🇵🇹</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="ambos">Ambos</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="indeciso">Ainda indeciso</option>
                                     </select>
                                 </div>
                                 <div>
                                     <label className={labelClass}>Prazo estimado para mudança *</label>
                                     <select name="prazo_mudanca" value={formData.prazo_mudanca} onChange={handleChange} className={inputClass}>
-                                        <option value="">Selecione</option>
-                                        <option value="imediato">Imediato</option>
-                                        <option value="3_meses">Até 3 meses</option>
-                                        <option value="6_meses">Até 6 meses</option>
-                                        <option value="1_ano">Até 1 ano</option>
-                                        <option value="mais_1_ano">Mais de 1 ano</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="">Selecione</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="imediato">Imediato</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="3_meses">Até 3 meses</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="6_meses">Até 6 meses</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="1_ano">Até 1 ano</option>
+                                        <option className="bg-[#0f172a] text-gray-200" value="mais_1_ano">Mais de 1 ano</option>
                                     </select>
                                 </div>
                             </div>
@@ -549,12 +549,12 @@ export default function FormularioConsultoria() {
                             <div>
                                 <label className={labelClass}>Você pretende trabalhar na Espanha?</label>
                                 <select name="pretende_trabalhar" value={formData.pretende_trabalhar} onChange={handleChange} className={inputClass}>
-                                    <option value="">Selecione</option>
-                                    <option value="sim_presencial">Sim, presencialmente</option>
-                                    <option value="sim_remoto">Sim, trabalho remoto do Brasil</option>
-                                    <option value="sim_autonomo">Sim, como autônomo</option>
-                                    <option value="nao">Não</option>
-                                    <option value="indeciso">Indeciso</option>
+                                    <option className="bg-[#0f172a] text-gray-200" value="">Selecione</option>
+                                    <option className="bg-[#0f172a] text-gray-200" value="sim_presencial">Sim, presencialmente</option>
+                                    <option className="bg-[#0f172a] text-gray-200" value="sim_remoto">Sim, trabalho remoto do Brasil</option>
+                                    <option className="bg-[#0f172a] text-gray-200" value="sim_autonomo">Sim, como autônomo</option>
+                                    <option className="bg-[#0f172a] text-gray-200" value="nao">Não</option>
+                                    <option className="bg-[#0f172a] text-gray-200" value="indeciso">Indeciso</option>
                                 </select>
                             </div>
                             <div>
@@ -579,12 +579,12 @@ export default function FormularioConsultoria() {
                             <div>
                                 <label className={labelClass}>Qual sua faixa de renda mensal?</label>
                                 <select name="renda_mensal" value={formData.renda_mensal} onChange={handleChange} className={inputClass}>
-                                    <option value="">Selecione</option>
-                                    <option value="ate_3k">Até R$ 3.000</option>
-                                    <option value="3k_5k">R$ 3.000 - R$ 5.000</option>
-                                    <option value="5k_10k">R$ 5.000 - R$ 10.000</option>
-                                    <option value="10k_20k">R$ 10.000 - R$ 20.000</option>
-                                    <option value="acima_20k">Acima de R$ 20.000</option>
+                                    <option className="bg-[#0f172a] text-gray-200" value="">Selecione</option>
+                                    <option className="bg-[#0f172a] text-gray-200" value="ate_3k">Até R$ 3.000</option>
+                                    <option className="bg-[#0f172a] text-gray-200" value="3k_5k">R$ 3.000 - R$ 5.000</option>
+                                    <option className="bg-[#0f172a] text-gray-200" value="5k_10k">R$ 5.000 - R$ 10.000</option>
+                                    <option className="bg-[#0f172a] text-gray-200" value="10k_20k">R$ 10.000 - R$ 20.000</option>
+                                    <option className="bg-[#0f172a] text-gray-200" value="acima_20k">Acima de R$ 20.000</option>
                                 </select>
                             </div>
                             <div>
@@ -634,3 +634,4 @@ export default function FormularioConsultoria() {
         </div>
     )
 }
+

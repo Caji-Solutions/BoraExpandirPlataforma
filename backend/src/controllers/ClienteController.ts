@@ -266,13 +266,13 @@ class ClienteController {
     try {
       const { nome, email, whatsapp, parceiro_id, status, documento, endereco } = req.body
 
-      if (!nome || !email || !whatsapp) {
-        return res.status(400).json({ message: 'Nome, email e WhatsApp são obrigatórios' })
+      if (!nome || !whatsapp) {
+        return res.status(400).json({ message: 'Nome e WhatsApp são obrigatórios' })
       }
 
       const supabase = (await import('../config/SupabaseClient')).supabase;
       
-      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedEmail = email ? email.trim().toLowerCase() : `lead_${Date.now()}@temp.com`;
       console.log('ClienteController.register - Iniciando busca por e-mail (normalizado):', normalizedEmail);
       
       // 1. Verificar se o cliente já existe na tabela 'clientes' (Insensível a maiúsculas)
@@ -301,12 +301,12 @@ class ClienteController {
 
       if (isNewUser) {
         console.log('========== REGISTRO DE NOVO USUÁRIO ==========')
-        console.log('Email:', email)
+        console.log('Email:', normalizedEmail)
         console.log('Senha Temporária Gerada:', tempPassword)
         console.log('==============================================')
         // 2. Tentar criar usuário no Auth do Supabase
         const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-          email,
+          email: normalizedEmail,
           password: tempPassword,
           email_confirm: true,
           user_metadata: {
@@ -338,7 +338,7 @@ class ClienteController {
       const clienteData: any = {
         id: usuarioId || require('crypto').randomUUID(), // Mantendo o vínculo com Auth ou garantindo um ID
         nome,
-        email,
+        email: normalizedEmail,
         whatsapp,
         parceiro_id: parceiro_id || null,
         status: status || 'cliente',
@@ -353,8 +353,8 @@ class ClienteController {
         ...createdData,
         message: 'Registro de cliente processado com sucesso',
         loginInfo: {
-          email,
-          password: isNewUser || email.startsWith('lead_') ? tempPassword : 'Usa sua senha cadastrada' // Se for lead sem email real, sempre mostramos a senha gerada
+          email: normalizedEmail,
+          password: isNewUser || normalizedEmail.startsWith('lead_') ? tempPassword : 'Usa sua senha cadastrada' // Se for lead sem email real, sempre mostramos a senha gerada
         }
       })
     } catch (error: any) {
