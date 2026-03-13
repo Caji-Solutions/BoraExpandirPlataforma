@@ -31,21 +31,30 @@ export const startCronJobs = () => {
             }
 
             for (const agendamento of agendamentos) {
-                // Combinar data e hora do agendamento
-                const agendamentoDateTime = new Date(`${agendamento.data}T${agendamento.hora}`);
-                
-                // Se a data/hora do agendamento for menor que agora + 1h, e o formulário não foi preenchido, cancela.
-                if (agendamentoDateTime <= cancelLimitTime) {
-                    console.log(`[CRON] Cancelando agendamento ${agendamento.id} por falta de formulário.`);
+                try {
+                    // Combinar data e hora do agendamento
+                    const agendamentoDateTime = new Date(`${agendamento.data}T${agendamento.hora}`);
                     
-                    await supabase
-                        .from('agendamentos')
-                        .update({ 
-                            status: 'cancelado',
-                            observacoes: (agendamento.observacoes ? agendamento.observacoes + '\n\n' : '') + '[SISTEMA] Agendamento cancelado automaticamente: Formulário não preenchido 1 hora antes da reunião.',
-                            pagamento_nota_recusa: '[SISTEMA] Cancelado por falta de formulário no prazo.'
-                        })
-                        .eq('id', agendamento.id);
+                    // Se a data/hora do agendamento for menor que agora + 1h, e o formulário não foi preenchido, cancela.
+                    if (agendamentoDateTime <= cancelLimitTime) {
+                        console.log(`[CRON] Cancelando agendamento ${agendamento.id} por falta de formulário.`);
+                        
+                        const { error: updateError } = await supabase
+                            .from('agendamentos')
+                            .update({ 
+                                status: 'cancelado',
+                                observacoes: (agendamento.observacoes ? agendamento.observacoes + '\n\n' : '') + '[SISTEMA] Agendamento cancelado automaticamente: Formulário não preenchido 1 hora antes da reunião.',
+                                pagamento_nota_recusa: '[SISTEMA] Cancelado por falta de formulário no prazo.'
+                            })
+                            .eq('id', agendamento.id);
+                        
+                        if (updateError) {
+                            console.error(`[CRON] Erro ao cancelar agendamento ${agendamento.id}:`, updateError);
+                        }
+                    }
+                } catch (agErr) {
+                    console.error(`[CRON] Erro ao processar agendamento ${agendamento.id}:`, agErr);
+                    // Continua para o próximo agendamento
                 }
             }
 

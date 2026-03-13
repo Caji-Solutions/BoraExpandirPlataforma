@@ -147,21 +147,24 @@ export default function AgendamentosPage({ agendamentos, onRefresh }: Agendament
 								{filtered.map(agendamento => {
 									const isConfirmed = agendamento.status === 'confirmado' || agendamento.status === 'realizado'
 									const isCancelled = agendamento.status === 'cancelado'
+									const isCronBlocked = isCancelled && agendamento.pagamento_nota_recusa?.includes('[SISTEMA]')
 									const isLocked = !!agendamento.cliente_is_user && (agendamento.status === 'pendente' || agendamento.status === 'agendado')
 									const isEditable = !isConfirmed && !isLocked && !isCancelled
 
 									return (
 										<tr
 											key={agendamento.id}
-											className={`transition-colors ${isCancelled
-													? 'bg-red-50 dark:bg-red-900/10 border-l-4 border-l-red-500'
+											className={`transition-colors ${isCronBlocked
+													? 'bg-red-100 dark:bg-red-900/30 border-l-4 border-l-red-600'
+													: isCancelled
+													? 'bg-gray-50 dark:bg-neutral-800/40 border-l-4 border-l-gray-400 dark:border-l-neutral-600'
 													: agendamento.conflito_horario
 													? 'bg-amber-50 dark:bg-amber-900/10 border-l-4 border-l-amber-400'
 													: ''
 												} ${isEditable
 													? 'hover:bg-gray-50 dark:hover:bg-neutral-700/50 cursor-pointer'
 													: isCancelled
-														? 'opacity-70'
+														? 'opacity-70 cursor-pointer hover:opacity-90'
 														: isLocked
 															? 'opacity-40 grayscale-[0.5] cursor-not-allowed pointer-events-none'
 															: 'hover:bg-gray-50 dark:hover:bg-neutral-700/50 cursor-pointer'

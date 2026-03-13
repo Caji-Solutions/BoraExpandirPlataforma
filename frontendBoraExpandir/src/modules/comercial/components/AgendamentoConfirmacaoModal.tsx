@@ -44,6 +44,7 @@ export const AgendamentoConfirmacaoModal: React.FC<AgendamentoConfirmacaoModalPr
   const [comprovantePreview, setComprovantePreview] = useState<string | null>(null)
   const [uploadingComprovante, setUploadingComprovante] = useState(false)
   const [agendamentoCriado, setAgendamentoCriado] = useState<any>(null)
+  const [avisoFormPreenchido, setAvisoFormPreenchido] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   if (!isOpen) return null
@@ -70,10 +71,9 @@ export const AgendamentoConfirmacaoModal: React.FC<AgendamentoConfirmacaoModalPr
 
   const frontendUrl = import.meta.env.VITE_FRONTEND_URL?.trim() || window.location.origin
 
-  // Link do formulário (usa o ID do agendamento criado + query params para pré-preencher)
-  const buildFormularioLink = () => {
-    const base = agendamentoCriado
-      ? `${frontendUrl}/formulario/consultoria/${agendamentoCriado.id}`
+  const buildFormularioLink = (agendamentoId?: string) => {
+    const base = agendamentoId
+      ? `${frontendUrl}/formulario/consultoria/${agendamentoId}`
       : `${frontendUrl}/formulario/consultoria`
     const params = new URLSearchParams()
     if (payload.nome) params.set('nome', payload.nome)
@@ -83,10 +83,19 @@ export const AgendamentoConfirmacaoModal: React.FC<AgendamentoConfirmacaoModalPr
     return qs ? `${base}?${qs}` : base
   }
 
-  const formularioLink = buildFormularioLink()
+  // Define a função de construir a mensagem para pegar o estado mais recente
+  const buildMensagemPix = () => {
+    const link = buildFormularioLink(agendamentoCriado?.id)
+    
+    let instructions = ''
+    if (avisoFormPreenchido) {
+      instructions = `📝 Como você já preencheu nosso formulário anteriormente, agora é só realizar o pagamento para liberarmos seu acesso! 😊`
+    } else {
+      instructions = `📋 Preencha também o formulário de consultoria:
+${link}`
+    }
 
-  // Mensagem padrão para copiar e colar na Kommo (inclui link do formulário)
-  const mensagemPix = `Olá ${payload.nome}! 😊
+    return `Olá ${payload.nome}! 😊
 
 Seu agendamento de *${payload.produto_nome}* está quase confirmado!
 
@@ -100,11 +109,11 @@ Para confirmar, realize o pagamento via PIX:
 
 Após o pagamento, envie o comprovante aqui no chat.
 
-📋 Preencha também o formulário de consultoria:
-${formularioLink}
+${instructions}
 
 Obrigado! 🚀
 — Equipe Bora Expandir`
+  }
 
   const handleSelectPix = async () => {
     setStep('pix')
@@ -155,6 +164,9 @@ Obrigado! 🚀
 
       const responseData = await response.json()
       setAgendamentoCriado(responseData)
+      if (responseData.aviso_formulario_preenchido) {
+        setAvisoFormPreenchido(true)
+      }
       setIsLoading(false)
     } catch (err) {
       setLocalError('Erro de conexão com o servidor.')
@@ -169,12 +181,12 @@ Obrigado! 🚀
 
   const handleCopyMessage = async () => {
     try {
-      await navigator.clipboard.writeText(mensagemPix)
+      await navigator.clipboard.writeText(buildMensagemPix())
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
     } catch {
       const textarea = document.createElement('textarea')
-      textarea.value = mensagemPix
+      textarea.value = buildMensagemPix()
       document.body.appendChild(textarea)
       textarea.select()
       document.execCommand('copy')
@@ -342,6 +354,14 @@ Obrigado! 🚀
                     <span>Agendamento criado! Copie a mensagem e envie ao lead na Kommo.</span>
                   </div>
 
+                  {/* Aviso de formulário já preenchido */}
+                  {avisoFormPreenchido && (
+                    <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 p-3 rounded-lg text-sm border border-amber-100 dark:border-amber-500/20">
+                      <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                      <span>⚠️ <strong>Este lead já preencheu o formulário anteriormente.</strong> Não é necessário enviar o link do formulário novamente.</span>
+                    </div>
+                  )}
+
                   {/* Chave PIX */}
                   <div className="bg-gray-50 dark:bg-neutral-800/50 rounded-xl p-4 border border-gray-100 dark:border-neutral-800">
                     <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-2">Chave PIX (CNPJ)</p>
@@ -374,7 +394,7 @@ Obrigado! 🚀
                       Ver pré-visualização da mensagem
                     </summary>
                     <div className="mt-2 p-3 bg-gray-50 dark:bg-neutral-800/50 rounded-lg border text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap font-mono max-h-48 overflow-y-auto">
-                      {mensagemPix}
+                      {buildMensagemPix()}
                     </div>
                   </details>
 

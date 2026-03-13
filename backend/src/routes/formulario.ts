@@ -22,6 +22,9 @@ const upload = multer({
 // POST /formulario/consultoria — Formulário público de consultoria
 formulario.post('/consultoria', FormularioController.submitConsultoria.bind(FormularioController))
 
+// GET /formulario/consultoria/:agendamento_id/status — Status público do agendamento (sem auth)
+formulario.get('/consultoria/:agendamento_id/status', FormularioController.getAgendamentoStatus.bind(FormularioController))
+
 // POST /formulario/comprovante — Upload de comprovante PIX
 formulario.post('/comprovante', upload.single('comprovante'), FormularioController.uploadComprovante.bind(FormularioController))
 

@@ -5,6 +5,26 @@ class ComercialRepository {
     async createAgendamento(agendamento: any) {
         console.log('Tentando criar agendamento no banco:', agendamento)
 
+        if (agendamento.cliente_id && agendamento.email) {
+            try {
+                const { data: clienteBanco } = await supabase
+                    .from('clientes')
+                    .select('email')
+                    .eq('id', agendamento.cliente_id)
+                    .single()
+
+                if (clienteBanco && (!clienteBanco.email || clienteBanco.email !== agendamento.email)) {
+                    await supabase
+                        .from('clientes')
+                        .update({ email: agendamento.email })
+                        .eq('id', agendamento.cliente_id)
+                    console.log(`[ComercialRepository] Email ${agendamento.email} atrelado/atualizado para o cliente ${agendamento.cliente_id}`)
+                }
+            } catch (err) {
+                console.warn('[ComercialRepository] Erro ao tentar atualizar o email do cliente:', err)
+            }
+        }
+
         const { data: createdData, error } = await supabase
             .from('agendamentos')
             .insert([agendamento])

@@ -65,7 +65,31 @@ class ComercialController {
             console.log('Objeto agendamento final para envio ao DB:', agendamento)
             const createdData = await ComercialRepository.createAgendamento(agendamento)
             console.log('Agendamento criado com sucesso:', createdData)
-            return res.status(201).json(createdData)
+
+            // Verificar se o lead já preencheu o formulário em outro agendamento
+            let avisoFormularioPreenchido = false
+            try {
+                if (email) {
+                    const { data: clienteExistente } = await supabase
+                        .from('clientes')
+                        .select('user_id')
+                        .eq('email', email)
+                        .maybeSingle()
+                    if (clienteExistente?.user_id) avisoFormularioPreenchido = true
+                }
+                if (!avisoFormularioPreenchido && telefone) {
+                    const { data: clientePorTel } = await supabase
+                        .from('clientes')
+                        .select('user_id')
+                        .eq('whatsapp', telefone)
+                        .maybeSingle()
+                    if (clientePorTel?.user_id) avisoFormularioPreenchido = true
+                }
+            } catch (checkErr) {
+                console.warn('Erro ao verificar formulário preenchido do lead:', checkErr)
+            }
+
+            return res.status(201).json({ ...createdData, aviso_formulario_preenchido: avisoFormularioPreenchido })
 
         } catch (error: any) {
             console.error('Erro ao criar agendamento:', error)

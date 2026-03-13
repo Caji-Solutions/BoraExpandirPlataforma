@@ -65,7 +65,7 @@ class FormularioController {
             // Validar se o agendamento existe e pode receber formulário
             const { data: agendamentoInfo, error: agInfoErr } = await supabase
                 .from('agendamentos')
-                .select('status, data, hora')
+                .select('status, data_hora')
                 .eq('id', agendamento_id)
                 .single()
 
@@ -77,7 +77,7 @@ class FormularioController {
                 return res.status(403).json({ message: 'Este agendamento foi cancelado. Você deve contatar o Comercial para um novo link.' })
             }
 
-            const agendamentoDateTime = new Date(`${agendamentoInfo.data}T${agendamentoInfo.hora}`);
+            const agendamentoDateTime = new Date(agendamentoInfo.data_hora);
             const now = new Date();
             const hourDiff = (agendamentoDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 
@@ -393,6 +393,88 @@ class FormularioController {
                 message: 'Erro ao processar comprovante',
                 error: error.message
             })
+        }
+    }
+    /**
+     * GET /formulario/consultoria/:agendamento_id/status
+     * Endpoint público que retorna o status do agendamento e do pagamento
+     * para que o frontend mostre a tela apropriada.
+     */
+    async getAgendamentoStatus(req: any, res: any) {
+        try {
+            const { agendamento_id } = req.params
+
+            if (!agendamento_id) {
+                return res.status(400).json({ found: false, message: 'ID do agendamento é obrigatório' })
+            }
+
+            // 1. Buscar agendamento
+            const { data: agendamento, error: agErr } = await supabase
+                .from('agendamentos')
+                .select('id, status, data_hora, pagamento_status, pagamento_nota_recusa, email, telefone')
+                .eq('id', agendamento_id)
+                .single()
+
+            if (agErr || !agendamento) {
+                console.error('[FormularioController] Erro ao buscar agendamento status:', agErr)
+                return res.status(404).json({ found: false })
+            }
+
+            // 2. Verificar se formulário já foi preenchido (cliente tem user_id)
+            let formularioPreenchido = false
+            if (agendamento.email) {
+                const { data: clientePorEmail } = await supabase
+                    .from('clientes')
+                    .select('id, user_id')
+                    .eq('email', agendamento.email)
+                    .not('user_id', 'is', null) // Tenta forçar encontrar um com user_id
+                    .limit(1)
+                    .maybeSingle()
+
+                if (clientePorEmail?.user_id) {
+                    formularioPreenchido = true
+                }
+            }
+
+            // Fallback: verificar por telefone
+            if (!formularioPreenchido && agendamento.telefone) {
+                const { data: clientePorTel } = await supabase
+                    .from('clientes')
+                    .select('id, user_id')
+                    .or(`whatsapp.eq.${agendamento.telefone},telefone.eq.${agendamento.telefone}`)
+                    .not('user_id', 'is', null)
+                    .limit(1)
+                    .maybeSingle()
+
+                if (clientePorTel?.user_id) {
+                    formularioPreenchido = true
+                }
+            }
+
+            // 3. Verificar prazo (1h antes da reunião)
+            const agendamentoDateTime = new Date(agendamento.data_hora)
+            const now = new Date()
+            const horasRestantes = (agendamentoDateTime.getTime() - now.getTime()) / (1000 * 60 * 60)
+            const expirado = horasRestantes < 1
+
+            // 4. Detectar se foi bloqueado pelo CRON (cancelado automaticamente pelo sistema)
+            const bloqueadoCron = agendamento.status === 'cancelado' &&
+                agendamento.pagamento_nota_recusa?.includes('[SISTEMA]')
+
+            // 5. Retornar dados
+            return res.status(200).json({
+                found: true,
+                status: agendamento.status,
+                pagamento_status: agendamento.pagamento_status || 'pendente',
+                formulario_preenchido: formularioPreenchido,
+                expirado,
+                cancelado: agendamento.status === 'cancelado',
+                bloqueado_cron: !!bloqueadoCron
+            })
+
+        } catch (error: any) {
+            console.error('[FormularioController] Erro ao buscar status do agendamento:', error)
+            return res.status(500).json({ found: false, message: 'Erro ao verificar status' })
         }
     }
 }

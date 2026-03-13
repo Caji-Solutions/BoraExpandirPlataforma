@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
-import { CheckCircle2, Loader2, ChevronDown, ChevronUp, AlertCircle, Clock, XCircle, Phone } from 'lucide-react'
+import { CheckCircle2, Loader2, ChevronDown, ChevronUp, AlertCircle, Clock, XCircle, Phone, Copy, Check } from 'lucide-react'
 
-type FormStep = 'form' | 'submitting' | 'success'
-type PagamentoStatus = 'pendente' | 'aprovado' | 'recusado' | null
+type FormStep = 'loading' | 'form' | 'submitting' | 'success' | 'status_aprovado' | 'status_em_analise' | 'status_pendente' | 'status_recusado' | 'expirado' | 'cancelado' | 'bloqueado' | 'nao_encontrado'
+type PagamentoStatus = 'pendente' | 'aprovado' | 'em_analise' | 'recusado' | null
+
+const PIX_CNPJ = '55.218.947/0001-65'
 
 export default function FormularioConsultoria() {
     const { agendamentoId } = useParams<{ agendamentoId: string }>()
-    const [step, setStep] = useState<FormStep>('form')
+    const [step, setStep] = useState<FormStep>(agendamentoId ? 'loading' : 'form')
     const [error, setError] = useState<string | null>(null)
     const [emailEnviado, setEmailEnviado] = useState('')
+    const [copiedPix, setCopiedPix] = useState(false)
 
     // Dados de resposta do backend
     const [pagamentoStatus, setPagamentoStatus] = useState<PagamentoStatus>(null)
@@ -93,6 +96,77 @@ export default function FormularioConsultoria() {
             formData.prazo_mudanca
         )
     }, [formData.objetivo_imigracao, formData.pais_destino, formData.prazo_mudanca])
+
+    // ========== Verificação de status ao carregar ==========
+    useEffect(() => {
+        if (!agendamentoId) return
+
+        const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || ''
+        if (!backendUrl) {
+            setStep('form')
+            return
+        }
+
+        async function checkStatus() {
+            try {
+                const response = await fetch(`${backendUrl}/formulario/consultoria/${agendamentoId}/status`)
+                if (!response.ok) {
+                    // Se não encontrou, bloqueia o preenchimento para não dar erro depois
+                    setStep('nao_encontrado')
+                    return
+                }
+
+                const data = await response.json()
+
+                if (!data.found) {
+                    setStep('nao_encontrado')
+                    return
+                }
+
+                // Se bloqueado pelo CRON (cancelado automaticamente por falta de formulário)
+                if (data.bloqueado_cron) {
+                    setStep('bloqueado')
+                    return
+                }
+
+                // Se cancelado por outro motivo
+                if (data.cancelado) {
+                    setStep('cancelado')
+                    return
+                }
+
+                // Se expirado (menos de 1h para a reunião)
+                if (data.expirado) {
+                    setStep('expirado')
+                    return
+                }
+
+                // Se o formulário já foi preenchido, mostrar tela de status do pagamento
+                if (data.formulario_preenchido) {
+                    const pgStatus = data.pagamento_status
+                    if (pgStatus === 'aprovado') {
+                        setStep('status_aprovado')
+                    } else if (pgStatus === 'em_analise') {
+                        setStep('status_em_analise')
+                    } else if (pgStatus === 'recusado') {
+                        setStep('status_recusado')
+                    } else {
+                        // pendente ou qualquer outro
+                        setStep('status_pendente')
+                    }
+                    return
+                }
+
+                // Formulário não preenchido e dentro do prazo — exibir normalmente
+                setStep('form')
+            } catch (err) {
+                console.error('Erro ao verificar status do agendamento:', err)
+                setStep('form')
+            }
+        }
+
+        checkStatus()
+    }, [agendamentoId])
 
     // Auto-fechar abas completas
     useEffect(() => {
@@ -190,6 +264,282 @@ export default function FormularioConsultoria() {
             setError(err.message || 'Erro ao enviar formulário. Tente novamente.')
             setStep('form')
         }
+    }
+
+    // ========== Função para copiar chave PIX ==========
+    const handleCopyPix = async () => {
+        try {
+            await navigator.clipboard.writeText(PIX_CNPJ)
+            setCopiedPix(true)
+            setTimeout(() => setCopiedPix(false), 3000)
+        } catch {
+            setCopiedPix(true)
+            setTimeout(() => setCopiedPix(false), 3000)
+        }
+    }
+
+    // ========== Telas de status (pré-formulário) ==========
+
+    // Loading
+    if (step === 'loading') {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0d1f3c] to-[#071222] flex items-center justify-center p-6">
+                <div className="text-center">
+                    <Loader2 className="h-12 w-12 text-blue-400 animate-spin mx-auto mb-4" />
+                    <p className="text-white text-lg font-semibold">Verificando seu agendamento...</p>
+                    <p className="text-gray-400 mt-2">Aguarde um momento</p>
+                </div>
+            </div>
+        )
+    }
+
+    // Status: APROVADO — Parabéns, conta criada
+    if (step === 'status_aprovado') {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0d1f3c] to-[#071222] flex items-center justify-center p-6">
+                <div className="max-w-lg w-full bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-10 text-center">
+                    <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-emerald-500/20 flex items-center justify-center animate-bounce">
+                        <CheckCircle2 className="h-12 w-12 text-emerald-400" />
+                    </div>
+                    <h1 className="text-3xl font-bold text-white mb-4">Parabéns! 🎉</h1>
+                    <p className="text-gray-300 text-lg mb-2">
+                        Sua nova conta na <span className="text-blue-400 font-bold">Bora Expandir</span> foi criada com sucesso!
+                    </p>
+                    <p className="text-gray-400 text-sm mb-8">
+                        O pagamento foi confirmado e suas credenciais de acesso foram enviadas para o seu email.
+                    </p>
+                    <div className="bg-emerald-500/10 rounded-2xl p-5 border border-emerald-500/20">
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                            <p className="text-emerald-400 font-bold">Pagamento Aprovado</p>
+                        </div>
+                        <p className="text-gray-400 text-sm">
+                            Verifique sua caixa de entrada (e spam) para encontrar as credenciais de acesso à plataforma.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    // Status: EM ANÁLISE — Paciência
+    if (step === 'status_em_analise') {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0d1f3c] to-[#071222] flex items-center justify-center p-6">
+                <div className="max-w-lg w-full bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-10 text-center">
+                    <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-blue-500/20 flex items-center justify-center">
+                        <Clock className="h-12 w-12 text-blue-400 animate-pulse" />
+                    </div>
+                    <h1 className="text-3xl font-bold text-white mb-4">Quase lá! ⏳</h1>
+                    <p className="text-gray-300 text-lg mb-2">
+                        Seu formulário já foi recebido e o pagamento está sendo verificado pela nossa equipe.
+                    </p>
+                    <p className="text-gray-400 text-sm mb-8">
+                        Tenha um pouquinho de paciência — em breve tudo estará pronto!
+                    </p>
+                    <div className="bg-blue-500/10 rounded-2xl p-5 border border-blue-500/20">
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                            <Clock className="h-5 w-5 text-blue-400" />
+                            <p className="text-blue-400 font-bold">Pagamento em Análise</p>
+                        </div>
+                        <p className="text-gray-400 text-sm">
+                            Assim que o comprovante for verificado, você receberá um email com os dados de acesso à plataforma Bora Expandir.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    // Status: PENDENTE — Chave PIX para pagamento
+    if (step === 'status_pendente') {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0d1f3c] to-[#071222] flex items-center justify-center p-6">
+                <div className="max-w-lg w-full bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-10 text-center">
+                    <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-amber-500/20 flex items-center justify-center">
+                        <AlertCircle className="h-12 w-12 text-amber-400" />
+                    </div>
+                    <h1 className="text-3xl font-bold text-white mb-4">Formulário Recebido! ✅</h1>
+                    <p className="text-gray-300 text-lg mb-2">
+                        Seus dados foram salvos com sucesso. Agora só falta o pagamento para liberar sua conta!
+                    </p>
+                    <p className="text-gray-400 text-sm mb-6">
+                        Realize o pagamento via PIX usando a chave abaixo e envie o comprovante ao seu consultor.
+                    </p>
+
+                    <div className="bg-amber-500/10 rounded-2xl p-5 border border-amber-500/20 mb-6">
+                        <p className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-3">Chave PIX (CNPJ)</p>
+                        <div className="flex items-center justify-center gap-3">
+                            <code className="text-2xl font-bold text-white tracking-wider">{PIX_CNPJ}</code>
+                            <button
+                                onClick={handleCopyPix}
+                                className="px-3 py-2 rounded-lg bg-amber-500/20 text-amber-400 text-sm font-bold hover:bg-amber-500/30 transition-colors flex items-center gap-1"
+                            >
+                                {copiedPix ? <><Check className="h-4 w-4" /> Copiado!</> : <><Copy className="h-4 w-4" /> Copiar</>}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                            <Phone className="h-4 w-4 text-blue-400" />
+                            <p className="text-blue-400 font-semibold">Envie o comprovante ao seu consultor</p>
+                        </div>
+                        <p className="text-gray-400 text-sm">
+                            Após o pagamento, envie o comprovante via WhatsApp para o consultor que lhe atendeu. Sua conta será criada assim que o pagamento for confirmado.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    // Status: RECUSADO — Pagamento recusado
+    if (step === 'status_recusado') {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0d1f3c] to-[#071222] flex items-center justify-center p-6">
+                <div className="max-w-lg w-full bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-10 text-center">
+                    <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-red-500/20 flex items-center justify-center">
+                        <XCircle className="h-12 w-12 text-red-400" />
+                    </div>
+                    <h1 className="text-3xl font-bold text-white mb-4">Pagamento Recusado 😔</h1>
+                    <p className="text-gray-300 text-lg mb-2">
+                        Infelizmente, o pagamento referente à sua consultoria foi recusado.
+                    </p>
+                    <div className="bg-emerald-500/10 rounded-2xl p-5 border border-emerald-500/20 mb-6">
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                            <p className="text-emerald-400 font-bold">Seus dados foram salvos!</p>
+                        </div>
+                        <p className="text-gray-400 text-sm">
+                            Você <strong className="text-white">não precisa preencher o formulário novamente</strong>. Seus dados estão seguros em nosso sistema.
+                        </p>
+                    </div>
+                    <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                            <Phone className="h-4 w-4 text-blue-400" />
+                            <p className="text-blue-400 font-semibold">Entre em contato com seu consultor</p>
+                        </div>
+                        <p className="text-gray-400 text-sm">
+                            Para resolver essa questão, entre em contato com o consultor que lhe atendeu via WhatsApp ou email.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    // Status: EXPIRADO — Formulário expirado (menos de 1h para reunião)
+    if (step === 'expirado') {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0d1f3c] to-[#071222] flex items-center justify-center p-6">
+                <div className="max-w-lg w-full bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-10 text-center">
+                    <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-red-500/20 flex items-center justify-center">
+                        <Clock className="h-12 w-12 text-red-400" />
+                    </div>
+                    <h1 className="text-3xl font-bold text-white mb-4">Formulário Expirado ⏰</h1>
+                    <p className="text-gray-300 text-lg mb-6">
+                        O prazo para preenchimento deste formulário encerrou. O formulário deve ser enviado com pelo menos 1 hora de antecedência da reunião.
+                    </p>
+                    <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                            <Phone className="h-4 w-4 text-blue-400" />
+                            <p className="text-blue-400 font-semibold">Entre em contato com seu consultor</p>
+                        </div>
+                        <p className="text-gray-400 text-sm">
+                            Fale com o consultor que lhe atendeu para remarcar ou obter um novo link.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    // Status: BLOQUEADO — Formulário bloqueado pelo CRON (cancelado automaticamente)
+    if (step === 'bloqueado') {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0d1f3c] to-[#071222] flex items-center justify-center p-6">
+                <div className="max-w-lg w-full bg-white/5 backdrop-blur-xl rounded-3xl border border-red-500/30 p-10 text-center">
+                    <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-red-500/20 flex items-center justify-center">
+                        <XCircle className="h-12 w-12 text-red-400" />
+                    </div>
+                    <h1 className="text-3xl font-bold text-white mb-4">Formulário Indisponível 🚫</h1>
+                    <p className="text-gray-300 text-lg mb-4">
+                        Este formulário não está mais disponível para preenchimento.
+                    </p>
+                    <div className="bg-red-500/10 rounded-2xl p-5 border border-red-500/20 mb-6">
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                            <AlertCircle className="h-5 w-5 text-red-400" />
+                            <p className="text-red-400 font-bold">Agendamento bloqueado</p>
+                        </div>
+                        <p className="text-gray-400 text-sm">
+                            O formulário não foi preenchido dentro do prazo estipulado (até 1 hora antes da reunião) e o agendamento foi cancelado automaticamente pelo sistema.
+                        </p>
+                    </div>
+                    <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                            <Phone className="h-4 w-4 text-blue-400" />
+                            <p className="text-blue-400 font-semibold">Entre em contato com seu consultor</p>
+                        </div>
+                        <p className="text-gray-400 text-sm">
+                            Para remarcar sua consultoria, entre em contato com o consultor que lhe atendeu via WhatsApp ou email.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    // Status: NÃO ENCONTRADO — ID do agendamento inválido
+    if (step === 'nao_encontrado') {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0d1f3c] to-[#071222] flex items-center justify-center p-6">
+                <div className="max-w-lg w-full bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-10 text-center">
+                    <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gray-500/20 flex items-center justify-center">
+                        <AlertCircle className="h-12 w-12 text-gray-400" />
+                    </div>
+                    <h1 className="text-3xl font-bold text-white mb-4">Agendamento não encontrado</h1>
+                    <p className="text-gray-300 text-lg mb-6">
+                        O link que você acessou parece estar inválido ou o agendamento não existe mais no sistema.
+                    </p>
+                    <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                            <Phone className="h-4 w-4 text-blue-400" />
+                            <p className="text-blue-400 font-semibold">Precisa de ajuda?</p>
+                        </div>
+                        <p className="text-gray-400 text-sm">
+                            Entre em contato com a equipe comercial solicitando um novo link para o seu formulário.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    // Status: CANCELADO — Agendamento cancelado (por outro motivo)
+    if (step === 'cancelado') {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0d1f3c] to-[#071222] flex items-center justify-center p-6">
+                <div className="max-w-lg w-full bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-10 text-center">
+                    <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-red-500/20 flex items-center justify-center">
+                        <XCircle className="h-12 w-12 text-red-400" />
+                    </div>
+                    <h1 className="text-3xl font-bold text-white mb-4">Agendamento Cancelado</h1>
+                    <p className="text-gray-300 text-lg mb-6">
+                        Este agendamento foi cancelado. Para agendar novamente, entre em contato com nosso time comercial.
+                    </p>
+                    <div className="bg-white/5 rounded-2xl p-5 border border-white/10">
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                            <Phone className="h-4 w-4 text-blue-400" />
+                            <p className="text-blue-400 font-semibold">Fale com nosso time</p>
+                        </div>
+                        <p className="text-gray-400 text-sm">
+                            Entre em contato pelo WhatsApp ou email para remarcar sua consultoria.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     // ========== Tela de sucesso com status de pagamento ==========
