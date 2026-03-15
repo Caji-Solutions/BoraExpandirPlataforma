@@ -46,7 +46,7 @@ class EmailService {
         senha: string
     }): Promise<void> {
         const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@boraexpandir.com'
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3010'
+        const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')
         const loginLink = params.loginUrl || `${frontendUrl}/login`
 
         const html = `
@@ -151,12 +151,12 @@ class EmailService {
     }
 
     /**
-     * Envia email para o cliente definir a senha (após confirmação de pagamento PIX)
+     * Envia email para o cliente preencher o formulário (após confirmação de pagamento)
      */
-    async sendPasswordSetupEmail(params: {
+    async sendFormularioEmail(params: {
         to: string
         clientName: string
-        resetLink: string
+        formularioLink: string
         email: string
     }): Promise<void> {
         const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@boraexpandir.com'
@@ -167,14 +167,14 @@ class EmailService {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Defina sua senha - Bora Expandir</title>
+    <title>Pagamento Confirmado - Bora Expandir</title>
 </head>
 <body style="margin:0;padding:0;background:#f5f5f5;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
     <div style="max-width:600px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
         <!-- Header -->
         <div style="background:linear-gradient(135deg,#076CA5 0%,#0A8FD4 100%);padding:40px 32px;text-align:center;">
             <h1 style="color:#ffffff;margin:0;font-size:28px;font-weight:700;">Bora Expandir 🚀</h1>
-            <p style="color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;">Acesso Liberado</p>
+            <p style="color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;">Pagamento Confirmado ✅</p>
         </div>
 
         <!-- Content -->
@@ -183,29 +183,27 @@ class EmailService {
                 Olá, ${params.clientName}! 👋
             </h2>
             <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 24px;">
-                Sua conta na plataforma <strong>Bora Expandir</strong> foi ativada com sucesso!
-                Seu pagamento foi confirmado e seu acesso está liberado.
+                Seu pagamento foi <strong>confirmado com sucesso</strong>! 🎉
             </p>
-
-            <div style="background:#f0f7fc;border:1px solid #d0e7f5;border-radius:12px;padding:20px;margin:0 0 24px;">
-                <p style="color:#076CA5;font-weight:700;margin:0 0 12px;font-size:14px;">📧 Seu e-mail de acesso:</p>
-                <p style="color:#333;margin:0;font-size:14px;"><strong>${params.email}</strong></p>
-            </div>
-
-            <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 24px;">
-                Para começar, clique no botão abaixo para definir sua senha de acesso segura:
+            <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 24px;">
+                Para darmos continuidade à sua consultoria, precisamos que você preencha o formulário abaixo com seus dados. 
+                Isso é essencial para que nosso time prepare tudo para o seu atendimento.
             </p>
 
             <!-- CTA Button -->
             <div style="text-align:center;margin:32px 0;">
-                <a href="${params.resetLink}" 
+                <a href="${params.formularioLink}" 
                    style="display:inline-block;background:#076CA5;color:#ffffff;text-decoration:none;padding:14px 40px;border-radius:10px;font-size:16px;font-weight:700;letter-spacing:0.5px;">
-                    Definir Minha Senha
+                    📋 Preencher Formulário
                 </a>
             </div>
 
+            <p style="color:#888;font-size:13px;line-height:1.6;margin:0 0 16px;text-align:center;">
+                Após o preenchimento, você receberá suas credenciais de acesso à plataforma.
+            </p>
+
             <p style="color:#999;font-size:12px;text-align:center;margin:24px 0 0;">
-                Se você não solicitou esta conta, por favor desconsidere este email.
+                Se você não solicitou este serviço, por favor desconsidere este email.
             </p>
         </div>
 
@@ -225,12 +223,12 @@ class EmailService {
             await transporter.sendMail({
                 from: `"Bora Expandir" <${from}>`,
                 to: params.to,
-                subject: '🚀 Acesso Liberado — Defina sua senha na Bora Expandir',
+                subject: '✅ Pagamento Confirmado — Preencha seu formulário | Bora Expandir',
                 html
             })
-            console.log(`[EmailService] Email de setup de senha enviado para ${params.to}`)
+            console.log(`[EmailService] Email de formulário enviado para ${params.to}`)
         } catch (error) {
-            console.error('[EmailService] Erro ao enviar email de setup de senha:', error)
+            console.error('[EmailService] Erro ao enviar email de formulário:', error)
             throw error
         }
     }

@@ -11,7 +11,6 @@ import { Traducao } from './components/Traducao'
 import Parceiro from './components/Parceiro'
 import { ClienteAgendamento } from './components/ClienteAgendamento'
 import {
-  mockClient,
   mockNotifications,
   mockRequiredDocuments,
   mockApprovedDocuments,
@@ -30,7 +29,19 @@ import { useAuth } from '../../contexts/AuthContext'
 export function ClienteApp() {
   const location = useLocation()
   const navigate = useNavigate()
-  const [client, setClient] = useState<Client>(mockClient)
+  const [client, setClient] = useState<Client>({
+    id: '',
+    name: '',
+    email: '',
+    phone: '',
+    serviceType: '',
+    paymentStatus: 'pending',
+    accessGranted: true,
+    isPartner: false,
+    isClient: true,
+    clientId: '',
+    createdAt: new Date(),
+  })
   const [documents, setDocuments] = useState<Document[]>([])
   const [familyMembers, setFamilyMembers] = useState<{ id: string, name: string, email?: string, type: string }[]>([])
   const [processo, setProcesso] = useState<Process | null>(null)
@@ -154,15 +165,15 @@ export function ClienteApp() {
     }
   }
 
-  const fetchClientData = async (clientId: string = mockClient.id) => {
+  const fetchClientData = async (clientId: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/cliente/${clientId}`)
       if (response.ok) {
         const result = await response.json()
         if (result.data) {
           const apiCliente = result.data
-          const updatedClient = {
-            ...mockClient,
+          const updatedClient: Client = {
+            ...client,
             id: apiCliente.id,
             name: apiCliente.nome,
             email: apiCliente.email,
@@ -188,11 +199,27 @@ export function ClienteApp() {
       try {
         const impersonatedClientId = localStorage.getItem('impersonatedClientId')
         
-        let activeId = mockClient.id
+        let activeId = ''
 
         if (isAuthenticated && activeProfile) {
           if (activeProfile.role === 'cliente') {
-            activeId = activeProfile.id
+            // Primeiro tenta buscar o cliente pelo user_id (Auth UID)
+            try {
+              const byUserRes = await fetch(`${API_BASE_URL}/cliente/by-user/${activeProfile.id}`)
+              if (byUserRes.ok) {
+                const byUserResult = await byUserRes.json()
+                if (byUserResult.data?.id) {
+                  activeId = byUserResult.data.id
+                  console.log('[ClienteApp] Cliente encontrado pelo user_id:', activeId)
+                }
+              }
+            } catch (err) {
+              console.warn('[ClienteApp] Erro ao buscar por user_id, usando fallback:', err)
+            }
+            // Fallback para o activeProfile.id se não encontrou
+            if (!activeId) {
+              activeId = activeProfile.id
+            }
           } else if (impersonatedClientId) {
              activeId = impersonatedClientId
           }
@@ -247,9 +274,9 @@ export function ClienteApp() {
             email: dep.email,
             type: dep.parentesco ? (dep.parentesco.charAt(0).toUpperCase() + dep.parentesco.slice(1)) : 'Dependente'
           }))
-          setFamilyMembers([{ id: finalActiveId, name: currentClient?.name || mockClient.name, email: currentClient?.email || mockClient.email, type: 'Titular' }, ...members])
+          setFamilyMembers([{ id: finalActiveId, name: currentClient?.name || client.name || 'Titular', email: currentClient?.email || client.email, type: 'Titular' }, ...members])
         } else {
-          setFamilyMembers([{ id: finalActiveId, name: currentClient?.name || mockClient.name, email: currentClient?.email || mockClient.email, type: 'Titular' }])
+          setFamilyMembers([{ id: finalActiveId, name: currentClient?.name || client.name || 'Titular', email: currentClient?.email || client.email, type: 'Titular' }])
         }
 
         // Fetch other data using the final active ID
@@ -545,7 +572,7 @@ export function ClienteApp() {
           </p>
           <div className="text-sm text-gray-600 dark:text-gray-400">
             Status do pagamento: <span className="font-medium text-yellow-600 dark:text-yellow-400">
-              {mockClient.paymentStatus === 'pending' ? 'Aguardando confirmação' : 'Processando'}
+              {client.paymentStatus === 'pending' ? 'Aguardando confirmação' : 'Processando'}
             </span>
           </div>
         </div>
@@ -666,7 +693,7 @@ export function ClienteApp() {
               />
             }
           />
-          <Route path="configuracoes" element={<Config client={client} documents={documents} onRefresh={async () => { await fetchDocuments(); await fetchClientData(); }} />} />
+          <Route path="configuracoes" element={<Config client={client} documents={documents} onRefresh={async () => { await fetchDocuments(); if (client.id) await fetchClientData(client.id); }} />} />
         </Routes>
       </main>
 

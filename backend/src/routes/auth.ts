@@ -71,6 +71,45 @@ router.post('/login', async (req: Request, res: Response) => {
 })
 
 // ============================================
+// POST /auth/reset-password — Redefinir senha de usuário via token de recuperação
+// ============================================
+router.post('/reset-password', async (req: Request, res: Response) => {
+    try {
+        const { access_token, new_password } = req.body
+
+        if (!access_token || !new_password) {
+            return res.status(400).json({ error: 'Token de acesso e nova senha são obrigatórios' })
+        }
+
+        if (new_password.length < 6) {
+            return res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres' })
+        }
+
+        // 1. Validar e obter o ID do usuário através do access_token do hash
+        const { data: { user }, error: authError } = await supabase.auth.getUser(access_token)
+
+        if (authError || !user) {
+            return res.status(401).json({ error: 'Link de recuperação inválido ou expirado' })
+        }
+
+        // 2. Atualizar a senha usando a permissão admin do backend
+        const { error: updateError } = await supabase.auth.admin.updateUserById(user.id, {
+            password: new_password
+        })
+
+        if (updateError) {
+            console.error('Erro ao redefinir senha:', updateError)
+            return res.status(500).json({ error: updateError.message || 'Erro ao atualizar a senha no sistema' })
+        }
+
+        return res.json({ message: 'Senha atualizada com sucesso' })
+    } catch (error: any) {
+        console.error('Erro no reset-password:', error)
+        return res.status(500).json({ error: 'Erro interno do servidor' })
+    }
+})
+
+// ============================================
 // GET /auth/me — Dados do usuário logado
 // ============================================
 router.get('/me', async (req: Request, res: Response) => {

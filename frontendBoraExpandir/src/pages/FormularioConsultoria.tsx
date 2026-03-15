@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, Loader2, ChevronDown, ChevronUp, AlertCircle, Clock, XCircle, Phone, Copy, Check } from 'lucide-react'
 
-type FormStep = 'loading' | 'form' | 'submitting' | 'success' | 'status_aprovado' | 'status_em_analise' | 'status_pendente' | 'status_recusado' | 'expirado' | 'cancelado' | 'bloqueado' | 'nao_encontrado'
+type FormStep = 'loading' | 'form' | 'submitting' | 'success' | 'status_aprovado' | 'status_em_analise' | 'status_pendente' | 'status_recusado' | 'status_ja_preenchido' | 'expirado' | 'cancelado' | 'bloqueado' | 'nao_encontrado'
 type PagamentoStatus = 'pendente' | 'aprovado' | 'em_analise' | 'recusado' | null
 
 const PIX_CNPJ = '55.218.947/0001-65'
@@ -141,7 +141,7 @@ export default function FormularioConsultoria() {
                     return
                 }
 
-                // Se o formulário já foi preenchido, mostrar tela de status do pagamento
+                // Se o formulário já foi preenchido, mostrar tela de status apropriada
                 if (data.formulario_preenchido) {
                     const pgStatus = data.pagamento_status
                     if (pgStatus === 'aprovado') {
@@ -150,9 +150,11 @@ export default function FormularioConsultoria() {
                         setStep('status_em_analise')
                     } else if (pgStatus === 'recusado') {
                         setStep('status_recusado')
-                    } else {
-                        // pendente ou qualquer outro
+                    } else if (pgStatus === 'pendente') {
                         setStep('status_pendente')
+                    } else {
+                        // Fallback genérico para formulário já preenchido se não tiver status financeiro
+                        setStep('status_ja_preenchido')
                     }
                     return
                 }
@@ -637,6 +639,28 @@ export default function FormularioConsultoria() {
                             </div>
                         </>
                     )}
+                </div>
+            </div>
+        )
+    }
+
+    // Status: JÁ PREENCHIDO genérico
+    if (step === 'status_ja_preenchido') {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0d1f3c] to-[#071222] flex items-center justify-center p-6">
+                <div className="max-w-lg w-full bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-10 text-center">
+                    <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                        <CheckCircle2 className="h-12 w-12 text-emerald-400" />
+                    </div>
+                    <h1 className="text-3xl font-bold text-white mb-4">Formulário já preenchido! ✅</h1>
+                    <p className="text-gray-300 text-lg mb-2">
+                        Seus dados já foram recebidos com sucesso pelo nosso sistema.
+                    </p>
+                    <div className="bg-emerald-500/10 rounded-2xl p-5 border border-emerald-500/20 mb-6">
+                        <p className="text-gray-400 text-sm">
+                            Você não precisa preencher este formulário novamente. Se tiver alguma dúvida, entre em contato com seu consultor.
+                        </p>
+                    </div>
                 </div>
             </div>
         )

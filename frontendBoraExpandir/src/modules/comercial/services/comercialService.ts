@@ -32,7 +32,7 @@ export async function getAgendamentosByUsuario(usuarioId: string): Promise<any[]
         throw new Error('Erro ao buscar agendamentos do usuário');
     }
     const result = await response.json();
-    return result.data || [];
+    return Array.isArray(result) ? result : (result.data || []);
 }
 
 export async function register(clienteData: any): Promise<any> {

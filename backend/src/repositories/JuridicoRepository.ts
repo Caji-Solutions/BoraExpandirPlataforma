@@ -261,6 +261,7 @@ class JuridicoRepository {
                 )
             `)
             .eq('requer_delegacao', true)
+            .eq('pagamento_status', 'aprovado')
             .order('data_hora', { ascending: true })
 
         if (error) {
@@ -319,6 +320,7 @@ class JuridicoRepository {
             `)
             .eq('responsavel_juridico_id', responsavelId)
             .eq('requer_delegacao', true)
+            .eq('pagamento_status', 'aprovado')
             .neq('status', 'cancelado')
             .order('data_hora', { ascending: true })
 
@@ -327,7 +329,27 @@ class JuridicoRepository {
             throw error
         }
 
-        return data || []
+        if (!data || data.length === 0) return []
+
+        // Verificação em lote: Quais agendamentos já têm formulário preenchido?
+        const agendamentoIds = data.map((a: any) => a.id).filter(Boolean)
+        let idsComFormulario: string[] = []
+
+        if (agendamentoIds.length > 0) {
+            const { data: formularios } = await supabase
+                .from('formularios_cliente')
+                .select('agendamento_id')
+                .in('agendamento_id', agendamentoIds)
+
+            if (formularios) {
+                idsComFormulario = formularios.map(f => f.agendamento_id)
+            }
+        }
+
+        return data.map((ag: any) => ({
+            ...ag,
+            cliente_is_user: idsComFormulario.includes(ag.id)
+        }))
     }
 
     // Atualizar etapa do processo

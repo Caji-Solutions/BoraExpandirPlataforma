@@ -132,8 +132,8 @@ class TraducoesController {
           tipo: 'orcamento',
           documentoIds: documentoIds.join(',')
         },
-        successUrl: successUrl || `${process.env.FRONTEND_URL}/agendamento/sucesso`,
-        cancelUrl: cancelUrl || `${process.env.FRONTEND_URL}/agendamento/cancelado`,
+        successUrl: successUrl || `${(process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')}/agendamento/sucesso`,
+        cancelUrl: cancelUrl || `${(process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')}/agendamento/cancelado`,
         currency: 'eur'
       })
 

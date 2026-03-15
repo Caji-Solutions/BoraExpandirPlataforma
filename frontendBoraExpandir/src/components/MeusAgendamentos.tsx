@@ -94,13 +94,14 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
         const dataArr = Array.isArray(data) ? data : (data ? [data] : []);
         console.log("DEBUG: Consultorias (Array):", dataArr);
         
-        // Mostrar todos os agendamentos na aba de consultoria, 
-        // mas mantendo o log para acompanhamento
-        const filtered = dataArr.map((item: any) => {
-          const req = item.requer_delegacao;
-          console.log(`DEBUG: Item ${item.id} - requer_delegacao: ${req}`);
-          return item;
-        });
+        // Mostrar todos os agendamentos aprovados na aba de consultoria
+        const filtered = dataArr
+          .filter((item: any) => item.pagamento_status === 'aprovado')
+          .map((item: any) => {
+            const req = item.requer_delegacao;
+            console.log(`DEBUG: Item ${item.id} - requer_delegacao: ${req}`);
+            return item;
+          });
         console.log("DEBUG: Consultorias (Total):", filtered.length);
         setConsultorias(filtered);
       } else if (activeTab === 'assessorias' && effectiveUserId) {

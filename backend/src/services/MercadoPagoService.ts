@@ -76,9 +76,9 @@ class MercadoPagoService {
                     agendamento_id: params.agendamento_id || ''
                 },
                 back_urls: {
-                    success: params.successUrl || `${process.env.FRONTEND_URL}/agendamento/sucesso`,
-                    failure: params.failureUrl || `${process.env.FRONTEND_URL}/agendamento/falha`,
-                    pending: `${process.env.FRONTEND_URL}/agendamento/pendente`
+                    success: params.successUrl || `${(process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')}/agendamento/sucesso`,
+                    failure: params.failureUrl || `${(process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')}/agendamento/falha`,
+                    pending: `${(process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')}/agendamento/pendente`
                 },
                 auto_return: 'approved',
                 notification_url: `${process.env.BACKEND_URL}/webhooks/mercadopago`

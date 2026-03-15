@@ -135,7 +135,9 @@ export default function UserManagement() {
       if (res.ok) {
         const data = await res.json();
         console.log("Team data:", data);
-        setMembers(data);
+        // Filtrar clientes — eles devem aparecer apenas no DNA do Cliente
+        const teamOnly = data.filter((m: any) => m.role !== 'cliente');
+        setMembers(teamOnly);
       }
     } catch (err) {
       console.error("Erro ao buscar equipe:", err);

@@ -91,6 +91,7 @@ class FormularioController {
             const senhaGerada = generatePassword()
 
             // 2. Criar conta no Supabase Auth
+            let userId: string | undefined
             const { data: authData, error: authError } = await supabase.auth.admin.createUser({
                 email,
                 password: senhaGerada,
@@ -104,22 +105,64 @@ class FormularioController {
             if (authError) {
                 console.error('[FormularioController] Erro ao criar auth user:', authError.message)
 
-                // Se o usuário já existe, tenta localizar por email
+                // Se o usuário já existe, buscar o ID existente e atualizar a senha
                 if (authError.message.includes('already')) {
-                    console.log('[FormularioController] Usuário já existe, continuando com o fluxo')
+                    console.log('[FormularioController] Usuário já existe, buscando ID existente no profiles...')
+                    
+                    // Buscar o email usando a tabela profiles que é mais rápida e não falha como o listUsers
+                    const { data: existingProfile } = await supabase
+                        .from('profiles')
+                        .select('id')
+                        .eq('email', email)
+                        .maybeSingle()
+                        
+                    if (existingProfile) {
+                        userId = existingProfile.id
+                    } else {
+                        // Tentar buscar na tabela clientes caso não tenha profile
+                        // ATENÇÃO: clientes não tem user_id, então não tem como pegar o userId daqui diretamente.
+                        // O unico jeito seria procurar de novo via listUsers, que infelizmente tá dando 500 as vezes
+                        // Mas só vamos cair aqui se o profiles também falhou antes.
+                        console.log('[FormularioController] Buscando via listUsers como fallback...')
+                        try {
+                            const { data: listData, error: listError } = await supabase.auth.admin.listUsers()
+                            if (listError) console.error("List users error fallback:", listError)
+                            const existingUser = listData?.users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase())
+                            if (existingUser) {
+                                userId = existingUser.id
+                            }
+                        } catch (err) {
+                            console.error("Erro critico listUsers fallback:", err)
+                        }
+                    }
+
+                    if (userId) {
+                        // Atualizar a senha do usuário existente
+                        const { error: updateAuthError } = await supabase.auth.admin.updateUserById(userId, {
+                            password: senhaGerada,
+                            user_metadata: { full_name: nome_completo, role: 'cliente' }
+                        })
+                        if (updateAuthError) {
+                             console.error(`[FormularioController] Falha ao atualizar senha do user ${userId}:`, updateAuthError)
+                        } else {
+                             console.log(`[FormularioController] Usuário existente encontrado: ${userId}, senha atualizada`)
+                        }
+                    } else {
+                        console.error('[FormularioController] Não foi possível encontrar o ID do usuário existente!')
+                    }
                 } else {
                     return res.status(400).json({
                         message: 'Erro ao criar conta',
                         error: authError.message
                     })
                 }
+            } else {
+                userId = authData?.user?.id
             }
-
-            const userId = authData?.user?.id
 
             // 3. Criar/atualizar registro na tabela profiles
             if (userId) {
-                await supabase
+                const { error: profileError } = await supabase
                     .from('profiles')
                     .upsert({
                         id: userId,
@@ -129,6 +172,11 @@ class FormularioController {
                         cpf: cpf || null,
                         telefone: whatsapp
                     })
+                if (profileError) {
+                    console.error('[FormularioController] Erro ao criar profile:', profileError)
+                } else {
+                    console.log(`[FormularioController] Profile criado/atualizado com sucesso: ${userId}`)
+                }
             }
 
             // 4. Verificar se o cliente já existe na tabela clientes (por email ou whatsapp)
@@ -143,17 +191,22 @@ class FormularioController {
             if (clienteExistente) {
                 clienteId = clienteExistente.id
                 // Atualizar dados do cliente existente
-                await supabase
+                const { error: updateError } = await supabase
                     .from('clientes')
                     .update({
                         nome: nome_completo,
                         email,
                         whatsapp,
-                        status: 'ATIVO',
-                        user_id: userId || undefined,
+                        status: 'cliente',
+                        stage: 'formularios',
                         atualizado_em: new Date().toISOString()
                     })
                     .eq('id', clienteId)
+                if (updateError) {
+                    console.error('[FormularioController] Erro ao atualizar cliente existente:', updateError)
+                } else {
+                    console.log('[FormularioController] Cliente atualizado com sucesso:', clienteId)
+                }
             } else {
                 // Criar novo registro na tabela clientes
                 const { data: novoCliente, error: clienteError } = await supabase
@@ -162,8 +215,8 @@ class FormularioController {
                         nome: nome_completo,
                         email,
                         whatsapp,
-                        status: 'ATIVO',
-                        user_id: userId || null
+                        status: 'cliente',
+                        stage: 'formularios'
                     }])
                     .select()
                     .single()
@@ -175,7 +228,7 @@ class FormularioController {
                 }
             }
 
-            // 5. Salvar dados do formulário no DNA do cliente (tabela formularios_consultoria)
+            // 5. Salvar dados do formulário no DNA do cliente (tabela formularios_clientes)
             const formularioData = {
                 cliente_id: clienteId,
                 agendamento_id: agendamento_id || null,
@@ -211,10 +264,10 @@ class FormularioController {
             // Tenta salvar o formulário — se a tabela não existir, apenas loga
             try {
                 await supabase
-                    .from('formularios_consultoria')
+                    .from('formularios_cliente')
                     .insert([formularioData])
             } catch (formError) {
-                console.warn('[FormularioController] Tabela formularios_consultoria pode não existir. Dados serão salvos no metadata do cliente.')
+                console.warn('[FormularioController] Tabela formularios_cliente pode não existir. Dados serão salvos no metadata do cliente.')
             }
 
             // 6. Confirmar o agendamento e verificar se já estava pago
@@ -228,14 +281,18 @@ class FormularioController {
 
                 isPago = (agendamentoAtual?.pagamento_status === 'aprovado') || (agendamentoAtual?.status === 'confirmado')
 
-                await supabase
+                const { error: agUpdateError } = await supabase
                     .from('agendamentos')
                     .update({
                         status: isPago ? 'confirmado' : 'pendente',
                         cliente_id: clienteId
                     })
                     .eq('id', agendamento_id)
-                console.log(`[FormularioController] Agendamento atualizado para: ${isPago ? 'confirmado' : 'pendente'}, ID: ${agendamento_id}`)
+                if (agUpdateError) {
+                    console.error('[FormularioController] Erro ao atualizar agendamento:', agUpdateError)
+                } else {
+                    console.log(`[FormularioController] Agendamento atualizado para: ${isPago ? 'confirmado' : 'pendente'}, ID: ${agendamento_id}`)
+                }
             } else {
                 // Se não há agendamento, assumimos que pode liberar o email
                 isPago = true
@@ -243,8 +300,9 @@ class FormularioController {
 
             // 7. Enviar email de boas-vindas com credenciais apenas se pago/confirmado
             let emailEnviado = false
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3010'
-
+            const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')
+            // The following line from the instruction appears to be syntactically incorrect and has been omitted to maintain a valid code structure.
+            // const formularioLink = `${frontendUrl}/formulario/consultoria/${agendamentoId}`) {
             if (isPago) {
                 try {
                     await EmailService.sendWelcomeEmail({
@@ -420,35 +478,16 @@ class FormularioController {
                 return res.status(404).json({ found: false })
             }
 
-            // 2. Verificar se formulário já foi preenchido (cliente tem user_id)
+            // 2. Verificar se o formulário já foi preenchido na tabela formularios_cliente
             let formularioPreenchido = false
-            if (agendamento.email) {
-                const { data: clientePorEmail } = await supabase
-                    .from('clientes')
-                    .select('id, user_id')
-                    .eq('email', agendamento.email)
-                    .not('user_id', 'is', null) // Tenta forçar encontrar um com user_id
-                    .limit(1)
-                    .maybeSingle()
+            const { data: formEnviado } = await supabase
+                .from('formularios_cliente')
+                .select('id')
+                .eq('agendamento_id', agendamento_id)
+                .maybeSingle()
 
-                if (clientePorEmail?.user_id) {
-                    formularioPreenchido = true
-                }
-            }
-
-            // Fallback: verificar por telefone
-            if (!formularioPreenchido && agendamento.telefone) {
-                const { data: clientePorTel } = await supabase
-                    .from('clientes')
-                    .select('id, user_id')
-                    .or(`whatsapp.eq.${agendamento.telefone},telefone.eq.${agendamento.telefone}`)
-                    .not('user_id', 'is', null)
-                    .limit(1)
-                    .maybeSingle()
-
-                if (clientePorTel?.user_id) {
-                    formularioPreenchido = true
-                }
+            if (formEnviado) {
+                formularioPreenchido = true
             }
 
             // 3. Verificar prazo (1h antes da reunião)

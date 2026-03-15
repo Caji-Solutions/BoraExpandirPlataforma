@@ -96,18 +96,16 @@ class FinanceiroController {
                 return res.status(500).json({ message: 'Erro ao aprovar comprovante' })
             }
 
-            // 5. Verificar se o formulário já foi preenchido (cliente tem user_id)
+            // 5. Verificar se o formulário já foi preenchido (via formularios_cliente)
             let formularioPreenchido = false
-            if (agendamento.email) {
-                const { data: clientePorEmail } = await supabase
-                    .from('clientes')
-                    .select('user_id')
-                    .eq('email', agendamento.email)
-                    .maybeSingle()
-                
-                if (clientePorEmail?.user_id) {
-                    formularioPreenchido = true
-                }
+            const { data: formData } = await supabase
+                .from('formularios_cliente')
+                .select('id')
+                .eq('agendamento_id', id)
+                .maybeSingle()
+            
+            if (formData) {
+                formularioPreenchido = true
             }
 
             // 6. Só marca 'confirmado' se pagamento E formulário estiverem OK
@@ -115,42 +113,50 @@ class FinanceiroController {
             await ComercialRepository.updateAgendamentoStatus(id, novoStatus)
             console.log(`[FinanceiroController] Status do agendamento atualizado para: ${novoStatus} (formulário: ${formularioPreenchido ? 'sim' : 'não'})`)
 
-            // 6. Gerar link de recuperação de senha pelo Supabase (setup de conta)
+            // 7. Se formulário ainda não preenchido, enviar email com link do formulário
             if (!agendamento.email) {
                 return res.status(200).json({
                     success: true,
-                    message: 'Comprovante aprovado, mas agendamento sem email para envio de acesso.'
+                    message: 'Comprovante aprovado, mas agendamento sem email para envio.'
                 })
             }
 
-            const { data: linkData, error: authError } = await supabase.auth.admin.generateLink({
-                type: 'recovery',
-                email: agendamento.email
-            })
+            if (!formularioPreenchido) {
+                try {
+                    const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')
+                    const params = new URLSearchParams()
+                    if (agendamento.nome) params.set('nome', agendamento.nome)
+                    if (agendamento.email) params.set('email', agendamento.email)
+                    if (agendamento.telefone) params.set('telefone', agendamento.telefone)
+                    const formularioLink = `${frontendUrl}/formulario/consultoria/${id}?${params.toString()}`
 
-            if (authError) {
-                console.error('[FinanceiroController] Erro ao gerar link de setup de senha:', authError)
-                return res.status(200).json({
-                    success: true,
-                    message: 'Comprovante aprovado e agendamento confirmado, mas falhou ao gerar link de acesso.',
-                    warning: authError.message
-                })
+                    const EmailService = (await import('../services/EmailService')).default
+                    await EmailService.sendFormularioEmail({
+                        to: agendamento.email,
+                        clientName: agendamento.nome || 'Cliente',
+                        formularioLink,
+                        email: agendamento.email
+                    })
+                    console.log(`[FinanceiroController] Email com link do formulário enviado para ${agendamento.email}`)
+
+                    return res.status(200).json({
+                        success: true,
+                        message: 'Comprovante aprovado e email com formulário enviado com sucesso!',
+                        formulario_link: formularioLink
+                    })
+                } catch (emailError: any) {
+                    console.error('[FinanceiroController] Erro ao enviar email:', emailError)
+                    return res.status(200).json({
+                        success: true,
+                        message: 'Comprovante aprovado, mas houve um erro ao enviar o email com formulário.',
+                        warning: emailError.message
+                    })
+                }
             }
-
-            // 7. Enviar email para o cliente
-            const EmailService = (await import('../services/EmailService')).default
-            await EmailService.sendPasswordSetupEmail({
-                to: agendamento.email,
-                clientName: agendamento.nome || 'Cliente',
-                resetLink: linkData.properties.action_link,
-                email: agendamento.email
-            })
-
-            console.log(`[FinanceiroController] Comprovante aprovado e email enviado para ${agendamento.email}`)
 
             return res.status(200).json({
                 success: true,
-                message: 'Comprovante aprovado, agendamento confirmado e email enviado com sucesso!'
+                message: 'Comprovante aprovado e agendamento confirmado com sucesso!'
             })
 
         } catch (error: any) {

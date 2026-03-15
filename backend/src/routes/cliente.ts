@@ -41,6 +41,7 @@ cliente.get('/clientes', ClienteController.getAllClientes.bind(ClienteController
 cliente.get('/credentials/:email', ClienteController.getClienteCredentials.bind(ClienteController))
 
 // Rotas de documentos
+cliente.get('/by-user/:userId', ClienteController.getClienteByUserId.bind(ClienteController))
 cliente.get('/:clienteId', ClienteController.getCliente.bind(ClienteController))
 cliente.get('/:clienteId/documentos-requeridos', ClienteController.getDocumentosRequeridos.bind(ClienteController))
 cliente.get('/:clienteId/dependentes', ClienteController.getDependentes.bind(ClienteController))

@@ -405,9 +405,31 @@ export function AgendamentoEditPage() {
                                     <CreditCard className="w-3 h-3" /> Pix {agendamento.comprovante_url ? '✓' : '—'}
                                 </span>
                             )}
-                            <span className="px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 bg-gray-100 text-gray-500 dark:bg-neutral-800 dark:text-gray-400">
-                                <FileText className="w-3 h-3" /> Form —
-                            </span>
+                            {(() => {
+                                const frontendUrl = import.meta.env.VITE_FRONTEND_URL?.trim() || window.location.origin
+                                const isFormPreenchido = agendamento.formulario_preenchido;
+                                const isPgtoAprovado = agendamento.pagamento_status === 'aprovado'
+                                
+                                if (isFormPreenchido) {
+                                    return (
+                                        <span className="px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400">
+                                            <FileText className="w-3 h-3" /> Form ✓
+                                        </span>
+                                    )
+                                } else if (isPgtoAprovado) {
+                                    return (
+                                        <span className="px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400">
+                                            <FileText className="w-3 h-3" /> Form Pendente
+                                        </span>
+                                    )
+                                } else {
+                                    return (
+                                        <span className="px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 bg-gray-100 text-gray-500 dark:bg-neutral-800 dark:text-gray-400">
+                                            <FileText className="w-3 h-3" /> Form —
+                                        </span>
+                                    )
+                                }
+                            })()}
                         </div>
                     </div>
                 </div>
@@ -422,6 +444,53 @@ export function AgendamentoEditPage() {
                         <p className="text-sm text-red-600 dark:text-red-400">
                             <strong>Motivo:</strong> {agendamento.pagamento_nota_recusa}
                         </p>
+                    </div>
+                )}
+
+                {/* ═══ LINK DO FORMULÁRIO (visível quando pagamento aprovado E não preenchido) ═══ */}
+                {agendamento.pagamento_status === 'aprovado' && !agendamento.formulario_preenchido && (
+                    <div className="bg-white dark:bg-neutral-900 rounded-2xl p-6 border border-gray-100 dark:border-neutral-800 shadow-sm mb-6">
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-blue-600" />
+                            Formulário de Consultoria
+                        </h2>
+                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
+                            <p className="text-sm text-blue-800 dark:text-blue-300 mb-3 font-medium">
+                                📋 Link do formulário para enviar ao cliente:
+                            </p>
+                            {(() => {
+                                const frontendUrl = import.meta.env.VITE_FRONTEND_URL?.trim() || window.location.origin
+                                const params = new URLSearchParams()
+                                if (agendamento.nome) params.set('nome', agendamento.nome)
+                                if (agendamento.email) params.set('email', agendamento.email)
+                                if (agendamento.telefone) params.set('telefone', agendamento.telefone)
+                                const formLink = `${frontendUrl}/formulario/consultoria/${agendamento.id}?${params.toString()}`
+                                
+                                return (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={formLink}
+                                            className="flex-1 text-xs bg-white dark:bg-neutral-800 border border-blue-200 dark:border-blue-700 rounded-lg px-3 py-2 text-gray-700 dark:text-gray-200 font-mono"
+                                            onClick={(e) => (e.target as HTMLInputElement).select()}
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(formLink)
+                                                toast.success('Link copiado!')
+                                            }}
+                                            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors whitespace-nowrap"
+                                        >
+                                            Copiar Link
+                                        </button>
+                                    </div>
+                                )
+                            })()}
+                            <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                                Este link já foi enviado por email ao cliente. Use-o para enviar manualmente se necessário.
+                            </p>
+                        </div>
                     </div>
                 )}
 

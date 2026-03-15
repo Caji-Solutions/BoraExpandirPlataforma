@@ -753,7 +753,26 @@ class ComercialController {
                 }
             }
 
-            return res.status(200).json(data)
+            // Enriquecer com dados do formulário
+            let formulario_preenchido = false
+            try {
+                const { data: formEnviado } = await supabase
+                    .from('formularios_cliente')
+                    .select('id')
+                    .eq('agendamento_id', id)
+                    .maybeSingle()
+                
+                if (formEnviado) {
+                    formulario_preenchido = true
+                }
+            } catch (err) {
+                console.warn('Erro ao verificar formulário preenchido:', err)
+            }
+
+            return res.status(200).json({
+                ...data,
+                formulario_preenchido
+            })
         } catch (error: any) {
             console.error('Erro ao buscar agendamento por ID:', error)
             return res.status(500).json({ message: 'Erro ao buscar agendamento', error: error.message })

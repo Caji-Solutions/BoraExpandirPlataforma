@@ -143,26 +143,25 @@ class ComercialRepository {
 
         if (!agendamentos || agendamentos.length === 0) return [];
 
-        // Verificação em lote: Quais desses leads já são usuários?
-        const emailsUnicos = [...new Set(agendamentos.map(a => a.email).filter(Boolean))]
-        let emailsUsuarios: string[] = []
+        // Verificação em lote: Quais agendamentos já têm formulário preenchido?
+        const agendamentoIds = agendamentos.map(a => a.id).filter(Boolean)
+        let idsComFormulario: string[] = []
 
-        if (emailsUnicos.length > 0) {
-            const { data: clientesUsers } = await supabase
-                .from('clientes')
-                .select('email')
-                .in('email', emailsUnicos)
-                .not('user_id', 'is', null)
+        if (agendamentoIds.length > 0) {
+            const { data: formularios } = await supabase
+                .from('formularios_cliente')
+                .select('agendamento_id')
+                .in('agendamento_id', agendamentoIds)
 
-            if (clientesUsers) {
-                emailsUsuarios = clientesUsers.map(c => c.email)
+            if (formularios) {
+                idsComFormulario = formularios.map(f => f.agendamento_id)
             }
         }
 
-        // Atribui flag cliente_is_user
+        // Atribui flag cliente_is_user baseado na existência do formulário
         const agendamentosComFlag = agendamentos.map(ag => ({
             ...ag,
-            cliente_is_user: ag.email ? emailsUsuarios.includes(ag.email) : false
+            cliente_is_user: idsComFormulario.includes(ag.id)
         }))
 
         return agendamentosComFlag
@@ -270,7 +269,30 @@ class ComercialRepository {
             throw error
         }
         
-        return agendamentos || []
+        if (!agendamentos || agendamentos.length === 0) return [];
+
+        // Verificação em lote: Quais agendamentos já têm formulário preenchido?
+        const agendamentoIds = agendamentos.map(a => a.id).filter(Boolean)
+        let idsComFormulario: string[] = []
+
+        if (agendamentoIds.length > 0) {
+            const { data: formularios } = await supabase
+                .from('formularios_cliente')
+                .select('agendamento_id')
+                .in('agendamento_id', agendamentoIds)
+
+            if (formularios) {
+                idsComFormulario = formularios.map(f => f.agendamento_id)
+            }
+        }
+
+        // Atribui flag cliente_is_user baseado na existência do formulário
+        const agendamentosComFlag = agendamentos.map(ag => ({
+            ...ag,
+            cliente_is_user: idsComFormulario.includes(ag.id)
+        }))
+        
+        return agendamentosComFlag
     }
 
     async getAllProcessos() {

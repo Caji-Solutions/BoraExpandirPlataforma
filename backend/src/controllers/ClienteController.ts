@@ -262,6 +262,64 @@ class ClienteController {
     }
   }
 
+  // GET /cliente/by-user/:userId
+  // Busca um cliente pelo Auth UID via profiles -> email -> clientes
+  async getClienteByUserId(req: any, res: any) {
+    try {
+      const { userId } = req.params
+
+      if (!userId) {
+        return res.status(400).json({ message: 'userId é obrigatório' })
+      }
+
+      const supabase = (await import('../config/SupabaseClient')).supabase
+
+      // 1. Buscar o email do profile pelo Auth UID
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('id', userId)
+        .maybeSingle()
+
+      if (!profile?.email) {
+        return res.status(404).json({
+          message: 'Profile não encontrado para este userId',
+          data: null
+        })
+      }
+
+      // 2. Buscar o cliente pelo email
+      const { data: cliente, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .ilike('email', profile.email)
+        .maybeSingle()
+
+      if (error) {
+        console.error('[ClienteController] Erro ao buscar cliente por email:', error)
+        return res.status(500).json({ message: 'Erro ao buscar cliente', error: error.message })
+      }
+
+      if (!cliente) {
+        return res.status(404).json({
+          message: 'Cliente não encontrado para este email',
+          data: null
+        })
+      }
+
+      return res.status(200).json({
+        message: 'Cliente recuperado com sucesso',
+        data: cliente
+      })
+    } catch (error: any) {
+      console.error('Erro ao buscar cliente por user_id:', error)
+      return res.status(500).json({
+        message: 'Erro ao buscar cliente',
+        error: error.message
+      })
+    }
+  }
+
   async register(req: any, res: any) {
     try {
       const { nome, email, whatsapp, parceiro_id, status, documento, endereco } = req.body

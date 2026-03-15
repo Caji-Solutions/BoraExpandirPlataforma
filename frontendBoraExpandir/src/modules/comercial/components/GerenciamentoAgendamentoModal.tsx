@@ -78,7 +78,7 @@ export function GerenciamentoAgendamentoModal({ agendamento, onClose, onAtualiza
     const isPagamentoRecusado = pagamentoStatus === 'recusado'
     const isPagamentoAprovado = pagamentoStatus === 'aprovado'
     const isAguardandoVerificacao = pagamentoStatus === 'pendente' || agendamento.status === 'aguardando_verificacao'
-    const isCardButtonEnabled = comprovanteUrl && formularioPreenchido && !isPagamentoRecusado && !isAguardandoVerificacao && !isPagamentoAprovado
+    const isCardButtonEnabled = comprovanteUrl && !isPagamentoRecusado && !isAguardandoVerificacao && !isPagamentoAprovado
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -244,7 +244,7 @@ export function GerenciamentoAgendamentoModal({ agendamento, onClose, onAtualiza
                                 </button>
                                 {!isCardButtonEnabled && (
                                     <p className="text-xs text-gray-500 mt-3 max-w-sm mx-auto">
-                                        É necessário anexar o comprovante e aguardar o preenchimento do formulário antes de enviar para verificação.
+                                        É necessário anexar o comprovante de pagamento antes de enviar para verificação.
                                     </p>
                                 )}
                                 {isCardButtonEnabled && (

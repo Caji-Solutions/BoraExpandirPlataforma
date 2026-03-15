@@ -73,8 +73,8 @@ class StripeService {
                 cliente_id: params.cliente_id || '',
                 agendamento_id: params.agendamento_id || '',
             },
-            success_url: params.successUrl || `${process.env.FRONTEND_URL}/agendamento/sucesso?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: params.cancelUrl || `${process.env.FRONTEND_URL}/agendamento/cancelado`,
+            success_url: params.successUrl || `${(process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')}/agendamento/sucesso?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: params.cancelUrl || `${(process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')}/agendamento/cancelado`,
         })
 
         if (!session.url) {

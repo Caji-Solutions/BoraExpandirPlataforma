@@ -19,6 +19,7 @@ import LoginPage from './modules/shared/pages/LoginPage'
 import PaymentSuccess from './modules/shared/pages/PaymentSuccess'
 import PaymentCancel from './modules/shared/pages/PaymentCancel'
 import FormularioConsultoria from './pages/FormularioConsultoria'
+import RedefinirSenha from './modules/shared/pages/RedefinirSenha'
 
 import { useParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
@@ -115,9 +116,10 @@ function AppRouter() {
           <Route path="/indicado/:partnerId" element={<TelaIndicadoWrapper />} />
           <Route path="/r/:partnerId" element={<TelaIndicadoWrapper />} />
 
-          {/* Formulário público de consultoria */}
+          {/* Formulário público de consultoria e redefinição de senha */}
           <Route path="/formulario/consultoria/:agendamentoId" element={<FormularioConsultoria />} />
           <Route path="/formulario/consultoria" element={<FormularioConsultoria />} />
+          <Route path="/redefinir-senha" element={<RedefinirSenha />} />
 
           {/* Rotas de Pagamento */}
           <Route path="/agendamento/sucesso" element={<PaymentSuccess />} />
