@@ -659,8 +659,6 @@ export default function Comercial() {
         { label: 'Leads', to: '/comercial/leads', icon: Users },
         { label: 'Ganhos', to: '/comercial/ganhos', icon: DollarSign },
         { label: 'Contratos', to: '/comercial/contratos', icon: FileText },
-        { label: 'Requerimentos', to: '/comercial/requerimentos', icon: AlertCircle },
-        { label: 'Configurações', to: '/comercial/configuracoes', icon: Settings },
       ],
     },
   ]
@@ -759,19 +757,6 @@ export default function Comercial() {
                 onSetContratoParaAssinar={setContratoParaAssinar}
               />
             }
-          />
-          <Route
-            path="/requerimentos"
-            element={
-              <RequerimentosPage
-                requerimentos={requerimentos}
-                onShowRequerimento={() => setShowRequerimento(true)}
-              />
-            }
-          />
-          <Route
-            path="/configuracoes"
-            element={<Config />}
           />
           <Route path="/dna" element={<ClientDNAPage />} />
           <Route path="*" element={<Navigate to="/comercial" replace />} />

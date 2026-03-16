@@ -923,14 +923,8 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Lead</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Busque um lead ou cadastre um novo</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Busque um lead</p>
                   </div>
-                  <button
-                    onClick={() => setShowNovoCliente((v) => !v)}
-                    className="px-4 py-2 rounded-lg border border-emerald-300 dark:border-emerald-500 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition"
-                  >
-                    {showNovoCliente ? 'Cancelar cadastro' : 'Cadastrar novo lead'}
-                  </button>
                 </div>
 
                 {/* Busca de lead */}
@@ -998,15 +992,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                         searchCliente ? (
                           <div className="col-span-1 border-2 border-dashed border-gray-200 dark:border-neutral-700 rounded-xl p-8 text-center sm:col-span-2 flex flex-col items-center justify-center h-[200px]">
                             <p className="text-gray-500 dark:text-gray-400 font-medium pb-2">Nenhum lead encontrado com esse dado.</p>
-                            <button
-                              onClick={() => {
-                                setShowNovoCliente(true)
-                                setNovoCliente(prev => ({ ...prev, nome: searchCliente }))
-                              }}
-                              className="mt-3 text-emerald-600 hover:text-emerald-700 font-semibold"
-                            >
-                              Deseja cadastrá-lo agora?
-                            </button>
                           </div>
                         ) : (
                           <div className="col-span-1 border-2 border-dashed border-gray-200 dark:border-neutral-700 rounded-xl p-8 text-center sm:col-span-2 flex flex-col items-center justify-center h-[200px]">
@@ -1041,37 +1026,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                   </div>
                 </div>
 
-                {/* Cadastro rápido de lead */}
-                {showNovoCliente && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                    <input
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
-                      placeholder="Nome"
-                      value={novoCliente.nome}
-                      onChange={(e) => setNovoCliente((p) => ({ ...p, nome: e.target.value }))}
-                    />
-                    <input
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
-                      placeholder="E-mail"
-                      value={novoCliente.email || ''}
-                      onChange={(e) => setNovoCliente((p) => ({ ...p, email: e.target.value }))}
-                    />
-                    <input
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-gray-900 dark:text-white"
-                      placeholder="Telefone"
-                      value={novoCliente.telefone}
-                      onChange={(e) => setNovoCliente((p) => ({ ...p, telefone: e.target.value }))}
-                    />
-                    <div className="md:col-span-3 flex justify-end">
-                      <button
-                        onClick={handleCadastrarNovoCliente}
-                        className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
-                      >
-                        Salvar e selecionar
-                      </button>
-                    </div>
-                  </div>
-                )}
+
 
               </div>
             )}
