@@ -19,7 +19,7 @@ export class AdmRepository {
   }
 
   async createCatalogService(data: any) {
-    const { name, value, duration, showInCommercial, documents } = data;
+    const { name, value, duration, showInCommercial, documents, type } = data;
     
     // Inserir serviço
     const { data: service, error: serviceError } = await supabase
@@ -28,6 +28,7 @@ export class AdmRepository {
         nome: name,
         valor: value,
         duracao: duration,
+        tipo: type || data.tipo || 'agendavel',
         exibir_comercial: showInCommercial,
         exibir_cliente: data.showToClient ?? true,
         requer_delegacao_juridico: data.requiresLegalDelegation || false
@@ -64,20 +65,26 @@ export class AdmRepository {
   }
 
   async updateCatalogService(id: string, data: any) {
-    const { name, value, duration, showInCommercial, documents } = data;
+    const { name, value, duration, showInCommercial, documents, type } = data;
 
     // Atualizar dados básicos
+    const updatePayload: any = {
+      nome: name,
+      valor: value,
+      duracao: duration,
+      exibir_comercial: showInCommercial,
+      exibir_cliente: data.showToClient,
+      requer_delegacao_juridico: data.requiresLegalDelegation,
+      atualizado_em: new Date().toISOString()
+    }
+
+    if (type || data.tipo) {
+      updatePayload.tipo = type || data.tipo
+    }
+
     const { error: updateError } = await supabase
       .from('catalogo_servicos')
-      .update({
-        nome: name,
-        valor: value,
-        duracao: duration,
-        exibir_comercial: showInCommercial,
-        exibir_cliente: data.showToClient,
-        requer_delegacao_juridico: data.requiresLegalDelegation,
-        atualizado_em: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('id', id);
 
     if (updateError) {

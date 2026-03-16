@@ -59,6 +59,7 @@ export default function ServiceCatalog() {
     name: "",
     value: "",
     duration: "",
+    type: "agendavel",
     showInCommercial: true,
     showToClient: true,
     requiresLegalDelegation: false,
@@ -92,6 +93,7 @@ export default function ServiceCatalog() {
       name: "",
       value: "",
       duration: "",
+      type: "agendavel",
       showInCommercial: true,
       showToClient: true,
       requiresLegalDelegation: false,
@@ -108,6 +110,7 @@ export default function ServiceCatalog() {
       name: service.name,
       value: service.value,
       duration: service.duration,
+      type: service.type || "agendavel",
       showInCommercial: service.showInCommercial,
       showToClient: service.showToClient,
       requiresLegalDelegation: service.requiresLegalDelegation,
@@ -238,6 +241,7 @@ export default function ServiceCatalog() {
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5 pl-8">Serviço</TableHead>
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Valor</TableHead>
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Duração Est.</TableHead>
+                <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Tipo</TableHead>
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Agendamento</TableHead>
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Visib. Cliente</TableHead>
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Documentos</TableHead>
@@ -247,7 +251,7 @@ export default function ServiceCatalog() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="h-48 text-center text-muted-foreground">
                     <Loader2 className="h-10 w-10 animate-spin mx-auto mb-2 opacity-20" />
                     Carregando serviços...
                   </TableCell>
@@ -272,6 +276,11 @@ export default function ServiceCatalog() {
                         <Clock className="h-4 w-4 text-muted-foreground" />
                         {service.duration}
                       </div>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/10 rounded-lg">
+                        {service.type === 'fixo' ? 'Fixo' : service.type === 'diverso' ? 'Diverso' : 'AgendÃ¡vel'}
+                      </Badge>
                     </TableCell>
                     <TableCell className="py-4">
                       {service.showInCommercial ? (
@@ -327,7 +336,7 @@ export default function ServiceCatalog() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-48 text-center">
+                  <TableCell colSpan={8} className="h-48 text-center">
                     <div className="flex flex-col items-center justify-center space-y-3 opacity-30">
                       <Search className="h-12 w-12" />
                       <p className="text-lg font-bold">Nenhum serviço encontrado</p>
@@ -402,6 +411,23 @@ export default function ServiceCatalog() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo do ServiÃ§o</Label>
+                <Select
+                  value={formData.type}
+                  onValueChange={(val) => setFormData({ ...formData, type: val as any })}
+                >
+                  <SelectTrigger className="w-full h-12 border-border bg-muted/30 rounded-xl px-4">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="agendavel">AgendÃ¡vel</SelectItem>
+                    <SelectItem value="fixo">Fixo</SelectItem>
+                    <SelectItem value="diverso">Diverso</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-xl">

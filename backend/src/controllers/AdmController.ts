@@ -11,6 +11,7 @@ export class AdmController {
         name: s.nome,
         value: s.valor.toString(),
         duration: s.duracao,
+        type: s.tipo || 'agendavel',
         showInCommercial: s.exibir_comercial,
         showToClient: s.exibir_cliente,
         requiresLegalDelegation: s.requer_delegacao_juridico || false,

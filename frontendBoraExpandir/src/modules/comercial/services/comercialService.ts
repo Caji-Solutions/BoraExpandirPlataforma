@@ -68,12 +68,108 @@ export async function getAgendamentosByCliente(clienteId: string): Promise<any[]
     return Array.isArray(result) ? result : (result.data || []);
 }
 
+export async function getContratosServicos(clienteId?: string): Promise<any[]> {
+    const query = clienteId ? `?clienteId=${encodeURIComponent(clienteId)}` : ''
+    const response = await fetch(`${API_BASE_URL}/comercial/contratos${query}`)
+    if (!response.ok) {
+        throw new Error('Erro ao buscar contratos')
+    }
+    const result = await response.json()
+    return result.data || []
+}
+
+export async function getContratoServicoById(id: string): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/comercial/contratos/${id}`)
+    if (!response.ok) {
+        throw new Error('Erro ao buscar contrato')
+    }
+    const result = await response.json()
+    return result.data
+}
+
+export async function createContratoServico(payload: { cliente_id: string; servico_id: string; usuario_id?: string | null }): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/comercial/contratos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) {
+        throw new Error(result.message || 'Erro ao criar contrato')
+    }
+    return result.data
+}
+
+export async function uploadContratoAssinado(id: string, file: File, usuarioId?: string): Promise<any> {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (usuarioId) formData.append('usuario_id', usuarioId)
+
+    const response = await fetch(`${API_BASE_URL}/comercial/contratos/${id}/upload`, {
+        method: 'POST',
+        body: formData
+    })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) {
+        throw new Error(result.message || 'Erro ao enviar contrato')
+    }
+    return result.data
+}
+
+export async function aprovarContratoServico(id: string, usuarioId?: string): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/comercial/contratos/${id}/aprovar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario_id: usuarioId || null })
+    })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) {
+        throw new Error(result.message || 'Erro ao aprovar contrato')
+    }
+    return result.data
+}
+
+export async function recusarContratoServico(id: string, nota: string): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/comercial/contratos/${id}/recusar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nota })
+    })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) {
+        throw new Error(result.message || 'Erro ao recusar contrato')
+    }
+    return result.data
+}
+
+export async function uploadComprovanteContrato(id: string, file: File): Promise<any> {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await fetch(`${API_BASE_URL}/comercial/contratos/${id}/comprovante`, {
+        method: 'POST',
+        body: formData
+    })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) {
+        throw new Error(result.message || 'Erro ao enviar comprovante')
+    }
+    return result.data
+}
+
 export default {
     getAllClientes,
     getAgendamentosByUsuario,
     getAgendamentosByCliente,
     register,
     getClienteCredentials,
-    cancelarAgendamento
+    cancelarAgendamento,
+    getContratosServicos,
+    getContratoServicoById,
+    createContratoServico,
+    uploadContratoAssinado,
+    aprovarContratoServico,
+    recusarContratoServico,
+    uploadComprovanteContrato
 };
 

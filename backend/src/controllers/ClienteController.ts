@@ -1,9 +1,11 @@
 import type { ClienteDTO } from '../types/parceiro';
+import { supabase } from '../config/SupabaseClient';
 import ClienteRepository from '../repositories/ClienteRepository';
 import JuridicoRepository from '../repositories/JuridicoRepository';
 import NotificationService from '../services/NotificationService';
 import AdmRepository from '../repositories/AdmRepository';
 import { getDocumentosPorTipoServico, DocumentoRequeridoConfig } from '../config/documentosConfig';
+import ContratoServicoRepository from '../repositories/ContratoServicoRepository';
 
 // Interface para o documento requerido com informações do processo
 interface DocumentoRequeridoComProcesso extends DocumentoRequeridoConfig {
@@ -1164,6 +1166,170 @@ class ClienteController {
       console.error('Erro ao marcar todas notificações como lidas:', error)
       return res.status(500).json({
         message: 'Erro ao marcar todas notificações como lidas',
+        error: error.message
+      })
+    }
+  }
+
+  // GET /cliente/contratos?clienteId=...
+  async getContratos(req: any, res: any) {
+    try {
+      const clienteId = (req.query?.clienteId || req.query?.cliente_id || req.params?.clienteId) as string | undefined
+
+      if (!clienteId) {
+        return res.status(400).json({ message: 'clienteId Ã© obrigatÃ³rio' })
+      }
+
+      const contratos = await ContratoServicoRepository.getContratos({ clienteId })
+
+      return res.status(200).json({
+        message: 'Contratos recuperados com sucesso',
+        data: contratos
+      })
+    } catch (error: any) {
+      console.error('Erro ao buscar contratos do cliente:', error)
+      return res.status(500).json({
+        message: 'Erro ao buscar contratos',
+        error: error.message
+      })
+    }
+  }
+
+  // POST /cliente/contratos/:id/upload
+  async uploadContratoAssinado(req: any, res: any) {
+    try {
+      const { id } = req.params
+      const file = req.file
+      const clienteId = req.body.cliente_id || req.body.clienteId
+
+      if (!file) {
+        return res.status(400).json({ message: 'Arquivo do contrato Ã© obrigatÃ³rio' })
+      }
+
+      if (!clienteId) {
+        return res.status(400).json({ message: 'cliente_id Ã© obrigatÃ³rio' })
+      }
+
+      const contrato = await ContratoServicoRepository.getContratoById(id)
+      if (!contrato) {
+        return res.status(404).json({ message: 'Contrato nÃ£o encontrado' })
+      }
+
+      if (contrato.cliente_id !== clienteId) {
+        return res.status(403).json({ message: 'Contrato nÃ£o pertence ao cliente informado' })
+      }
+
+      const timestamp = Date.now()
+      const ext = file.originalname.split('.').pop() || 'pdf'
+      const filePath = `contratos/${id}/${timestamp}_contrato_assinado_cliente.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('documentos')
+        .upload(filePath, file.buffer, {
+          contentType: file.mimetype,
+          upsert: true
+        })
+
+      if (uploadError) {
+        console.error('[ClienteController] Erro no upload do contrato:', uploadError)
+        return res.status(500).json({ message: 'Erro ao fazer upload do contrato' })
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('documentos')
+        .getPublicUrl(filePath)
+
+      const updated = await ContratoServicoRepository.updateContrato(id, {
+        contrato_assinado_url: urlData.publicUrl,
+        contrato_assinado_path: filePath,
+        contrato_assinado_nome_original: file.originalname,
+        assinatura_status: 'em_analise',
+        assinatura_upload_origem: 'cliente',
+        assinatura_upload_por: clienteId,
+        assinatura_upload_em: new Date().toISOString(),
+        assinatura_recusa_nota: null,
+        atualizado_em: new Date().toISOString()
+      })
+
+      return res.status(200).json({
+        message: 'Contrato enviado com sucesso',
+        data: updated
+      })
+    } catch (error: any) {
+      console.error('Erro ao enviar contrato assinado:', error)
+      return res.status(500).json({
+        message: 'Erro ao enviar contrato',
+        error: error.message
+      })
+    }
+  }
+
+  // POST /cliente/contratos/:id/comprovante
+  async uploadComprovanteContrato(req: any, res: any) {
+    try {
+      const { id } = req.params
+      const file = req.file
+      const clienteId = req.body.cliente_id || req.body.clienteId
+
+      if (!file) {
+        return res.status(400).json({ message: 'Arquivo do comprovante Ã© obrigatÃ³rio' })
+      }
+
+      if (!clienteId) {
+        return res.status(400).json({ message: 'cliente_id Ã© obrigatÃ³rio' })
+      }
+
+      const contrato = await ContratoServicoRepository.getContratoById(id)
+      if (!contrato) {
+        return res.status(404).json({ message: 'Contrato nÃ£o encontrado' })
+      }
+
+      if (contrato.cliente_id !== clienteId) {
+        return res.status(403).json({ message: 'Contrato nÃ£o pertence ao cliente informado' })
+      }
+
+      if (contrato.assinatura_status !== 'aprovado') {
+        return res.status(400).json({ message: 'Contrato ainda nÃ£o aprovado' })
+      }
+
+      const timestamp = Date.now()
+      const ext = file.originalname.split('.').pop() || 'pdf'
+      const filePath = `contratos-comprovantes/${id}/${timestamp}_comprovante.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('documentos')
+        .upload(filePath, file.buffer, {
+          contentType: file.mimetype,
+          upsert: true
+        })
+
+      if (uploadError) {
+        console.error('[ClienteController] Erro no upload do comprovante:', uploadError)
+        return res.status(500).json({ message: 'Erro ao fazer upload do comprovante' })
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('documentos')
+        .getPublicUrl(filePath)
+
+      const updated = await ContratoServicoRepository.updateContrato(id, {
+        pagamento_status: 'em_analise',
+        pagamento_comprovante_url: urlData.publicUrl,
+        pagamento_comprovante_path: filePath,
+        pagamento_comprovante_nome_original: file.originalname,
+        pagamento_comprovante_upload_em: new Date().toISOString(),
+        pagamento_nota_recusa: null,
+        atualizado_em: new Date().toISOString()
+      })
+
+      return res.status(200).json({
+        message: 'Comprovante enviado com sucesso',
+        data: updated
+      })
+    } catch (error: any) {
+      console.error('Erro ao enviar comprovante do contrato:', error)
+      return res.status(500).json({
+        message: 'Erro ao enviar comprovante',
         error: error.message
       })
     }

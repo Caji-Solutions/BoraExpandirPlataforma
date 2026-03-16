@@ -25,6 +25,7 @@ const API_BASE_URL = import.meta.env.VITE_BACKEND_URL
 
 interface Comprovante {
     id: string
+    tipo?: 'agendamento' | 'contrato'
     nome: string
     email: string
     telefone: string
@@ -58,10 +59,40 @@ export function ComprovantesPage() {
         try {
             setLoading(true)
             setError(null)
-            const res = await fetch(`${API_BASE_URL}/financeiro/comprovantes/pendentes`)
-            if (!res.ok) throw new Error('Erro ao buscar comprovantes')
-            const json = await res.json()
-            setComprovantes(json.data || [])
+            const [agRes, contratoRes] = await Promise.all([
+                fetch(`${API_BASE_URL}/financeiro/comprovantes/pendentes`),
+                fetch(`${API_BASE_URL}/financeiro/contratos/comprovantes/pendentes`)
+            ])
+
+            if (!agRes.ok) throw new Error('Erro ao buscar comprovantes')
+            if (!contratoRes.ok) throw new Error('Erro ao buscar comprovantes de contrato')
+
+            const agJson = await agRes.json()
+            const contratoJson = await contratoRes.json()
+
+            const agendamentos = (agJson.data || []).map((c: any) => ({
+                ...c,
+                tipo: 'agendamento'
+            }))
+
+            const contratos = (contratoJson.data || []).map((c: any) => ({
+                id: c.id,
+                tipo: 'contrato',
+                nome: c.cliente_nome || c.cliente?.nome || 'Sem nome',
+                email: c.cliente_email || c.cliente?.email || '',
+                telefone: c.cliente_telefone || c.cliente?.whatsapp || '',
+                produto_id: c.servico_id || c.servico?.id || '',
+                produto_nome: c.servico_nome || c.servico?.nome || 'ServiÃ§o',
+                valor: c.servico_valor || c.servico?.valor || 0,
+                data_hora: c.criado_em || c.created_at || '',
+                comprovante_url: c.pagamento_comprovante_url,
+                comprovante_upload_em: c.pagamento_comprovante_upload_em,
+                pagamento_status: c.pagamento_status,
+                status: 'contrato',
+                duracao_minutos: 0
+            }))
+
+            setComprovantes([...agendamentos, ...contratos])
         } catch (err: any) {
             setError(err.message)
         } finally {
@@ -92,10 +123,13 @@ export function ComprovantesPage() {
         setActionStates(prev => ({ ...prev, [id]: state }))
     }
 
-    const handleAprovar = async (id: string) => {
+    const handleAprovar = async (id: string, tipo: 'agendamento' | 'contrato' = 'agendamento') => {
         try {
             setAction(id, 'loading')
-            const res = await fetch(`${API_BASE_URL}/financeiro/comprovante/${id}/aprovar`, {
+            const endpoint = tipo === 'contrato'
+                ? `${API_BASE_URL}/financeiro/contratos/comprovante/${id}/aprovar`
+                : `${API_BASE_URL}/financeiro/comprovante/${id}/aprovar`
+            const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({})
@@ -115,7 +149,7 @@ export function ComprovantesPage() {
         }
     }
 
-    const handleRecusar = async (id: string) => {
+    const handleRecusar = async (id: string, tipo: 'agendamento' | 'contrato' = 'agendamento') => {
         const nota = notaRecusa[id] || ''
         if (!nota.trim()) {
             setFeedbackMsg({ id, type: 'error', msg: 'Escreva uma nota antes de recusar.' })
@@ -124,7 +158,10 @@ export function ComprovantesPage() {
 
         try {
             setAction(id, 'loading')
-            const res = await fetch(`${API_BASE_URL}/financeiro/comprovante/${id}/recusar`, {
+            const endpoint = tipo === 'contrato'
+                ? `${API_BASE_URL}/financeiro/contratos/comprovante/${id}/recusar`
+                : `${API_BASE_URL}/financeiro/comprovante/${id}/recusar`
+            const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ nota })
@@ -254,6 +291,7 @@ export function ComprovantesPage() {
                                                 <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {c.email || '—'}</span>
                                                 <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {c.telefone || '—'}</span>
                                                 <span className="flex items-center gap-1"><Package className="w-3 h-3" /> {getServiceName(c.produto_id, c.produto_nome) || '—'}</span>
+                                                <span className="flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {c.tipo === 'contrato' ? 'Contrato' : 'Agendamento'}</span>
                                                 <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {formatDateTime(c.data_hora)}</span>
                                             </div>
                                         </div>
@@ -321,7 +359,7 @@ export function ComprovantesPage() {
                                             <ArrowLeft className="w-4 h-4" />
                                         </button>
                                         <button
-                                            onClick={() => handleAprovar(c.id)}
+                                            onClick={() => handleAprovar(c.id, c.tipo || 'agendamento')}
                                             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-600/30 transition animate-in fade-in duration-200"
                                         >
                                             <CheckCircle2 className="w-4 h-4" /> Confirmar Aprovação
@@ -350,7 +388,7 @@ export function ComprovantesPage() {
                                                 <ArrowLeft className="w-4 h-4" />
                                             </button>
                                             <button
-                                                onClick={() => handleRecusar(c.id)}
+                                                onClick={() => handleRecusar(c.id, c.tipo || 'agendamento')}
                                                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 shadow-md shadow-red-600/30 transition"
                                             >
                                                 <Send className="w-4 h-4" /> Enviar Recusa

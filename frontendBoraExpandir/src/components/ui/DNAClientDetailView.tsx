@@ -51,6 +51,8 @@ export function DNAClientDetailView({
     const [activeTab, setActiveTab] = useState<'timeline' | 'formularios' | 'comprovantes'>('timeline')
     const [agendamentos, setAgendamentos] = useState<any[]>([])
     const [loadingAgendamentos, setLoadingAgendamentos] = useState(false)
+    const [contratosServicos, setContratosServicos] = useState<any[]>([])
+    const [loadingContratos, setLoadingContratos] = useState(false)
 
     // Handle adding document to a specific requirement
     const handleAddDocToReq = (reqId: string) => {
@@ -135,7 +137,19 @@ export function DNAClientDetailView({
                     setLoadingAgendamentos(false)
                 }
             }
+            const fetchContratos = async () => {
+                try {
+                    setLoadingContratos(true)
+                    const data = await comercialService.getContratosServicos(client.true_id || client.id)
+                    setContratosServicos(data)
+                } catch (err) {
+                    console.error('Erro ao buscar contratos:', err)
+                } finally {
+                    setLoadingContratos(false)
+                }
+            }
             fetchAgendamentos()
+            fetchContratos()
         }
     }, [activeTab, client.id, client.true_id])
 
@@ -191,6 +205,8 @@ export function DNAClientDetailView({
     }
 
     const currentStageIndex = CATEGORIAS_LIST.findIndex(cat => cat.id === client.categoria)
+    const contratosAprovados = contratosServicos.filter((c: any) => c.assinatura_status === 'aprovado' && c.contrato_assinado_url)
+    const comprovantesContrato = contratosServicos.filter((c: any) => c.pagamento_comprovante_url)
 
     return (
         <div className="p-8">
@@ -501,7 +517,7 @@ export function DNAClientDetailView({
                                                             <div className="text-sm font-bold text-foreground flex items-center gap-2">
                                                                 Comprovante <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md uppercase tracking-tight">{ag.produto_nome || ag.servico_nome || 'Serviço'}</span>
                                                             </div>
-                                                            <div className="text-xs text-muted-foreground mt-1">Ref: {formatDate(ag.data_agendamento)}</div>
+                                                            <div className="text-xs text-muted-foreground mt-1">Ref: {formatDate(ag.data_hora || ag.data_agendamento)}</div>
                                                         </div>
                                                         <a href={ag.comprovante_url} target="_blank" rel="noopener noreferrer" className="p-2 bg-background border border-border rounded-lg shadow-sm hover:text-primary transition-all group-hover:scale-105 active:scale-95 text-xs font-bold flex items-center gap-2">
                                                             <ExternalLink className="h-3 w-3" />
@@ -522,20 +538,77 @@ export function DNAClientDetailView({
                                         )}
                                     </section>
 
-                                    {/* Sub-sessão: Contratos (Mock) */}
+                                    {/* Sub-sessão: Contratos */}
                                     <section>
                                         <h4 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2 pt-6 border-t border-border">
                                             <div className="w-1.5 h-1.5 rounded-full bg-primary" />
                                             Contratos Firmados
                                         </h4>
-                                        <div className="bg-muted border border-dashed border-border/60 rounded-xl p-8 text-center bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAiPjwvcmVjdD4KPHBhdGggZD0iTTAgMEwyIDJNMCA0TDIgMk00IDBMMiAyTTQgNEwyIDIiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLW9wYWNpdHk9IjAuMDUiPjwvcGF0aD4KPC9zdmc+')]">
-                                            <div className="flex justify-center mb-3">
-                                                <div className="w-12 h-12 rounded-full bg-background border shadow-sm flex items-center justify-center">
-                                                    <Copy className="h-6 w-6 text-muted-foreground/30" />
-                                                </div>
+                                        {loadingContratos ? (
+                                            <div className="text-center p-8 text-muted-foreground animate-pulse text-sm">Carregando contratos...</div>
+                                        ) : contratosAprovados.length > 0 ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {contratosAprovados.map((contrato: any) => (
+                                                    <div key={contrato.id} className="bg-muted border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-primary/30 transition-all">
+                                                        <div>
+                                                            <div className="text-sm font-bold text-foreground flex items-center gap-2">
+                                                                Contrato <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md uppercase tracking-tight">{contrato.servico_nome || contrato.servico?.nome || 'Serviço'}</span>
+                                                            </div>
+                                                            <div className="text-xs text-muted-foreground mt-1">Ref: {formatDate(contrato.criado_em)}</div>
+                                                        </div>
+                                                        <a href={contrato.contrato_assinado_url} target="_blank" rel="noopener noreferrer" className="p-2 bg-background border border-border rounded-lg shadow-sm hover:text-primary transition-all group-hover:scale-105 active:scale-95 text-xs font-bold flex items-center gap-2">
+                                                            <ExternalLink className="h-3 w-3" />
+                                                            Ver
+                                                        </a>
+                                                    </div>
+                                                ))}
                                             </div>
-                                            <p className="text-sm font-medium text-muted-foreground">Ainda não há contratos vinculados a este cliente.</p>
-                                        </div>
+                                        ) : (
+                                            <div className="bg-muted border border-dashed border-border/60 rounded-xl p-8 text-center bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAiPjwvcmVjdD4KPHBhdGggZD0iTTAgMEwyIDJNMCA0TDIgMk00IDBMMiAyTTQgNEwyIDIiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLW9wYWNpdHk9IjAuMDUiPjwvcGF0aD4KPC9zdmc+')]">
+                                                <div className="flex justify-center mb-3">
+                                                    <div className="w-12 h-12 rounded-full bg-background border shadow-sm flex items-center justify-center">
+                                                        <Copy className="h-6 w-6 text-muted-foreground/30" />
+                                                    </div>
+                                                </div>
+                                                <p className="text-sm font-medium text-muted-foreground">Ainda não há contratos vinculados a este cliente.</p>
+                                            </div>
+                                        )}
+                                    </section>
+
+                                    <section>
+                                        <h4 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2 pt-6 border-t border-border">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                            Comprovantes de Contrato
+                                        </h4>
+                                        {loadingContratos ? (
+                                            <div className="text-center p-8 text-muted-foreground animate-pulse text-sm">Carregando comprovantes...</div>
+                                        ) : comprovantesContrato.length > 0 ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {comprovantesContrato.map((contrato: any) => (
+                                                    <div key={contrato.id} className="bg-muted border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-primary/30 transition-all">
+                                                        <div>
+                                                            <div className="text-sm font-bold text-foreground flex items-center gap-2">
+                                                                Comprovante <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md uppercase tracking-tight">{contrato.servico_nome || contrato.servico?.nome || 'Serviço'}</span>
+                                                            </div>
+                                                            <div className="text-xs text-muted-foreground mt-1">Ref: {formatDate(contrato.pagamento_comprovante_upload_em || contrato.criado_em)}</div>
+                                                        </div>
+                                                        <a href={contrato.pagamento_comprovante_url} target="_blank" rel="noopener noreferrer" className="p-2 bg-background border border-border rounded-lg shadow-sm hover:text-primary transition-all group-hover:scale-105 active:scale-95 text-xs font-bold flex items-center gap-2">
+                                                            <ExternalLink className="h-3 w-3" />
+                                                            Ver
+                                                        </a>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="bg-muted border border-dashed border-border/60 rounded-xl p-8 text-center bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAiPjwvcmVjdD4KPHBhdGggZD0iTTAgMEwyIDJNMCA0TDIgMk00IDBMMiAyTTQgNEwyIDIiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLW9wYWNpdHk9IjAuMDUiPjwvcGF0aD4KPC9zdmc+')]">
+                                                <div className="flex justify-center mb-3">
+                                                    <div className="w-12 h-12 rounded-full bg-background border shadow-sm flex items-center justify-center">
+                                                        <FileText className="h-6 w-6 text-muted-foreground/30" />
+                                                    </div>
+                                                </div>
+                                                <p className="text-sm font-medium text-muted-foreground">Nenhum comprovante de contrato encontrado.</p>
+                                            </div>
+                                        )}
                                     </section>
                                 </div>
                             </div>
@@ -602,3 +675,4 @@ export function DNAClientDetailView({
         </div>
     )
 }
+

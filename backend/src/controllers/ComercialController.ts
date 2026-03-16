@@ -2,6 +2,8 @@ import { supabase } from '../config/SupabaseClient'
 import type { ClienteDTO } from '../types/parceiro';
 import ComercialRepository from '../repositories/ComercialRepository';
 import AdmRepository from '../repositories/AdmRepository';
+import ContratoServicoRepository from '../repositories/ContratoServicoRepository';
+import EmailService from '../services/EmailService';
 
 
 class ComercialController {
@@ -9,7 +11,7 @@ class ComercialController {
         console.log('========== CREATE AGENDAMENTO DEBUG ==========')
         console.log('Body completo recebido:', req.body)
         try {
-            const { nome, email, telefone, data_hora, produto_id, duracao_minutos, status, usuario_id, cliente_id, requer_delegacao } = req.body
+            const { nome, email, telefone, data_hora, produto_id, duracao_minutos, status, usuario_id, cliente_id, requer_delegacao, pagamento_status } = req.body
 
             console.log('IDs recebidos:', { usuario_id, cliente_id })
 
@@ -44,6 +46,7 @@ class ComercialController {
                 produto_id,
                 duracao_minutos: duracao,
                 status: status || 'agendado',
+                pagamento_status: pagamento_status || 'pendente',
                 usuario_id: usuario_id || null,
                 cliente_id: cliente_id || null,
                 requer_delegacao: requer_delegacao !== undefined ? requer_delegacao : false
@@ -872,6 +875,273 @@ class ComercialController {
         } catch (error: any) {
             console.error('Erro ao cancelar agendamento:', error)
             return res.status(500).json({ message: 'Erro ao cancelar agendamento', error: error.message })
+        }
+    }
+
+    /**
+     * POST /comercial/contratos
+     * Cria contrato para serviÃ§o fixo e envia email com PDF mock
+     */
+    async createContratoServico(req: any, res: any) {
+        try {
+            const { cliente_id, servico_id, usuario_id } = req.body
+
+            if (!cliente_id || !servico_id) {
+                return res.status(400).json({ message: 'cliente_id e servico_id sÃ£o obrigatÃ³rios' })
+            }
+
+            const servico = await AdmRepository.getServiceById(servico_id)
+            if (!servico) {
+                return res.status(404).json({ message: 'ServiÃ§o nÃ£o encontrado' })
+            }
+
+            const servicoTipo = servico.tipo || 'agendavel'
+            if (servicoTipo !== 'fixo') {
+                return res.status(400).json({ message: 'ServiÃ§o nÃ£o Ã© do tipo fixo' })
+            }
+
+            const { data: cliente, error: clienteError } = await supabase
+                .from('clientes')
+                .select('*')
+                .eq('id', cliente_id)
+                .single()
+
+            if (clienteError || !cliente) {
+                console.error('[ComercialController] Cliente nÃ£o encontrado:', clienteError)
+                return res.status(404).json({ message: 'Cliente nÃ£o encontrado' })
+            }
+
+            const contratoPayload = {
+                cliente_id,
+                usuario_id: usuario_id || null,
+                servico_id,
+                servico_nome: servico.nome || null,
+                servico_valor: servico.valor || 0,
+                cliente_nome: cliente.nome || null,
+                cliente_email: cliente.email || null,
+                cliente_telefone: cliente.whatsapp || cliente.telefone || null,
+                assinatura_status: 'pendente',
+                pagamento_status: 'pendente'
+            }
+
+            const contrato = await ContratoServicoRepository.createContrato(contratoPayload)
+
+            let emailEnviado = false
+            if (cliente.email) {
+                try {
+                    const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')
+                    const contratoLink = `${frontendUrl}/cliente/contratos`
+                    await EmailService.sendContratoEmail({
+                        to: cliente.email,
+                        clientName: cliente.nome || 'Cliente',
+                        contratoLink,
+                        servicoNome: servico.nome || 'ServiÃ§o'
+                    })
+                    emailEnviado = true
+                } catch (emailError) {
+                    console.error('[ComercialController] Erro ao enviar email de contrato:', emailError)
+                }
+            }
+
+            const contratoCompleto = await ContratoServicoRepository.getContratoById(contrato.id)
+
+            return res.status(201).json({ data: contratoCompleto, email_enviado: emailEnviado })
+        } catch (error: any) {
+            console.error('[ComercialController] Erro ao criar contrato:', error)
+            return res.status(500).json({ message: 'Erro ao criar contrato', error: error.message })
+        }
+    }
+
+    /**
+     * GET /comercial/contratos
+     */
+    async getContratosServicos(req: any, res: any) {
+        try {
+            const clienteId = (req.query?.cliente_id || req.query?.clienteId) as string | undefined
+            const contratos = await ContratoServicoRepository.getContratos({ clienteId })
+            return res.status(200).json({ data: contratos })
+        } catch (error: any) {
+            console.error('[ComercialController] Erro ao listar contratos:', error)
+            return res.status(500).json({ message: 'Erro ao listar contratos', error: error.message })
+        }
+    }
+
+    /**
+     * GET /comercial/contratos/:id
+     */
+    async getContratoServicoById(req: any, res: any) {
+        try {
+            const { id } = req.params
+            const contrato = await ContratoServicoRepository.getContratoById(id)
+            return res.status(200).json({ data: contrato })
+        } catch (error: any) {
+            console.error('[ComercialController] Erro ao buscar contrato:', error)
+            return res.status(500).json({ message: 'Erro ao buscar contrato', error: error.message })
+        }
+    }
+
+    /**
+     * POST /comercial/contratos/:id/upload
+     * Upload direto do contrato assinado pelo comercial
+     */
+    async uploadContratoAssinado(req: any, res: any) {
+        try {
+            const { id } = req.params
+            const { usuario_id } = req.body
+            const file = req.file
+
+            if (!file) {
+                return res.status(400).json({ message: 'Arquivo do contrato Ã© obrigatÃ³rio' })
+            }
+
+            await ContratoServicoRepository.getContratoById(id)
+
+            const timestamp = Date.now()
+            const ext = file.originalname.split('.').pop() || 'pdf'
+            const filePath = `contratos/${id}/${timestamp}_contrato_assinado.${ext}`
+
+            const { error: uploadError } = await supabase.storage
+                .from('documentos')
+                .upload(filePath, file.buffer, {
+                    contentType: file.mimetype,
+                    upsert: true
+                })
+
+            if (uploadError) {
+                console.error('[ComercialController] Erro no upload do contrato:', uploadError)
+                return res.status(500).json({ message: 'Erro ao fazer upload do contrato' })
+            }
+
+            const { data: urlData } = supabase.storage
+                .from('documentos')
+                .getPublicUrl(filePath)
+
+            const updated = await ContratoServicoRepository.updateContrato(id, {
+                contrato_assinado_url: urlData.publicUrl,
+                contrato_assinado_path: filePath,
+                contrato_assinado_nome_original: file.originalname,
+                assinatura_status: 'aprovado',
+                assinatura_upload_origem: 'comercial',
+                assinatura_upload_por: usuario_id || null,
+                assinatura_upload_em: new Date().toISOString(),
+                assinatura_aprovado_por: usuario_id || null,
+                assinatura_aprovado_em: new Date().toISOString(),
+                assinatura_recusa_nota: null,
+                atualizado_em: new Date().toISOString()
+            })
+
+            return res.status(200).json({ data: updated })
+        } catch (error: any) {
+            console.error('[ComercialController] Erro no upload do contrato:', error)
+            return res.status(500).json({ message: 'Erro ao fazer upload do contrato', error: error.message })
+        }
+    }
+
+    /**
+     * POST /comercial/contratos/:id/aprovar
+     */
+    async aprovarContrato(req: any, res: any) {
+        try {
+            const { id } = req.params
+            const { usuario_id } = req.body
+
+            const contrato = await ContratoServicoRepository.getContratoById(id)
+            if (!contrato?.contrato_assinado_url) {
+                return res.status(400).json({ message: 'Contrato assinado nÃ£o encontrado' })
+            }
+
+            const updated = await ContratoServicoRepository.updateContrato(id, {
+                assinatura_status: 'aprovado',
+                assinatura_aprovado_por: usuario_id || null,
+                assinatura_aprovado_em: new Date().toISOString(),
+                assinatura_recusa_nota: null,
+                atualizado_em: new Date().toISOString()
+            })
+
+            return res.status(200).json({ data: updated })
+        } catch (error: any) {
+            console.error('[ComercialController] Erro ao aprovar contrato:', error)
+            return res.status(500).json({ message: 'Erro ao aprovar contrato', error: error.message })
+        }
+    }
+
+    /**
+     * POST /comercial/contratos/:id/recusar
+     */
+    async recusarContrato(req: any, res: any) {
+        try {
+            const { id } = req.params
+            const { nota } = req.body
+
+            const updated = await ContratoServicoRepository.updateContrato(id, {
+                assinatura_status: 'recusado',
+                assinatura_recusa_nota: nota || 'Contrato recusado sem observaÃ§Ã£o.',
+                assinatura_recusado_em: new Date().toISOString(),
+                atualizado_em: new Date().toISOString()
+            })
+
+            return res.status(200).json({ data: updated })
+        } catch (error: any) {
+            console.error('[ComercialController] Erro ao recusar contrato:', error)
+            return res.status(500).json({ message: 'Erro ao recusar contrato', error: error.message })
+        }
+    }
+
+    /**
+     * POST /comercial/contratos/:id/comprovante
+     */
+    async uploadComprovanteContrato(req: any, res: any) {
+        try {
+            const { id } = req.params
+            const file = req.file
+
+            if (!file) {
+                return res.status(400).json({ message: 'Arquivo do comprovante Ã© obrigatÃ³rio' })
+            }
+
+            const contrato = await ContratoServicoRepository.getContratoById(id)
+            if (!contrato) {
+                return res.status(404).json({ message: 'Contrato nÃ£o encontrado' })
+            }
+
+            if (contrato.assinatura_status !== 'aprovado') {
+                return res.status(400).json({ message: 'Contrato ainda nÃ£o aprovado' })
+            }
+
+            const timestamp = Date.now()
+            const ext = file.originalname.split('.').pop() || 'pdf'
+            const filePath = `contratos-comprovantes/${id}/${timestamp}_comprovante.${ext}`
+
+            const { error: uploadError } = await supabase.storage
+                .from('documentos')
+                .upload(filePath, file.buffer, {
+                    contentType: file.mimetype,
+                    upsert: true
+                })
+
+            if (uploadError) {
+                console.error('[ComercialController] Erro no upload do comprovante:', uploadError)
+                return res.status(500).json({ message: 'Erro ao fazer upload do comprovante' })
+            }
+
+            const { data: urlData } = supabase.storage
+                .from('documentos')
+                .getPublicUrl(filePath)
+
+            const updated = await ContratoServicoRepository.updateContrato(id, {
+                pagamento_status: 'em_analise',
+                pagamento_comprovante_url: urlData.publicUrl,
+                pagamento_comprovante_path: filePath,
+                pagamento_comprovante_nome_original: file.originalname,
+                pagamento_comprovante_upload_em: new Date().toISOString(),
+                pagamento_nota_recusa: null,
+                atualizado_em: new Date().toISOString()
+            })
+
+            return res.status(200).json({ data: updated })
+        } catch (error: any) {
+            console.error('[ComercialController] Erro ao enviar comprovante:', error)
+            return res.status(500).json({ message: 'Erro ao enviar comprovante', error: error.message })
         }
     }
 

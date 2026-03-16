@@ -7,6 +7,7 @@ export interface Cliente {
   whatsapp?: string
   documento: string
   endereco?: string
+  status?: string
   created_at: string
   updated_at: string
 }
@@ -139,4 +140,35 @@ export interface AgendamentoFormData {
   duracao_minutos: number
   produto: string
   observacoes?: string
+}
+
+export type ContratoAssinaturaStatus = 'pendente' | 'em_analise' | 'aprovado' | 'recusado'
+export type ContratoPagamentoStatus = 'pendente' | 'em_analise' | 'aprovado' | 'recusado'
+
+export interface ContratoServico {
+  id: string
+  cliente_id: string
+  usuario_id?: string | null
+  servico_id?: string | null
+  servico_nome?: string | null
+  servico_valor?: number | null
+  cliente_nome?: string | null
+  cliente_email?: string | null
+  cliente_telefone?: string | null
+  assinatura_status: ContratoAssinaturaStatus
+  assinatura_recusa_nota?: string | null
+  contrato_assinado_url?: string | null
+  pagamento_status: ContratoPagamentoStatus
+  pagamento_comprovante_url?: string | null
+  pagamento_nota_recusa?: string | null
+  pagamento_comprovante_upload_em?: string | null
+  criado_em?: string
+  atualizado_em?: string
+  cliente?: Partial<Cliente>
+  servico?: {
+    id: string
+    nome?: string
+    valor?: number
+    tipo?: string
+  }
 }

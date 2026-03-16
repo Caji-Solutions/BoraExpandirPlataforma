@@ -20,6 +20,7 @@ import {
 import { Client, Document, Notification, ApprovedDocument, TranslatedDocument, Process, ProcessStep } from './types'
 import { Apostilamento } from './components/Apostilamento'
 import { DocumentUploadFlow } from './components/DocumentUploadFlow'
+import ClienteContratos from './components/ClienteContratos'
 import { Home, FileText, Upload, GitBranch, Bell, Languages, Users, Calendar, Settings, Stamp } from 'lucide-react'
 import { Config } from '../../components/ui/Config'
 import { RequiredActionModal } from './components/RequiredActionModal'
@@ -506,6 +507,7 @@ export function ClienteApp() {
           { label: 'Meu Processo', to: '/cliente/processo', icon: GitBranch },
           { label: 'Agendamento', to: '/cliente/agendamento', icon: Calendar },
           { label: 'Documentos', to: '/cliente/upload', icon: FileText },
+          { label: 'Contratos', to: '/cliente/contratos', icon: FileText },
           { label: 'Parceiro', to: '/cliente/parceiro', icon: Users },
 
           {
@@ -649,6 +651,10 @@ export function ClienteApp() {
                 }}
               />
             }
+          />
+          <Route
+            path="contratos"
+            element={<ClienteContratos clienteId={client.id} />}
           />
           <Route
             path="apostilamento"
