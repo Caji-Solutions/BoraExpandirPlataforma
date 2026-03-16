@@ -82,7 +82,7 @@ export function ComprovantesPage() {
                 email: c.cliente_email || c.cliente?.email || '',
                 telefone: c.cliente_telefone || c.cliente?.whatsapp || '',
                 produto_id: c.servico_id || c.servico?.id || '',
-                produto_nome: c.servico_nome || c.servico?.nome || 'ServiÃ§o',
+                produto_nome: c.servico_nome || c.servico?.nome || 'Serviço',
                 valor: c.servico_valor || c.servico?.valor || 0,
                 data_hora: c.criado_em || c.created_at || '',
                 comprovante_url: c.pagamento_comprovante_url,
@@ -269,11 +269,10 @@ export function ComprovantesPage() {
                     return (
                         <div
                             key={c.id}
-                            className={`bg-white dark:bg-neutral-900 rounded-2xl border shadow-sm transition-all duration-300 ${
-                                feedback?.type === 'success'
+                            className={`bg-white dark:bg-neutral-900 rounded-2xl border shadow-sm transition-all duration-300 ${feedback?.type === 'success'
                                     ? 'border-emerald-300 dark:border-emerald-700 opacity-60 scale-[0.98]'
                                     : 'border-gray-100 dark:border-neutral-800'
-                            }`}
+                                }`}
                         >
                             {/* Card header */}
                             <div className="p-5 pb-4">
@@ -315,11 +314,10 @@ export function ComprovantesPage() {
                             <div className="p-5 pt-4">
                                 {/* Feedback message */}
                                 {feedback && (
-                                    <div className={`mb-3 p-3 rounded-lg text-sm font-medium flex items-center gap-2 ${
-                                        feedback.type === 'success'
+                                    <div className={`mb-3 p-3 rounded-lg text-sm font-medium flex items-center gap-2 ${feedback.type === 'success'
                                             ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
                                             : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
-                                    }`}>
+                                        }`}>
                                         {feedback.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
                                         {feedback.msg}
                                     </div>

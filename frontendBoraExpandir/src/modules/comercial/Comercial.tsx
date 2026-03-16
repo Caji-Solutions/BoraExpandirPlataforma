@@ -486,10 +486,10 @@ export default function Comercial() {
           comercialService.getAllProcessos(),
           comercialService.getAllRequerimentos()
         ])
-        
+
         // Clientes filtrados (sem leads)
         setClientes(clientesData.filter((c: any) => c.status !== 'LEAD'))
-        
+
         // Contratos vindos de processos
         setContratos(processosData.map((p: any) => ({
           id: p.id,
@@ -656,7 +656,7 @@ export default function Comercial() {
       items: [
         { label: 'Dashboard', to: '/comercial', icon: Home },
         { label: 'DNA do Cliente', to: '/comercial/dna', icon: Dna },
-        { label: 'ServiÃ§os', to: '/comercial/servicos', icon: FileText },
+        { label: 'Serviços', to: '/comercial/servicos', icon: FileText },
         { label: 'Agendamento', to: '/comercial/agendamento', icon: Calendar },
         { label: "Meus Agendamentos", to: "/comercial/meus-agendamentos", icon: Calendar },
         { label: 'Clientes', to: '/comercial/clientes', icon: Users },

@@ -54,15 +54,15 @@ class ComercialController {
 
             // Fallback: se o frontend não enviou requer_delegacao, tenta buscar do catálogo
             if (requer_delegacao === undefined && produto_id) {
-                 try {
-                     const servico = await AdmRepository.getServiceById(produto_id)
-                     if (servico && servico.requer_delegacao_juridico) {
-                         agendamento.requer_delegacao = true;
-                         console.log('Fallbakc: requer_delegacao atribuido via catalogo para produto:', produto_id);
-                     }
-                 } catch (err) {
-                     console.error('Erro no fallback de requer_delegacao:', err);
-                 }
+                try {
+                    const servico = await AdmRepository.getServiceById(produto_id)
+                    if (servico && servico.requer_delegacao_juridico) {
+                        agendamento.requer_delegacao = true;
+                        console.log('Fallbakc: requer_delegacao atribuido via catalogo para produto:', produto_id);
+                    }
+                } catch (err) {
+                    console.error('Erro no fallback de requer_delegacao:', err);
+                }
             }
 
             console.log('Objeto agendamento final para envio ao DB:', agendamento)
@@ -764,7 +764,7 @@ class ComercialController {
                     .select('id')
                     .eq('agendamento_id', id)
                     .maybeSingle()
-                
+
                 if (formEnviado) {
                     formulario_preenchido = true
                 }
@@ -892,12 +892,12 @@ class ComercialController {
 
             const servico = await AdmRepository.getServiceById(servico_id)
             if (!servico) {
-                return res.status(404).json({ message: 'ServiÃ§o nÃ£o encontrado' })
+                return res.status(404).json({ message: 'Serviço não encontrado' })
             }
 
             const servicoTipo = servico.tipo || 'agendavel'
             if (servicoTipo !== 'fixo') {
-                return res.status(400).json({ message: 'ServiÃ§o nÃ£o Ã© do tipo fixo' })
+                return res.status(400).json({ message: 'Serviço não é do tipo fixo' })
             }
 
             const { data: cliente, error: clienteError } = await supabase
@@ -935,7 +935,7 @@ class ComercialController {
                         to: cliente.email,
                         clientName: cliente.nome || 'Cliente',
                         contratoLink,
-                        servicoNome: servico.nome || 'ServiÃ§o'
+                        servicoNome: servico.nome || 'Serviço'
                     })
                     emailEnviado = true
                 } catch (emailError) {

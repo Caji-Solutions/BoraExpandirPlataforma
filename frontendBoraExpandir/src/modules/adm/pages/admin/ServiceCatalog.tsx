@@ -12,12 +12,12 @@ import {
 import { Switch } from "../../components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Separator } from "../../components/ui/separator";
-import { 
-  Plus, 
-  Trash2, 
-  GripVertical, 
-  Search, 
-  Edit2, 
+import {
+  Plus,
+  Trash2,
+  GripVertical,
+  Search,
+  Edit2,
   MoreHorizontal,
   Clock,
   Euro,
@@ -186,7 +186,7 @@ export default function ServiceCatalog() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este serviço?")) return;
-    
+
     try {
       await catalogService.deleteCatalogService(id);
       toast.success("Serviço removido com sucesso!");
@@ -197,7 +197,7 @@ export default function ServiceCatalog() {
     }
   };
 
-  const filteredServices = (services || []).filter(s => 
+  const filteredServices = (services || []).filter(s =>
     s.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -279,7 +279,7 @@ export default function ServiceCatalog() {
                     </TableCell>
                     <TableCell className="py-4">
                       <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/10 rounded-lg">
-                        {service.type === 'fixo' ? 'Fixo' : service.type === 'diverso' ? 'Diverso' : 'AgendÃ¡vel'}
+                        {service.type === 'fixo' ? 'Fixo' : service.type === 'diverso' ? 'Diverso' : 'Agendável'}
                       </Badge>
                     </TableCell>
                     <TableCell className="py-4">
@@ -414,7 +414,7 @@ export default function ServiceCatalog() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo do ServiÃ§o</Label>
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo do Serviço</Label>
                 <Select
                   value={formData.type}
                   onValueChange={(val) => setFormData({ ...formData, type: val as any })}
@@ -423,7 +423,7 @@ export default function ServiceCatalog() {
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="agendavel">AgendÃ¡vel</SelectItem>
+                    <SelectItem value="agendavel">Agendável</SelectItem>
                     <SelectItem value="fixo">Fixo</SelectItem>
                     <SelectItem value="diverso">Diverso</SelectItem>
                   </SelectContent>
@@ -498,7 +498,7 @@ export default function ServiceCatalog() {
                           className="bg-background border-border rounded-xl h-10"
                         />
                       </div>
-                      
+
                       <div className="flex items-center gap-4 w-full md:w-auto">
                         <Select
                           value={doc.stage}
