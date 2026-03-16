@@ -50,10 +50,13 @@ export type ClientDNAData = {
         responsavel?: string
         tipo?: 'info' | 'success' | 'warning' | 'error'
     }[]
-    hasRequirement?: boolean
     documento?: string
     passaporte?: string
     status?: string
+    criador?: {
+        id: string
+        nome: string
+    }
 }
 
 export type DNACategory = {
@@ -131,10 +134,13 @@ export function ClientDNAPage() {
                             nome: lastProcess.responsavel.full_name
                         } : undefined,
                         historico: [],
-                        hasRequirement: item.requerimentos && item.requerimentos.length > 0,
                         documento: item.documento || '',
                         passaporte: item.passaporte || '',
-                        status: item.status
+                        status: item.status,
+                        criador: item.criado_por ? {
+                            id: item.criado_por,
+                            nome: item.criado_por_nome || 'Desconhecido'
+                        } : undefined
                     }
                 })
                 setClientes(mappedClientes)

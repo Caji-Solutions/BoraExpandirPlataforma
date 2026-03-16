@@ -57,6 +57,9 @@ export function AgendamentoEditPage() {
     const [showCancelConfirm, setShowCancelConfirm] = useState(false)
     const [cancelling, setCancelling] = useState(false)
 
+    // Rescheduling states
+    const [isRescheduling, setIsRescheduling] = useState(false)
+
     // Fechar popup ao clicar fora
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -211,6 +214,7 @@ export function AgendamentoEditPage() {
             toast.error(e.message || 'Erro de conexão')
         } finally {
             setSalvando(false)
+            setIsRescheduling(false)
         }
     }
 
@@ -311,6 +315,18 @@ export function AgendamentoEditPage() {
             return `${dt.toLocaleDateString('pt-BR')} às ${dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
         } catch { return dataHora }
     }
+
+    const isAgendamentoConfirmadoOuPassado = () => {
+        if (!agendamento) return false;
+        const status = agendamento.status;
+        const confirmado = status === 'confirmado' || status === 'aprovado' || status === 'realizado';
+        const hoje = new Date();
+        const dataAgendamento = new Date(agendamento.data_hora);
+        const passado = dataAgendamento < hoje;
+        return confirmado || passado;
+    }
+
+    const showLockedView = isAgendamentoConfirmadoOuPassado() && !isRescheduling && agendamento.status !== 'cancelado';
 
     return (
         <div className="min-h-screen bg-gray-50/30 dark:bg-[#0a0a0a] p-4 md:p-8 pt-20 md:pt-10">
@@ -584,12 +600,37 @@ export function AgendamentoEditPage() {
 
                 {/* ═══ CALENDÁRIO + HORÁRIOS (full-width) ═══ */}
                 <div className="bg-white dark:bg-neutral-900 rounded-2xl p-6 border border-gray-100 dark:border-neutral-800 shadow-sm relative">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                        <Calendar className="w-5 h-5 text-emerald-600" />
-                        Data e Horário
-                    </h2>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                            <Calendar className="w-5 h-5 text-emerald-600" />
+                            Data e Horário
+                        </h2>
+                        {showLockedView && (
+                            <button
+                                onClick={() => setIsRescheduling(true)}
+                                className="px-4 py-2 rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 font-bold hover:bg-emerald-200 dark:hover:bg-emerald-900/60 transition-colors inline-flex items-center gap-2 shadow-sm"
+                            >
+                                <Calendar className="w-4 h-4" />
+                                Reagendar
+                            </button>
+                        )}
+                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {showLockedView && (
+                        <div className="bg-gray-50 dark:bg-neutral-800/50 border border-gray-200 dark:border-neutral-700 rounded-xl p-4 mb-6 flex items-center justify-between shadow-sm">
+                            <div>
+                                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-1">
+                                    Horário Atual
+                                </h3>
+                                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                                    {formatDataHora(agendamento.data_hora)}
+                                </p>
+                            </div>
+                            <Clock className="w-8 h-8 text-emerald-600 opacity-50" />
+                        </div>
+                    )}
+
+                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-8 transition-all ${showLockedView ? 'opacity-60' : ''}`}>
                         {/* Calendário */}
                         <div>
                             <CalendarPicker
@@ -622,14 +663,20 @@ export function AgendamentoEditPage() {
                                         return (
                                             <button
                                                 key={hora}
-                                                onClick={(e) => disponivel ? setHoraSelecionada(hora) : handleUnavailableSlotClick(e, hora)}
+                                                onClick={(e) => {
+                                                    if (!disponivel) {
+                                                        handleUnavailableSlotClick(e, hora)
+                                                    } else if (!showLockedView) {
+                                                        setHoraSelecionada(hora)
+                                                    }
+                                                }}
                                                 className={`py-2.5 px-3 text-sm rounded-lg font-medium transition-all ${!disponivel
                                                     ? isDirectlyOccupied
                                                         ? 'bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 border-2 border-red-400 dark:border-red-500 cursor-pointer ring-2 ring-red-300/50 dark:ring-red-500/30'
-                                                        : 'bg-gray-100 dark:bg-neutral-800 text-gray-400 dark:text-neutral-500 border border-gray-200 dark:border-neutral-700 cursor-pointer opacity-60'
+                                                        : 'bg-gray-100 dark:bg-neutral-800 text-gray-400 dark:text-neutral-500 border border-gray-200 dark:border-neutral-700 cursor-pointer opacity-80'
                                                     : horaSelecionada === hora
                                                         ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30 border-emerald-600'
-                                                        : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-200 hover:border-emerald-500 hover:text-emerald-600 border border-gray-200 dark:border-neutral-700'
+                                                        : `bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-neutral-700 ${showLockedView ? 'cursor-not-allowed opacity-50' : 'hover:border-emerald-500 hover:text-emerald-600 cursor-pointer'}`
                                                     }`}
                                             >
                                                 <Clock className="h-3.5 w-3.5 inline mr-1.5 opacity-70" />
@@ -766,16 +813,26 @@ export function AgendamentoEditPage() {
                     </div>
                 )}
 
-                {/* Botão Salvar */}
-                <div className="flex justify-end pt-6">
-                    <button
-                        onClick={handleSalvar}
-                        disabled={salvando || !dataSelecionada || !horaSelecionada || agendamento.status === 'cancelado'}
-                        className="px-6 py-3 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center min-w-[200px] disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {salvando ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5 mr-2" /> Salvar Alterações</>}
-                    </button>
-                </div>
+                {/* Botão Salvar - Esconde o botão se estiver no locked view para não causar confusão */}
+                {!showLockedView && (
+                    <div className="flex justify-end pt-6 gap-3">
+                        {isRescheduling && (
+                            <button
+                                onClick={() => setIsRescheduling(false)}
+                                className="px-6 py-3 rounded-xl bg-gray-200 text-gray-700 dark:bg-neutral-800 dark:text-gray-300 font-medium hover:bg-gray-300 dark:hover:bg-neutral-700 transition-all flex items-center justify-center min-w-[140px]"
+                            >
+                                Cancelar Reagendamento
+                            </button>
+                        )}
+                        <button
+                            onClick={handleSalvar}
+                            disabled={salvando || !dataSelecionada || !horaSelecionada || agendamento.status === 'cancelado'}
+                            className="px-6 py-3 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center min-w-[200px] disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {salvando ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5 mr-2" /> Salvar Alterações</>}
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     )

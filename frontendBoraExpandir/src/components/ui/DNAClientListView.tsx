@@ -87,7 +87,7 @@ export function DNAClientListView({
             const matchesStatus = true // A listagem já é filtrada pelo status 'cliente' abaixo
             
             const matchesPriority = filters.prioridade === 'todos' || c.priority === filters.prioridade
-            const matchesRequerimento = filters.requerimento === 'todos' || (filters.requerimento === 'sim' ? c.hasRequirement : !c.hasRequirement)
+            const matchesRequerimento = filters.requerimento === 'todos' // filtro não precisará mapear o "hasReq"
 
             // Filtro de Responsável
             let matchesResponsavel = true
@@ -362,9 +362,9 @@ export function DNAClientListView({
                     <div className="grid grid-cols-12 gap-4 px-6 py-4 border-b bg-muted/30 text-[10px] uppercase font-bold text-muted-foreground tracking-widest text-center">
                         <div className="col-span-1">ID</div>
                         <div className="col-span-3 text-left">Cliente</div>
-                        <div className="col-span-3">Serviço</div>
+                        <div className="col-span-2">Criador</div>
+                        <div className="col-span-2">Serviço</div>
                         <div className="col-span-2">Previsão</div>
-                        <div className="col-span-1">Status</div>
                         <div className="col-span-2">Ações</div>
                     </div>
 
@@ -401,11 +401,6 @@ export function DNAClientListView({
                                                     {cliente.priority === 'high' && (
                                                         <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
                                                     )}
-                                                    {cliente.hasRequirement && (
-                                                        <Badge variant="destructive" className="animate-pulse text-[7px] px-1 py-0 h-3 leading-none min-w-[50px] flex items-center justify-center">
-                                                            REQ
-                                                        </Badge>
-                                                    )}
                                                 </div>
                                                 <div className="text-xs text-muted-foreground truncate">{cliente.email}</div>
                                                 {cliente.responsavel && (
@@ -416,7 +411,19 @@ export function DNAClientListView({
                                                 )}
                                             </div>
                                         </div>
-                                        <div className="col-span-3 text-center">
+                                        <div className="col-span-2 flex justify-center items-center">
+                                            {cliente.criador ? (
+                                                <div className="flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-1 rounded-full border border-indigo-100 dark:border-indigo-500/20">
+                                                    <User className="h-3 w-3 text-indigo-500" />
+                                                    <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 capitalize max-w-[100px] truncate">
+                                                        {cliente.criador.nome}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-[10px] italic text-muted-foreground">---</span>
+                                            )}
+                                        </div>
+                                        <div className="col-span-2 text-center">
                                             <div className="text-xs font-medium text-foreground">{cliente.tipoAssessoria}</div>
                                             <div className="text-[10px] text-muted-foreground">
                                                 {CATEGORIAS_LIST.find(cat => cat.id === cliente.categoria)?.label.split('-')[1] || cliente.categoria}
@@ -431,11 +438,6 @@ export function DNAClientListView({
                                                     </span>
                                                 )}
                                             </div>
-                                        </div>
-                                        <div className="col-span-1 text-center">
-                                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">
-                                                Cliente
-                                            </span>
                                         </div>
                                         <div className="col-span-2 flex justify-center gap-2">
                                             {cliente.status === 'LEAD' ? (
