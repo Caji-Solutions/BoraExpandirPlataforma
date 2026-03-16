@@ -362,7 +362,7 @@ export function DNAClientListView({
                     <div className="grid grid-cols-12 gap-4 px-6 py-4 border-b bg-muted/30 text-[10px] uppercase font-bold text-muted-foreground tracking-widest text-center">
                         <div className="col-span-1">ID</div>
                         <div className="col-span-3 text-left">Cliente</div>
-                        <div className="col-span-3">Serviço / Etapa</div>
+                        <div className="col-span-3">Serviço</div>
                         <div className="col-span-2">Previsão</div>
                         <div className="col-span-1">Status</div>
                         <div className="col-span-2">Ações</div>

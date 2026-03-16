@@ -10,6 +10,7 @@ import { AgendamentoConfirmacaoModal } from './components/AgendamentoConfirmacao
 import { useAuth } from '../../contexts/AuthContext'
 import { catalogService, Service } from '../adm/services/catalogService'
 import comercialService from './services/comercialService'
+import { useLocation } from 'react-router-dom'
 
 /**
  * Converte string de duração do catálogo (ex: "1 horas", "30 minutos") para minutos.
@@ -89,6 +90,9 @@ export interface Comercial1Props {
 export default function Comercial1({ preSelectedClient, isClientView = false }: Comercial1Props) {
   const { success, error } = useToast()
   const { activeProfile } = useAuth()
+  const location = useLocation()
+  const navigationState = location.state as { preSelectedClient?: Cliente, preSelectedProduto?: string, step?: 'produto' | 'data_hora' | 'cliente' } | undefined
+
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [produtos, setProdutos] = useState<Produto[]>([])
@@ -176,10 +180,10 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const [emailTemporario, setEmailTemporario] = useState<string>('')
   const [showEmailPopup, setShowEmailPopup] = useState(false)
 
-  // Novo fluxo: Produto -> Data/Hora -> Lead (ou apenas Produto -> Data/Hora se for cliente)
+  // Novo fluxo: Produto -> Cliente -> Data/Hora (ou Produto -> Data/Hora se for cliente)
   const [passo, setPasso] = useState<
     'produto' | 'data_hora' | 'cliente'
-  >('produto')
+  >(navigationState?.step || 'produto')
 
   const { id: editId } = useParams<{ id: string }>()
   const [loadingEdit, setLoadingEdit] = useState(false)
@@ -242,13 +246,27 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     carregarAgendamento()
   }, [editId, produtos, clientes])
 
+  // Initialize with location state or props if provided
   useEffect(() => {
-    if (preSelectedClient) {
+    if (navigationState?.preSelectedClient) {
+      setClienteSelecionado(navigationState.preSelectedClient)
+      if (navigationState?.preSelectedClient.email && !navigationState.preSelectedClient.email.includes('lead_')) {
+        setEmailTemporario(navigationState.preSelectedClient.email)
+      }
+    } else if (preSelectedClient) {
       setClienteSelecionado(preSelectedClient as Cliente)
-      // Cliente já está selecionado, começa no produto
-      setPasso('produto')
+      // Se não vier via state.step de dentro, vai para produto
+      if (!navigationState?.step) setPasso('produto')
     }
-  }, [preSelectedClient])
+
+    if (navigationState?.preSelectedProduto && produtos.length > 0) {
+      const pEncontrado = produtos.find(p => p.nome === navigationState.preSelectedProduto || p.id === navigationState.preSelectedProduto)
+      if (pEncontrado) {
+        setProdutoSelecionado(pEncontrado)
+        setDuracaoMinutos(pEncontrado.duracaoMinutos || 60)
+      }
+    }
+  }, [preSelectedClient, navigationState, produtos])
 
   const [searchCliente, setSearchCliente] = useState('')
   const [mostrarListaClientes, setMostrarListaClientes] = useState(false)
@@ -433,29 +451,27 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const handleProxPasso = () => {
     switch (passo) {
       case 'produto':
-        if (produtoSelecionado) setPasso('data_hora')
-        break
-      case 'data_hora':
-        if (dataSelecionada && horaSelecionada) {
-          if (isClientView || preSelectedClient) {
-            // Se já tem tudo pronto, submete direto
-            handleFinalizarAgendamento()
+        if (produtoSelecionado) {
+          if (isClientView) {
+            setPasso('data_hora')
           } else {
             setPasso('cliente')
           }
         }
         break
       case 'cliente':
-        // Ação de finalizar direto (substituindo a confirmação)
         if (clienteSelecionado) {
-          // Verifica se temos um e-mail real (não-placeholder de lead)
-          const temEmailReal = emailTemporario || (clienteSelecionado.email && !clienteSelecionado.email.includes('lead_'));
-          
+          const temEmailReal = emailTemporario || (clienteSelecionado.email && !clienteSelecionado.email.includes('lead_'))
           if (!temEmailReal) {
             setShowEmailPopup(true)
           } else {
-            handleFinalizarAgendamento()
+            setPasso('data_hora')
           }
+        }
+        break
+      case 'data_hora':
+        if (dataSelecionada && horaSelecionada) {
+          handleFinalizarAgendamento()
         }
         break
       default:
@@ -465,11 +481,15 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
   const handleVoltar = () => {
     switch (passo) {
-      case 'data_hora':
+      case 'cliente':
         setPasso('produto')
         break
-      case 'cliente':
-        setPasso('data_hora')
+      case 'data_hora':
+        if (isClientView) {
+          setPasso('produto')
+        } else {
+          setPasso('cliente')
+        }
         break
       default:
         break
@@ -707,10 +727,10 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     <div className="w-full bg-gray-50 dark:bg-neutral-900 min-h-screen">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Agendamento de Vendas</h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-8">Escolha o produto, selecione data e horário, e finalize o agendamento</p>
+        <p className="text-gray-600 dark:text-gray-400 mb-8">Escolha o produto, identifique o lead e agende horário para finalizar</p>
 
 
-        {/* Fluxo de agendamento: Produto → Data → Hora → Lead */}
+        {/* Fluxo de agendamento: Produto → Lead → Data e Hora (ou apenas Produto → Data/Hora se for cliente) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             {/* PASSO 1: Seleção de Produto */}
@@ -1027,7 +1047,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                 </div>
 
 
-
+                <BotoesNavegacao canNext={!!clienteSelecionado} />
               </div>
             )}
           </div>
@@ -1170,20 +1190,20 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                         </div>
                         Escolher Produto
                       </li>
-                      <li className={`flex items-center gap-3 text-sm ${(dataSelecionada && horaSelecionada) ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
-                        <div className={`h-5 w-5 rounded-full flex items-center justify-center border ${(dataSelecionada && horaSelecionada) ? 'bg-emerald-100 border-emerald-200 dark:bg-emerald-900/30' : 'bg-gray-100 border-gray-200 dark:bg-neutral-800 dark:border-neutral-700'}`}>
-                          {(dataSelecionada && horaSelecionada) ? <Check className="h-3 w-3" /> : '2'}
-                        </div>
-                        Definir Data e Horário
-                      </li>
                       {!isClientView && (
                         <li className={`flex items-center gap-3 text-sm ${(clienteSelecionado && (clienteSelecionado.email || emailTemporario)) ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
                           <div className={`h-5 w-5 rounded-full flex items-center justify-center border ${(clienteSelecionado && (clienteSelecionado.email || emailTemporario)) ? 'bg-emerald-100 border-emerald-200 dark:bg-emerald-900/30' : 'bg-gray-100 border-gray-200 dark:bg-neutral-800 dark:border-neutral-700'}`}>
-                            {(clienteSelecionado && (clienteSelecionado.email || emailTemporario)) ? <Check className="h-3 w-3" /> : '3'}
+                            {(clienteSelecionado && (clienteSelecionado.email || emailTemporario)) ? <Check className="h-3 w-3" /> : '2'}
                           </div>
-                          Identificar o Lead (E-mail)
+                          Identificar o Lead
                         </li>
                       )}
+                      <li className={`flex items-center gap-3 text-sm ${(dataSelecionada && horaSelecionada) ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
+                        <div className={`h-5 w-5 rounded-full flex items-center justify-center border ${(dataSelecionada && horaSelecionada) ? 'bg-emerald-100 border-emerald-200 dark:bg-emerald-900/30' : 'bg-gray-100 border-gray-200 dark:bg-neutral-800 dark:border-neutral-700'}`}>
+                          {(dataSelecionada && horaSelecionada) ? <Check className="h-3 w-3" /> : isClientView ? '2' : '3'}
+                        </div>
+                        Definir Data e Horário
+                      </li>
                       <li className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
                         <div className="h-5 w-5 rounded-full flex items-center justify-center border bg-gray-100 border-gray-200 dark:bg-neutral-800 dark:border-neutral-700">
                           {isClientView ? '3' : '4'}
@@ -1292,7 +1312,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                     onKeyDown={e => {
                       if (e.key === 'Enter' && emailTemporario.trim()) {
                         setShowEmailPopup(false)
-                        handleFinalizarAgendamento()
+                        setPasso('data_hora')
                       }
                     }}
                   />
@@ -1315,7 +1335,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                         return
                       }
                       setShowEmailPopup(false)
-                      handleFinalizarAgendamento()
+                      setPasso('data_hora')
                     }}
                     disabled={!emailTemporario.trim()}
                     className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"

@@ -59,9 +59,19 @@ export async function cancelarAgendamento(id: string): Promise<any> {
     return response.json();
 }
 
+export async function getAgendamentosByCliente(clienteId: string): Promise<any[]> {
+    const response = await fetch(`${API_BASE_URL}/comercial/agendamentos/cliente/${clienteId}`);
+    if (!response.ok) {
+        throw new Error('Erro ao buscar agendamentos do cliente');
+    }
+    const result = await response.json();
+    return Array.isArray(result) ? result : (result.data || []);
+}
+
 export default {
     getAllClientes,
     getAgendamentosByUsuario,
+    getAgendamentosByCliente,
     register,
     getClienteCredentials,
     cancelarAgendamento

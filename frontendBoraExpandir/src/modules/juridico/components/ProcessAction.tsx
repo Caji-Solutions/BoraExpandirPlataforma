@@ -31,10 +31,10 @@ export function ProcessAction({
     const ALL_BUTTONS = [
         {
             id: 'solicitar_documentos',
-            name: 'Solicitar Documento',
+            name: activeProfile?.role === 'comercial' ? 'Solicitar Orçamento Apostilagem' : 'Solicitar Documento',
             icon: FileText,
             color: 'blue',
-            description: 'Registrar pendência de arquivo no sistema',
+            description: activeProfile?.role === 'comercial' ? 'Solicitar orçamento de apostilamento' : 'Registrar pendência de arquivo no sistema',
             roles: ['super_admin', 'juridico', 'comercial', 'administrativo', 'tradutor'],
             isJuridico: true
         },
@@ -58,10 +58,10 @@ export function ProcessAction({
         },
         {
             id: 'ver_processo',
-            name: 'Dados do Processo',
+            name: activeProfile?.role === 'comercial' ? 'Solicitar Orçamento Tradução' : 'Dados do Processo',
             icon: LayoutDashboard,
             color: 'slate',
-            description: 'Acessar painel completo do caso',
+            description: activeProfile?.role === 'comercial' ? 'Solicitar orçamento de tradução' : 'Acessar painel completo do caso',
             roles: ['super_admin', 'juridico', 'comercial', 'administrativo', 'tradutor'],
             isJuridico: true
         },
@@ -76,10 +76,10 @@ export function ProcessAction({
         },
         {
             id: 'comercial_agenda',
-            name: 'Agendar Reunião',
+            name: activeProfile?.role === 'comercial' ? 'Agendar Consultoria' : 'Agendar Reunião',
             icon: Calendar,
             color: 'blue',
-            description: 'Marcar call de boas-vindas comercial',
+            description: activeProfile?.role === 'comercial' ? 'Agendar consultoria inicial' : 'Marcar call de boas-vindas comercial',
             roles: ['comercial', 'super_admin'],
             isJuridico: false
         },
@@ -95,6 +95,13 @@ export function ProcessAction({
     ];
 
     const handleAction = (actionId: string) => {
+        // Mock buttons for commercial role
+        if (activeProfile?.role === 'comercial') {
+            if (actionId === 'solicitar_documentos' || actionId === 'ver_processo') {
+                return; // Nothing happens
+            }
+        }
+
         const btn = ALL_BUTTONS.find(b => b.id === actionId);
         
         // Regra de Impersonation: Se for admin clicando em função jurídica e houver um responsável

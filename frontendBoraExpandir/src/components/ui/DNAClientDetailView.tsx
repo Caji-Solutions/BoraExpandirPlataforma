@@ -23,6 +23,7 @@ import { FormsDeclarationsSection } from '../../modules/juridico/components/Form
 import { ClientQuestionnaireAnswers } from './ClientQuestionnaireAnswers'
 import { RequirementsSection } from '../../modules/juridico/components/RequirementsSection'
 import juridicoService from '../../modules/juridico/services/juridicoService'
+import comercialService from '../../modules/comercial/services/comercialService'
 import { useAuth } from '../../contexts/AuthContext'
 
 export function DNAClientDetailView({
@@ -47,7 +48,9 @@ export function DNAClientDetailView({
     const [loadingMembers, setLoadingMembers] = useState(false)
     const [selectedRequerimentoId, setSelectedRequerimentoId] = useState<string | undefined>(undefined)
     const [areaFilter, setAreaFilter] = useState<'todos' | 'juridico' | 'comercial' | 'administrativo'>('todos')
-    const [activeTab, setActiveTab] = useState<'timeline' | 'formularios'>('timeline')
+    const [activeTab, setActiveTab] = useState<'timeline' | 'formularios' | 'comprovantes'>('timeline')
+    const [agendamentos, setAgendamentos] = useState<any[]>([])
+    const [loadingAgendamentos, setLoadingAgendamentos] = useState(false)
 
     // Handle adding document to a specific requirement
     const handleAddDocToReq = (reqId: string) => {
@@ -118,6 +121,23 @@ export function DNAClientDetailView({
         }
         fetchMembers()
     }, [client.id, client.true_id, client.nome])
+
+    useEffect(() => {
+        if (activeTab === 'comprovantes') {
+            const fetchAgendamentos = async () => {
+                try {
+                    setLoadingAgendamentos(true)
+                    const data = await comercialService.getAgendamentosByCliente(client.true_id || client.id)
+                    setAgendamentos(data)
+                } catch (err) {
+                    console.error('Erro ao buscar agendamentos:', err)
+                } finally {
+                    setLoadingAgendamentos(false)
+                }
+            }
+            fetchAgendamentos()
+        }
+    }, [activeTab, client.id, client.true_id])
 
     const toggleStage = (stageId: string) => {
         const next = new Set(expandedStages)
@@ -272,6 +292,20 @@ export function DNAClientDetailView({
                             <FileText className="h-4 w-4" />
                             Formulários
                         </button>
+                        {activeProfile?.role === 'comercial' && (
+                            <button
+                                onClick={() => setActiveTab('comprovantes')}
+                                className={cn(
+                                    "px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
+                                    activeTab === 'comprovantes'
+                                        ? "bg-background text-primary shadow-sm border border-border"
+                                        : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                <Copy className="h-4 w-4" />
+                                Comprovantes/Contratos
+                            </button>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-2 pr-2">
@@ -441,8 +475,70 @@ export function DNAClientDetailView({
                                     })}
                                 </div>
                             </div>
-                        ) : (
+                        ) : activeTab === 'formularios' ? (
                             <ClientQuestionnaireAnswers clienteId={client.true_id || client.id} />
+                        ) : (
+                            <div className="bg-card border border-border rounded-2xl p-8 relative">
+                                <h3 className="text-xl font-bold text-foreground flex items-center gap-3 mb-8">
+                                    <Copy className="h-6 w-6 text-primary" />
+                                    Comprovantes & Contratos
+                                </h3>
+
+                                <div className="space-y-8">
+                                    {/* Sub-sessão: Comprovantes */}
+                                    <section>
+                                        <h4 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                            Comprovantes de Pagamento
+                                        </h4>
+                                        {loadingAgendamentos ? (
+                                            <div className="text-center p-8 text-muted-foreground animate-pulse text-sm">Carregando comprovantes...</div>
+                                        ) : agendamentos.filter(a => a.comprovante_url).length > 0 ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {agendamentos.filter(a => a.comprovante_url).map(ag => (
+                                                    <div key={ag.id} className="bg-muted border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-primary/30 transition-all">
+                                                        <div>
+                                                            <div className="text-sm font-bold text-foreground flex items-center gap-2">
+                                                                Comprovante <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md uppercase tracking-tight">{ag.produto_nome || ag.servico_nome || 'Serviço'}</span>
+                                                            </div>
+                                                            <div className="text-xs text-muted-foreground mt-1">Ref: {formatDate(ag.data_agendamento)}</div>
+                                                        </div>
+                                                        <a href={ag.comprovante_url} target="_blank" rel="noopener noreferrer" className="p-2 bg-background border border-border rounded-lg shadow-sm hover:text-primary transition-all group-hover:scale-105 active:scale-95 text-xs font-bold flex items-center gap-2">
+                                                            <ExternalLink className="h-3 w-3" />
+                                                            Ver
+                                                        </a>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="bg-muted/30 border border-dashed border-border/60 rounded-xl p-8 text-center bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAiPjwvcmVjdD4KPHBhdGggZD0iTTAgMEwyIDJNMCA0TDIgMk00IDBMMiAyTTQgNEwyIDIiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLW9wYWNpdHk9IjAuMDUiPjwvcGF0aD4KPC9zdmc+')]">
+                                                <div className="flex justify-center mb-3">
+                                                    <div className="w-12 h-12 rounded-full bg-background border shadow-sm flex items-center justify-center">
+                                                        <FileText className="h-6 w-6 text-muted-foreground/30" />
+                                                    </div>
+                                                </div>
+                                                <p className="text-sm font-medium text-muted-foreground">Nenhum comprovante atrelado aos agendamentos deste lead.</p>
+                                            </div>
+                                        )}
+                                    </section>
+
+                                    {/* Sub-sessão: Contratos (Mock) */}
+                                    <section>
+                                        <h4 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2 pt-6 border-t border-border">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                            Contratos Firmados
+                                        </h4>
+                                        <div className="bg-muted border border-dashed border-border/60 rounded-xl p-8 text-center bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAiPjwvcmVjdD4KPHBhdGggZD0iTTAgMEwyIDJNMCA0TDIgMk00IDBMMiAyTTQgNEwyIDIiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLW9wYWNpdHk9IjAuMDUiPjwvcGF0aD4KPC9zdmc+')]">
+                                            <div className="flex justify-center mb-3">
+                                                <div className="w-12 h-12 rounded-full bg-background border shadow-sm flex items-center justify-center">
+                                                    <Copy className="h-6 w-6 text-muted-foreground/30" />
+                                                </div>
+                                            </div>
+                                            <p className="text-sm font-medium text-muted-foreground">Ainda não há contratos vinculados a este cliente.</p>
+                                        </div>
+                                    </section>
+                                </div>
+                            </div>
                         )}
                     </div>
 
@@ -458,6 +554,14 @@ export function DNAClientDetailView({
                                         setIsDocModalOpen(true)
                                     } else if (action === 'solicitar_formulario') {
                                         setIsFormModalOpen(true)
+                                    } else if (action === 'comercial_agenda') {
+                                        navigate('/comercial/agendamento', { 
+                                            state: { 
+                                                preSelectedClient: client, 
+                                                preSelectedProduto: 'Consultoria', 
+                                                step: 'data_hora' 
+                                            } 
+                                        })
                                     } else {
                                         console.log('Action triggered:', action)
                                     }
