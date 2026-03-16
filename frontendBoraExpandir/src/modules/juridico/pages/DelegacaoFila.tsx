@@ -14,6 +14,7 @@ import {
   FileSearch
 } from "lucide-react";
 import { ModalDelegacao, type MembroEquipe } from "../components/ModalDelegacao";
+import { ModalDetalhesItem } from "../components/ModalDetalhesItem";
 import juridicoService, { type Processo, type FuncionarioJuridico } from "../services/juridicoService";
 import { Badge } from "../../../components/ui/Badge";
 import { Button } from "../components/ui/button";
@@ -27,6 +28,8 @@ function StatusBadge({ status }: { status: string }) {
     aguardando_cliente: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Aguardando Cliente' },
     concluido: { bg: 'bg-green-100', text: 'text-green-700', label: 'Concluído' },
     cancelado: { bg: 'bg-red-100', text: 'text-red-700', label: 'Cancelado' },
+    confirmado: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Confirmado' },
+    agendado: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Agendado' },
   };
   const { bg, text, label } = config[status] || { bg: 'bg-gray-100', text: 'text-gray-700', label: status };
   return (
@@ -43,12 +46,12 @@ function adaptParaModal(item: any) {
       id: item.id,
       clienteNome: item.clientes?.nome || item.nome || 'Cliente não identificado',
       clienteId: item.clientes?.client_id || item.cliente_id || 'N/A',
-      tipoServico: item.produto_nome || item.tipo_servico,
+      tipoServico: item.catalogo_servicos?.nome || item.produto_nome || item.tipo_servico,
       documentos: [], // Agendamentos podem não ter documentos ainda
       dataSubmissao: item.data_hora || item.criado_em,
       prioridade: 'media' as const,
       delegadoPara: item.responsavel?.full_name || null,
-      status: (item.responsavel_juridico_id || item.status !== 'agendado') ? 'delegado' as const : 'aguardando_delegacao' as const,
+      status: item.responsavel_juridico_id ? 'delegado' as const : 'aguardando_delegacao' as const,
       tipo: 'agendamento' as const
     };
   }
@@ -89,6 +92,7 @@ export default function DelegacaoFila() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [showDelegacaoModal, setShowDelegacaoModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   // Buscar dados da API
   const fetchData = async () => {
@@ -100,6 +104,12 @@ export default function DelegacaoFila() {
         juridicoService.getAgendamentosDelegacao(),
         juridicoService.getFuncionariosJuridico()
       ]);
+
+      console.log('--- DEBUG DELEGACAO FILA ---');
+      console.log('Processos:', processosData);
+      console.log('Agendamentos:', agendamentosData);
+      console.log('Funcionários:', funcionariosData);
+      console.log('----------------------------');
 
       const processosMarcados = processosData.map(p => ({ ...p, _tipoFila: 'processo' }));
       const agendamentosMarcados = agendamentosData.map(a => ({ ...a, _tipoFila: 'agendamento' }));
@@ -127,12 +137,12 @@ export default function DelegacaoFila() {
     // Lógica de "aguardando delegação"
     const isAguardando = isProcesso 
       ? (!responsavelId || status === 'waiting_delegation')
-      : (!responsavelId || status === 'agendado');
+      : (!responsavelId || status === 'confirmado');
     
     // Lógica de "delegado"
     const isDelegado = isProcesso
       ? (responsavelId !== null && status !== 'waiting_delegation')
-      : (responsavelId !== null && status !== 'agendado');
+      : (responsavelId !== null);
 
     const matchStatus = 
       filtroStatus === 'todos' || 
@@ -159,7 +169,7 @@ export default function DelegacaoFila() {
     const status = item.status;
     return isProcesso 
       ? (!responsavelId || status === 'waiting_delegation')
-      : (!responsavelId || status === 'agendado');
+      : (!responsavelId || status === 'confirmado');
   }).length;
 
   const delegados = items.filter(item => {
@@ -168,7 +178,7 @@ export default function DelegacaoFila() {
     const status = item.status;
     return isProcesso
       ? (responsavelId !== null && status !== 'waiting_delegation')
-      : (responsavelId !== null && status !== 'agendado');
+      : (responsavelId !== null);
   }).length;
 
   // Callback após delegação
@@ -302,7 +312,7 @@ export default function DelegacaoFila() {
                 const status = item.status;
                 const isAguardando = isProcesso 
                   ? (!responsavelId || status === 'waiting_delegation')
-                  : (!responsavelId || status === 'agendado');
+                  : (!responsavelId || status === 'confirmado');
 
                 return (
                   <tr key={item.id} className="hover:bg-muted/20 transition-colors group">
@@ -316,7 +326,17 @@ export default function DelegacaoFila() {
                       <div className="flex items-center gap-2 text-sm font-semibold text-foreground/80">
                         {isProcesso ? <FileText className="h-4 w-4 text-muted-foreground" /> : <Calendar className="h-4 w-4 text-muted-foreground" />}
                         <div className="flex flex-col">
-                          <span>{item.tipo_servico || item.produto_nome}</span>
+                          <span>{item.catalogo_servicos?.nome || item.tipo_servico || item.produto_nome}</span>
+                          {item.formularios_cliente?.[0] && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 font-bold uppercase">
+                                {item.formularios_cliente[0].pais_destino || 'N/A'}
+                              </span>
+                              <span className="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded border border-purple-100 font-bold uppercase truncate max-w-[150px]">
+                                {item.formularios_cliente[0].objetivo_imigracao || 'N/A'}
+                              </span>
+                            </div>
+                          )}
                           {!isProcesso && item.data_hora && (
                             <span className="text-[10px] text-blue-600 font-bold flex items-center gap-1 mt-0.5">
                               <Clock className="h-3 w-3" />
@@ -349,27 +369,30 @@ export default function DelegacaoFila() {
                       )}
                     </td>
                     <td className="px-8 py-5 text-right">
-                      <Button
-                        onClick={() => {
-                          setSelectedItem(item);
-                          setShowDelegacaoModal(true);
-                        }}
-                        disabled={!isAguardando}
-                        className={`rounded-xl text-xs font-black uppercase tracking-widest px-6 h-10 shadow-lg transition-all active:scale-95 ${
-                          isAguardando
-                            ? 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20'
-                            : 'bg-muted text-muted-foreground cursor-not-allowed shadow-none'
-                        }`}
-                      >
-                        {isAguardando ? (
-                          <>
-                            <UserPlus className="h-4 w-4 mr-2" />
-                            Delegar
-                          </>
-                        ) : (
-                          'Delegado'
-                        )}
-                      </Button>
+                      {isAguardando ? (
+                        <Button
+                          onClick={() => {
+                            setSelectedItem(item);
+                            setShowDelegacaoModal(true);
+                          }}
+                          className="rounded-xl text-xs font-black uppercase tracking-widest px-6 h-10 shadow-lg shadow-primary/20 transition-all active:scale-95 bg-primary hover:bg-primary/90 text-primary-foreground"
+                        >
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          Delegar
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => {
+                            setSelectedItem(item);
+                            setShowDetailsModal(true);
+                          }}
+                          variant="outline"
+                          className="rounded-xl text-xs font-black uppercase tracking-widest px-6 h-10 border-2 hover:bg-muted transition-all active:scale-95"
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Detalhes
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -402,6 +425,18 @@ export default function DelegacaoFila() {
             setSelectedItem(null);
           }}
           onDelegar={handleDelegacao}
+        />
+      )}
+
+      {/* Modal de Detalhes */}
+      {selectedItem && (
+        <ModalDetalhesItem
+          isOpen={showDetailsModal}
+          item={selectedItem}
+          onClose={() => {
+            setShowDetailsModal(false);
+            setSelectedItem(null);
+          }}
         />
       )}
     </div>

@@ -10,26 +10,70 @@ interface DocumentModalProps {
   onClose: () => void
 }
 
-const statusConfig = {
+const statusConfig: Record<Document['status'], {
+  label: string;
+  variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning';
+  description: string;
+}> = {
   pending: {
     label: 'Aguardando Envio',
-    variant: 'warning' as const,
+    variant: 'warning',
     description: 'Este documento ainda não foi enviado.',
   },
   analyzing: {
     label: 'Em Análise',
-    variant: 'default' as const,
+    variant: 'default',
     description: 'Nossa equipe está revisando este documento.',
   },
   approved: {
     label: 'Aprovado',
-    variant: 'success' as const,
+    variant: 'success',
     description: 'Documento aprovado e sendo processado.',
   },
   rejected: {
     label: 'Rejeitado',
-    variant: 'destructive' as const,
+    variant: 'destructive',
     description: 'Documento rejeitado e precisa ser reenviado.',
+  },
+  waiting_apostille: {
+    label: 'Aguardando Apostilamento',
+    variant: 'warning',
+    description: 'O documento está aguardando o processo de apostilamento.',
+  },
+  analyzing_apostille: {
+    label: 'Analisando Apostila',
+    variant: 'default',
+    description: 'Estamos analisando a apostila do documento.',
+  },
+  waiting_translation: {
+    label: 'Aguardando Tradução',
+    variant: 'warning',
+    description: 'O documento está aguardando tradução juramentada.',
+  },
+  analyzing_translation: {
+    label: 'Analisando Tradução',
+    variant: 'default',
+    description: 'Estamos analisando a tradução do documento.',
+  },
+  waiting_translation_quote: {
+    label: 'Aguardando Orçamento',
+    variant: 'warning',
+    description: 'Estamos aguardando o orçamento da tradução.',
+  },
+  waiting_quote_approval: {
+    label: 'Aguardando Aprovação',
+    variant: 'warning',
+    description: 'O orçamento da tradução está aguardando sua aprovação.',
+  },
+  waiting_apostille_quote: {
+    label: 'Aguardando Orçamento',
+    variant: 'warning',
+    description: 'Estamos aguardando o orçamento do apostilamento.',
+  },
+  sent_for_apostille: {
+    label: 'Enviado para Apostila',
+    variant: 'default',
+    description: 'O documento foi enviado para o processo de apostilamento.',
   },
 }
 

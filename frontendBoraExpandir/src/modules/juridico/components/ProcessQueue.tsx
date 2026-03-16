@@ -9,6 +9,7 @@ import juridicoService, { Processo } from '../services/juridicoService';
 import { FormsDeclarationsSection } from './FormsDeclarationsSection';
 import { ProcessMemberCard } from './ProcessMemberCard';
 import { useAuth } from '../../../contexts/AuthContext';
+import { clienteService } from '../../cliente/services/clienteService';
 
 
 export interface Process {
@@ -55,6 +56,7 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
     const [selectedFolder, setSelectedFolder] = useState<Process | null>(null);
     const [selectedFolderDocs, setSelectedFolderDocs] = useState<any[]>([]); // Raw backend documents
     const [dependents, setDependents] = useState<any[]>([]); // To resolve names
+    const [reqDocsConfig, setReqDocsConfig] = useState<any[]>([]); // To map display names
     const [selectedMember, setSelectedMember] = useState<{ name: string, id?: string } | null>(null);
     const [loading, setLoading] = useState(false);
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -165,12 +167,14 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
 
         const fetchData = async () => {
             try {
-                const [docs, deps] = await Promise.all([
+                const [docs, deps, config] = await Promise.all([
                     juridicoService.getDocumentosByProcesso(selectedFolder.id),
-                    juridicoService.getDependentes(selectedFolder.clientId)
+                    juridicoService.getDependentes(selectedFolder.clientId),
+                    clienteService.getDocumentosRequeridos(selectedFolder.clientId)
                 ]);
                 setSelectedFolderDocs(docs);
                 setDependents(deps);
+                setReqDocsConfig(config);
             } catch (error) {
                 console.error(error);
             }
@@ -331,21 +335,24 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                 } else if (status.includes('translation')) {
                     stage = 'translation_check';
                 } else if (status === 'approved') {
-                    // Only fully completed if flags are set, but strictly 'approved' status usually comes last
                     if (doc.apostilado && doc.traduzido) {
                         stage = 'completed';
                     } else {
-                        // Intermediate approved states? 
-                        // If approved but not apostilled -> waiting apostille (should be status waiting_apostille)
-                        // If approved logic is handled by status string, we trust status.
-                        // Fallback: if 'approved' generic, treat as completed for stage visualization?
                         stage = 'completed';
                     }
                 }
 
+                // Map type to display name
+                const configItem = reqDocsConfig.find(item => item.type === doc.tipo);
+                const displayName = configItem?.name || 
+                                   (doc.tipo === 'rg' ? 'RG' : 
+                                    doc.tipo?.charAt(0).toUpperCase() + doc.tipo?.slice(1)) || 
+                                   'Documento';
+
                 return {
                     id: doc.id,
-                    name: doc.nome_original || doc.tipo,
+                    name: displayName,
+                    originalName: doc.nome_original,
                     type: doc.tipo,
                     url: doc.public_url || '',
                     status: status as any,

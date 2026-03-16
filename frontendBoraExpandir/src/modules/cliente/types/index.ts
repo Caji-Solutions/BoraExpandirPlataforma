@@ -66,7 +66,7 @@ export interface Document {
   memberId?: string;
   name: string;
   type: string;
-  status: 'pending' | 'analyzing' | 'waiting_apostille' | 'analyzing_apostille' | 'waiting_translation' | 'analyzing_translation' | 'waiting_translation_quote' | 'waiting_quote_approval' | 'approved' | 'rejected' | 'sent_for_apostille';
+  status: 'pending' | 'analyzing' | 'waiting_apostille' | 'analyzing_apostille' | 'waiting_apostille_quote' | 'waiting_translation' | 'analyzing_translation' | 'waiting_translation_quote' | 'waiting_quote_approval' | 'approved' | 'rejected' | 'sent_for_apostille';
   isApostilled?: boolean;
   isTranslated?: boolean;
   uploadDate: Date;

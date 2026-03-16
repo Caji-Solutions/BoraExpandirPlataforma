@@ -32,6 +32,7 @@ interface SolicitarDocumentoParams {
     notificar?: boolean
     prazo?: number
     criadorId?: string // ID do funcionário que está fazendo a solicitação
+    solicitado_pelo_juridico?: boolean
 }
 
 interface SolicitarRequerimentoParams {
@@ -258,10 +259,11 @@ class JuridicoRepository {
                     whatsapp,
                     status,
                     previsao_chegada
-                )
+                ),
+                formularios_cliente!agendamento_id (*)
             `)
             .eq('requer_delegacao', true)
-            .eq('pagamento_status', 'aprovado')
+            .eq('status', 'confirmado')
             .order('data_hora', { ascending: true })
 
         if (error) {
@@ -270,6 +272,24 @@ class JuridicoRepository {
         }
 
         if (!agendamentos || agendamentos.length === 0) return []
+
+        // Enriquecer com dados do catálogo manualmente (já que não há FK no momento)
+        const produtoIds = [...new Set(agendamentos.map(a => a.produto_id).filter(Boolean))]
+        let catalogoMap: Record<string, any> = {}
+
+        if (produtoIds.length > 0) {
+            const { data: catalogo } = await supabase
+                .from('catalogo_servicos')
+                .select('id, nome, valor, duracao')
+                .in('id', produtoIds)
+            
+            if (catalogo) {
+                catalogoMap = catalogo.reduce((acc, item) => {
+                    acc[item.id] = item
+                    return acc
+                }, {} as Record<string, any>)
+            }
+        }
 
         // Buscar responsáveis únicos
         const responsavelIds = [...new Set(
@@ -294,9 +314,10 @@ class JuridicoRepository {
             }
         }
 
-        // Mapear com seus responsáveis
+        // Mapear com seus responsáveis e dados do catálogo
         return agendamentos.map(agendamento => ({
             ...agendamento,
+            catalogo_servicos: agendamento.produto_id ? catalogoMap[agendamento.produto_id] || null : null,
             responsavel: agendamento.responsavel_juridico_id 
                 ? responsaveisMap[agendamento.responsavel_juridico_id] || null 
                 : null
@@ -316,12 +337,12 @@ class JuridicoRepository {
                     whatsapp,
                     status,
                     previsao_chegada
-                )
+                ),
+                formularios_cliente!agendamento_id (*)
             `)
             .eq('responsavel_juridico_id', responsavelId)
             .eq('requer_delegacao', true)
-            .eq('pagamento_status', 'aprovado')
-            .neq('status', 'cancelado')
+            .eq('status', 'confirmado')
             .order('data_hora', { ascending: true })
 
         if (error) {
@@ -331,24 +352,28 @@ class JuridicoRepository {
 
         if (!data || data.length === 0) return []
 
-        // Verificação em lote: Quais agendamentos já têm formulário preenchido?
-        const agendamentoIds = data.map((a: any) => a.id).filter(Boolean)
-        let idsComFormulario: string[] = []
+        // Enriquecer com dados do catálogo manualmente
+        const produtoIds = [...new Set(data.map(a => a.produto_id).filter(Boolean))]
+        let catalogoMap: Record<string, any> = {}
 
-        if (agendamentoIds.length > 0) {
-            const { data: formularios } = await supabase
-                .from('formularios_cliente')
-                .select('agendamento_id')
-                .in('agendamento_id', agendamentoIds)
-
-            if (formularios) {
-                idsComFormulario = formularios.map(f => f.agendamento_id)
+        if (produtoIds.length > 0) {
+            const { data: catalogo } = await supabase
+                .from('catalogo_servicos')
+                .select('id, nome, valor, duracao')
+                .in('id', produtoIds)
+            
+            if (catalogo) {
+                catalogoMap = catalogo.reduce((acc, item) => {
+                    acc[item.id] = item
+                    return acc
+                }, {} as Record<string, any>)
             }
         }
 
         return data.map((ag: any) => ({
             ...ag,
-            cliente_is_user: idsComFormulario.includes(ag.id)
+            catalogo_servicos: ag.produto_id ? catalogoMap[ag.produto_id] || null : null,
+            cliente_is_user: ag.formularios_cliente && ag.formularios_cliente.length > 0
         }))
     }
 
@@ -903,32 +928,83 @@ class JuridicoRepository {
             prazo: params.prazo
         })
 
-        // 1. Criar o documento
-        console.log('Tentando criar registro em documentos...')
-        const { data: doc, error: docError } = await supabase
-            .from('documentos')
-            .insert([{
-                cliente_id: params.clienteId,
-                tipo: params.tipo,
-                processo_id: params.processoId || null,
-                dependente_id: params.membroId === params.clienteId ? null : (params.membroId || null),
-                requerimento_id: params.requerimentoId || null,
-                status: 'PENDING',
-                nome_original: params.tipo,
-                nome_arquivo: params.tipo,
-                storage_path: 'pending',
-                solicitado_pelo_juridico: true,
-                criado_em: new Date().toISOString(),
-                atualizado_em: new Date().toISOString()
-            }])
-            .select()
-            .single()
+        const dependenteId = params.membroId === params.clienteId ? null : (params.membroId || null);
 
-        if (docError) {
-            console.error('Erro ao solicitar documento no repositório:', docError)
-            throw docError
+        // 1. Verificar se o documento já existe
+        console.log('Verificando se já existe um documento deste tipo para o cliente/processo...')
+        let query = supabase
+            .from('documentos')
+            .select('*')
+            .eq('cliente_id', params.clienteId)
+            .eq('tipo', params.tipo)
+        
+        if (params.processoId) {
+            query = query.eq('processo_id', params.processoId)
+        } else {
+            query = query.is('processo_id', null)
         }
-        console.log('Documento criado com sucesso:', doc.id)
+
+        if (dependenteId) {
+            query = query.eq('dependente_id', dependenteId)
+        } else {
+            query = query.is('dependente_id', null)
+        }
+
+        const { data: existingDoc, error: findError } = await query.maybeSingle()
+
+        if (findError) {
+            console.error('Erro ao buscar documento existente NO REPOSITORIO (não crítico):', findError)
+        }
+
+        let doc;
+        let dbError;
+
+        if (existingDoc) {
+            console.log('Documento existente encontrado. Re-solicitando...', existingDoc.id)
+            const { data: updatedDoc, error: err } = await supabase
+                .from('documentos')
+                .update({
+                    status: 'PENDING',
+                    solicitado_pelo_juridico: params.solicitado_pelo_juridico ?? true,
+                    atualizado_em: new Date().toISOString()
+                })
+                .eq('id', existingDoc.id)
+                .select()
+                .single()
+            
+            doc = updatedDoc
+            dbError = err
+        } else {
+            console.log('Nenhum documento encontrado. Criando novo registro...')
+            const { data: newDoc, error: err } = await supabase
+                .from('documentos')
+                .insert([{
+                    cliente_id: params.clienteId,
+                    tipo: params.tipo,
+                    processo_id: params.processoId || null,
+                    dependente_id: dependenteId,
+                    requerimento_id: params.requerimentoId || null,
+                    status: 'PENDING',
+                    nome_original: params.tipo,
+                    nome_arquivo: params.tipo,
+                    storage_path: 'pending',
+                    solicitado_pelo_juridico: params.solicitado_pelo_juridico ?? true,
+                    criado_em: new Date().toISOString(),
+                    atualizado_em: new Date().toISOString()
+                }])
+                .select()
+                .single()
+            
+            doc = newDoc
+            dbError = err
+        }
+
+        if (dbError || !doc) {
+            console.error('Erro ao processar documento no banco:', dbError)
+            throw dbError || new Error('Documento não retornado após insert/update')
+        }
+        
+        console.log('Documento processado com sucesso:', doc.id)
 
         // 2. Criar notificação se solicitado
         if (params.notificar === true || (params.notificar as any) === 'true') {

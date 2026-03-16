@@ -197,6 +197,35 @@ class TraducoesController {
       return res.status(500).json({ error: 'Erro ao enviar tradução', details: error.message })
     }
   }
+
+  async submitComprovante(req: Request, res: Response) {
+    try {
+      const { id } = req.params
+      const file = (req as any).file
+
+      if (!file) {
+        return res.status(400).json({ error: 'Nenhum arquivo enviado' })
+      }
+
+      const timestamp = Date.now()
+      const fileExtension = file.originalname.split('.').pop()
+      const fileName = `comprovante_${timestamp}.${fileExtension}`
+      const filePath = `comprovantes_traducoes/${id}/${fileName}`
+
+      const result = await TraducoesRepository.submitComprovante({
+        orcamentoId: id,
+        filePath,
+        fileBuffer: file.buffer,
+        contentType: file.mimetype,
+        nomeOriginal: file.originalname
+      })
+
+      return res.status(200).json({ message: 'Comprovante enviado com sucesso', data: result })
+    } catch (error: any) {
+      console.error('[TraducoesController.submitComprovante] Error:', error)
+      return res.status(500).json({ error: 'Erro ao enviar comprovante', details: error.message })
+    }
+  }
 }
 
 export default new TraducoesController()

@@ -361,6 +361,63 @@ class TraducoesRepository {
 
     return doc
   }
+
+  async submitComprovante(dados: {
+    orcamentoId: string
+    filePath: string
+    fileBuffer: Buffer
+    contentType: string
+    nomeOriginal: string
+  }) {
+    // 1. Upload comprovante to Supabase Storage
+    const { error: uploadError } = await supabase
+      .storage
+      .from('documentos')
+      .upload(dados.filePath, dados.fileBuffer, {
+        contentType: dados.contentType,
+        upsert: true
+      })
+
+    if (uploadError) {
+      console.error('Erro ao fazer upload do comprovante:', uploadError)
+      throw uploadError
+    }
+
+    // 2. Get public URL
+    const { data: urlData } = supabase
+      .storage
+      .from('documentos')
+      .getPublicUrl(dados.filePath)
+
+    const publicUrl = urlData?.publicUrl || ''
+
+    // 3. Update orcamento with comprovante_url and change status to 'pendente_verificacao'
+    const { data: orcamento, error: updateError } = await supabase
+      .from('orcamentos')
+      .update({
+        status: 'pendente_verificacao',
+        comprovante_url: publicUrl,
+        comprovante_storage_path: dados.filePath,
+        comprovante_nome_original: dados.nomeOriginal,
+        atualizado_em: new Date().toISOString()
+      })
+      .eq('id', dados.orcamentoId)
+      .select()
+      .single()
+
+    if (updateError) {
+      console.error('Erro ao atualizar orçamento com comprovante:', updateError)
+      throw updateError
+    }
+
+    // 4. Update document status to indicate it's waiting for payment verification
+    await supabase
+      .from('documentos')
+      .update({ status: 'analyzing_translation_payment' }) // New status for payment analysis
+      .eq('id', orcamento.documento_id)
+
+    return orcamento
+  }
 }
 
 export default new TraducoesRepository()

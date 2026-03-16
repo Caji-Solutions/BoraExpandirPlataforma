@@ -50,6 +50,9 @@ router.get('/fila', TraducoesController.getFilaDeTrabalho)
 // GET /api/traducoes/entregues - Delivered translations
 router.get('/entregues', TraducoesController.getEntregues)
 
+// POST /api/traducoes/orcamento/:id/comprovante - Upload payment proof
+router.post('/orcamento/:id/comprovante', upload.single('file'), TraducoesController.submitComprovante)
+
 // POST /api/traducoes/submit - Submit translated document
 router.post('/submit', upload.single('file'), TraducoesController.submitTraducao)
 
