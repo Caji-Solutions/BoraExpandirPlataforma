@@ -113,7 +113,7 @@ class FormularioController {
                     const { data: existingProfile } = await supabase
                         .from('profiles')
                         .select('id')
-                        .eq('email', email)
+                        .ilike('email', email)
                         .maybeSingle()
                         
                     if (existingProfile) {

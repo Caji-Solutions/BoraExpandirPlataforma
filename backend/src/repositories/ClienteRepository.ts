@@ -644,7 +644,7 @@ class ClienteRepository {
             .from('formularios_cliente')
             .select('*')
             .eq('formulario_juridico_id', formularioJuridicoId)
-            .order('criado_em', { ascending: false })
+            .order('created_at', { ascending: false })
 
         if (error) {
             console.error('Erro ao buscar respostas de formulário:', error)
@@ -659,7 +659,7 @@ class ClienteRepository {
             .from('formularios_cliente')
             .select('*')
             .eq('cliente_id', clienteId)
-            .order('criado_em', { ascending: false })
+            .order('created_at', { ascending: false })
 
         if (error) {
             console.error('Erro ao buscar respostas de formulários do cliente:', error)

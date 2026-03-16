@@ -20,6 +20,7 @@ import { ProcessAction } from '../../modules/juridico/components/ProcessAction'
 import { DocumentRequestModal } from '../../modules/juridico/components/DocumentRequestModal'
 import { RequirementRequestModal } from '../../modules/juridico/components/RequirementRequestModal'
 import { FormsDeclarationsSection } from '../../modules/juridico/components/FormsDeclarationsSection'
+import { ClientQuestionnaireAnswers } from './ClientQuestionnaireAnswers'
 import { RequirementsSection } from '../../modules/juridico/components/RequirementsSection'
 import juridicoService from '../../modules/juridico/services/juridicoService'
 import { useAuth } from '../../contexts/AuthContext'
@@ -441,25 +442,7 @@ export function DNAClientDetailView({
                                 </div>
                             </div>
                         ) : (
-                            <div className="bg-card border border-border rounded-2xl p-0 overflow-hidden relative">
-                                <div className="p-6 border-b border-border bg-muted/20">
-                                    <h3 className="text-xl font-bold text-foreground flex items-center gap-3">
-                                        <FileText className="h-6 w-6 text-primary" />
-                                        Formulários e Declarações
-                                    </h3>
-                                    <p className="text-sm text-muted-foreground mt-1">
-                                        Gerencie os documentos e formulários enviados para o cliente.
-                                    </p>
-                                </div>
-                                <FormsDeclarationsSection
-                                    isOpen={isFormModalOpen}
-                                    onOpenChange={setIsFormModalOpen}
-                                    clienteId={client.true_id || client.id}
-                                    processoId={client.processo_id || ''}
-                                    clientName={client.nome}
-                                    members={members}
-                                />
-                            </div>
+                            <ClientQuestionnaireAnswers clienteId={client.true_id || client.id} />
                         )}
                     </div>
 

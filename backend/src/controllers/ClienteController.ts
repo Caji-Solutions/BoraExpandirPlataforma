@@ -379,9 +379,33 @@ class ClienteController {
           if (authError.message.toLowerCase().includes('already') || authError.status === 422) {
             console.log('ClienteController.register - Usuário já existe no Auth (Auth-only). Buscando ID...');
             
-           
+            const { data: profileData } = await supabase.from('profiles').select('id').ilike('email', normalizedEmail).maybeSingle();
             
+            if (profileData && profileData.id) {
+               usuarioId = profileData.id;
+               isNewUser = false; // Mark as not new, so we don't send tempPassword
+               console.log('ClienteController.register - User ID encontrado via profiles:', usuarioId);
+            } else {
+               // Fallback via Admin API listUsers if profile sync failed
+               try {
+                  const { data: listData, error: listError } = await supabase.auth.admin.listUsers();
+                  if (!listError && listData?.users) {
+                     const existingUser = listData.users.find((u: any) => u.email?.toLowerCase() === normalizedEmail);
+                     if (existingUser) {
+                        usuarioId = existingUser.id;
+                        isNewUser = false;
+                        console.log('ClienteController.register - User ID encontrado via listUsers:', usuarioId);
+                     }
+                  }
+               } catch (err) {
+                  console.error('Erro ao buscar listUsers:', err);
+               }
+            }
 
+            if (!usuarioId) {
+                console.error('Erro fatal ao buscar auth user ID existente:', authError.message);
+                return res.status(400).json({ message: 'Usuário já existe, mas não foi possível encontrar seu ID.' });
+            }
           } else {
             console.error('Erro fatal ao criar auth user:', authError.message);
             return res.status(authError.status || 400).json({ message: authError.message });
