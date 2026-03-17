@@ -34,7 +34,7 @@ export function TranslationQuoteModal({
   const [candidateDocuments, setCandidateDocuments] = useState<ClientDocument[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [step, setStep] = useState<'info' | 'pix' | 'success'>('info')
+  const [step, setStep] = useState<'info' | 'pix' | 'success' | 'waiting_confirmation'>('info')
   const [error, setError] = useState<string | null>(null)
   const [copiedPix, setCopiedPix] = useState(false)
   const [comprovanteFile, setComprovanteFile] = useState<File | null>(null)
@@ -61,6 +61,9 @@ export function TranslationQuoteModal({
       const budget = await traducoesService.getOrcamentoByDocumento(documentoId)
       if (budget) {
         setAllBudgets({ [documentoId]: budget })
+        if (budget.status === 'pendente_verificacao') {
+          setStep('waiting_confirmation')
+        }
       }
       
     } catch (err: any) {
@@ -139,7 +142,10 @@ export function TranslationQuoteModal({
             </div>
             <div>
               <h3 className="font-bold text-gray-900 dark:text-white">
-                {step === 'info' ? 'Solicitar Tradução' : step === 'pix' ? 'Pagamento via PIX' : 'Concluído'}
+                {step === 'info' ? 'Solicitar Tradução' : 
+                 step === 'pix' ? 'Pagamento via PIX' : 
+                 step === 'waiting_confirmation' ? 'Aguardando Verificação' :
+                 'Concluído'}
               </h3>
               <p className="text-xs text-gray-500 truncate max-w-[200px] font-medium">{documentoNome}</p>
             </div>
@@ -171,6 +177,35 @@ export function TranslationQuoteModal({
               <Button onClick={onClose} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 rounded-xl">
                 Fechar
               </Button>
+            </div>
+          ) : step === 'waiting_confirmation' ? (
+            <div className="flex flex-col items-center justify-center py-6 text-center space-y-4">
+              <div className="h-16 w-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
+                <Clock className="h-8 w-8 text-amber-600" />
+              </div>
+              <div className="space-y-2">
+                <h4 className="text-xl font-bold text-gray-900 dark:text-white">Aguardando Verificação</h4>
+                <p className="text-sm text-gray-500 max-w-[300px] mx-auto">
+                  Já recebemos o seu comprovante! Nossa equipe financeira está verificando o pagamento. Isso geralmente leva poucos minutos em horário comercial.
+                </p>
+              </div>
+              <div className="w-full p-4 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-100 dark:border-amber-900/20">
+                 <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                   Status: {allBudgets[documentoId]?.pagamento_nota_recusa ? "Recusado - Reenvie o comprovante" : "Em análise financeira"}
+                 </p>
+              </div>
+              <Button onClick={onClose} className="w-full bg-gray-100 dark:bg-neutral-800 text-gray-900 dark:text-white font-bold h-12 rounded-xl">
+                Entendi
+              </Button>
+              {allBudgets[documentoId]?.pagamento_nota_recusa && (
+                <Button 
+                  onClick={() => setStep('pix')} 
+                  variant="outline" 
+                  className="w-full border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400"
+                >
+                  Tentar Novamente
+                </Button>
+              )}
             </div>
           ) : (
             <div className="space-y-6">

@@ -88,12 +88,13 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
             )
         ).length;
 
-        // Aguardando Ação (Pendentes): PENDING, REJECTED, ou WAITING_*
+        // Aguardando Ação (Pendentes): PENDING, REJECTED, ou WAITING_* ou EXECUTING_*
         const waitingAction = docs.filter(d =>
             !d.status ||
             d.status === 'PENDING' ||
             d.status === 'REJECTED' ||
-            d.status.startsWith('WAITING')
+            d.status.startsWith('WAITING') ||
+            d.status.startsWith('EXECUTING')
         ).length;
 
         // Manter contagens específicas para visualização detalhada se necessário
@@ -297,7 +298,7 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
             else if (statusLower === 'approved' && doc.apostilado && doc.traduzido) {
                 member.completed++;
             }
-            else if (statusLower === 'rejected' || statusLower.startsWith('waiting') || statusLower === 'pending') {
+            else if (statusLower === 'rejected' || statusLower.startsWith('waiting') || statusLower.startsWith('executing') || statusLower === 'pending') {
                 member.waitingAction++;
             }
 

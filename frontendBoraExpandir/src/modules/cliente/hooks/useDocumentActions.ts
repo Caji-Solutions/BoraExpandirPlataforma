@@ -102,16 +102,16 @@ export function useDocumentActions({
         if (status === 'rejected') return 'rejected'
         const isWaitingQuote = status === 'waiting_quote_approval'
 
-        // Se está sendo analisado (independente da etapa), vai para a aba "Em Análise"
-        if (status.startsWith('analyzing')) {
-            return 'analyzing'
-        }
-
         if (status.includes('apostille') || (status === 'approved' && !doc.isApostilled) || (isWaitingQuote && !doc.isApostilled)) {
             return 'apostille'
         }
         if (status.includes('translation') || (isWaitingQuote && doc.isApostilled) || (status === 'approved' && doc.isApostilled && !doc.isTranslated)) {
             return 'translation'
+        }
+
+        // Se está sendo analisado (e não caiu nas etapas acima), vai para a aba "Em Análise"
+        if (status.startsWith('analyzing')) {
+            return 'analyzing'
         }
         if (status === 'approved' && doc.isApostilled && doc.isTranslated) {
             return 'completed'
@@ -139,7 +139,7 @@ export function useDocumentActions({
                                         (doc.solicitado_pelo_juridico as any) === 'true';
                     
                     const statusLower = doc.status?.toLowerCase() || '';
-                    const isWorkflowActive = statusLower.includes('waiting');
+                    const isWorkflowActive = statusLower.includes('waiting') || statusLower.startsWith('analyzing') || statusLower.startsWith('executing');
                     
                     return foiSolicitado || isWorkflowActive;
                 }
@@ -186,7 +186,7 @@ export function useDocumentActions({
                                     (d.solicitado_pelo_juridico as any) === 1 || 
                                     (d.solicitado_pelo_juridico as any) === 'true';
                 
-                if (foiSolicitado && (status === 'waiting_apostille' || status === 'waiting_translation')) {
+                if (foiSolicitado && (status === 'waiting_apostille' || status === 'waiting_translation' || status === 'executing_apostille' || status === 'executing_translation')) {
                     return true;
                 }
 

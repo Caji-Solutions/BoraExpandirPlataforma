@@ -169,11 +169,10 @@ export function DocumentItemCard({
                         </Button>
                     )}
 
-                    {/* Analyzing → Clock badge */}
                     {stageId === 'analyzing' && (
                         <div className="flex items-center gap-1 text-blue-600 text-xs font-medium px-2 py-1 bg-blue-50 rounded-full">
                             <Clock className="h-4 w-4" />
-                            <span>Aguardando</span>
+                            <span>Aguardando Análise</span>
                         </div>
                     )}
 
@@ -223,15 +222,15 @@ export function DocumentItemCard({
                                         Substituir
                                     </Button>
                                 </div>
-                            ) : doc.status?.toLowerCase() === 'waiting_apostille_quote' ? (
-                                <div className="flex items-center gap-1 text-amber-600 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full">
+                            ) : (doc.status?.toLowerCase() === 'executing_apostille' || doc.status?.toLowerCase() === 'analyzing_apostille' || doc.status?.toLowerCase() === 'analyzing_translation_payment') ? (
+                                <div className="flex items-center gap-1 text-amber-600 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full border border-amber-100">
                                     <Clock className="h-4 w-4" />
-                                    <span>Orçamento Solicitado</span>
+                                    <span>Em Apostilagem</span>
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-1 text-amber-600 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full">
                                     <Clock className="h-4 w-4" />
-                                    <span>Em Análise</span>
+                                    <span>Aguardando Análise</span>
                                 </div>
                             )}
                         </div>
@@ -283,20 +282,15 @@ export function DocumentItemCard({
                                         Substituir
                                     </Button>
                                 </div>
-                            ) : doc.status?.toLowerCase() === 'waiting_translation_quote' ? (
-                                <div className="flex items-center gap-1 text-purple-600 text-xs font-medium px-2 py-1 bg-purple-50 rounded-full">
+                            ) : (doc.status?.toLowerCase() === 'executing_translation' || doc.status?.toLowerCase() === 'analyzing_translation' || doc.status?.toLowerCase() === 'analyzing_translation_payment') ? (
+                                <div className="flex items-center gap-1 text-purple-600 text-xs font-medium px-2 py-1 bg-purple-50 rounded-full border border-purple-100">
                                     <Clock className="h-4 w-4" />
-                                    <span>Orçamento Solicitado</span>
-                                </div>
-                            ) : doc.status?.toLowerCase() === 'analyzing_translation_payment' ? (
-                                <div className="flex items-center gap-1 text-emerald-600 text-xs font-medium px-2 py-1 bg-emerald-50 rounded-full border border-emerald-100">
-                                    <Clock className="h-4 w-4" />
-                                    <span>Pagamento em Análise</span>
+                                    <span>Em Tradução</span>
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-1 text-purple-600 text-xs font-medium px-2 py-1 bg-purple-50 rounded-full">
                                     <Clock className="h-4 w-4" />
-                                    <span>Em Análise</span>
+                                    <span>Aguardando Análise</span>
                                 </div>
                             )}
                         </div>

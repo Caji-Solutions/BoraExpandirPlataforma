@@ -25,6 +25,7 @@ const API_BASE_URL = import.meta.env.VITE_BACKEND_URL
 
 interface Comprovante {
     id: string
+    ids_grupo?: string[]
     nome: string
     email: string
     telefone: string
@@ -38,6 +39,20 @@ interface Comprovante {
     pagamento_nota_recusa?: string
     status: string
     duracao_minutos: number
+    tipo_comprovante?: 'agendamento' | 'traducao'
+    valor_tradutor?: number
+    valor_plataforma?: number
+    lucro?: number
+    prazo_entrega?: string
+    tradutor_nome?: string
+    observacoes?: string
+    docs_relacionados?: Array<{
+        id: string
+        documento_id: string
+        nome: string
+        valor: number
+        observacoes?: string
+    }>
 }
 
 type ActionState = 'idle' | 'aprovar' | 'recusar' | 'confirming_aprovar' | 'confirming_recusar' | 'loading'
@@ -95,10 +110,18 @@ export function ComprovantesPage() {
     const handleAprovar = async (id: string) => {
         try {
             setAction(id, 'loading')
-            const res = await fetch(`${API_BASE_URL}/financeiro/comprovante/${id}/aprovar`, {
+            const item = comprovantes.find(c => c.id === id)
+            const isTraducao = item?.tipo_comprovante === 'traducao'
+            const endpoint = isTraducao 
+                ? `${API_BASE_URL}/financeiro/traducao/comprovante/${id}/aprovar`
+                : `${API_BASE_URL}/financeiro/comprovante/${id}/aprovar`
+
+            const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
+                body: JSON.stringify({
+                    ids_grupo: item?.ids_grupo
+                })
             })
             const json = await res.json()
             if (!res.ok) throw new Error(json.message || 'Erro ao aprovar')
@@ -124,10 +147,19 @@ export function ComprovantesPage() {
 
         try {
             setAction(id, 'loading')
-            const res = await fetch(`${API_BASE_URL}/financeiro/comprovante/${id}/recusar`, {
+            const item = comprovantes.find(c => c.id === id)
+            const isTraducao = item?.tipo_comprovante === 'traducao'
+            const endpoint = isTraducao 
+                ? `${API_BASE_URL}/financeiro/traducao/comprovante/${id}/recusar`
+                : `${API_BASE_URL}/financeiro/comprovante/${id}/recusar`
+
+            const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nota })
+                body: JSON.stringify({ 
+                    nota,
+                    ids_grupo: item?.ids_grupo 
+                })
             })
             const json = await res.json()
             if (!res.ok) throw new Error(json.message || 'Erro ao recusar')
@@ -254,6 +286,10 @@ export function ComprovantesPage() {
                                                 <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {c.email || '—'}</span>
                                                 <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {c.telefone || '—'}</span>
                                                 <span className="flex items-center gap-1"><Package className="w-3 h-3" /> {getServiceName(c.produto_id, c.produto_nome) || '—'}</span>
+                                                <span className="flex items-center gap-1">
+                                                    <Clock className="w-3 h-3" /> 
+                                                    {c.tipo_comprovante === 'traducao' ? 'Tradução' : 'Agendamento'}
+                                                </span>
                                                 <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {formatDateTime(c.data_hora)}</span>
                                             </div>
                                         </div>
@@ -261,13 +297,84 @@ export function ComprovantesPage() {
 
                                     {/* Valor + data upload */}
                                     <div className="text-right flex-shrink-0">
-                                        <p className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(c.valor)}</p>
-                                        <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1 justify-end">
+                                        <div className="flex flex-col items-end">
+                                            <p className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(c.valor)}</p>
+                                            {c.ids_grupo && c.ids_grupo.length > 1 && (
+                                                <span className="text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 px-2 py-0.5 rounded-full font-bold uppercase mt-1">
+                                                    Pagamento em Lote ({c.ids_grupo.length} itens)
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-gray-400 mt-1 flex items-center gap-1 justify-end">
                                             <CreditCard className="w-3 h-3" />
                                             Enviado em {formatDate(c.comprovante_upload_em)}
                                         </p>
+                                        {c.tipo_comprovante === 'traducao' && c.lucro !== undefined && (
+                                            <p className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 mt-1 uppercase tracking-wider">
+                                                Lucro Estimado: {formatCurrency(c.lucro)}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
+
+                                {/* Detalhes Extras para Tradução e Apostila */}
+                                {c.tipo_comprovante === 'traducao' && (
+                                    <div className="mt-4 p-3 rounded-xl bg-gray-50 dark:bg-neutral-800/50 border border-gray-100 dark:border-neutral-700/50 animate-in fade-in duration-300">
+                                        {c.docs_relacionados && c.docs_relacionados.length > 0 ? (
+                                            <div className="space-y-3">
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 border-b border-gray-200 dark:border-neutral-700 pb-1">Documentos Pagos Neste Comprovante</p>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    {c.docs_relacionados.map((doc: { id: string; documento_id: string; nome: string; valor: number; observacoes?: string; }) => (
+                                                        <div key={doc.id} className="flex items-center justify-between bg-white dark:bg-neutral-900 p-2 rounded-lg border border-gray-100 dark:border-neutral-800">
+                                                            <div className="min-w-0">
+                                                                <p className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate">{doc.nome}</p>
+                                                                <p className="text-[10px] text-gray-500 italic">{doc.observacoes || 'Sem observações'}</p>
+                                                            </div>
+                                                            <p className="text-xs font-bold text-gray-900 dark:text-white ml-2">{formatCurrency(doc.valor)}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                                <div>
+                                                    <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1">Tradutor(a)</p>
+                                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-1.5">
+                                                        <User className="w-3.5 h-3.5 text-indigo-500" />
+                                                        {c.tradutor_nome || 'Não definido'}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1">Custo Tradutor</p>
+                                                    <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+                                                        {formatCurrency(c.valor_tradutor)}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1">Valor Plataforma</p>
+                                                    <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                                                        {formatCurrency(c.valor_plataforma)}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1">Prazo de Entrega</p>
+                                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-1.5">
+                                                        <Clock className="w-3.5 h-3.5 text-blue-500" />
+                                                        {formatDate(c.prazo_entrega || '')}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {c.observacoes && !c.docs_relacionados && (
+                                            <div className="col-span-full border-t border-gray-100 dark:border-neutral-700/50 pt-2 mt-1">
+                                                <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1">Observações do Orçamento</p>
+                                                <p className="text-xs text-gray-600 dark:text-gray-400 italic">
+                                                    "{c.observacoes}"
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Divider */}
@@ -300,13 +407,13 @@ export function ComprovantesPage() {
                                             onClick={() => setAction(c.id, 'confirming_aprovar')}
                                             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm shadow-emerald-600/20 transition"
                                         >
-                                            <CheckCircle2 className="w-4 h-4" /> Aprovar
+                                            <CheckCircle2 className="w-4 h-4" /> Aprovar {c.ids_grupo && c.ids_grupo.length > 1 ? 'Lote' : ''}
                                         </button>
                                         <button
                                             onClick={() => setAction(c.id, 'confirming_recusar')}
                                             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-red-600 text-white hover:bg-red-700 shadow-sm shadow-red-600/20 transition"
                                         >
-                                            <XCircle className="w-4 h-4" /> Recusar
+                                            <XCircle className="w-4 h-4" /> Recusar {c.ids_grupo && c.ids_grupo.length > 1 ? 'Lote' : ''}
                                         </button>
                                     </div>
                                 )}
@@ -324,7 +431,7 @@ export function ComprovantesPage() {
                                             onClick={() => handleAprovar(c.id)}
                                             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-600/30 transition animate-in fade-in duration-200"
                                         >
-                                            <CheckCircle2 className="w-4 h-4" /> Confirmar Aprovação
+                                            <CheckCircle2 className="w-4 h-4" /> Confirmar Aprovação {c.ids_grupo && c.ids_grupo.length > 1 ? 'do Lote' : ''}
                                         </button>
                                     </div>
                                 )}
@@ -353,7 +460,7 @@ export function ComprovantesPage() {
                                                 onClick={() => handleRecusar(c.id)}
                                                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 shadow-md shadow-red-600/30 transition"
                                             >
-                                                <Send className="w-4 h-4" /> Enviar Recusa
+                                                <Send className="w-4 h-4" /> Enviar Recusa {c.ids_grupo && c.ids_grupo.length > 1 ? 'do Lote' : ''}
                                             </button>
                                         </div>
                                     </div>
@@ -363,7 +470,7 @@ export function ComprovantesPage() {
                                 {actionState === 'loading' && (
                                     <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
                                         <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
-                                        Processando...
+                                        Processando... {c.ids_grupo && c.ids_grupo.length > 1 ? 'Lote de pagamentos' : ''}
                                     </div>
                                 )}
                             </div>

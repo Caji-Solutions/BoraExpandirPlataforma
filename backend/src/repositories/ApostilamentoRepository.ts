@@ -6,7 +6,38 @@ class ApostilamentoRepository {
     documentoUrl: string;
     observacoes?: string;
   }) {
-    const { data, error } = await supabase
+    console.log(`[ApostilamentoRepository.create] Iniciando para documento: ${params.documentoId}`);
+    
+    // 0. Verificar se já existe um apostilamento e orçamento ativo para este documento
+    const { data: existingAp } = await supabase
+      .from('apostilamentos')
+      .select('*')
+      .eq('documento_id', params.documentoId)
+      .maybeSingle();
+
+    if (existingAp) {
+      console.log(`[ApostilamentoRepository.create] Apostilamento já existe para doc: ${params.documentoId}. Verificando orçamento...`);
+      const { data: existingOrc } = await supabase
+        .from('orcamentos')
+        .select('*')
+        .eq('documento_id', params.documentoId)
+        .eq('status', 'disponivel')
+        .maybeSingle();
+      
+      if (existingOrc) {
+        console.log(`[ApostilamentoRepository.create] Retornando orçamento existente: ${existingOrc.id}`);
+        return {
+          ...existingAp,
+          orcamentoId: existingOrc.id,
+          valorTotal: existingOrc.preco_atualizado
+        };
+      }
+    }
+
+    console.log(`[ApostilamentoRepository.create] Criando novo registro para doc: ${params.documentoId}`);
+
+    // 1. Criar o registro de apostilamento
+    const { data: apostilamento, error: apError } = await supabase
       .from('apostilamentos')
       .insert([{
         documento_id: params.documentoId,
@@ -17,12 +48,111 @@ class ApostilamentoRepository {
       .select()
       .single();
 
-    if (error) {
-      console.error('Erro ao criar apostilamento no repositório:', error);
-      throw error;
+    if (apError) {
+      console.error('Erro ao criar apostilamento no repositório:', apError);
+      throw apError;
     }
 
-    return data;
+    // 2. Criar um orçamento automático com valor fixo para a apostila
+    // Buscamos o valor da apostila nas configurações ou usamos 180 como padrão
+    const { data: configData } = await supabase
+      .from('configuracoes')
+      .select('valor')
+      .eq('chave', 'valor_apostila')
+      .single();
+    
+    const valorApostila = configData?.valor ? parseFloat(configData.valor) : 180;
+
+    const { data: orcamento, error: orcError } = await supabase
+      .from('orcamentos')
+      .insert([{
+        documento_id: params.documentoId,
+        valor_orcamento: valorApostila,
+        preco_atualizado: valorApostila,
+        prazo_entrega: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 dias de prazo padrão?
+        observacoes: 'Apostilamento (Valor Fixo)',
+        status: 'disponivel' // Fica disponível para o cliente pagar imediatamente
+      }])
+      .select()
+      .single();
+
+    if (orcError) {
+      console.error('Erro ao criar orçamento para apostilamento:', orcError);
+      throw orcError;
+    }
+
+    // 3. Atualizar status do documento para liberar pagamento
+    await supabase
+      .from('documentos')
+      .update({ status: 'WAITING_QUOTE_APPROVAL' })
+      .eq('id', params.documentoId);
+
+    return {
+      ...apostilamento,
+      orcamentoId: orcamento.id,
+      valorTotal: valorApostila
+    };
+  }
+
+  async submitComprovante(dados: {
+    orcamentoIds: string[]
+    filePath: string
+    fileBuffer: Buffer
+    contentType: string
+    nomeOriginal: string
+  }) {
+    console.log(`[ApostilamentoRepository.submitComprovante] Iniciando para orçamentos: ${dados.orcamentoIds.join(', ')}`);
+    console.log(`[ApostilamentoRepository.submitComprovante] Path: ${dados.filePath}`);
+    
+    // 1. Upload comprovante to Supabase Storage
+    const { error: uploadError } = await supabase
+      .storage
+      .from('documentos')
+      .upload(dados.filePath, dados.fileBuffer, {
+        contentType: dados.contentType,
+        upsert: true
+      })
+
+    if (uploadError) {
+      console.error('Erro ao fazer upload do comprovante de apostila:', uploadError)
+      throw uploadError
+    }
+
+    // 2. Get public URL
+    const { data: urlData } = supabase
+      .storage
+      .from('documentos')
+      .getPublicUrl(dados.filePath)
+
+    const publicUrl = urlData?.publicUrl || ''
+    console.log(`[ApostilamentoRepository.submitComprovante] URL pública gerada: ${publicUrl}`);
+
+    // 3. Update all orcamentos with comprovante_url and change status to 'pendente_verificacao'
+    const { data: orcamentos, error: updateError } = await supabase
+      .from('orcamentos')
+      .update({
+        status: 'pendente_verificacao',
+        comprovante_url: publicUrl,
+        comprovante_storage_path: dados.filePath,
+        comprovante_nome_original: dados.nomeOriginal,
+        atualizado_em: new Date().toISOString()
+      })
+      .in('id', dados.orcamentoIds)
+      .select()
+
+    if (updateError) {
+      console.error('Erro ao atualizar orçamentos (apostila) com comprovante:', updateError)
+      throw updateError
+    }
+
+    // 4. Update all related document statuses
+    const documentoIds = orcamentos.map(o => o.documento_id)
+    await supabase
+      .from('documentos')
+      .update({ status: 'analyzing_translation_payment' })
+      .in('id', documentoIds)
+
+    return orcamentos
   }
 
   async updateStatus(id: string, params: {
@@ -57,6 +187,14 @@ class ApostilamentoRepository {
     if (error) {
       console.error('Erro ao atualizar apostilamento:', error);
       throw error;
+    }
+
+    // Se concluiu o apostilamento, move o documento para análise jurídica da apostila
+    if (params.status === 'concluido' && data.documento_id) {
+      await supabase
+        .from('documentos')
+        .update({ status: 'ANALYZING_APOSTILLE' })
+        .eq('id', data.documento_id);
     }
 
     return data;

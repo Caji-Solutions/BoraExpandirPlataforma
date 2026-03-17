@@ -21,7 +21,7 @@ const statusConfig: Record<Document['status'], {
     description: 'Este documento ainda não foi enviado.',
   },
   analyzing: {
-    label: 'Em Análise',
+    label: 'Aguardando Análise',
     variant: 'default',
     description: 'Nossa equipe está revisando este documento.',
   },
@@ -41,7 +41,7 @@ const statusConfig: Record<Document['status'], {
     description: 'O documento está aguardando o processo de apostilamento.',
   },
   analyzing_apostille: {
-    label: 'Analisando Apostila',
+    label: 'Aguardando Análise',
     variant: 'default',
     description: 'Estamos analisando a apostila do documento.',
   },
@@ -51,7 +51,7 @@ const statusConfig: Record<Document['status'], {
     description: 'O documento está aguardando tradução juramentada.',
   },
   analyzing_translation: {
-    label: 'Analisando Tradução',
+    label: 'Aguardando Análise',
     variant: 'default',
     description: 'Estamos analisando a tradução do documento.',
   },
@@ -74,6 +74,11 @@ const statusConfig: Record<Document['status'], {
     label: 'Enviado para Apostila',
     variant: 'default',
     description: 'O documento foi enviado para o processo de apostilamento.',
+  },
+  analyzing_translation_payment: {
+    label: 'Aguardando Análise',
+    variant: 'default',
+    description: 'Seu pagamento está sendo analisado pela nossa equipe.',
   },
 }
 

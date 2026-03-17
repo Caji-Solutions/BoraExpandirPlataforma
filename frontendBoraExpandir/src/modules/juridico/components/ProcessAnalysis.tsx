@@ -79,7 +79,7 @@ export interface JuridicoDocument {
   originalName?: string;
   type: string;
   url: string;
-  status: 'pending' | 'analyzing' | 'rejected' | 'waiting_apostille' | 'analyzing_apostille' | 'waiting_translation' | 'analyzing_translation' | 'approved';
+  status: 'pending' | 'analyzing' | 'rejected' | 'waiting_apostille' | 'executing_apostille' | 'analyzing_apostille' | 'waiting_translation' | 'executing_translation' | 'analyzing_translation' | 'approved';
   currentStage: AnalysisStage;
   rejectionReason?: string;
   solicitado_pelo_juridico?: boolean;
@@ -893,6 +893,10 @@ export function ProcessAnalysis({
                         <Button
                           className="flex-1 h-12 text-base bg-green-600 hover:bg-green-700 text-white shadow-sm hover:shadow-green-200 dark:hover:shadow-none active:scale-[0.98]"
                           onClick={() => handleAction('next')}
+                          disabled={
+                            (selectedDoc.currentStage === 'apostille_check' && (isApostilleWaiting || selectedDoc.status === 'executing_apostille')) ||
+                            (selectedDoc.currentStage === 'translation_check' && (isTranslationWaiting || selectedDoc.status === 'executing_translation'))
+                          }
                         >
                           <CheckCircle className="w-5 h-5 mr-2" />
                           {selectedDoc.currentStage === 'initial_analysis'

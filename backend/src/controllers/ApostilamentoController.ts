@@ -10,11 +10,7 @@ class ApostilamentoController {
         return res.status(400).json({ message: 'documentoId é obrigatório' });
       }
 
-      // Verifica se já existe uma solicitação para este documento
-      const existe = await ApostilamentoRepository.findByDocumentoId(documentoId);
-      if (existe) {
-        return res.status(400).json({ message: 'Já existe uma solicitação de apostilamento para este documento' });
-      }
+      console.log(`[ApostilamentoController.solicitar] Iniciando solicitação para documento: ${documentoId}`);
 
       const apostilamento = await ApostilamentoRepository.create({
         documentoId,
@@ -22,8 +18,10 @@ class ApostilamentoController {
         observacoes
       });
 
+      console.log(`[ApostilamentoController.solicitar] Solicitação processada com sucesso (Idempotente). ID: ${apostilamento.id}`);
+
       return res.status(201).json({
-        message: 'Solicitação de apostilamento criada com sucesso',
+        message: 'Solicitação de apostilamento processada com sucesso',
         data: apostilamento
       });
     } catch (error: any) {
@@ -68,6 +66,40 @@ class ApostilamentoController {
     } catch (error: any) {
       console.error('Erro ao buscar apostilamentos:', error);
       return res.status(500).json({ message: 'Erro ao buscar apostilamentos', error: error.message });
+    }
+  }
+
+  async submitComprovante(req: Request, res: Response) {
+    try {
+      const { id } = req.params // orcamentoId (primary)
+      const { orcamentoIds } = req.body // bulk orcamentoIds
+      const file = (req as any).file
+
+      if (!file) {
+        return res.status(400).json({ error: 'Nenhum arquivo enviado' })
+      }
+
+      // Consolidar IDs: pode vir um único no param ou uma lista no body
+      const idsToUpdate = Array.isArray(orcamentoIds) ? orcamentoIds : [id]
+      if (!idsToUpdate.includes(id)) idsToUpdate.push(id)
+
+      const timestamp = Date.now()
+      const fileExtension = file.originalname.split('.').pop()
+      const fileName = `comprovante_apostila_${timestamp}.${fileExtension}`
+      const filePath = `comprovantes_apostila/${id}/${fileName}`
+
+      const result = await ApostilamentoRepository.submitComprovante({
+        orcamentoIds: idsToUpdate,
+        filePath,
+        fileBuffer: file.buffer,
+        contentType: file.mimetype,
+        nomeOriginal: file.originalname
+      })
+
+      return res.status(200).json({ message: 'Comprovante de apostila enviado com sucesso', data: result })
+    } catch (error: any) {
+      console.error('[ApostilamentoController.submitComprovante] Error:', error)
+      return res.status(500).json({ error: 'Erro ao enviar comprovante de apostila', details: error.message })
     }
   }
 }
