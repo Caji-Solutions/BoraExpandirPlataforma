@@ -55,4 +55,9 @@ comercial.post('/contratos/:id/aprovar', ComercialController.aprovarContrato.bin
 comercial.post('/contratos/:id/recusar', ComercialController.recusarContrato.bind(ComercialController))
 comercial.post('/contratos/:id/comprovante', upload.single('file'), ComercialController.uploadComprovanteContrato.bind(ComercialController))
 
+// Draft flow endpoints
+comercial.put('/contratos/:id/draft', ComercialController.updateContratoDraft.bind(ComercialController))
+comercial.post('/contratos/:id/gerar-pdf', ComercialController.gerarContratoPdf.bind(ComercialController))
+comercial.post('/contratos/:id/enviar-assinatura', ComercialController.enviarContratoAssinatura.bind(ComercialController))
+
 export default comercial

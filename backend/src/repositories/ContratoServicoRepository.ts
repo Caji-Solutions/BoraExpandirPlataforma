@@ -30,6 +30,10 @@ class ContratoServicoRepository {
       query = query.eq('cliente_id', filters.clienteId)
     }
 
+    if (filters?.isDraft !== undefined) {
+      query = query.eq('is_draft', filters.isDraft)
+    }
+
     const { data, error } = await query
 
     if (error) {

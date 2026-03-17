@@ -163,7 +163,11 @@ export default function ServiceCatalog() {
     }
 
     const finalDuration = durationValue ? `${durationValue} ${durationUnit}` : "";
-    const submissionData = { ...formData, duration: finalDuration };
+    const submissionData = { 
+      ...formData, 
+      duration: finalDuration,
+      showInCommercial: true
+    };
 
     try {
       setIsSaving(true);
@@ -242,7 +246,6 @@ export default function ServiceCatalog() {
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Valor</TableHead>
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Duração Est.</TableHead>
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Tipo</TableHead>
-                <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Agendamento</TableHead>
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Visib. Cliente</TableHead>
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Documentos</TableHead>
                 <TableHead className="w-[100px] py-5 pr-8"></TableHead>
@@ -282,18 +285,7 @@ export default function ServiceCatalog() {
                         {service.type === 'fixo' ? 'Fixo' : service.type === 'diverso' ? 'Diverso' : 'Agendável'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="py-4">
-                      {service.showInCommercial ? (
-                        <Badge variant="success" className="bg-green-500/10 text-green-600 border-green-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1.5 w-fit">
-                          <CalendarCheck className="h-3.5 w-3.5" />
-                          Visível
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-muted-foreground border-dashed border-muted-foreground/30 px-2.5 py-1 rounded-lg w-fit">
-                          Privado
-                        </Badge>
-                      )}
-                    </TableCell>
+
                     <TableCell className="py-4">
                       {service.showToClient ? (
                         <Badge variant="success" className="bg-blue-500/10 text-blue-600 border-blue-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1.5 w-fit">
@@ -430,16 +422,7 @@ export default function ServiceCatalog() {
                 </Select>
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-xl">
-                <div className="space-y-0.5">
-                  <Label className="text-sm font-bold">Exibir para Agendamento</Label>
-                  <p className="text-xs text-muted-foreground">Disponibilizar no Comercial</p>
-                </div>
-                <Switch
-                  checked={formData.showInCommercial}
-                  onCheckedChange={(val) => setFormData({ ...formData, showInCommercial: val })}
-                />
-              </div>
+
 
               <div className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-xl">
                 <div className="space-y-0.5">

@@ -15,6 +15,7 @@ import GanhosPage from './Ganhos'
 import ServicosComerciais from './ServicosComerciais'
 import ContratosFixosPage from './ContratosFixosPage'
 import ContratoServicoDetailPage from './ContratoServicoDetailPage'
+import FormularioAssessoriaPage from './FormularioAssessoriaPage'
 import ProximosAgendamentosCard from './components/ProximosAgendamentosCard'
 import CadastroRapidoLeadCard from './components/CadastroRapidoLeadCard'
 import { Config } from '../../components/ui/Config'
@@ -759,6 +760,10 @@ export default function Comercial() {
           <Route
             path="/contratos/:id"
             element={<ContratoServicoDetailPage />}
+          />
+          <Route
+            path="/contratos/assessoria/:id"
+            element={<FormularioAssessoriaPage />}
           />
           <Route
             path="/servicos"

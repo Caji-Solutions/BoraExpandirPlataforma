@@ -921,31 +921,20 @@ class ComercialController {
                 cliente_email: cliente.email || null,
                 cliente_telefone: cliente.whatsapp || cliente.telefone || null,
                 assinatura_status: 'pendente',
-                pagamento_status: 'pendente'
+                pagamento_status: 'pendente',
+                is_draft: true,
+                etapa_fluxo: 1,
+                draft_dados: {}
             }
 
             const contrato = await ContratoServicoRepository.createContrato(contratoPayload)
 
             let emailEnviado = false
-            if (cliente.email) {
-                try {
-                    const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')
-                    const contratoLink = `${frontendUrl}/cliente/contratos`
-                    await EmailService.sendContratoEmail({
-                        to: cliente.email,
-                        clientName: cliente.nome || 'Cliente',
-                        contratoLink,
-                        servicoNome: servico.nome || 'Serviço'
-                    })
-                    emailEnviado = true
-                } catch (emailError) {
-                    console.error('[ComercialController] Erro ao enviar email de contrato:', emailError)
-                }
-            }
+            // Email is now sent via /enviar-assinatura endpoint after generating PDF.
 
             const contratoCompleto = await ContratoServicoRepository.getContratoById(contrato.id)
 
-            return res.status(201).json({ data: contratoCompleto, email_enviado: emailEnviado })
+            return res.status(201).json({ data: contratoCompleto, is_draft: true })
         } catch (error: any) {
             console.error('[ComercialController] Erro ao criar contrato:', error)
             return res.status(500).json({ message: 'Erro ao criar contrato', error: error.message })
@@ -1145,6 +1134,121 @@ class ComercialController {
         }
     }
 
+    /**
+     * PUT /comercial/contratos/:id/draft
+     * Atualiza o rascunho do formulário.
+     */
+    async updateContratoDraft(req: any, res: any) {
+        try {
+            const { id } = req.params;
+            const { etapa_fluxo, draft_dados } = req.body;
+
+            const contrato = await ContratoServicoRepository.getContratoById(id);
+            if (!contrato) {
+                return res.status(404).json({ message: 'Contrato não encontrado' });
+            }
+            if (!contrato.is_draft) {
+                return res.status(400).json({ message: 'Este contrato já foi finalizado e enviado.' });
+            }
+
+            const updatedData = await ContratoServicoRepository.updateContrato(id, {
+                etapa_fluxo,
+                draft_dados,
+                atualizado_em: new Date().toISOString()
+            });
+
+            return res.status(200).json({ data: updatedData });
+        } catch (error: any) {
+            console.error('[ComercialController] Erro ao atualizar draft:', error);
+            return res.status(500).json({ message: 'Erro ao atualizar rascunho', error: error.message });
+        }
+    }
+
+    /**
+     * POST /comercial/contratos/:id/gerar-pdf
+     * Gera o PDF com base nos dados preenchidos no draft e retorna a URL.
+     */
+    async gerarContratoPdf(req: any, res: any) {
+        try {
+            const { id } = req.params;
+
+            const contrato = await ContratoServicoRepository.getContratoById(id);
+            if (!contrato) {
+                return res.status(404).json({ message: 'Contrato não encontrado' });
+            }
+
+            const PdfService = (await import('../services/PdfService')).default;
+            
+            // Em vez de passar um payload qualquer, você pode extrair do draft_dados
+            const pdfUrl = await PdfService.gerarContratoAssessoria(id, contrato.draft_dados);
+
+            if (!pdfUrl) {
+                return res.status(500).json({ message: 'Falha ao gerar o PDF do contrato.' });
+            }
+
+            const updatedData = await ContratoServicoRepository.updateContrato(id, {
+                contrato_gerado_url: pdfUrl,
+                atualizado_em: new Date().toISOString()
+            });
+
+            return res.status(200).json({ url: pdfUrl, data: updatedData });
+        } catch (error: any) {
+            console.error('[ComercialController] Erro ao gerar PDF:', error);
+            return res.status(500).json({ message: 'Erro ao gerar PDF', error: error.message });
+        }
+    }
+
+    /**
+     * POST /comercial/contratos/:id/enviar-assinatura
+     * Finaliza o draft e dispara email.
+     */
+    async enviarContratoAssinatura(req: any, res: any) {
+        try {
+            const { id } = req.params;
+            const { email } = req.body;
+
+            const contrato = await ContratoServicoRepository.getContratoById(id);
+            if (!contrato) {
+                return res.status(404).json({ message: 'Contrato não encontrado' });
+            }
+
+            const emailDestino = email || contrato.cliente_email;
+            if (!emailDestino) {
+                return res.status(400).json({ message: 'O e-mail do cliente é obrigatório para enviar o contrato.' });
+            }
+
+            // Atualiza contrato para NÃO draft mais
+            const updatedData = await ContratoServicoRepository.updateContrato(id, {
+                is_draft: false,
+                cliente_email: emailDestino, // Se for um novo e-mail passado, atualiza
+                assinatura_status: 'pendente',
+                atualizado_em: new Date().toISOString()
+            });
+
+            // Envia o e-mail
+            try {
+                const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')
+                const contratoLink = `${frontendUrl}/cliente/contratos` // Em teoria, pode ter link direto pro Storage do mock
+
+                await EmailService.sendContratoEmail({
+                    to: emailDestino,
+                    clientName: contrato.cliente_nome || 'Cliente',
+                    contratoLink: contrato.contrato_gerado_url || contratoLink,
+                    servicoNome: contrato.servico_nome || 'Assessoria'
+                })
+            } catch (emailError) {
+                console.error('[ComercialController] Erro ao enviar email de contrato:', emailError)
+                return res.status(500).json({ message: 'Contrato finalizado, mas ocorreu um erro no envio do e-mail.' });
+            }
+
+            return res.status(200).json({ message: 'Contrato enviado com sucesso!', data: updatedData });
+        } catch (error: any) {
+            console.error('[ComercialController] Erro ao enviar para assinatura:', error);
+            return res.status(500).json({ message: 'Erro ao enviar para assinatura', error: error.message });
+        }
+    }
+
 }
 
 export default new ComercialController()
+

@@ -1,0 +1,9 @@
+CONTRATANTE: {{NOME}}, {{nacionalidade}}, {{estado civil}}, {{profissão}}, portador(a) do(s) documento(s) de  identificação: {{nome do(s) documento(s) e número(s)}},  residente e domiciliado(a) à {{endereço completo}}, endereço eletrônico: {{xxxxx@xxxxx.com}},  telefone: {{ +XX (XX) XXXX-XXXX}}.
+{{TIPO DE SERVIÇO}}
+{{Titulares, dependentes, valor pavão por pessoa}}
+Cláusula 10ª. Portanto, como contraprestação aos serviços prestados, o(a) CONTRATANTE pagará à CONTRATADA o valor total de € {{VALOR PAVÃO TOTAL (valor pavão total por  extenso)}} ou seu equivalente em reais na data do pagamento.
+Cláusula 11ª. Em razão de uma condição especial oferecida pelo programa Bora Expandir, as partes acordam que o valor total dos serviços será de € {{VALOR TOTAL COM DESCONTO (valor total com desconto por extenso)}} ou seu equivalente em reais na data do pagamento, já considerando um desconto de € {{VALOR TOTAL CONSULTORIA (valor total da consultoria por extenso)}} referente ao valor(es) pago(s) da(s) consultoria(s). As partes acordam que o valor total dos serviços será pago nas seguintes condições:
+{{FORMA DE PAGAMENTO}}
+Ribeirão Preto, {{data}}.
+CONTRATANTE: {{NOME}}
+Documento de Identificação: {{nome do(s) documento(s) e número(s)}}

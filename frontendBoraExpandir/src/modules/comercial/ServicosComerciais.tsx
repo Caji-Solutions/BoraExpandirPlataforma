@@ -90,15 +90,18 @@ export default function ServicosComerciais() {
 
     try {
       setCreating(true)
-      const contrato = await comercialService.createContratoServico({
+      // Agora o backend retorna { data, is_draft: true }
+      const res = await comercialService.createContratoServico({
         cliente_id: selectedClienteId,
         servico_id: selectedServico.id,
         usuario_id: activeProfile?.id || undefined
       })
-      toast.success('Contrato criado e enviado para assinatura')
+      const contrato = res?.data || res; // suporte a formato antigo ou novo
+      
+      toast.success('Rascunho criado, redirecionando para formulário...')
       setShowModal(false)
       if (contrato?.id) {
-        navigate(`/comercial/contratos/${contrato.id}`)
+        navigate(`/comercial/contratos/assessoria/${contrato.id}`)
       }
     } catch (err: any) {
       console.error(err)
