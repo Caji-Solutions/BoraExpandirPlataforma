@@ -105,19 +105,34 @@ function DashboardPage({
 }
 
 function ClientesPage({
-  clientes,
   onShowCadastroCliente,
   onRowClick
 }: {
-  clientes: Cliente[]
   onShowCadastroCliente: () => void
   onRowClick: (cliente: Cliente) => void
 }) {
+  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [timeRange, setTimeRange] = useState<TimeRange>('current_month')
+  const [timeRange, setTimeRange] = useState<TimeRange>('all')
   const [sortBy, setSortBy] = useState('created_at')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [showFilters, setShowFilters] = useState(false)
+
+  useEffect(() => {
+    async function fetchClientes() {
+      try {
+        setLoading(true)
+        const data = await comercialService.getAllClientes()
+        setClientes(data.filter((c: any) => c.status === 'cliente'))
+      } catch (err) {
+        console.error('Erro ao buscar clientes:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchClientes()
+  }, [])
 
   const sortOptions: SortOption[] = [
     { value: 'nome', label: 'Nome' },
@@ -130,9 +145,9 @@ function ClientesPage({
     // First filter by search term
     let filtered = clientes.filter(
       cliente =>
-        cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cliente.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cliente.documento?.toLowerCase().includes(searchTerm.toLowerCase())
+        (cliente.nome?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (cliente.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (cliente.documento?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     )
 
     // Then filter by time range
@@ -219,7 +234,12 @@ function ClientesPage({
       )}
 
       <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700">
-        {filteredClientes.length === 0 ? (
+        {loading ? (
+          <div className="p-12 text-center">
+            <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-gray-500">Carregando clientes...</p>
+          </div>
+        ) : filteredClientes.length === 0 ? (
           <div className="p-12 text-center">
             <FileText className="h-12 w-12 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
             <p className="text-gray-600 dark:text-gray-400">
@@ -485,7 +505,7 @@ export default function Comercial() {
         ])
         
         // Clientes filtrados (sem leads)
-        setClientes(clientesData.filter((c: any) => c.status !== 'LEAD'))
+        setClientes(clientesData.filter((c: any) => c.status === 'cliente'))
         
         // Contratos vindos de processos
         setContratos(processosData.map((p: any) => ({
@@ -721,14 +741,13 @@ export default function Comercial() {
             path="/clientes"
             element={
               <ClientesPage
-                clientes={clientes}
                 onShowCadastroCliente={() => setShowCadastroCliente(true)}
                 onRowClick={async (c) => {
                   setClientCredentials(null)
                   setSelectedClientDetail(c)
                   setIsLoadingCredentials(true)
                   try {
-                    const creds = await comercialService.getClienteCredentials(c.email)
+                    const creds = await comercialService.getClienteCredentials(c.email!)
                     setClientCredentials(creds)
                   } catch (e) {
                     console.error(e)
