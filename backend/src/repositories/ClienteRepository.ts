@@ -175,7 +175,7 @@ class ClienteRepository {
 
     async register(cliente: ClienteDTO) {
         console.log('ClienteRepository.register - Payload inicial:', cliente)
-        
+
         // 1. Verificar se já existe um registro com este e-mail ou WhatsApp
         const { data: existing } = await supabase
             .from('clientes')

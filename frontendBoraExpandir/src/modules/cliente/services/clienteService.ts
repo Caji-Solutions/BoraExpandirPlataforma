@@ -130,6 +130,7 @@ export const clienteService = {
     return response.json();
   },
 
+
   async getContratos(clienteId: string) {
     const response = await fetch(`${API_BASE_URL}/cliente/contratos?clienteId=${encodeURIComponent(clienteId)}`);
     
@@ -173,6 +174,42 @@ export const clienteService = {
     if (!response.ok) {
       throw new Error(result.message || 'Falha ao enviar comprovante');
     }
+
+    return result.data;
+  },
+
+  async submitApostilleComprovante(orcamentoIds: string | string[], file: File) {
+    const formData = new FormData();
+    formData.append('comprovante', file);
+    
+    // Se for array, enviamos no body também para o controller bulk
+    if (Array.isArray(orcamentoIds)) {
+        orcamentoIds.forEach(id => formData.append('orcamentoIds[]', id));
+    }
+
+    const primaryId = Array.isArray(orcamentoIds) ? orcamentoIds[0] : orcamentoIds;
+    const response = await fetch(`${API_BASE_URL}/apostilamentos/${primaryId}/submit-comprovante`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao enviar comprovante');
+    }
+
+    return response.json();
+  },
+
+  async getOrcamentoByDocumento(documentoId: string) {
+    const response = await fetch(`${API_BASE_URL}/traducoes/orcamentos/documento/${documentoId}`);
+    
+    if (!response.ok) {
+      if (response.status === 444) return null; // Or handle not found
+      return null;
+    }
+    
+    const result = await response.json();
 
     return result.data;
   }

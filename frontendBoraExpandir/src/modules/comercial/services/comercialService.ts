@@ -71,6 +71,28 @@ export async function getAgendamentosByCliente(clienteId: string): Promise<any[]
     return Array.isArray(result) ? result : (result.data || []);
 }
 
+export async function getAllProcessos(): Promise<any[]> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/juridico/processos`);
+        if (!response.ok) return [];
+        const result = await response.json();
+        return Array.isArray(result) ? result : (result.data || []);
+    } catch {
+        return [];
+    }
+}
+
+export async function getAllRequerimentos(): Promise<any[]> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/juridico/requerimentos`);
+        if (!response.ok) return [];
+        const result = await response.json();
+        return Array.isArray(result) ? result : (result.data || []);
+    } catch {
+        return [];
+    }
+}
+
 export async function getContratosServicos(clienteId?: string, isDraft?: boolean): Promise<any[]> {
     const params = new URLSearchParams()
     if (clienteId) params.set('clienteId', clienteId)
@@ -233,6 +255,8 @@ export default {
     register,
     getClienteCredentials,
     cancelarAgendamento,
+    getAllProcessos,
+    getAllRequerimentos,
     getContratosServicos,
     getContratoServicoById,
     createContratoServico,

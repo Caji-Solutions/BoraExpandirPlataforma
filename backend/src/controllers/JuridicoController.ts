@@ -161,23 +161,10 @@ class JuridicoController {
         try {
             const agendamentos = await JuridicoRepository.getAgendamentosDelegacao()
 
-            // Enriquecer com dados do catálogo
-            const enrichedAgendamentos = await Promise.all(agendamentos.map(async (agendamento: any) => {
-                if (agendamento.produto_id) {
-                    try {
-                        const serviceInfo = await AdmRepository.getServiceById(agendamento.produto_id)
-                        return { ...agendamento, produto: serviceInfo }
-                    } catch (e) {
-                        console.error(`Erro ao buscar serviço ${agendamento.produto_id}:`, e)
-                    }
-                }
-                return agendamento
-            }))
-
             return res.status(200).json({
                 message: 'Agendamentos para delegação recuperados com sucesso',
-                data: enrichedAgendamentos,
-                total: enrichedAgendamentos.length
+                data: agendamentos,
+                total: agendamentos.length
             })
         } catch (error: any) {
             console.error('Erro ao buscar agendamentos para delegação:', error)
@@ -341,7 +328,7 @@ class JuridicoController {
     // =============================================
 
     // Mocked funcionario juridico ID (will be replaced by auth middleware later)
-    private MOCKED_FUNCIONARIO_JURIDICO_ID = 'befc50e4-3191-449e-9691-83d4e55dceb2'
+    private MOCKED_FUNCIONARIO_JURIDICO_ID = '99b8bc2e-75ed-49dd-b23a-b34146b80647'
 
     // POST /juridico/formularios - Upload document from juridico to client
     async uploadFormularioJuridico(req: any, res: any) {
@@ -634,7 +621,7 @@ class JuridicoController {
     // POST /juridico/documentos/solicitar - Solicitar documento
     async solicitarDocumento(req: any, res: any) {
         try {
-            const { clienteId, tipo, processoId, membroId, requerimentoId, notificar, prazo } = req.body
+            const { clienteId, tipo, processoId, membroId, requerimentoId, notificar, prazo, solicitado_pelo_juridico } = req.body
 
             if (!clienteId || !tipo) {
                 return res.status(400).json({ 
@@ -653,7 +640,8 @@ class JuridicoController {
                 requerimentoId,
                 notificar,
                 prazo,
-                criadorId
+                criadorId,
+                solicitado_pelo_juridico: solicitado_pelo_juridico !== undefined ? (solicitado_pelo_juridico === true || solicitado_pelo_juridico === 'true') : undefined
             })
 
             return res.status(201).json({
@@ -958,23 +946,10 @@ class JuridicoController {
 
             const agendamentos = await JuridicoRepository.getAgendamentosPorResponsavel(responsavelId)
 
-            // Enriquecer com dados do catálogo
-            const enrichedAgendamentos = await Promise.all(agendamentos.map(async (agendamento: any) => {
-                if (agendamento.produto_id) {
-                    try {
-                        const serviceInfo = await AdmRepository.getServiceById(agendamento.produto_id)
-                        return { ...agendamento, produto: serviceInfo }
-                    } catch (e) {
-                        console.error(`Erro ao buscar serviço ${agendamento.produto_id}:`, e)
-                    }
-                }
-                return agendamento
-            }))
-
             return res.status(200).json({
                 message: 'Agendamentos do responsável recuperados com sucesso',
-                data: enrichedAgendamentos,
-                total: enrichedAgendamentos.length
+                data: agendamentos,
+                total: agendamentos.length
             })
         } catch (error: any) {
             console.error('Erro ao buscar agendamentos do responsável:', error)

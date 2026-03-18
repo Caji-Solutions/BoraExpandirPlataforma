@@ -224,13 +224,14 @@ export function FamilyMemberModal({
         }
 
         if (activeTab === 'apostille') {
-            // Approved but NOT apostilled
-            return doc?.status === 'approved' && !doc.isApostilled
+            // Approved but NOT apostilled OR currently analyzing apostille
+            return (doc?.status === 'approved' && !doc.isApostilled) || doc?.status === 'analyzing_apostille' || doc?.status === 'sent_for_apostille';
         }
 
         if (activeTab === 'translation') {
-            // Approved AND apostilled but NOT translated
-            return doc?.status === 'approved' && doc.isApostilled && !doc.isTranslated
+            // Approved AND apostilled but NOT translated OR currently analyzing translation/payment
+            const isAnalyzingTranslation = doc?.status === 'analyzing_translation' || doc?.status === 'analyzing_translation_payment';
+            return (doc?.status === 'approved' && doc.isApostilled && !doc.isTranslated) || isAnalyzingTranslation;
         }
 
         if (activeTab === 'approved') {

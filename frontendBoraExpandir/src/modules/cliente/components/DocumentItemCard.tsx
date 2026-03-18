@@ -169,11 +169,10 @@ export function DocumentItemCard({
                         </Button>
                     )}
 
-                    {/* Analyzing → Clock badge */}
                     {stageId === 'analyzing' && (
                         <div className="flex items-center gap-1 text-blue-600 text-xs font-medium px-2 py-1 bg-blue-50 rounded-full">
                             <Clock className="h-4 w-4" />
-                            <span>Aguardando</span>
+                            <span>Aguardando Análise</span>
                         </div>
                     )}
 
@@ -223,15 +222,15 @@ export function DocumentItemCard({
                                         Substituir
                                     </Button>
                                 </div>
-                            ) : doc.status?.toLowerCase() === 'waiting_apostille_quote' ? (
-                                <div className="flex items-center gap-1 text-amber-600 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full">
+                            ) : (doc.status?.toLowerCase() === 'executing_apostille' || doc.status?.toLowerCase() === 'analyzing_apostille' || doc.status?.toLowerCase() === 'analyzing_translation_payment') ? (
+                                <div className="flex items-center gap-1 text-amber-600 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full border border-amber-100">
                                     <Clock className="h-4 w-4" />
-                                    <span>Orçamento Solicitado</span>
+                                    <span>Em Apostilagem</span>
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-1 text-amber-600 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full">
                                     <Clock className="h-4 w-4" />
-                                    <span>Em Análise</span>
+                                    <span>Aguardando Análise</span>
                                 </div>
                             )}
                         </div>
@@ -241,36 +240,28 @@ export function DocumentItemCard({
                     {stageId === 'translation' && doc && (
                         <div className="flex gap-2">
                             {(doc.status === 'waiting_translation' || (doc.status === 'approved' && doc.isApostilled)) ? (
-                                <Button
-                                    size="sm"
-                                    className="h-8 text-xs bg-purple-600 hover:bg-purple-700 text-white gap-1.5"
-                                    onClick={() => onUploadClick(inputId)}
-                                    disabled={isCurrentUploading}
-                                >
-                                    <Upload className="h-3 w-3" />
-                                    Upload Tradução
-                                </Button>
-                            ) : (
-                                <div className="flex items-center gap-1 text-purple-600 text-xs font-medium px-2 py-1 bg-purple-50 rounded-full">
-                                    <Clock className="h-4 w-4" />
-                                    <span>Em Análise</span>
-                                </div>
-                            )}
-
-                            {(doc.status === 'waiting_translation' || (doc.status === 'approved' && doc.isApostilled)) && doc.status !== 'waiting_translation_quote' && (
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700 gap-1.5"
-                                    onClick={() => onOpenQuoteModal(doc)}
-                                    disabled={isCurrentUploading || isRequestingQuote}
-                                >
-                                    <FileText className="h-3 w-3" />
-                                    Solicitar Tradução
-                                </Button>
-                            )}
-
-                            {doc.status?.toLowerCase() === 'waiting_quote_approval' && (
+                                <>
+                                    <Button
+                                        size="sm"
+                                        className="h-8 text-xs bg-purple-600 hover:bg-purple-700 text-white gap-1.5"
+                                        onClick={() => onUploadClick(inputId)}
+                                        disabled={isCurrentUploading}
+                                    >
+                                        <Upload className="h-3 w-3" />
+                                        Upload Tradução
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700 gap-1.5"
+                                        onClick={() => onOpenQuoteModal(doc)}
+                                        disabled={isCurrentUploading || isRequestingQuote}
+                                    >
+                                        <FileText className="h-3 w-3" />
+                                        Solicitar Tradução
+                                    </Button>
+                                </>
+                            ) : doc.status?.toLowerCase() === 'waiting_quote_approval' ? (
                                 <div className="flex gap-2">
                                     <Button
                                         size="sm"
@@ -291,12 +282,15 @@ export function DocumentItemCard({
                                         Substituir
                                     </Button>
                                 </div>
-                            )}
-
-                            {doc.status?.toLowerCase() === 'waiting_translation_quote' && (
+                            ) : (doc.status?.toLowerCase() === 'executing_translation' || doc.status?.toLowerCase() === 'analyzing_translation' || doc.status?.toLowerCase() === 'analyzing_translation_payment') ? (
+                                <div className="flex items-center gap-1 text-purple-600 text-xs font-medium px-2 py-1 bg-purple-50 rounded-full border border-purple-100">
+                                    <Clock className="h-4 w-4" />
+                                    <span>Em Tradução</span>
+                                </div>
+                            ) : (
                                 <div className="flex items-center gap-1 text-purple-600 text-xs font-medium px-2 py-1 bg-purple-50 rounded-full">
                                     <Clock className="h-4 w-4" />
-                                    <span>Orçamento Solicitado</span>
+                                    <span>Aguardando Análise</span>
                                 </div>
                             )}
                         </div>

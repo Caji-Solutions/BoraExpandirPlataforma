@@ -168,62 +168,56 @@ class TraducoesRepository {
     return orcamento
   }
 
-  async aprovarOrcamento(orcamentoId: string, documentoId: string) {
-    // 1. Atualizar o status do orçamento para 'aprovado'
-    const { error: orcError } = await supabase
+  async aprovarOrcamento(orcamentoIds: string | string[]) {
+    const ids = Array.isArray(orcamentoIds) ? orcamentoIds : [orcamentoIds]
+    
+    // 1. Atualizar o status de todos os orçamentos para 'aprovado'
+    const { data: orcamentos, error: orcError } = await supabase
       .from('orcamentos')
       .update({ status: 'aprovado' })
-      .eq('id', orcamentoId)
+      .in('id', ids)
+      .select('documento_id, observacoes')
 
     if (orcError) {
-      console.error('Erro ao aprovar orçamento:', orcError)
+      console.error('Erro ao aprovar orçamentos:', orcError)
       throw orcError
     }
 
-    // 2. Buscar o status atual do documento para decidir o próximo status
-    const { data: doc, error: fetchError } = await supabase
+    if (!orcamentos || orcamentos.length === 0) return true;
+
+    // 2. Buscar documentos para decidir o próximo status
+    const documentoIds = orcamentos.map(o => o.documento_id)
+    const { data: docs, error: fetchError } = await supabase
       .from('documentos')
-      .select('status')
-      .eq('id', documentoId)
-      .single()
+      .select('id, status')
+      .in('id', documentoIds)
 
     if (fetchError) {
-      console.error('Erro ao buscar status do documento:', fetchError)
+      console.error('Erro ao buscar status dos documentos:', fetchError)
       throw fetchError
     }
 
-    // 3. Definir o próximo status baseado no fluxo
-    let nextStatus = 'ANALYZING_TRANSLATION' // Default for translation
+    // 3. Atualizar status de cada documento baseado no fluxo
+    for (const doc of docs) {
+      const orcamento = orcamentos.find(o => o.documento_id === doc.id)
+      const isApostille = orcamento?.observacoes?.includes('Apostilamento')
+      
+      const targetStatus = isApostille ? 'EXECUTING_APOSTILLE' : 'EXECUTING_TRANSLATION'
 
-    // Se for um orçamento de apostila (estava em WAITING_QUOTE_APPROVAL vindo de um WAITING_APOSTILLE_QUOTE)
-    // ou se o documento explicitamente estava na etapa de apostila
-    if (doc.status === 'WAITING_QUOTE_APPROVAL') {
-      // Como não sabemos 100% se era apostila ou tradução só pelo status (ambos usam WAITING_QUOTE_APPROVAL)
-      // podemos checar se o documento já está apostilado. Se não está, e estava em aprovação, 
-      // é muito provável que seja o pagamento da apostila.
-      // Outra opção é o front passar o "tipo" do orçamento, mas vamos tentar inferir ou usar um status mais específico se possível.
-      // Por agora, vamos assumir que se veio de um fluxo que aceita apostila, e não está apostilado, vai para ANALYZING_APOSTILLE.
-    }
+      console.log(`[TraducoesRepository.aprovarOrcamento] Atualizando status do doc ${doc.id} para ${targetStatus}`);
 
-    // Para simplificar e garantir correção, vamos apenas mudar para um status genérico de análise 
-    // ou deixar o jurídico decidir. Mas o ideal é automatizar.
-    // Se o status anterior era relacionado a apostila:
-    // await supabase.from('documentos').update({ status: 'ANALYZING_APOSTILLE' }).eq('id', documentoId)
+      await supabase
+        .from('documentos')
+        .update({ status: targetStatus })
+        .eq('id', doc.id)
 
-    // Por enquanto, manteremos a lógica de ANALYZING_TRANSLATION ou uma similar para Apostila
-    // se detectarmos que o documento precisa de apostila.
-
-    const isApostilleFlow = doc.status === 'WAITING_QUOTE_APPROVAL'; // Simplificação
-    const targetStatus = isApostilleFlow ? 'ANALYZING_APOSTILLE' : 'ANALYZING_TRANSLATION';
-
-    const { error: docError } = await supabase
-      .from('documentos')
-      .update({ status: targetStatus })
-      .eq('id', documentoId)
-
-    if (docError) {
-      console.error('Erro ao atualizar status do documento após aprovação:', docError)
-      throw docError
+      if (isApostille) {
+        console.log(`[TraducoesRepository.aprovarOrcamento] Atualizando status do apostilamento para pronto_para_apostilagem`);
+        await supabase
+          .from('apostilamentos')
+          .update({ status: 'pronto_para_apostilagem' })
+          .eq('documento_id', doc.id)
+      }
     }
 
     return true
@@ -234,7 +228,7 @@ class TraducoesRepository {
     const { data: documentos, error: docError } = await supabase
       .from('documentos')
       .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id')
-      .in('status', ['ANALYZING_TRANSLATION'])
+      .in('status', ['EXECUTING_TRANSLATION'])
       .order('criado_em', { ascending: true })
 
     if (docError) {
@@ -344,7 +338,7 @@ class TraducoesRepository {
     const { data: doc, error: updateError } = await supabase
       .from('documentos')
       .update({
-        status: 'APPROVED',
+        status: 'ANALYZING_TRANSLATION',
         traducao_url: publicUrl,
         traducao_storage_path: dados.filePath,
         traducao_nome_original: dados.nomeOriginal,
@@ -360,6 +354,63 @@ class TraducoesRepository {
     }
 
     return doc
+  }
+
+  async submitComprovante(dados: {
+    orcamentoId: string
+    filePath: string
+    fileBuffer: Buffer
+    contentType: string
+    nomeOriginal: string
+  }) {
+    // 1. Upload comprovante to Supabase Storage
+    const { error: uploadError } = await supabase
+      .storage
+      .from('documentos')
+      .upload(dados.filePath, dados.fileBuffer, {
+        contentType: dados.contentType,
+        upsert: true
+      })
+
+    if (uploadError) {
+      console.error('Erro ao fazer upload do comprovante:', uploadError)
+      throw uploadError
+    }
+
+    // 2. Get public URL
+    const { data: urlData } = supabase
+      .storage
+      .from('documentos')
+      .getPublicUrl(dados.filePath)
+
+    const publicUrl = urlData?.publicUrl || ''
+
+    // 3. Update orcamento with comprovante_url and change status to 'pendente_verificacao'
+    const { data: orcamento, error: updateError } = await supabase
+      .from('orcamentos')
+      .update({
+        status: 'pendente_verificacao',
+        comprovante_url: publicUrl,
+        comprovante_storage_path: dados.filePath,
+        comprovante_nome_original: dados.nomeOriginal,
+        atualizado_em: new Date().toISOString()
+      })
+      .eq('id', dados.orcamentoId)
+      .select()
+      .single()
+
+    if (updateError) {
+      console.error('Erro ao atualizar orçamento com comprovante:', updateError)
+      throw updateError
+    }
+
+    // 4. Update document status to indicate it's waiting for payment verification
+    await supabase
+      .from('documentos')
+      .update({ status: 'analyzing_translation_payment' }) // New status for payment analysis
+      .eq('id', orcamento.documento_id)
+
+    return orcamento
   }
 }
 

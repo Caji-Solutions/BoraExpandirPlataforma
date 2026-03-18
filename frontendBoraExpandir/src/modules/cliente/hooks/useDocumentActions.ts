@@ -98,14 +98,20 @@ export function useDocumentActions({
 
     // Determine the stage of a document
     const getDocStage = (doc: ClientDocument) => {
-        const status = doc.status?.toLowerCase()
+        const status = doc.status?.toLowerCase() || ''
         if (status === 'rejected') return 'rejected'
         const isWaitingQuote = status === 'waiting_quote_approval'
-        if (status?.includes('apostille') || (status === 'approved' && !doc.isApostilled) || (isWaitingQuote && !doc.isApostilled)) {
+
+        if (status.includes('apostille') || (status === 'approved' && !doc.isApostilled) || (isWaitingQuote && !doc.isApostilled)) {
             return 'apostille'
         }
-        if (status?.includes('translation') || (isWaitingQuote && doc.isApostilled) || (status === 'approved' && doc.isApostilled && !doc.isTranslated)) {
+        if (status.includes('translation') || (isWaitingQuote && doc.isApostilled) || (status === 'approved' && doc.isApostilled && !doc.isTranslated)) {
             return 'translation'
+        }
+
+        // Se está sendo analisado (e não caiu nas etapas acima), vai para a aba "Em Análise"
+        if (status.startsWith('analyzing')) {
+            return 'analyzing'
         }
         if (status === 'approved' && doc.isApostilled && doc.isTranslated) {
             return 'completed'
@@ -125,13 +131,17 @@ export function useDocumentActions({
                 if (docStage !== stageId) return false
                 
                 // Filtro de visibilidade para o cliente
-                // Abas de fluxo (apostila/tradução) só mostram se o jurídico solicitou explicitamente
+                // Abas de fluxo (apostila/tradução) só mostram se o jurídico solicitou explicitamente 
+                // OU se o documento está em um status de aguardando ação (unlocked)
                 if (stageId === 'apostille' || stageId === 'translation') {
-                    // Verificação robusta: aceita true ou 1 (caso venha do banco como número)
                     const foiSolicitado = doc.solicitado_pelo_juridico === true || 
                                         (doc.solicitado_pelo_juridico as any) === 1 ||
                                         (doc.solicitado_pelo_juridico as any) === 'true';
-                    return foiSolicitado;
+                    
+                    const statusLower = doc.status?.toLowerCase() || '';
+                    const isWorkflowActive = statusLower.includes('waiting') || statusLower.startsWith('analyzing') || statusLower.startsWith('executing');
+                    
+                    return foiSolicitado || isWorkflowActive;
                 }
                 
                 return true
@@ -176,7 +186,7 @@ export function useDocumentActions({
                                     (d.solicitado_pelo_juridico as any) === 1 || 
                                     (d.solicitado_pelo_juridico as any) === 'true';
                 
-                if (foiSolicitado && (status === 'waiting_apostille' || status === 'waiting_translation')) {
+                if (foiSolicitado && (status === 'waiting_apostille' || status === 'waiting_translation' || status === 'executing_apostille' || status === 'executing_translation')) {
                     return true;
                 }
 

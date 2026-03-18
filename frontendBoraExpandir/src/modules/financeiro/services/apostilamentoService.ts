@@ -5,7 +5,7 @@ export interface Apostilamento {
   documento_id: string;
   documento_url: string;
   documento_apostilado_url?: string;
-  status: 'pendente' | 'em_processamento' | 'concluido' | 'cancelado';
+  status: 'pendente' | 'em_processamento' | 'concluido' | 'cancelado' | 'pronto_para_apostilagem';
   observacoes?: string;
   solicitado_em: string;
   atualizado_em: string;

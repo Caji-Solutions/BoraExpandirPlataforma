@@ -43,6 +43,7 @@ import { ReviewActionButtons } from './ReviewActionButtons';
 import { RejectModal } from './RejectModal';
 import { RequirementRequestModal } from './RequirementRequestModal';
 import { clienteService } from '../../cliente/services/clienteService';
+import { useAuth } from '../../../contexts/AuthContext';
 
 // Status do formulário do cliente (resposta)
 export type FormularioClienteStatus = 'pendente' | 'aprovado' | 'rejeitado';
@@ -75,13 +76,13 @@ export type TabType = 'analise_tecnica' | 'apostilamento' | 'traducao' | 'finali
 export interface JuridicoDocument {
   id: string;
   name: string;
+  originalName?: string;
   type: string;
   url: string;
-  status: 'pending' | 'analyzing' | 'rejected' | 'waiting_apostille' | 'analyzing_apostille' | 'waiting_translation' | 'analyzing_translation' | 'approved';
+  status: 'pending' | 'analyzing' | 'rejected' | 'waiting_apostille' | 'executing_apostille' | 'analyzing_apostille' | 'waiting_translation' | 'executing_translation' | 'analyzing_translation' | 'approved';
   currentStage: AnalysisStage;
   rejectionReason?: string;
   solicitado_pelo_juridico?: boolean;
-  // ... rest of interface
   uploadDate: string;
   history: {
     stage: AnalysisStage;
@@ -118,6 +119,7 @@ export function ProcessAnalysis({
   onBack,
   onUpdateDocument
 }: ProcessAnalysisProps) {
+  const { activeProfile } = useAuth();
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>('analise_tecnica');
 
@@ -338,8 +340,8 @@ export function ProcessAnalysis({
     if (!selectedDoc) return;
     setIsUpdatingStatus(true);
     
-    // ID do funcionário jurídico (mockado como no restante do sistema)
-    const LAWYER_ID = 'befc50e4-3191-449e-9691-83d4e55dceb2';
+    // ID do funcionário jurídico real do contexto de autenticação
+    const LAWYER_ID = activeProfile?.id || '99b8bc2e-75ed-49dd-b23a-b34146b80647';
     
     try {
       const prazoNum = parseInt(prazo) || 15;
@@ -357,7 +359,7 @@ export function ProcessAnalysis({
         selectedDoc.id,
         statusFinal,
         undefined, // motivoRejeicao
-        true,      // solicitado_pelo_juridico
+        false,     // solicitado_pelo_juridico (estamos apenas mudando status para tradução/apostila)
         prazoNum,
         LAWYER_ID
       );
@@ -639,6 +641,11 @@ export function ProcessAnalysis({
                             )}>
                               {item.name || item.tipo}
                             </p>
+                            {type === 'documento' && (item as JuridicoDocument).originalName && (
+                              <p className="text-[10px] text-gray-400 truncate mt-0.5 font-medium">
+                                {(item as JuridicoDocument).originalName}
+                              </p>
+                            )}
                             <div className="mt-2.5 flex flex-wrap gap-2">
                               {type === 'formulario' ? (
                                 <Badge variant={isReceived ? "success" : "warning"} className="text-[10px] font-black uppercase tracking-wider py-0 px-2 flex items-center gap-1">
@@ -743,7 +750,12 @@ export function ProcessAnalysis({
                     <div className="flex items-center justify-between">
                       <div>
                         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedDoc.name}</h2>
-                        <p className="text-sm text-gray-500">Enviado em {selectedDoc.uploadDate}</p>
+                        {selectedDoc.originalName && (
+                          <p className="text-xs font-medium text-gray-400 mt-0.5 italic">
+                            Arquivo: {selectedDoc.originalName}
+                          </p>
+                        )}
+                        <p className="text-sm text-gray-500 mt-1">Enviado em {selectedDoc.uploadDate}</p>
                       </div>
                       <Button variant="outline" size="sm" className="gap-2">
                         <Download className="h-4 w-4" />
@@ -881,6 +893,10 @@ export function ProcessAnalysis({
                         <Button
                           className="flex-1 h-12 text-base bg-green-600 hover:bg-green-700 text-white shadow-sm hover:shadow-green-200 dark:hover:shadow-none active:scale-[0.98]"
                           onClick={() => handleAction('next')}
+                          disabled={
+                            (selectedDoc.currentStage === 'apostille_check' && (isApostilleWaiting || selectedDoc.status === 'executing_apostille')) ||
+                            (selectedDoc.currentStage === 'translation_check' && (isTranslationWaiting || selectedDoc.status === 'executing_translation'))
+                          }
                         >
                           <CheckCircle className="w-5 h-5 mr-2" />
                           {selectedDoc.currentStage === 'initial_analysis'

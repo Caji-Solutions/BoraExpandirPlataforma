@@ -87,8 +87,14 @@ export function MemberDocumentsView({
                         onDrop={actions.handleDrop}
                         onDelete={onDelete}
                         onOpenQuoteModal={(doc) => {
-                            actions.setSelectedDocForQuote(doc)
-                            actions.setShowQuoteModal(true)
+                            const stage = actions.getDocStage(doc)
+                            if (stage === 'translation') {
+                                actions.setSelectedDocForClientQuote(doc)
+                                actions.setShowClientQuoteModal(true)
+                            } else {
+                                actions.setSelectedDocForQuote(doc)
+                                actions.setShowQuoteModal(true)
+                            }
                         }}
                         onOpenClientQuoteModal={(doc) => {
                             actions.setSelectedDocForClientQuote(doc)
