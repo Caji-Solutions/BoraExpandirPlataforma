@@ -1,4 +1,6 @@
 import nodemailer from 'nodemailer'
+import fs from 'fs'
+import path from 'path'
 
 class EmailService {
     private transporter: nodemailer.Transporter | null = null
@@ -229,6 +231,94 @@ class EmailService {
             console.log(`[EmailService] Email de formulário enviado para ${params.to}`)
         } catch (error) {
             console.error('[EmailService] Erro ao enviar email de formulário:', error)
+            throw error
+        }
+    }
+
+    /**
+     * Envia email com contrato em anexo para assinatura
+     */
+    async sendContratoEmail(params: {
+        to: string
+        clientName: string
+        contratoLink: string
+        servicoNome: string
+    }): Promise<void> {
+        const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@boraexpandir.com'
+
+        const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrato para Assinatura - Bora Expandir</title>
+</head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+    <div style="max-width:600px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <div style="background:linear-gradient(135deg,#076CA5 0%,#0A8FD4 100%);padding:40px 32px;text-align:center;">
+            <h1 style="color:#ffffff;margin:0;font-size:28px;font-weight:700;">Bora Expandir</h1>
+            <p style="color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;">Contrato para assinatura</p>
+        </div>
+        <div style="padding:32px;">
+            <h2 style="color:#1a1a1a;margin:0 0 16px;font-size:22px;">
+                Olá, ${params.clientName}!
+            </h2>
+            <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 16px;">
+                Segue em anexo o contrato referente ao serviço <strong>${params.servicoNome}</strong>.
+            </p>
+            <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 24px;">
+                Para assinar, acesse sua área do cliente e envie o arquivo assinado.
+            </p>
+            <div style="text-align:center;margin:32px 0;">
+                <a href="${params.contratoLink}"
+                   style="display:inline-block;background:#076CA5;color:#ffffff;text-decoration:none;padding:14px 40px;border-radius:10px;font-size:16px;font-weight:700;letter-spacing:0.5px;">
+                    Acessar Área do Cliente
+                </a>
+            </div>
+            <p style="color:#999;font-size:12px;text-align:center;margin:24px 0 0;">
+                Se você não solicitou este serviço, por favor desconsidere este email.
+            </p>
+        </div>
+        <div style="background:#f9f9f9;padding:20px 32px;text-align:center;border-top:1px solid #eee;">
+            <p style="color:#aaa;font-size:12px;margin:0;">
+                © ${new Date().getFullYear()} Bora Expandir — Todos os direitos reservados.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+        `.trim()
+
+        const attachmentPath = path.resolve(__dirname, '../../assets/contrato-mock.pdf')
+        let attachments: any[] = []
+        try {
+            if (fs.existsSync(attachmentPath)) {
+                const buffer = fs.readFileSync(attachmentPath)
+                attachments = [{
+                    filename: 'contrato-mock.pdf',
+                    content: buffer,
+                    contentType: 'application/pdf'
+                }]
+            } else {
+                console.warn('[EmailService] Arquivo de contrato mock não encontrado:', attachmentPath)
+            }
+        } catch (err) {
+            console.warn('[EmailService] Erro ao ler contrato mock:', err)
+        }
+
+        try {
+            const transporter = this.getTransporter()
+            await transporter.sendMail({
+                from: `"Bora Expandir" <${from}>`,
+                to: params.to,
+                subject: `Contrato para assinatura — ${params.servicoNome}`,
+                html,
+                attachments
+            })
+            console.log(`[EmailService] Email de contrato enviado para ${params.to}`)
+        } catch (error) {
+            console.error('[EmailService] Erro ao enviar email de contrato:', error)
             throw error
         }
     }
