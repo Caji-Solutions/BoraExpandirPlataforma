@@ -4,36 +4,73 @@ import ComercialRepository from '../repositories/ComercialRepository';
 import AdmRepository from '../repositories/AdmRepository';
 import ContratoServicoRepository from '../repositories/ContratoServicoRepository';
 import EmailService from '../services/EmailService';
+import NotificationService from '../services/NotificationService';
+import { normalizeCpf, normalizePhone } from '../utils/normalizers';
 
 
 class ComercialController {
+    private mergeDraftDados(baseDraft: any, incomingDraft: any) {
+        const base = (baseDraft && typeof baseDraft === 'object') ? baseDraft : {}
+        const incoming = (incomingDraft && typeof incomingDraft === 'object') ? incomingDraft : {}
+        return { ...base, ...incoming }
+    }
+
+    private buildErroGeracaoDraft(mensagem: string) {
+        return {
+            ativo: true,
+            etapa: 4,
+            mensagem,
+            ocorrido_em: new Date().toISOString()
+        }
+    }
+
+    private async notificarClienteContrato(params: {
+        clienteId?: string | null
+        titulo: string
+        mensagem: string
+        tipo: 'info' | 'success' | 'warning' | 'error' | 'agendamento'
+    }) {
+        if (!params.clienteId) return
+        try {
+            await NotificationService.createNotification({
+                clienteId: params.clienteId,
+                titulo: params.titulo,
+                mensagem: params.mensagem,
+                tipo: params.tipo
+            })
+        } catch (notificationError) {
+            console.error('[ComercialController] Erro ao criar notificaÃ§Ã£o de contrato:', notificationError)
+        }
+    }
+
     async createAgendamento(req: any, res: any) {
         console.log('========== CREATE AGENDAMENTO DEBUG ==========')
         console.log('Body completo recebido:', req.body)
         try {
             const { nome, email, telefone, data_hora, produto_id, duracao_minutos, status, usuario_id, cliente_id, requer_delegacao, pagamento_status } = req.body
+            const telefoneNormalizado = normalizePhone(telefone)
 
             console.log('IDs recebidos:', { usuario_id, cliente_id })
 
-            // Validação básica
-            if (!nome || !email || !telefone || !data_hora || !produto_id) {
-                console.error('Campos obrigatórios faltando:', { nome, email, telefone, data_hora, produto_id })
+            // ValidaÃ§Ã£o bÃ¡sica
+            if (!nome || !email || !telefoneNormalizado || !data_hora || !produto_id) {
+                console.error('Campos obrigatÃ³rios faltando:', { nome, email, telefone, data_hora, produto_id })
                 return res.status(400).json({
-                    message: 'Campos obrigatórios: nome, email, telefone, data_hora, produto_id'
+                    message: 'Campos obrigatÃ³rios: nome, email, telefone, data_hora, produto_id'
                 })
             }
 
             // Normaliza data_hora para UTC (evita falsos negativos na checagem)
             const dataHoraIso = data_hora?.endsWith('Z') ? data_hora : `${data_hora}Z`
 
-            // Verifica disponibilidade do horário
+            // Verifica disponibilidade do horÃ¡rio
             const duracao = duracao_minutos || 60
             const disponibilidade = await this.verificarDisponibilidade(dataHoraIso, duracao)
             console.log('Disponibilidade verificada:', disponibilidade)
 
             if (!disponibilidade.disponivel) {
                 return res.status(409).json({
-                    message: 'Horário indisponível',
+                    message: 'HorÃ¡rio indisponÃ­vel',
                     conflitos: disponibilidade.agendamentos
                 })
             }
@@ -41,7 +78,7 @@ class ComercialController {
             const agendamento = {
                 nome,
                 email,
-                telefone,
+                telefone: telefoneNormalizado,
                 data_hora: dataHoraIso,
                 produto_id,
                 duracao_minutos: duracao,
@@ -52,7 +89,7 @@ class ComercialController {
                 requer_delegacao: requer_delegacao !== undefined ? requer_delegacao : false
             }
 
-            // Fallback: se o frontend não enviou requer_delegacao, tenta buscar do catálogo
+            // Fallback: se o frontend nÃ£o enviou requer_delegacao, tenta buscar do catÃ¡logo
             if (requer_delegacao === undefined && produto_id) {
                 try {
                     const servico = await AdmRepository.getServiceById(produto_id)
@@ -69,7 +106,7 @@ class ComercialController {
             const createdData = await ComercialRepository.createAgendamento(agendamento)
             console.log('Agendamento criado com sucesso:', createdData)
 
-            // Verificar se o lead já preencheu o formulário em outro agendamento
+            // Verificar se o lead jÃ¡ preencheu o formulÃ¡rio em outro agendamento
             let avisoFormularioPreenchido = false
             try {
                 if (email) {
@@ -80,16 +117,16 @@ class ComercialController {
                         .maybeSingle()
                     if (clienteExistente?.user_id) avisoFormularioPreenchido = true
                 }
-                if (!avisoFormularioPreenchido && telefone) {
+                if (!avisoFormularioPreenchido && telefoneNormalizado) {
                     const { data: clientePorTel } = await supabase
                         .from('clientes')
                         .select('user_id')
-                        .eq('whatsapp', telefone)
+                        .eq('whatsapp', telefoneNormalizado)
                         .maybeSingle()
                     if (clientePorTel?.user_id) avisoFormularioPreenchido = true
                 }
             } catch (checkErr) {
-                console.warn('Erro ao verificar formulário preenchido do lead:', checkErr)
+                console.warn('Erro ao verificar formulÃ¡rio preenchido do lead:', checkErr)
             }
 
             return res.status(201).json({ ...createdData, aviso_formulario_preenchido: avisoFormularioPreenchido })
@@ -106,39 +143,40 @@ class ComercialController {
     }
 
     /**
-     * Cria sessão de checkout do MercadoPago e retorna o link
-     * O agendamento será criado pelo webhook após confirmação do pagamento
+     * Cria sessÃ£o de checkout do MercadoPago e retorna o link
+     * O agendamento serÃ¡ criado pelo webhook apÃ³s confirmaÃ§Ã£o do pagamento
      */
     async createAgendamentoMercadoPago(req: any, res: any) {
         console.log('========== CREATE MERCADO PAGO CHECKOUT DEBUG ==========')
         console.log('Body recebido:', req.body)
         try {
             const { nome, email, telefone, data_hora, produto_id, produto_nome, valor, duracao_minutos, usuario_id, cliente_id } = req.body
+            const telefoneNormalizado = normalizePhone(telefone)
 
             console.log('IDs recebidos:', { usuario_id, cliente_id })
 
-            // Validação básica
-            if (!nome || !email || !telefone || !data_hora || !produto_id || !produto_nome || !valor) {
+            // ValidaÃ§Ã£o bÃ¡sica
+            if (!nome || !email || !telefoneNormalizado || !data_hora || !produto_id || !produto_nome || !valor) {
                 return res.status(400).json({
-                    message: 'Campos obrigatórios: nome, email, telefone, data_hora, produto_id, produto_nome, valor'
+                    message: 'Campos obrigatÃ³rios: nome, email, telefone, data_hora, produto_id, produto_nome, valor'
                 })
             }
 
             // Normaliza data_hora para UTC
             const dataHoraIso = data_hora?.endsWith('Z') ? data_hora : `${data_hora}Z`
 
-            // Verifica disponibilidade do horário antes de criar o checkout
+            // Verifica disponibilidade do horÃ¡rio antes de criar o checkout
             const duracao = duracao_minutos || 60
             const disponibilidade = await this.verificarDisponibilidade(dataHoraIso, duracao)
 
             if (!disponibilidade.disponivel) {
                 return res.status(409).json({
-                    message: 'Horário indisponível',
+                    message: 'HorÃ¡rio indisponÃ­vel',
                     conflitos: disponibilidade.agendamentos
                 })
             }
 
-            // 0. Verificar se o serviço requer delegação jurídica
+            // 0. Verificar se o serviÃ§o requer delegaÃ§Ã£o jurÃ­dica
             const catalogoServico = await AdmRepository.getServiceById(produto_id)
             const requerDelegacao = catalogoServico?.requer_delegacao_juridico || false
 
@@ -146,7 +184,7 @@ class ComercialController {
             const agendamentoPendente = {
                 nome,
                 email,
-                telefone,
+                telefone: telefoneNormalizado,
                 data_hora: dataHoraIso,
                 produto_id,
                 produto_nome,
@@ -162,12 +200,12 @@ class ComercialController {
             const createdAgendamento = await ComercialRepository.createAgendamento(agendamentoPendente)
             console.log('Agendamento PENDENTE criado no banco:', createdAgendamento.id)
 
-            // 2. Cria a preferência de checkout no MercadoPago
+            // 2. Cria a preferÃªncia de checkout no MercadoPago
             const MercadoPagoService = (await import('../services/MercadoPagoService')).default
             const checkout = await MercadoPagoService.createCheckoutPreference({
                 nome,
                 email,
-                telefone,
+                telefone: telefoneNormalizado,
                 data_hora: dataHoraIso,
                 produto_id,
                 produto_nome,
@@ -180,11 +218,11 @@ class ComercialController {
 
             console.log('Checkout MercadoPago criado:', checkout.preferenceId)
 
-            // Atualiza com o checkout_url se possível para o cliente ver no dashboard depois
+            // Atualiza com o checkout_url se possÃ­vel para o cliente ver no dashboard depois
             try {
                 await ComercialRepository.updateAgendamentoCheckoutUrl(createdAgendamento.id, checkout.checkoutUrl)
             } catch (err) {
-                console.warn('Não foi possível atualizar checkout_url no agendamento:', err)
+                console.warn('NÃ£o foi possÃ­vel atualizar checkout_url no agendamento:', err)
             }
 
             return res.status(200).json({
@@ -213,21 +251,22 @@ class ComercialController {
         try {
             const { id } = req.params
             const { nome, email, telefone, data_hora, produto_id, produto_nome, valor, duracao_minutos, usuario_id, cliente_id, metodo_pagamento } = req.body
+            const telefoneNormalizado = normalizePhone(telefone)
 
-            if (!nome || !email || !telefone || !data_hora || !produto_id || !produto_nome || !valor) {
-                return res.status(400).json({ message: 'Campos obrigatórios ausentes' })
+            if (!nome || !email || !telefoneNormalizado || !data_hora || !produto_id || !produto_nome || !valor) {
+                return res.status(400).json({ message: 'Campos obrigatÃ³rios ausentes' })
             }
 
             const dataHoraIso = data_hora?.endsWith('Z') ? data_hora : `${data_hora}Z`
             const duracao = duracao_minutos || 60
 
             // Opcional: verificar disponibilidade novamente se a data/hora mudou,
-            // mas para simplificar, permitimos a edição por ser uma ação do consultor
+            // mas para simplificar, permitimos a ediÃ§Ã£o por ser uma aÃ§Ã£o do consultor
 
             const agendamentoAtualizado = {
                 nome,
                 email,
-                telefone,
+                telefone: telefoneNormalizado,
                 data_hora: dataHoraIso,
                 produto_id,
                 produto_nome,
@@ -248,15 +287,16 @@ class ComercialController {
     }
 
     /**
-     * Cria sessão de checkout do Stripe e retorna o link
+     * Cria sessÃ£o de checkout do Stripe e retorna o link
      */
     async createAgendamentoStripe(req: any, res: any) {
         console.log('========== CREATE STRIPE CHECKOUT DEBUG ==========')
         try {
             const { nome, email, telefone, data_hora, produto_id, produto_nome, valor, duracao_minutos, isEuro, usuario_id, cliente_id } = req.body
+            const telefoneNormalizado = normalizePhone(telefone)
 
-            if (!nome || !email || !telefone || !data_hora || !produto_id || !produto_nome || !valor) {
-                return res.status(400).json({ message: 'Campos obrigatórios ausentes' })
+            if (!nome || !email || !telefoneNormalizado || !data_hora || !produto_id || !produto_nome || !valor) {
+                return res.status(400).json({ message: 'Campos obrigatÃ³rios ausentes' })
             }
 
             const dataHoraIso = data_hora?.endsWith('Z') ? data_hora : `${data_hora}Z`
@@ -264,17 +304,17 @@ class ComercialController {
             const disponibilidade = await this.verificarDisponibilidade(dataHoraIso, duracao)
 
             if (!disponibilidade.disponivel) {
-                return res.status(409).json({ message: 'Horário indisponível' })
+                return res.status(409).json({ message: 'HorÃ¡rio indisponÃ­vel' })
             }
 
-            // 0. Verificar se o serviço requer delegação jurídica
+            // 0. Verificar se o serviÃ§o requer delegaÃ§Ã£o jurÃ­dica
             const catalogoServico = await AdmRepository.getServiceById(produto_id)
             const requerDelegacao = catalogoServico?.requer_delegacao_juridico || false
 
             const agendamentoPendente = {
                 nome,
                 email,
-                telefone,
+                telefone: telefoneNormalizado,
                 data_hora: dataHoraIso,
                 produto_id,
                 produto_nome,
@@ -293,7 +333,7 @@ class ComercialController {
             const checkout = await StripeService.createCheckoutSession({
                 nome,
                 email,
-                telefone,
+                telefone: telefoneNormalizado,
                 data_hora: dataHoraIso,
                 produto_id,
                 produto_nome,
@@ -332,16 +372,16 @@ class ComercialController {
             const agendamento = await ComercialRepository.getAgendamentoById(id)
 
             if (!agendamento) {
-                return res.status(404).json({ message: 'Agendamento não encontrado' })
+                return res.status(404).json({ message: 'Agendamento nÃ£o encontrado' })
             }
 
             if (agendamento.status !== 'agendado') {
-                return res.status(400).json({ message: 'Este agendamento já foi processado ou cancelado.' })
+                return res.status(400).json({ message: 'Este agendamento jÃ¡ foi processado ou cancelado.' })
             }
 
-            // Assume o valor salvo no banco ou o que veio na criação
+            // Assume o valor salvo no banco ou o que veio na criaÃ§Ã£o
             const valor = agendamento.valor || 0
-            const isEuro = agendamento.is_euro !== false // Default true se não especificado
+            const isEuro = agendamento.is_euro !== false // Default true se nÃ£o especificado
 
             let checkoutUrl = ''
 
@@ -388,7 +428,7 @@ class ComercialController {
     }
 
     /**
-     * Processa o webhook do Stripe para confirmar agendamento após o pagamento
+     * Processa o webhook do Stripe para confirmar agendamento apÃ³s o pagamento
      */
     async handleStripeWebhook(req: any, res: any) {
         const sig = req.headers['stripe-signature']
@@ -397,10 +437,10 @@ class ComercialController {
         let event
 
         try {
-            // req.body deve ser o RAW body para validação da assinatura
+            // req.body deve ser o RAW body para validaÃ§Ã£o da assinatura
             event = StripeService.validateWebhookSignature(req.body, sig)
         } catch (err: any) {
-            console.error('Erro na validação do Webhook Stripe:', err.message)
+            console.error('Erro na validaÃ§Ã£o do Webhook Stripe:', err.message)
             return res.status(400).send(`Webhook Error: ${err.message}`)
         }
 
@@ -422,8 +462,8 @@ class ComercialController {
                             console.log('Atualizando agendamento existente:', agendamentoId)
                             await ComercialRepository.updateAgendamentoStatus(agendamentoId, status)
                         } else {
-                            // Fallback caso não tenha o ID (legado ou erro)
-                            console.log('ID não encontrado no metadata, criando novo agendamento...')
+                            // Fallback caso nÃ£o tenha o ID (legado ou erro)
+                            console.log('ID nÃ£o encontrado no metadata, criando novo agendamento...')
                             const agendamento = {
                                 nome: metadata.nome,
                                 email: metadata.email,
@@ -449,7 +489,7 @@ class ComercialController {
                 else if (metadata && metadata.tipo === 'orcamento') {
                     try {
                         const documentoIds = metadata.documentoIds?.split(',') || []
-                        console.log('Pagamento Stripe confirmado para orçamentos:', documentoIds)
+                        console.log('Pagamento Stripe confirmado para orÃ§amentos:', documentoIds)
 
                         const TraducoesRepository = (await import('../repositories/TraducoesRepository')).default
 
@@ -459,16 +499,16 @@ class ComercialController {
                                 await TraducoesRepository.aprovarOrcamento(orcamento.id, docId)
                             }
                         }
-                        console.log('Orçamentos aprovados com sucesso via Webhook Stripe')
+                        console.log('OrÃ§amentos aprovados com sucesso via Webhook Stripe')
                     } catch (error: any) {
-                        console.error('Erro ao aprovar orçamentos via Webhook Stripe:', error)
-                        return res.status(500).json({ message: 'Erro ao processar aprovação de orçamentos' })
+                        console.error('Erro ao aprovar orÃ§amentos via Webhook Stripe:', error)
+                        return res.status(500).json({ message: 'Erro ao processar aprovaÃ§Ã£o de orÃ§amentos' })
                     }
                 }
                 break
             }
             default:
-                console.log(`Evento Stripe não processado: ${event.type}`)
+                console.log(`Evento Stripe nÃ£o processado: ${event.type}`)
         }
 
         // Return a 200 response to acknowledge receipt of the event
@@ -486,13 +526,13 @@ class ComercialController {
         const inicioIso = inicio.toISOString()
         const fimIso = fim.toISOString()
 
-        // Busca agendamentos conflitantes no repository (intervalo fechado no início, aberto no fim)
+        // Busca agendamentos conflitantes no repository (intervalo fechado no inÃ­cio, aberto no fim)
         const agendamentos = await ComercialRepository.getAgendamentosByIntervalo(
             inicioIso,
             fimIso
         )
 
-        // Se encontrou algum agendamento, o horário está ocupado
+        // Se encontrou algum agendamento, o horÃ¡rio estÃ¡ ocupado
         const disponivel = agendamentos.length === 0
 
         console.log('Disponibilidade:', disponivel, 'Conflitos:', agendamentos.length)
@@ -508,7 +548,7 @@ class ComercialController {
             const { data_hora, duracao_minutos } = req.query
 
             if (!data_hora) {
-                return res.status(400).json({ message: 'data_hora é obrigatório' })
+                return res.status(400).json({ message: 'data_hora Ã© obrigatÃ³rio' })
             }
 
             const dataHoraIso = (data_hora as string)?.endsWith('Z')
@@ -536,19 +576,19 @@ class ComercialController {
             const { usuarioId } = req.params
 
             if (!usuarioId) {
-                return res.status(400).json({ message: 'usuarioId é obrigatório' })
+                return res.status(400).json({ message: 'usuarioId Ã© obrigatÃ³rio' })
             }
 
             const agendamentos = await ComercialRepository.getAgendamentosByUsuario(usuarioId)
 
-            // Buscar informações do catálogo para cada agendamento
+            // Buscar informaÃ§Ãµes do catÃ¡logo para cada agendamento
             const enrichedAgendamentos = await Promise.all(agendamentos.map(async (agendamento: any) => {
                 if (agendamento.produto_id) {
                     try {
                         const serviceInfo = await AdmRepository.getServiceById(agendamento.produto_id)
                         return { ...agendamento, produto: serviceInfo }
                     } catch (e) {
-                        console.error(`Erro ao buscar serviço ${agendamento.produto_id}:`, e)
+                        console.error(`Erro ao buscar serviÃ§o ${agendamento.produto_id}:`, e)
                     }
                 }
                 return agendamento
@@ -557,9 +597,9 @@ class ComercialController {
             return res.status(200).json(enrichedAgendamentos)
 
         } catch (error: any) {
-            console.error('Erro ao buscar agendamentos do usuário:', error)
+            console.error('Erro ao buscar agendamentos do usuÃ¡rio:', error)
             return res.status(500).json({
-                message: 'Erro ao buscar agendamentos do usuário',
+                message: 'Erro ao buscar agendamentos do usuÃ¡rio',
                 error: error.message
             })
         }
@@ -570,19 +610,19 @@ class ComercialController {
             const { data } = req.params
 
             if (!data) {
-                return res.status(400).json({ message: 'data é obrigatório' })
+                return res.status(400).json({ message: 'data Ã© obrigatÃ³rio' })
             }
 
             const agendamentos = await ComercialRepository.getAgendamentosByData(data)
 
-            // Buscar informações do catálogo para cada agendamento
+            // Buscar informaÃ§Ãµes do catÃ¡logo para cada agendamento
             const enrichedAgendamentos = await Promise.all(agendamentos.map(async (agendamento: any) => {
                 if (agendamento.produto_id) {
                     try {
                         const serviceInfo = await AdmRepository.getServiceById(agendamento.produto_id)
                         return { ...agendamento, produto: serviceInfo }
                     } catch (e) {
-                        console.error(`Erro ao buscar serviço ${agendamento.produto_id}:`, e)
+                        console.error(`Erro ao buscar serviÃ§o ${agendamento.produto_id}:`, e)
                     }
                 }
                 return agendamento
@@ -604,19 +644,19 @@ class ComercialController {
             const { clienteId } = req.params
 
             if (!clienteId) {
-                return res.status(400).json({ message: 'clienteId é obrigatório' })
+                return res.status(400).json({ message: 'clienteId Ã© obrigatÃ³rio' })
             }
 
             const agendamentos = await ComercialRepository.getAgendamentosByCliente(clienteId)
 
-            // Buscar informações do catálogo para cada agendamento
+            // Buscar informaÃ§Ãµes do catÃ¡logo para cada agendamento
             const enrichedAgendamentos = await Promise.all(agendamentos.map(async (agendamento: any) => {
                 if (agendamento.produto_id) {
                     try {
                         const serviceInfo = await AdmRepository.getServiceById(agendamento.produto_id)
                         return { ...agendamento, produto: serviceInfo }
                     } catch (e) {
-                        console.error(`Erro ao buscar serviço ${agendamento.produto_id}:`, e)
+                        console.error(`Erro ao buscar serviÃ§o ${agendamento.produto_id}:`, e)
                     }
                 }
                 return agendamento
@@ -685,9 +725,9 @@ class ComercialController {
     }
 
     /**
-     * Confirmação manual de PIX por parte do comercial.
-     * Agora apenas marca como 'aguardando_verificacao' — a confirmação real
-     * e o envio de SMTP são feitos pelo setor financeiro (FinanceiroController).
+     * ConfirmaÃ§Ã£o manual de PIX por parte do comercial.
+     * Agora apenas marca como 'aguardando_verificacao' â€” a confirmaÃ§Ã£o real
+     * e o envio de SMTP sÃ£o feitos pelo setor financeiro (FinanceiroController).
      */
     async confirmarPix(req: any, res: any) {
         try {
@@ -696,20 +736,20 @@ class ComercialController {
             // 1. Get agendamento
             const agendamento = await ComercialRepository.getAgendamentoById(id);
             if (!agendamento) {
-                return res.status(404).json({ message: 'Agendamento não encontrado' });
+                return res.status(404).json({ message: 'Agendamento nÃ£o encontrado' });
             }
 
-            // 2. Verifica se já está confirmado
+            // 2. Verifica se jÃ¡ estÃ¡ confirmado
             if (agendamento.status === 'confirmado' || agendamento.status === 'aprovado') {
-                return res.status(400).json({ message: 'Este agendamento já está confirmado.' });
+                return res.status(400).json({ message: 'Este agendamento jÃ¡ estÃ¡ confirmado.' });
             }
 
             // 3. Verifica se tem comprovante
             if (!agendamento.comprovante_url) {
-                return res.status(400).json({ message: 'É necessário enviar o comprovante antes de confirmar.' });
+                return res.status(400).json({ message: 'Ã‰ necessÃ¡rio enviar o comprovante antes de confirmar.' });
             }
 
-            // 4. Update status para aguardando_verificacao (financeiro irá aprovar/recusar)
+            // 4. Update status para aguardando_verificacao (financeiro irÃ¡ aprovar/recusar)
             await ComercialRepository.updateAgendamentoStatus(id, 'aguardando_verificacao');
 
             // 5. Garantir que pagamento_status esteja como 'pendente' para o financeiro
@@ -724,7 +764,7 @@ class ComercialController {
 
             return res.status(200).json({
                 success: true,
-                message: 'Comprovante enviado para verificação pelo setor financeiro.'
+                message: 'Comprovante enviado para verificaÃ§Ã£o pelo setor financeiro.'
             });
 
         } catch (error: any) {
@@ -734,7 +774,7 @@ class ComercialController {
     }
 
     /**
-     * Buscar um agendamento específico por ID
+     * Buscar um agendamento especÃ­fico por ID
      */
     async getAgendamentoById(req: any, res: any) {
         try {
@@ -743,20 +783,20 @@ class ComercialController {
             const data = await ComercialRepository.getAgendamentoById(id)
 
             if (!data) {
-                return res.status(404).json({ message: 'Agendamento não encontrado' })
+                return res.status(404).json({ message: 'Agendamento nÃ£o encontrado' })
             }
 
-            // Enriquecer com dados do catálogo
+            // Enriquecer com dados do catÃ¡logo
             if (data.produto_id) {
                 try {
                     const serviceInfo = await AdmRepository.getServiceById(data.produto_id)
                     data.produto = serviceInfo
                 } catch (e) {
-                    console.error(`Erro ao buscar serviço ${data.produto_id}:`, e)
+                    console.error(`Erro ao buscar serviÃ§o ${data.produto_id}:`, e)
                 }
             }
 
-            // Enriquecer com dados do formulário
+            // Enriquecer com dados do formulÃ¡rio
             let formulario_preenchido = false
             try {
                 const { data: formEnviado } = await supabase
@@ -769,7 +809,7 @@ class ComercialController {
                     formulario_preenchido = true
                 }
             } catch (err) {
-                console.warn('Erro ao verificar formulário preenchido:', err)
+                console.warn('Erro ao verificar formulÃ¡rio preenchido:', err)
             }
 
             return res.status(200).json({
@@ -783,7 +823,7 @@ class ComercialController {
     }
 
     /**
-     * Verifica se o formulário foi preenchido pelo cliente (Lead -> Cadastro)
+     * Verifica se o formulÃ¡rio foi preenchido pelo cliente (Lead -> Cadastro)
      */
     async verificarStatusFormulario(req: any, res: any) {
         try {
@@ -792,10 +832,10 @@ class ComercialController {
             // 1. Get agendamento
             const agendamento = await ComercialRepository.getAgendamentoById(id);
             if (!agendamento) {
-                return res.status(404).json({ message: 'Agendamento não encontrado' });
+                return res.status(404).json({ message: 'Agendamento nÃ£o encontrado' });
             }
 
-            // 2. Verifica se o cliente já virou user_id
+            // 2. Verifica se o cliente jÃ¡ virou user_id
             if (agendamento.cliente_id) {
                 const { data: cliente, error } = await supabase
                     .from('clientes')
@@ -808,7 +848,7 @@ class ComercialController {
                 }
             }
 
-            // Alternativa: ver se já existe email atrelado à tabela clientes que virou user_id
+            // Alternativa: ver se jÃ¡ existe email atrelado Ã  tabela clientes que virou user_id
             if (agendamento.email) {
                 const { data: clientePorEmail, error: errEmail } = await supabase
                     .from('clientes')
@@ -824,7 +864,7 @@ class ComercialController {
             return res.status(200).json({ preenchido: false });
 
         } catch (error: any) {
-            console.error('Erro ao verificar status do formulário:', error);
+            console.error('Erro ao verificar status do formulÃ¡rio:', error);
             return res.status(500).json({ preenchido: false, error: error.message });
         }
     }
@@ -852,15 +892,15 @@ class ComercialController {
 
             const agendamento = await ComercialRepository.getAgendamentoById(id)
             if (!agendamento) {
-                return res.status(404).json({ message: 'Agendamento não encontrado' })
+                return res.status(404).json({ message: 'Agendamento nÃ£o encontrado' })
             }
 
             if (agendamento.status === 'cancelado') {
-                return res.status(400).json({ message: 'Este agendamento já está cancelado.' })
+                return res.status(400).json({ message: 'Este agendamento jÃ¡ estÃ¡ cancelado.' })
             }
 
             if (agendamento.status === 'realizado') {
-                return res.status(400).json({ message: 'Não é possível cancelar um agendamento já realizado.' })
+                return res.status(400).json({ message: 'NÃ£o Ã© possÃ­vel cancelar um agendamento jÃ¡ realizado.' })
             }
 
             await ComercialRepository.updateAgendamentoStatus(id, 'cancelado')
@@ -880,24 +920,24 @@ class ComercialController {
 
     /**
      * POST /comercial/contratos
-     * Cria contrato para serviÃ§o fixo e envia email com PDF mock
+     * Cria contrato para serviÃƒÂ§o fixo e envia email com PDF mock
      */
     async createContratoServico(req: any, res: any) {
         try {
             const { cliente_id, servico_id, usuario_id, subservico_id, subservico_nome } = req.body
 
             if (!cliente_id || !servico_id) {
-                return res.status(400).json({ message: 'cliente_id e servico_id são obrigatórios' })
+                return res.status(400).json({ message: 'cliente_id e servico_id sÃ£o obrigatÃ³rios' })
             }
 
             const servico = await AdmRepository.getServiceById(servico_id)
             if (!servico) {
-                return res.status(404).json({ message: 'Serviço não encontrado' })
+                return res.status(404).json({ message: 'ServiÃ§o nÃ£o encontrado' })
             }
 
             const servicoTipo = servico.tipo || 'agendavel'
             if (servicoTipo !== 'fixo') {
-                return res.status(400).json({ message: 'Serviço não é do tipo fixo' })
+                return res.status(400).json({ message: 'ServiÃ§o nÃ£o Ã© do tipo fixo' })
             }
 
             const { data: cliente, error: clienteError } = await supabase
@@ -907,8 +947,41 @@ class ComercialController {
                 .single()
 
             if (clienteError || !cliente) {
-                console.error('[ComercialController] Cliente não encontrado:', clienteError)
-                return res.status(404).json({ message: 'Cliente não encontrado' })
+                console.error('[ComercialController] Cliente nÃ£o encontrado:', clienteError)
+                return res.status(404).json({ message: 'Cliente nÃ£o encontrado' })
+            }
+
+            const ultimoContratoMesmoServico = await ContratoServicoRepository.getUltimoContratoComDados(cliente_id, servico_id)
+            const ultimoContratoComDados = ultimoContratoMesmoServico
+                || await ContratoServicoRepository.getUltimoContratoComDados(cliente_id)
+            const ultimoDraftDados =
+                ultimoContratoComDados?.draft_dados && typeof ultimoContratoComDados.draft_dados === 'object'
+                    ? ultimoContratoComDados.draft_dados
+                    : {}
+
+            const clienteTelefoneNormalizado = normalizePhone(cliente.whatsapp || cliente.telefone)
+            const clienteCpfNormalizado = normalizeCpf(cliente.cpf || cliente.documento)
+            const tipoServicoPadrao = subservico_nome || servico.nome || 'Assessoria de Imigracao'
+
+            const draftDadosPrefill: any = {
+                ...ultimoDraftDados,
+                nome: ultimoDraftDados?.nome || cliente.nome || '',
+                email: ultimoDraftDados?.email || cliente.email || '',
+                telefone: ultimoDraftDados?.telefone || clienteTelefoneNormalizado || '',
+                documento: ultimoDraftDados?.documento || clienteCpfNormalizado || '',
+                endereco: ultimoDraftDados?.endereco || cliente.endereco || '',
+                tipo_servico: tipoServicoPadrao
+            }
+
+            if (subservico_nome) {
+                draftDadosPrefill.subservico_nome = subservico_nome
+            }
+            if (subservico_id) {
+                draftDadosPrefill.subservico_id = subservico_id
+            }
+
+            if (draftDadosPrefill.__erroGeracao) {
+                delete draftDadosPrefill.__erroGeracao
             }
 
             const contratoPayload: any = {
@@ -919,12 +992,12 @@ class ComercialController {
                 servico_valor: servico.valor || 0,
                 cliente_nome: cliente.nome || null,
                 cliente_email: cliente.email || null,
-                cliente_telefone: cliente.whatsapp || cliente.telefone || null,
+                cliente_telefone: clienteTelefoneNormalizado,
                 assinatura_status: 'pendente',
                 pagamento_status: 'pendente',
                 is_draft: true,
                 etapa_fluxo: 1,
-                draft_dados: {}
+                draft_dados: draftDadosPrefill
             }
 
             // Incluir subservico se informado
@@ -936,9 +1009,6 @@ class ComercialController {
             }
 
             const contrato = await ContratoServicoRepository.createContrato(contratoPayload)
-
-            let emailEnviado = false
-            // Email is now sent via /enviar-assinatura endpoint after generating PDF.
 
             const contratoCompleto = await ContratoServicoRepository.getContratoById(contrato.id)
 
@@ -955,7 +1025,13 @@ class ComercialController {
     async getContratosServicos(req: any, res: any) {
         try {
             const clienteId = (req.query?.cliente_id || req.query?.clienteId) as string | undefined
-            const contratos = await ContratoServicoRepository.getContratos({ clienteId })
+            const isDraftRaw = req.query?.isDraft
+            const isDraft =
+                isDraftRaw === 'true' ? true
+                    : isDraftRaw === 'false' ? false
+                        : undefined
+
+            const contratos = await ContratoServicoRepository.getContratos({ clienteId, isDraft })
             return res.status(200).json({ data: contratos })
         } catch (error: any) {
             console.error('[ComercialController] Erro ao listar contratos:', error)
@@ -988,7 +1064,7 @@ class ComercialController {
             const file = req.file
 
             if (!file) {
-                return res.status(400).json({ message: 'Arquivo do contrato Ã© obrigatÃ³rio' })
+                return res.status(400).json({ message: 'Arquivo do contrato ÃƒÂ© obrigatÃƒÂ³rio' })
             }
 
             await ContratoServicoRepository.getContratoById(id)
@@ -1044,7 +1120,7 @@ class ComercialController {
 
             const contrato = await ContratoServicoRepository.getContratoById(id)
             if (!contrato?.contrato_assinado_url) {
-                return res.status(400).json({ message: 'Contrato assinado nÃ£o encontrado' })
+                return res.status(400).json({ message: 'Contrato assinado nÃƒÂ£o encontrado' })
             }
 
             const updated = await ContratoServicoRepository.updateContrato(id, {
@@ -1053,6 +1129,13 @@ class ComercialController {
                 assinatura_aprovado_em: new Date().toISOString(),
                 assinatura_recusa_nota: null,
                 atualizado_em: new Date().toISOString()
+            })
+
+            await this.notificarClienteContrato({
+                clienteId: updated.cliente_id,
+                titulo: 'Contrato aprovado',
+                mensagem: 'Seu contrato foi aprovado pelo time comercial. Agora voce ja pode enviar o comprovante de pagamento.',
+                tipo: 'success'
             })
 
             return res.status(200).json({ data: updated })
@@ -1072,9 +1155,16 @@ class ComercialController {
 
             const updated = await ContratoServicoRepository.updateContrato(id, {
                 assinatura_status: 'recusado',
-                assinatura_recusa_nota: nota || 'Contrato recusado sem observaÃ§Ã£o.',
+                assinatura_recusa_nota: nota || 'Contrato recusado sem observaÃƒÂ§ÃƒÂ£o.',
                 assinatura_recusado_em: new Date().toISOString(),
                 atualizado_em: new Date().toISOString()
+            })
+
+            await this.notificarClienteContrato({
+                clienteId: updated.cliente_id,
+                titulo: 'Contrato recusado',
+                mensagem: updated.assinatura_recusa_nota || 'Seu contrato precisa de ajustes e reenvio.',
+                tipo: 'warning'
             })
 
             return res.status(200).json({ data: updated })
@@ -1093,16 +1183,43 @@ class ComercialController {
             const file = req.file
 
             if (!file) {
-                return res.status(400).json({ message: 'Arquivo do comprovante Ã© obrigatÃ³rio' })
+                return res.status(400).json({ message: 'Arquivo do comprovante ÃƒÂ© obrigatÃƒÂ³rio' })
             }
 
             const contrato = await ContratoServicoRepository.getContratoById(id)
             if (!contrato) {
-                return res.status(404).json({ message: 'Contrato nÃ£o encontrado' })
+                return res.status(404).json({ message: 'Contrato nÃƒÂ£o encontrado' })
             }
 
             if (contrato.assinatura_status !== 'aprovado') {
-                return res.status(400).json({ message: 'Contrato ainda nÃ£o aprovado' })
+                return res.status(400).json({ message: 'Contrato ainda nÃƒÂ£o aprovado' })
+            }
+
+            if (!['pendente', 'recusado'].includes(contrato.pagamento_status)) {
+                return res.status(409).json({ message: 'Ja existe um comprovante em analise para este contrato.' })
+            }
+
+            const lockTimestamp = new Date().toISOString()
+            const { data: lockedContrato, error: lockError } = await supabase
+                .from('contratos_servicos')
+                .update({
+                    pagamento_status: 'em_analise',
+                    pagamento_nota_recusa: null,
+                    pagamento_comprovante_upload_em: lockTimestamp,
+                    atualizado_em: lockTimestamp
+                })
+                .eq('id', id)
+                .in('pagamento_status', ['pendente', 'recusado'])
+                .select()
+                .maybeSingle()
+
+            if (lockError) {
+                console.error('[ComercialController] Erro ao reservar upload de comprovante:', lockError)
+                return res.status(500).json({ message: 'Erro ao iniciar envio do comprovante' })
+            }
+
+            if (!lockedContrato) {
+                return res.status(409).json({ message: 'Comprovante ja enviado por outro usuario. Atualize a tela para ver o status.' })
             }
 
             const timestamp = Date.now()
@@ -1118,6 +1235,11 @@ class ComercialController {
 
             if (uploadError) {
                 console.error('[ComercialController] Erro no upload do comprovante:', uploadError)
+                await ContratoServicoRepository.updateContrato(id, {
+                    pagamento_status: contrato.pagamento_status,
+                    pagamento_nota_recusa: contrato.pagamento_nota_recusa || null,
+                    atualizado_em: new Date().toISOString()
+                })
                 return res.status(500).json({ message: 'Erro ao fazer upload do comprovante' })
             }
 
@@ -1135,108 +1257,177 @@ class ComercialController {
                 atualizado_em: new Date().toISOString()
             })
 
+            await this.notificarClienteContrato({
+                clienteId: updated.cliente_id,
+                titulo: 'Comprovante recebido',
+                mensagem: 'Recebemos seu comprovante e ele esta em analise do financeiro.',
+                tipo: 'info'
+            })
+
             return res.status(200).json({ data: updated })
         } catch (error: any) {
             console.error('[ComercialController] Erro ao enviar comprovante:', error)
             return res.status(500).json({ message: 'Erro ao enviar comprovante', error: error.message })
         }
     }
-
     /**
      * PUT /comercial/contratos/:id/draft
-     * Atualiza o rascunho do formulário.
+     * Atualiza o rascunho do formulÃ¡rio.
      */
     async updateContratoDraft(req: any, res: any) {
         try {
-            const { id } = req.params;
-            const { etapa_fluxo, draft_dados } = req.body;
+            const { id } = req.params
+            const { etapa_fluxo, draft_dados } = req.body
 
-            const contrato = await ContratoServicoRepository.getContratoById(id);
+            const contrato = await ContratoServicoRepository.getContratoById(id)
             if (!contrato) {
-                return res.status(404).json({ message: 'Contrato não encontrado' });
+                return res.status(404).json({ message: 'Contrato nÃ£o encontrado' })
             }
             if (!contrato.is_draft) {
-                return res.status(400).json({ message: 'Este contrato já foi finalizado e enviado.' });
+                return res.status(400).json({ message: 'Este contrato ja foi finalizado e enviado.' })
+            }
+
+            const etapaNumerica = Number(etapa_fluxo || contrato.etapa_fluxo || 1)
+            const mergedDraft = this.mergeDraftDados(contrato.draft_dados, draft_dados)
+            const incomingDraft = (draft_dados && typeof draft_dados === 'object') ? draft_dados : {}
+
+            if (Object.prototype.hasOwnProperty.call(incomingDraft, 'telefone')) {
+                const telefoneNormalizado = normalizePhone(mergedDraft.telefone)
+                mergedDraft.telefone = telefoneNormalizado || ''
+            }
+
+            const documentoDigits = String(mergedDraft.documento || '').replace(/\D/g, '')
+            if (documentoDigits.length === 11) {
+                const cpfNormalizado = normalizeCpf(mergedDraft.documento)
+                if (cpfNormalizado) {
+                    mergedDraft.documento = cpfNormalizado
+                }
             }
 
             const updatedData = await ContratoServicoRepository.updateContrato(id, {
-                etapa_fluxo,
-                draft_dados,
+                etapa_fluxo: etapaNumerica,
+                draft_dados: mergedDraft,
                 atualizado_em: new Date().toISOString()
-            });
+            })
 
-            return res.status(200).json({ data: updatedData });
+            return res.status(200).json({ data: updatedData })
         } catch (error: any) {
-            console.error('[ComercialController] Erro ao atualizar draft:', error);
-            return res.status(500).json({ message: 'Erro ao atualizar rascunho', error: error.message });
+            console.error('[ComercialController] Erro ao atualizar draft:', error)
+            return res.status(500).json({ message: 'Erro ao atualizar rascunho', error: error.message })
         }
     }
-
     /**
      * POST /comercial/contratos/:id/gerar-pdf
      * Gera o PDF com base nos dados preenchidos no draft e retorna a URL.
      */
     async gerarContratoPdf(req: any, res: any) {
-        try {
-            const { id } = req.params;
+        const { id } = req.params
 
-            const contrato = await ContratoServicoRepository.getContratoById(id);
+        try {
+            const contrato = await ContratoServicoRepository.getContratoById(id)
             if (!contrato) {
-                return res.status(404).json({ message: 'Contrato não encontrado' });
+                return res.status(404).json({ message: 'Contrato nÃ£o encontrado' })
             }
 
-            const PdfService = (await import('../services/PdfService')).default;
-            
-            // Em vez de passar um payload qualquer, você pode extrair do draft_dados
-            const pdfUrl = await PdfService.gerarContratoAssessoria(id, contrato.draft_dados);
+            const PdfService = (await import('../services/PdfService')).default
+            const pdfUrl = await PdfService.gerarContratoAssessoria(id, contrato.draft_dados)
 
             if (!pdfUrl) {
-                return res.status(500).json({ message: 'Falha ao gerar o PDF do contrato.' });
+                const mensagemErro = 'Falha ao gerar o PDF do contrato.'
+                const draftComErro = this.mergeDraftDados(contrato.draft_dados, {
+                    __erroGeracao: this.buildErroGeracaoDraft(mensagemErro)
+                })
+
+                const updatedWithError = await ContratoServicoRepository.updateContrato(id, {
+                    etapa_fluxo: 4,
+                    draft_dados: draftComErro,
+                    atualizado_em: new Date().toISOString()
+                })
+
+                return res.status(500).json({ message: mensagemErro, data: updatedWithError })
+            }
+
+            const draftSemErro = this.mergeDraftDados(contrato.draft_dados, {})
+            if (draftSemErro.__erroGeracao) {
+                delete draftSemErro.__erroGeracao
             }
 
             const updatedData = await ContratoServicoRepository.updateContrato(id, {
                 contrato_gerado_url: pdfUrl,
+                etapa_fluxo: 4,
+                draft_dados: draftSemErro,
                 atualizado_em: new Date().toISOString()
-            });
+            })
 
-            return res.status(200).json({ url: pdfUrl, data: updatedData });
+            return res.status(200).json({ url: pdfUrl, data: updatedData })
         } catch (error: any) {
-            console.error('[ComercialController] Erro ao gerar PDF:', error);
-            return res.status(500).json({ message: 'Erro ao gerar PDF', error: error.message });
+            console.error('[ComercialController] Erro ao gerar PDF:', error)
+
+            try {
+                const contratoAtual = await ContratoServicoRepository.getContratoById(id)
+                if (contratoAtual) {
+                    const draftComErro = this.mergeDraftDados(contratoAtual.draft_dados, {
+                        __erroGeracao: this.buildErroGeracaoDraft(error.message || 'Erro ao gerar PDF')
+                    })
+
+                    await ContratoServicoRepository.updateContrato(id, {
+                        etapa_fluxo: 4,
+                        draft_dados: draftComErro,
+                        atualizado_em: new Date().toISOString()
+                    })
+                }
+            } catch (updateError) {
+                console.error('[ComercialController] Erro ao registrar falha de geraÃ§Ã£o:', updateError)
+            }
+
+            return res.status(500).json({ message: 'Erro ao gerar PDF', error: error.message })
         }
     }
-
     /**
      * POST /comercial/contratos/:id/enviar-assinatura
      * Finaliza o draft e dispara email.
      */
     async enviarContratoAssinatura(req: any, res: any) {
         try {
-            const { id } = req.params;
-            const { email } = req.body;
+            const { id } = req.params
+            const { email } = req.body
 
-            const contrato = await ContratoServicoRepository.getContratoById(id);
+            const contrato = await ContratoServicoRepository.getContratoById(id)
             if (!contrato) {
-                return res.status(404).json({ message: 'Contrato não encontrado' });
+                return res.status(404).json({ message: 'Contrato nÃ£o encontrado' })
             }
 
-            const emailDestino = email || contrato.cliente_email;
+            const emailDestino = String(email || contrato.cliente_email || '').trim().toLowerCase()
             if (!emailDestino) {
-                return res.status(400).json({ message: 'O e-mail do cliente é obrigatório para enviar o contrato.' });
+                return res.status(400).json({ message: 'O e-mail do cliente Ã© obrigatÃ³rio para enviar o contrato.' })
             }
 
-            // Atualiza contrato para NÃO draft mais
+            const erroGeracaoAtivo = contrato?.draft_dados?.__erroGeracao?.ativo === true
+            if (erroGeracaoAtivo) {
+                return res.status(409).json({ message: 'Este contrato esta bloqueado por erro de geracao. Gere o contrato novamente antes de enviar.' })
+            }
+
+            if (!contrato.contrato_gerado_url) {
+                return res.status(400).json({ message: 'Gere o contrato antes de enviar para assinatura.' })
+            }
+
+            const draftSemErro = this.mergeDraftDados(contrato.draft_dados, {})
+            if (draftSemErro.__erroGeracao) {
+                delete draftSemErro.__erroGeracao
+            }
+
             const updatedData = await ContratoServicoRepository.updateContrato(id, {
                 is_draft: false,
-                cliente_email: emailDestino, // Se for um novo e-mail passado, atualiza
+                etapa_fluxo: 4,
+                draft_dados: draftSemErro,
+                cliente_email: emailDestino,
                 assinatura_status: 'pendente',
                 atualizado_em: new Date().toISOString()
-            });
+            })
 
-            // Envia o e-mail
             try {
                 const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')
-                const contratoLink = `${frontendUrl}/cliente/contratos` // Em teoria, pode ter link direto pro Storage do mock
+                const contratoLink = `${frontendUrl}/cliente/contratos`
 
                 await EmailService.sendContratoEmail({
                     to: emailDestino,
@@ -1246,17 +1437,29 @@ class ComercialController {
                 })
             } catch (emailError) {
                 console.error('[ComercialController] Erro ao enviar email de contrato:', emailError)
-                return res.status(500).json({ message: 'Contrato finalizado, mas ocorreu um erro no envio do e-mail.' });
+                return res.status(500).json({ message: 'Contrato finalizado, mas ocorreu um erro no envio do e-mail.' })
             }
 
-            return res.status(200).json({ message: 'Contrato enviado com sucesso!', data: updatedData });
+            const clienteStatus = contrato?.cliente?.status || null
+            if (clienteStatus && clienteStatus !== 'LEAD') {
+                await this.notificarClienteContrato({
+                    clienteId: contrato.cliente_id,
+                    titulo: 'Novo contrato disponivel para assinatura',
+                    mensagem: 'Seu contrato foi gerado e enviado para assinatura. Acesse a area de contratos para acompanhar o status.',
+                    tipo: 'info'
+                })
+            }
+
+            return res.status(200).json({ message: 'Contrato enviado com sucesso!', data: updatedData })
         } catch (error: any) {
-            console.error('[ComercialController] Erro ao enviar para assinatura:', error);
-            return res.status(500).json({ message: 'Erro ao enviar para assinatura', error: error.message });
+            console.error('[ComercialController] Erro ao enviar para assinatura:', error)
+            return res.status(500).json({ message: 'Erro ao enviar para assinatura', error: error.message })
         }
     }
+
 
 }
 
 export default new ComercialController()
+
 

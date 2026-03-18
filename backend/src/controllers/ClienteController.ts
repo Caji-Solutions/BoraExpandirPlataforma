@@ -6,6 +6,7 @@ import NotificationService from '../services/NotificationService';
 import AdmRepository from '../repositories/AdmRepository';
 import { getDocumentosPorTipoServico, DocumentoRequeridoConfig } from '../config/documentosConfig';
 import ContratoServicoRepository from '../repositories/ContratoServicoRepository';
+import { normalizeCpf, normalizePhone } from '../utils/normalizers';
 
 // Interface para o documento requerido com informações do processo
 interface DocumentoRequeridoComProcesso extends DocumentoRequeridoConfig {
@@ -16,6 +17,29 @@ interface DocumentoRequeridoComProcesso extends DocumentoRequeridoConfig {
 }
 
 class ClienteController {
+  private async notificarClienteContrato(params: {
+    clienteId?: string | null
+    titulo: string
+    mensagem: string
+    tipo?: 'info' | 'success' | 'warning' | 'error' | 'agendamento'
+  }) {
+    if (!params.clienteId) return
+    try {
+      await NotificationService.createNotification({
+        clienteId: params.clienteId,
+        titulo: params.titulo,
+        mensagem: params.mensagem,
+        tipo: params.tipo || 'info'
+      })
+    } catch (error) {
+      console.error('[ClienteController] Erro ao criar notificacao de contrato:', error)
+    }
+  }
+
+  private isClienteLead(contrato: any): boolean {
+    return String(contrato?.cliente?.status || '').toUpperCase() === 'LEAD'
+  }
+
   // GET /cliente/:clienteId/documentos-requeridos
   // Retorna os documentos necessários baseado nos processos do cliente
   async getDocumentosRequeridos(req: any, res: any) {
@@ -154,6 +178,8 @@ class ClienteController {
         telefone,
         isAncestralDireto
       } = req.body
+      const documentoNormalizado = normalizeCpf(documento)
+      const telefoneNormalizado = normalizePhone(telefone)
 
       if (!clienteId || !nomeCompleto || !parentesco) {
         return res.status(400).json({ message: 'clienteId, nomeCompleto e parentesco são obrigatórios' })
@@ -163,13 +189,13 @@ class ClienteController {
         clienteId,
         nomeCompleto,
         parentesco,
-        documento,
+        documento: documentoNormalizado || undefined,
         dataNascimento,
         rg,
         passaporte,
         nacionalidade,
         email,
-        telefone,
+        telefone: telefoneNormalizado || undefined,
         isAncestralDireto
       })
 
@@ -325,8 +351,10 @@ class ClienteController {
   async register(req: any, res: any) {
     try {
       const { nome, email, whatsapp, parceiro_id, status, documento, endereco } = req.body
+      const whatsappNormalizado = normalizePhone(whatsapp)
+      const cpfNormalizado = normalizeCpf(documento || req.body.cpf)
 
-      if (!nome || !whatsapp) {
+      if (!nome || !whatsappNormalizado) {
         return res.status(400).json({ message: 'Nome e WhatsApp são obrigatórios' })
       }
 
@@ -423,10 +451,11 @@ class ClienteController {
         id: usuarioId || require('crypto').randomUUID(), // Mantendo o vínculo com Auth ou garantindo um ID
         nome,
         email: normalizedEmail,
-        whatsapp,
+        whatsapp: whatsappNormalizado,
         parceiro_id: parceiro_id || null,
         status: status || 'cliente',
-        cpf: documento || req.body.cpf || null
+        cpf: cpfNormalizado,
+        endereco: endereco || null
       }
 
       const createdData = await ClienteRepository.register(clienteData);
@@ -449,7 +478,12 @@ class ClienteController {
   async AttStatusClientebyWpp(req: any, res: any) {
     try {
       const { wppNumber, status } = req.body
-      const cliente = await ClienteRepository.getClienteByWppNumber(wppNumber)
+      const wppNormalizado = normalizePhone(wppNumber)
+      if (!wppNormalizado) {
+        return res.status(400).json({ message: 'wppNumber é obrigatório' })
+      }
+
+      const cliente = await ClienteRepository.getClienteByWppNumber(wppNormalizado)
 
 
       if (!cliente) {
@@ -1180,7 +1214,7 @@ class ClienteController {
         return res.status(400).json({ message: 'clienteId Ã© obrigatÃ³rio' })
       }
 
-      const contratos = await ContratoServicoRepository.getContratos({ clienteId })
+      const contratos = await ContratoServicoRepository.getContratos({ clienteId, isDraft: false })
 
       return res.status(200).json({
         message: 'Contratos recuperados com sucesso',
@@ -1219,6 +1253,14 @@ class ClienteController {
         return res.status(403).json({ message: 'Contrato nÃ£o pertence ao cliente informado' })
       }
 
+      if (this.isClienteLead(contrato)) {
+        return res.status(403).json({ message: 'Leads nao podem enviar contrato pelo portal. Aguarde a conversao para cliente.' })
+      }
+
+      if (!['pendente', 'recusado'].includes(contrato.assinatura_status)) {
+        return res.status(409).json({ message: 'Este contrato nao aceita novo upload nesta etapa.' })
+      }
+
       const timestamp = Date.now()
       const ext = file.originalname.split('.').pop() || 'pdf'
       const filePath = `contratos/${id}/${timestamp}_contrato_assinado_cliente.${ext}`
@@ -1249,6 +1291,13 @@ class ClienteController {
         assinatura_upload_em: new Date().toISOString(),
         assinatura_recusa_nota: null,
         atualizado_em: new Date().toISOString()
+      })
+
+      await this.notificarClienteContrato({
+        clienteId: updated.cliente_id,
+        titulo: 'Contrato enviado',
+        mensagem: 'Seu contrato foi enviado e esta em analise do time comercial.',
+        tipo: 'info'
       })
 
       return res.status(200).json({
@@ -1288,8 +1337,39 @@ class ClienteController {
         return res.status(403).json({ message: 'Contrato nÃ£o pertence ao cliente informado' })
       }
 
+      if (this.isClienteLead(contrato)) {
+        return res.status(403).json({ message: 'Leads nao podem enviar comprovante pelo portal. Aguarde a conversao para cliente.' })
+      }
+
       if (contrato.assinatura_status !== 'aprovado') {
         return res.status(400).json({ message: 'Contrato ainda nÃ£o aprovado' })
+      }
+
+      if (!['pendente', 'recusado'].includes(contrato.pagamento_status)) {
+        return res.status(409).json({ message: 'Ja existe um comprovante em analise para este contrato.' })
+      }
+
+      const lockTimestamp = new Date().toISOString()
+      const { data: lockedContrato, error: lockError } = await supabase
+        .from('contratos_servicos')
+        .update({
+          pagamento_status: 'em_analise',
+          pagamento_nota_recusa: null,
+          pagamento_comprovante_upload_em: lockTimestamp,
+          atualizado_em: lockTimestamp
+        })
+        .eq('id', id)
+        .in('pagamento_status', ['pendente', 'recusado'])
+        .select()
+        .maybeSingle()
+
+      if (lockError) {
+        console.error('[ClienteController] Erro ao reservar upload de comprovante:', lockError)
+        return res.status(500).json({ message: 'Erro ao iniciar envio do comprovante' })
+      }
+
+      if (!lockedContrato) {
+        return res.status(409).json({ message: 'Comprovante ja enviado por outro usuario. Atualize a tela para ver o status.' })
       }
 
       const timestamp = Date.now()
@@ -1305,6 +1385,11 @@ class ClienteController {
 
       if (uploadError) {
         console.error('[ClienteController] Erro no upload do comprovante:', uploadError)
+        await ContratoServicoRepository.updateContrato(id, {
+          pagamento_status: contrato.pagamento_status,
+          pagamento_nota_recusa: contrato.pagamento_nota_recusa || null,
+          atualizado_em: new Date().toISOString()
+        })
         return res.status(500).json({ message: 'Erro ao fazer upload do comprovante' })
       }
 
@@ -1320,6 +1405,13 @@ class ClienteController {
         pagamento_comprovante_upload_em: new Date().toISOString(),
         pagamento_nota_recusa: null,
         atualizado_em: new Date().toISOString()
+      })
+
+      await this.notificarClienteContrato({
+        clienteId: updated.cliente_id,
+        titulo: 'Comprovante enviado',
+        mensagem: 'Seu comprovante foi recebido e esta em analise do financeiro.',
+        tipo: 'info'
       })
 
       return res.status(200).json({
@@ -1338,16 +1430,17 @@ class ClienteController {
   async registerLead(req: any, res: any) {
     try {
       const { nome, email, whatsapp, parceiro_id, criado_por, criado_por_nome } = req.body
+      const whatsappNormalizado = normalizePhone(whatsapp)
 
-      if (!nome || !whatsapp) {
+      if (!nome || !whatsappNormalizado) {
         return res.status(400).json({ message: 'Nome e WhatsApp são obrigatórios' })
       }
 
       const leadData = {
         id: require('crypto').randomUUID(),
         nome,
-        email: email || null,
-        whatsapp,
+        email: email ? String(email).trim().toLowerCase() : null,
+        whatsapp: whatsappNormalizado,
         parceiro_id: parceiro_id || null,
         status: 'LEAD',
         criado_por: criado_por || null,
@@ -1419,3 +1512,4 @@ class ClienteController {
 }
 
 export default new ClienteController()
+
