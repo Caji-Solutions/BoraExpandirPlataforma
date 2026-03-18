@@ -17,20 +17,14 @@ export default function ServicosComerciais() {
   const [clientes, setClientes] = useState<Cliente[]>([])
 
   const [selectedServico, setSelectedServico] = useState<Service | null>(null)
-  const [selectedClienteId, setSelectedClienteId] = useState('')
-  const [showModal, setShowModal] = useState(false)
-  const [creating, setCreating] = useState(false)
+  const [showSubserviceModal, setShowSubserviceModal] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const [catalog, clientesData] = await Promise.all([
-          catalogService.getCatalogServices(),
-          comercialService.getAllClientes()
-        ])
+        const catalog = await catalogService.getCatalogServices()
         setServices(catalog || [])
-        setClientes(clientesData || [])
       } catch (err) {
         console.error('Erro ao carregar serviços:', err)
         toast.error('Erro ao carregar serviços')
@@ -77,49 +71,33 @@ export default function ServicosComerciais() {
   }
 
   const handleCriarContrato = (servico: Service) => {
-    setSelectedServico(servico)
-    setSelectedClienteId('')
-    setShowModal(true)
-  }
-
-  const handleConfirmarContrato = async () => {
-    if (!selectedServico || !selectedClienteId) {
-      toast.warning('Selecione um cliente ou lead')
-      return
-    }
-
-    try {
-      setCreating(true)
-      // Agora o backend retorna { data, is_draft: true }
-      const res = await comercialService.createContratoServico({
-        cliente_id: selectedClienteId,
-        servico_id: selectedServico.id,
-        usuario_id: activeProfile?.id || undefined
+    // Se o serviço fixo tem subserviços, abre o modal de seleção.
+    // Caso contrário, vai direto para a tela de seleção de lead/cliente.
+    if (servico.subservices && servico.subservices.length > 0) {
+      setSelectedServico(servico)
+      setShowSubserviceModal(true)
+    } else {
+      navigate('/comercial/selecao-lead-cliente', {
+        state: {
+          servicoId: servico.id,
+          servicoNome: servico.name
+        }
       })
-      const contrato = res?.data || res; // suporte a formato antigo ou novo
-      
-      toast.success('Rascunho criado, redirecionando para formulário...')
-      setShowModal(false)
-      if (contrato?.id) {
-        navigate(`/comercial/contratos/assessoria/${contrato.id}`)
-      }
-    } catch (err: any) {
-      console.error(err)
-      toast.error(err.message || 'Erro ao criar contrato')
-    } finally {
-      setCreating(false)
     }
   }
 
-  const clientesAtivos = clientes.filter((c) => c.status !== 'LEAD')
-  const leads = clientes.filter((c) => c.status === 'LEAD')
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-      </div>
-    )
+  const handleSelectSubservice = (subserverId: string, subserverNome: string) => {
+    if (!selectedServico) return
+    
+    setShowSubserviceModal(false)
+    navigate('/comercial/selecao-lead-cliente', {
+      state: {
+        servicoId: selectedServico.id,
+        servicoNome: selectedServico.name,
+        subservicoId: subserverId,
+        subservicoNome: subserverNome
+      }
+    })
   }
 
   return (
@@ -210,54 +188,39 @@ export default function ServicosComerciais() {
         )}
       </section>
 
-      {showModal && selectedServico && (
+      {showSubserviceModal && selectedServico && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-md p-6 border border-gray-200 dark:border-neutral-800">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Criar contrato</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Serviço: {selectedServico.name}</p>
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-lg p-6 border border-gray-200 dark:border-neutral-800 animate-in fade-in zoom-in-95">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Qual o tipo de Assessoria?</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 flex items-center gap-2">
+              <Layers className="w-4 h-4 text-blue-500" />
+              {selectedServico.name}
+            </p>
 
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-600 dark:text-gray-400">Selecione o cliente/lead</label>
-              <select
-                value={selectedClienteId}
-                onChange={(e) => setSelectedClienteId(e.target.value)}
-                className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm"
-              >
-                <option value="">Selecione...</option>
-                {clientesAtivos.length > 0 && (
-                  <optgroup label="Clientes">
-                    {clientesAtivos.map((cliente) => (
-                      <option key={cliente.id} value={cliente.id}>
-                        {cliente.nome}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-                {leads.length > 0 && (
-                  <optgroup label="Leads">
-                    {leads.map((cliente) => (
-                      <option key={cliente.id} value={cliente.id}>
-                        {cliente.nome} (Lead)
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-2">
+              {selectedServico.subservices?.map((sub) => (
+                <button
+                  key={sub.id}
+                  onClick={() => handleSelectSubservice(sub.id, sub.name)}
+                  className="p-4 text-left border border-gray-200 dark:border-neutral-800 rounded-xl hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all flex items-start gap-3 group"
+                >
+                  <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-neutral-800 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors shrink-0">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white text-sm">{sub.name}</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Clique para selecionar</p>
+                  </div>
+                </button>
+              ))}
             </div>
 
-            <div className="flex items-center justify-between mt-6">
+            <div className="flex justify-end mt-6 pt-4 border-t border-gray-100 dark:border-neutral-800">
               <button
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900"
+                onClick={() => setShowSubserviceModal(false)}
+                className="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-neutral-800 font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-neutral-700 transition"
               >
                 Cancelar
-              </button>
-              <button
-                onClick={handleConfirmarContrato}
-                disabled={creating}
-                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition disabled:opacity-60"
-              >
-                {creating ? 'Criando...' : 'Confirmar'}
               </button>
             </div>
           </div>

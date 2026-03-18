@@ -13,6 +13,7 @@ import AgendamentosPage from '@/modules/comercial/Agendamentos'
 import { AgendamentoEditPage } from './AgendamentoEditPage'
 import GanhosPage from './Ganhos'
 import ServicosComerciais from './ServicosComerciais'
+import SelecaoLeadCliente from './SelecaoLeadCliente'
 import ContratosFixosPage from './ContratosFixosPage'
 import ContratoServicoDetailPage from './ContratoServicoDetailPage'
 import FormularioAssessoriaPage from './FormularioAssessoriaPage'
@@ -768,6 +769,10 @@ export default function Comercial() {
           <Route
             path="/servicos"
             element={<ServicosComerciais />}
+          />
+          <Route 
+            path="/selecao-lead-cliente" 
+            element={<SelecaoLeadCliente />} 
           />
           <Route path="/dna" element={<ClientDNAPage />} />
           <Route path="*" element={<Navigate to="/comercial" replace />} />

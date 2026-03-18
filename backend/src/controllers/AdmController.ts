@@ -20,6 +20,10 @@ export class AdmController {
           name: r.nome,
           stage: r.etapa,
           required: r.obrigatorio
+        })),
+        subservices: (s.subservicos || []).map((sub: any) => ({
+          id: sub.id,
+          name: sub.nome
         }))
       }));
       console.log(mapped);

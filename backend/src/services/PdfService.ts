@@ -25,6 +25,7 @@ class PdfService {
             const doc = new Docxtemplater(zip, {
                 paragraphLoop: true,
                 linebreaks: true,
+                delimiters: { start: '{{', end: '}}' },
                 nullGetter: () => '' // Return empty string for undefined variables
             });
 
@@ -56,7 +57,11 @@ class PdfService {
             });
 
             // 5. Faz upload no Supabase Storage
-            const pathStorage = `contratos-gerados/assessoria_${contratoId}_${Date.now()}.docx`;
+            // Incluir nome do servico e subservico no nome do arquivo
+            const sanitize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+            const servicoNome = sanitize(payload.tipo_servico || 'servico');
+            const subservicoNome = payload.subservico_nome ? `_${sanitize(payload.subservico_nome)}` : '';
+            const pathStorage = `contratos-gerados/${servicoNome}${subservicoNome}_${contratoId}_${Date.now()}.docx`;
             const { data: uploadData, error: uploadError } = await supabase.storage
                 .from('contratos')
                 .upload(pathStorage, buf, {

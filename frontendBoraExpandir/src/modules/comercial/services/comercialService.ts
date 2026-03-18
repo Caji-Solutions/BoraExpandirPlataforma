@@ -87,7 +87,7 @@ export async function getContratoServicoById(id: string): Promise<any> {
     return result.data
 }
 
-export async function createContratoServico(payload: { cliente_id: string; servico_id: string; usuario_id?: string | null }): Promise<any> {
+export async function createContratoServico(payload: { cliente_id: string; servico_id: string; usuario_id?: string | null; subservico_id?: string; subservico_nome?: string }): Promise<any> {
     const response = await fetch(`${API_BASE_URL}/comercial/contratos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

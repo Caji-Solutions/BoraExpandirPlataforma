@@ -884,10 +884,10 @@ class ComercialController {
      */
     async createContratoServico(req: any, res: any) {
         try {
-            const { cliente_id, servico_id, usuario_id } = req.body
+            const { cliente_id, servico_id, usuario_id, subservico_id, subservico_nome } = req.body
 
             if (!cliente_id || !servico_id) {
-                return res.status(400).json({ message: 'cliente_id e servico_id sÃ£o obrigatÃ³rios' })
+                return res.status(400).json({ message: 'cliente_id e servico_id são obrigatórios' })
             }
 
             const servico = await AdmRepository.getServiceById(servico_id)
@@ -907,11 +907,11 @@ class ComercialController {
                 .single()
 
             if (clienteError || !cliente) {
-                console.error('[ComercialController] Cliente nÃ£o encontrado:', clienteError)
-                return res.status(404).json({ message: 'Cliente nÃ£o encontrado' })
+                console.error('[ComercialController] Cliente não encontrado:', clienteError)
+                return res.status(404).json({ message: 'Cliente não encontrado' })
             }
 
-            const contratoPayload = {
+            const contratoPayload: any = {
                 cliente_id,
                 usuario_id: usuario_id || null,
                 servico_id,
@@ -925,6 +925,14 @@ class ComercialController {
                 is_draft: true,
                 etapa_fluxo: 1,
                 draft_dados: {}
+            }
+
+            // Incluir subservico se informado
+            if (subservico_id) {
+                contratoPayload.subservico_id = subservico_id
+            }
+            if (subservico_nome) {
+                contratoPayload.subservico_nome = subservico_nome
             }
 
             const contrato = await ContratoServicoRepository.createContrato(contratoPayload)

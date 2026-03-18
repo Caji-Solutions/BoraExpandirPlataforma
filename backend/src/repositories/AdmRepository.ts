@@ -6,7 +6,8 @@ export class AdmRepository {
       .from('catalogo_servicos')
       .select(`
         *,
-        requisitos:servico_requisitos(*)
+        requisitos:servico_requisitos(*),
+        subservicos:subservicos(*)
       `)
       .order('nome', { ascending: true });
 
@@ -19,7 +20,7 @@ export class AdmRepository {
   }
 
   async createCatalogService(data: any) {
-    const { name, value, duration, showInCommercial, documents, type } = data;
+    const { name, value, duration, showInCommercial, documents, type, subservices } = data;
     
     // Inserir serviço
     const { data: service, error: serviceError } = await supabase
@@ -60,12 +61,29 @@ export class AdmRepository {
       }
     }
 
+    // Inserir subservicos se houver (apenas para tipo fixo)
+    if (subservices && subservices.length > 0) {
+      const { error: subError } = await supabase
+        .from('subservicos')
+        .insert(
+          subservices.map((sub: any) => ({
+            servico_id: service.id,
+            nome: sub.name || sub.nome
+          }))
+        );
+
+      if (subError) {
+        console.error('Erro ao criar subservicos:', subError);
+        throw subError;
+      }
+    }
+
     // Retornar serviço completo
     return this.getServiceById(service.id);
   }
 
   async updateCatalogService(id: string, data: any) {
-    const { name, value, duration, showInCommercial, documents, type } = data;
+    const { name, value, duration, showInCommercial, documents, type, subservices } = data;
 
     // Atualizar dados básicos
     const updatePayload: any = {
@@ -125,6 +143,37 @@ export class AdmRepository {
       }
     }
 
+    // Atualizar subservicos (Delete + Insert)
+    if (subservices !== undefined) {
+      // Remover antigos
+      const { error: deleteSubError } = await supabase
+        .from('subservicos')
+        .delete()
+        .eq('servico_id', id);
+
+      if (deleteSubError) {
+        console.error('Erro ao remover subservicos antigos:', deleteSubError);
+        throw deleteSubError;
+      }
+
+      // Inserir novos
+      if (subservices && subservices.length > 0) {
+        const { error: insertSubError } = await supabase
+          .from('subservicos')
+          .insert(
+            subservices.map((sub: any) => ({
+              servico_id: id,
+              nome: sub.name || sub.nome
+            }))
+          );
+
+        if (insertSubError) {
+          console.error('Erro ao inserir novos subservicos:', insertSubError);
+          throw insertSubError;
+        }
+      }
+    }
+
     return this.getServiceById(id);
   }
 
@@ -145,7 +194,8 @@ export class AdmRepository {
       .from('catalogo_servicos')
       .select(`
         *,
-        requisitos:servico_requisitos(*)
+        requisitos:servico_requisitos(*),
+        subservicos:subservicos(*)
       `)
       .eq('id', id)
       .single();

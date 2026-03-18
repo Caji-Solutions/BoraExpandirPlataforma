@@ -23,7 +23,8 @@ import {
   Euro,
   FileText,
   CalendarCheck,
-  Loader2
+  Loader2,
+  Layers
 } from "lucide-react";
 import {
   Table,
@@ -43,7 +44,7 @@ import {
 } from "../../components/ui/dialog";
 import { Badge } from "../../components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../components/ui/dropdown-menu";
-import { catalogService, Service, DocumentRequirement } from "../../services/catalogService";
+import { catalogService, Service, DocumentRequirement, Subservice } from "../../services/catalogService";
 import { toast } from "sonner";
 
 export default function ServiceCatalog() {
@@ -64,6 +65,7 @@ export default function ServiceCatalog() {
     showToClient: true,
     requiresLegalDelegation: false,
     documents: [],
+    subservices: [],
   });
 
   // Local state for duration parts
@@ -98,6 +100,7 @@ export default function ServiceCatalog() {
       showToClient: true,
       requiresLegalDelegation: false,
       documents: [],
+      subservices: [],
     });
     setDurationValue("");
     setDurationUnit("horas");
@@ -115,6 +118,7 @@ export default function ServiceCatalog() {
       showToClient: service.showToClient,
       requiresLegalDelegation: service.requiresLegalDelegation,
       documents: service.documents,
+      subservices: service.subservices || [],
     });
 
     // Tentar extrair valor e unidade da duração (Ex: "10 horas")
@@ -152,6 +156,31 @@ export default function ServiceCatalog() {
       ...formData,
       documents: formData.documents.map((doc) =>
         doc.id === id ? { ...doc, [field]: value } : doc
+      ),
+    });
+  };
+
+  // Subservicos handlers
+  const addSubserviceToForm = () => {
+    const newSub: Subservice = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: "",
+    };
+    setFormData({ ...formData, subservices: [...formData.subservices, newSub] });
+  };
+
+  const removeSubserviceFromForm = (id: string) => {
+    setFormData({
+      ...formData,
+      subservices: formData.subservices.filter((sub) => sub.id !== id),
+    });
+  };
+
+  const updateSubserviceInForm = (id: string, name: string) => {
+    setFormData({
+      ...formData,
+      subservices: formData.subservices.map((sub) =>
+        sub.id === id ? { ...sub, name } : sub
       ),
     });
   };
@@ -446,6 +475,56 @@ export default function ServiceCatalog() {
                 />
               </div>
             </div>
+
+            {/* Seção de Subserviços (apenas para tipo fixo) */}
+            {formData.type === 'fixo' && (
+              <>
+                <Separator className="bg-border/50" />
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-bold flex items-center gap-2">
+                        <Layers className="h-5 w-5 text-blue-500" />
+                        Subserviços
+                      </h3>
+                      <p className="text-sm text-muted-foreground">Adicione os tipos/variações deste serviço fixo.</p>
+                    </div>
+                    <Button onClick={addSubserviceToForm} variant="outline" size="sm" className="rounded-lg border-2 border-dashed font-bold hover:bg-blue-500/5 hover:text-blue-600 transition-all">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Adicionar Subserviço
+                    </Button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {formData.subservices.length === 0 ? (
+                      <div className="py-8 border-2 border-dashed border-border rounded-2xl text-center bg-muted/10">
+                        <p className="text-sm text-muted-foreground font-medium">Nenhum subserviço cadastrado.</p>
+                      </div>
+                    ) : (
+                      formData.subservices.map((sub) => (
+                        <div key={sub.id} className="flex items-center gap-4 p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 group animate-in slide-in-from-top-2">
+                          <GripVertical className="h-5 w-5 text-muted-foreground opacity-30 cursor-move hidden md:block" />
+                          <Input
+                            placeholder="Nome do subserviço..."
+                            value={sub.name}
+                            onChange={(e) => updateSubserviceInForm(sub.id, e.target.value)}
+                            className="bg-background border-border rounded-xl h-10 flex-1"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeSubserviceFromForm(sub.id)}
+                            className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-lg shrink-0"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
 
             <Separator className="bg-border/50" />
 
