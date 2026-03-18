@@ -12,18 +12,19 @@ import {
 import { Switch } from "../../components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { Separator } from "../../components/ui/separator";
-import { 
-  Plus, 
-  Trash2, 
-  GripVertical, 
-  Search, 
-  Edit2, 
+import {
+  Plus,
+  Trash2,
+  GripVertical,
+  Search,
+  Edit2,
   MoreHorizontal,
   Clock,
   Euro,
   FileText,
   CalendarCheck,
-  Loader2
+  Loader2,
+  Layers
 } from "lucide-react";
 import {
   Table,
@@ -43,7 +44,7 @@ import {
 } from "../../components/ui/dialog";
 import { Badge } from "../../components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../components/ui/dropdown-menu";
-import { catalogService, Service, DocumentRequirement } from "../../services/catalogService";
+import { catalogService, Service, DocumentRequirement, Subservice } from "../../services/catalogService";
 import { toast } from "sonner";
 
 export default function ServiceCatalog() {
@@ -59,10 +60,12 @@ export default function ServiceCatalog() {
     name: "",
     value: "",
     duration: "",
+    type: "agendavel",
     showInCommercial: true,
     showToClient: true,
     requiresLegalDelegation: false,
     documents: [],
+    subservices: [],
   });
 
   // Local state for duration parts
@@ -92,10 +95,12 @@ export default function ServiceCatalog() {
       name: "",
       value: "",
       duration: "",
+      type: "agendavel",
       showInCommercial: true,
       showToClient: true,
       requiresLegalDelegation: false,
       documents: [],
+      subservices: [],
     });
     setDurationValue("");
     setDurationUnit("horas");
@@ -108,10 +113,12 @@ export default function ServiceCatalog() {
       name: service.name,
       value: service.value,
       duration: service.duration,
+      type: service.type || "agendavel",
       showInCommercial: service.showInCommercial,
       showToClient: service.showToClient,
       requiresLegalDelegation: service.requiresLegalDelegation,
       documents: service.documents,
+      subservices: service.subservices || [],
     });
 
     // Tentar extrair valor e unidade da duração (Ex: "10 horas")
@@ -153,6 +160,31 @@ export default function ServiceCatalog() {
     });
   };
 
+  // Subservicos handlers
+  const addSubserviceToForm = () => {
+    const newSub: Subservice = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: "",
+    };
+    setFormData({ ...formData, subservices: [...formData.subservices, newSub] });
+  };
+
+  const removeSubserviceFromForm = (id: string) => {
+    setFormData({
+      ...formData,
+      subservices: formData.subservices.filter((sub) => sub.id !== id),
+    });
+  };
+
+  const updateSubserviceInForm = (id: string, name: string) => {
+    setFormData({
+      ...formData,
+      subservices: formData.subservices.map((sub) =>
+        sub.id === id ? { ...sub, name } : sub
+      ),
+    });
+  };
+
   const handleSave = async () => {
     if (!formData.name || !formData.value) {
       toast.error("Nome e valor são obrigatórios.");
@@ -160,7 +192,11 @@ export default function ServiceCatalog() {
     }
 
     const finalDuration = durationValue ? `${durationValue} ${durationUnit}` : "";
-    const submissionData = { ...formData, duration: finalDuration };
+    const submissionData = { 
+      ...formData, 
+      duration: finalDuration,
+      showInCommercial: true
+    };
 
     try {
       setIsSaving(true);
@@ -183,7 +219,7 @@ export default function ServiceCatalog() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este serviço?")) return;
-    
+
     try {
       await catalogService.deleteCatalogService(id);
       toast.success("Serviço removido com sucesso!");
@@ -194,7 +230,7 @@ export default function ServiceCatalog() {
     }
   };
 
-  const filteredServices = (services || []).filter(s => 
+  const filteredServices = (services || []).filter(s =>
     s.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -238,7 +274,7 @@ export default function ServiceCatalog() {
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5 pl-8">Serviço</TableHead>
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Valor</TableHead>
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Duração Est.</TableHead>
-                <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Agendamento</TableHead>
+                <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Tipo</TableHead>
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Visib. Cliente</TableHead>
                 <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Documentos</TableHead>
                 <TableHead className="w-[100px] py-5 pr-8"></TableHead>
@@ -247,7 +283,7 @@ export default function ServiceCatalog() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="h-48 text-center text-muted-foreground">
                     <Loader2 className="h-10 w-10 animate-spin mx-auto mb-2 opacity-20" />
                     Carregando serviços...
                   </TableCell>
@@ -274,17 +310,11 @@ export default function ServiceCatalog() {
                       </div>
                     </TableCell>
                     <TableCell className="py-4">
-                      {service.showInCommercial ? (
-                        <Badge variant="success" className="bg-green-500/10 text-green-600 border-green-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1.5 w-fit">
-                          <CalendarCheck className="h-3.5 w-3.5" />
-                          Visível
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-muted-foreground border-dashed border-muted-foreground/30 px-2.5 py-1 rounded-lg w-fit">
-                          Privado
-                        </Badge>
-                      )}
+                      <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/10 rounded-lg">
+                        {service.type === 'fixo' ? 'Fixo' : service.type === 'diverso' ? 'Diverso' : 'Agendável'}
+                      </Badge>
                     </TableCell>
+
                     <TableCell className="py-4">
                       {service.showToClient ? (
                         <Badge variant="success" className="bg-blue-500/10 text-blue-600 border-blue-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1.5 w-fit">
@@ -327,7 +357,7 @@ export default function ServiceCatalog() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-48 text-center">
+                  <TableCell colSpan={8} className="h-48 text-center">
                     <div className="flex flex-col items-center justify-center space-y-3 opacity-30">
                       <Search className="h-12 w-12" />
                       <p className="text-lg font-bold">Nenhum serviço encontrado</p>
@@ -404,16 +434,24 @@ export default function ServiceCatalog() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-xl">
-                <div className="space-y-0.5">
-                  <Label className="text-sm font-bold">Exibir para Agendamento</Label>
-                  <p className="text-xs text-muted-foreground">Disponibilizar no Comercial</p>
-                </div>
-                <Switch
-                  checked={formData.showInCommercial}
-                  onCheckedChange={(val) => setFormData({ ...formData, showInCommercial: val })}
-                />
+              <div className="space-y-2">
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo do Serviço</Label>
+                <Select
+                  value={formData.type}
+                  onValueChange={(val) => setFormData({ ...formData, type: val as any })}
+                >
+                  <SelectTrigger className="w-full h-12 border-border bg-muted/30 rounded-xl px-4">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="agendavel">Agendável</SelectItem>
+                    <SelectItem value="fixo">Fixo</SelectItem>
+                    <SelectItem value="diverso">Diverso</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+
+
 
               <div className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-xl">
                 <div className="space-y-0.5">
@@ -437,6 +475,56 @@ export default function ServiceCatalog() {
                 />
               </div>
             </div>
+
+            {/* Seção de Subserviços (apenas para tipo fixo) */}
+            {formData.type === 'fixo' && (
+              <>
+                <Separator className="bg-border/50" />
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-bold flex items-center gap-2">
+                        <Layers className="h-5 w-5 text-blue-500" />
+                        Subserviços
+                      </h3>
+                      <p className="text-sm text-muted-foreground">Adicione os tipos/variações deste serviço fixo.</p>
+                    </div>
+                    <Button onClick={addSubserviceToForm} variant="outline" size="sm" className="rounded-lg border-2 border-dashed font-bold hover:bg-blue-500/5 hover:text-blue-600 transition-all">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Adicionar Subserviço
+                    </Button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {formData.subservices.length === 0 ? (
+                      <div className="py-8 border-2 border-dashed border-border rounded-2xl text-center bg-muted/10">
+                        <p className="text-sm text-muted-foreground font-medium">Nenhum subserviço cadastrado.</p>
+                      </div>
+                    ) : (
+                      formData.subservices.map((sub) => (
+                        <div key={sub.id} className="flex items-center gap-4 p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 group animate-in slide-in-from-top-2">
+                          <GripVertical className="h-5 w-5 text-muted-foreground opacity-30 cursor-move hidden md:block" />
+                          <Input
+                            placeholder="Nome do subserviço..."
+                            value={sub.name}
+                            onChange={(e) => updateSubserviceInForm(sub.id, e.target.value)}
+                            className="bg-background border-border rounded-xl h-10 flex-1"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeSubserviceFromForm(sub.id)}
+                            className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-lg shrink-0"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
 
             <Separator className="bg-border/50" />
 
@@ -472,7 +560,7 @@ export default function ServiceCatalog() {
                           className="bg-background border-border rounded-xl h-10"
                         />
                       </div>
-                      
+
                       <div className="flex items-center gap-4 w-full md:w-auto">
                         <Select
                           value={doc.stage}

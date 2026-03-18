@@ -8,15 +8,24 @@ export interface DocumentRequirement {
   required: boolean;
 }
 
+export interface Subservice {
+  id: string;
+  name: string;
+}
+
+export type ServiceType = 'fixo' | 'agendavel' | 'diverso';
+
 export interface Service {
   id: string;
   name: string;
   value: string;
   duration: string;
+  type: ServiceType;
   showInCommercial: boolean;
   showToClient: boolean;
   requiresLegalDelegation: boolean;
   documents: DocumentRequirement[];
+  subservices: Subservice[];
 }
 
 /**

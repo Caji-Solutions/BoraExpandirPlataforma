@@ -11,6 +11,7 @@ export class AdmController {
         name: s.nome,
         value: s.valor.toString(),
         duration: s.duracao,
+        type: s.tipo || 'agendavel',
         showInCommercial: s.exibir_comercial,
         showToClient: s.exibir_cliente,
         requiresLegalDelegation: s.requer_delegacao_juridico || false,
@@ -19,6 +20,10 @@ export class AdmController {
           name: r.nome,
           stage: r.etapa,
           required: r.obrigatorio
+        })),
+        subservices: (s.subservicos || []).map((sub: any) => ({
+          id: sub.id,
+          name: sub.nome
         }))
       }));
       console.log(mapped);

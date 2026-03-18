@@ -130,6 +130,54 @@ export const clienteService = {
     return response.json();
   },
 
+
+  async getContratos(clienteId: string) {
+    const response = await fetch(`${API_BASE_URL}/cliente/contratos?clienteId=${encodeURIComponent(clienteId)}`);
+    
+    if (!response.ok) {
+      throw new Error('Falha ao buscar contratos');
+    }
+    
+    const result = await response.json();
+    return result.data || [];
+  },
+
+  async uploadContratoAssinado(contratoId: string, clienteId: string, file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('cliente_id', clienteId);
+
+    const response = await fetch(`${API_BASE_URL}/cliente/contratos/${contratoId}/upload`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(result.message || 'Falha ao enviar contrato');
+    }
+
+    return result.data;
+  },
+
+  async uploadComprovanteContrato(contratoId: string, clienteId: string, file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('cliente_id', clienteId);
+
+    const response = await fetch(`${API_BASE_URL}/cliente/contratos/${contratoId}/comprovante`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(result.message || 'Falha ao enviar comprovante');
+    }
+
+    return result.data;
+  },
+
   async submitApostilleComprovante(orcamentoIds: string | string[], file: File) {
     const formData = new FormData();
     formData.append('comprovante', file);
@@ -162,6 +210,7 @@ export const clienteService = {
     }
     
     const result = await response.json();
+
     return result.data;
   }
 };

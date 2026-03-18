@@ -91,7 +91,8 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const { success, error } = useToast()
   const { activeProfile } = useAuth()
   const location = useLocation()
-  const navigationState = location.state as { preSelectedClient?: Cliente, preSelectedProduto?: string, step?: 'produto' | 'data_hora' | 'cliente' } | undefined
+  const navigationState = location.state as { preSelectedClient?: Cliente, preSelectedProduto?: string, step?: 'produto' | 'data_hora' | 'cliente', paid?: boolean } | undefined
+  const isPaidFromContrato = navigationState?.paid === true
 
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
@@ -122,10 +123,12 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
         // Se for visualização administrativa, filtrar por showInCommercial
         const mappedProdutos = produtosData
           .filter((s: Service) => {
+            const tipo = s.type || 'agendavel'
+            if (tipo !== 'agendavel') return false
             if (isClientView) {
-              return s.showToClient;
+              return s.showToClient
             }
-            return s.showInCommercial;
+            return s.showInCommercial
           })
           .map((s: Service) => ({
             id: s.id,
@@ -348,9 +351,9 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       produto: produtoSelecionado,
       cliente: clienteSelecionado,
       duracaoMinutos,
-      status: 'agendado',
+      status: isPaidFromContrato ? 'confirmado' : 'agendado',
     }
-  }, [clienteSelecionado, dataSelecionada, horaSelecionada, produtoSelecionado, duracaoMinutos, emailTemporario])
+  }, [clienteSelecionado, dataSelecionada, horaSelecionada, produtoSelecionado, duracaoMinutos, emailTemporario, isPaidFromContrato])
 
   // Fechar a lista de clientes ao clicar fora
   useEffect(() => {
@@ -571,7 +574,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
     const emailFinal = emailTemporario || (agendamentoPreview.cliente.email && !agendamentoPreview.cliente.email.includes('lead_') ? agendamentoPreview.cliente.email : '');
 
-    setAgendamentoPayload({
+    const payload = {
       nome: agendamentoPreview.cliente.nome,
       email: emailFinal,
       telefone: agendamentoPreview.cliente.telefone,
@@ -582,11 +585,14 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       isEuro: (agendamentoPreview.produto as any).isEuro,
       duracao_minutos: agendamentoPreview.duracaoMinutos,
       status: agendamentoPreview.status,
+      pagamento_status: isPaidFromContrato ? 'aprovado' : undefined,
       usuario_id: activeProfile?.id,
       cliente_id: agendamentoPreview.cliente.id,
       requer_delegacao: agendamentoPreview.produto.requiresLegalDelegation,
       id: editId || undefined
-    })
+    }
+
+    setAgendamentoPayload(payload)
 
     console.log('DEBUG AGENDAMENTO: Iniciando processo de finalização. Payload gerado:', {
       nome: agendamentoPreview.cliente.nome,
@@ -598,6 +604,41 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       usuario_id: activeProfile?.id,
       cliente_id: agendamentoPreview.cliente.id
     })
+
+    if (isPaidFromContrato) {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || ''
+      if (!backendUrl) {
+        error('Backend nÃ£o configurado para criar agendamento.')
+        return
+      }
+      try {
+        const response = await fetch(`${backendUrl}/comercial/agendamento`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+
+        if (response.status === 409) {
+          const body = await response.json().catch(() => ({}))
+          error(body?.message || 'Este horÃ¡rio nÃ£o estÃ¡ mais disponÃ­vel.')
+          return
+        }
+
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}))
+          error(body?.message || 'NÃ£o foi possÃ­vel criar o agendamento.')
+          return
+        }
+
+        const responseData = await response.json()
+        handleSuccessAgendamento(responseData)
+        return
+      } catch (err) {
+        console.error('Erro ao criar agendamento pago:', err)
+        error('Erro ao criar agendamento.')
+        return
+      }
+    }
 
     setShowConfirmacao(true)
   }

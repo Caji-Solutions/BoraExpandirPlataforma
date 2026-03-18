@@ -27,6 +27,7 @@ import { RequestedActionsModal } from './RequestedActionsModal'
 import { RequiredActionModal } from './RequiredActionModal'
 import { clienteService } from '../services/clienteService'
 import { useEffect, useState, useMemo } from 'react'
+import type { ContratoServico } from '../../../types/comercial'
 
 interface DashboardProps {
   client: Client
@@ -40,6 +41,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
   const [notifications, setNotifications] = useState<import('../types').Notification[]>([])
   const [realRequerimentos, setRealRequerimentos] = useState<any[]>([])
   const [agendamentos, setAgendamentos] = useState<any[]>([])
+  const [contratos, setContratos] = useState<ContratoServico[]>([])
   const [isLoadingData, setIsLoadingData] = useState(false)
   const [showRequestedActionsModal, setShowRequestedActionsModal] = useState(false)
 
@@ -76,7 +78,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
     {
       title: 'Documentos Rejeitados',
       value: rejectedDocuments.toString(),
-      description: rejectedDocuments > 0 ? 'Necessitam correção' : 'Nenhuma rejeição',
+      description: rejectedDocuments > 0 ? 'Necessitam correÃ§Ã£o' : 'Nenhuma rejeiÃ§Ã£o',
       icon: XCircle,
       color: 'text-red-600 dark:text-red-400',
       bgColor: 'bg-red-100 dark:bg-red-900/30',
@@ -90,7 +92,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
       bgColor: 'bg-green-100 dark:bg-green-900/30',
     },
     {
-      title: 'Em Análise',
+      title: 'Em AnÃ¡lise',
       value: analyzingDocuments.toString(),
       description: 'Documentos sendo revisados',
       icon: Clock,
@@ -98,7 +100,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
       bgColor: 'bg-blue-100 dark:bg-blue-900/30',
     },
     {
-      title: 'Pendências',
+      title: 'PendÃªncias',
       value: pendingDocuments.toString(),
       description: 'Documentos para enviar',
       icon: AlertTriangle,
@@ -107,7 +109,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
     },
   ]
 
-  // Encontra o agendamento mais próximo no futuro (ou o atual)
+  // Encontra o agendamento mais prÃ³ximo no futuro (ou o atual)
   const nextAppointmentData = useMemo(() => {
     if (!agendamentos || agendamentos.length === 0) return null;
     
@@ -124,10 +126,11 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
     const fetchDashboardData = async () => {
       try {
         setIsLoadingData(true)
-        const [notifsRaw, reqs, agendamentosData] = await Promise.all([
+        const [notifsRaw, reqs, agendamentosData, contratosData] = await Promise.all([
           clienteService.getNotificacoes(client.id),
           clienteService.getRequerimentos(client.id),
-          clienteService.getAgendamentos(client.id)
+          clienteService.getAgendamentos(client.id),
+          clienteService.getContratos(client.id)
         ])
 
         // Map notifications... (existing logic)
@@ -146,6 +149,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
         setNotifications(mappedNotifs)
         setRealRequerimentos(reqs)
         setAgendamentos(Array.isArray(agendamentosData) ? agendamentosData : [])
+        setContratos(Array.isArray(contratosData) ? contratosData : [])
       } catch (error) {
         console.error('Erro ao buscar dados do dashboard:', error)
       } finally {
@@ -184,7 +188,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
 
         return {
           id: n.id,
-          title: n.titulo || n.title || 'Ação Necessária',
+          title: n.titulo || n.title || 'AÃ§Ã£o NecessÃ¡ria',
           description: n.mensagem || n.message || '',
           deadline: hasDeadline ? new Date((n.data_prazo || (n as any).deadline) as string) : defaultDeadline,
           priority: (n.type === 'error' || n.type === 'warning' || hasDeadline) ? 'high' as const : 'medium' as const,
@@ -222,7 +226,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
         title: doc.status === 'rejected' ? 'Documento Rejeitado' : 'Envio Pendente',
         message: doc.status === 'rejected'
           ? `O documento "${doc.name}" foi rejeitado e precisa ser reenviado.`
-          : `O documento "${doc.name}" ainda não foi enviado.`,
+          : `O documento "${doc.name}" ainda nÃ£o foi enviado.`,
         date: doc.updatedAt || doc.uploadDate || new Date(),
         type: doc.status === 'rejected' ? 'urgent' as const : 'warning' as const,
         actionLink: '/cliente/upload'
@@ -234,11 +238,53 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
       .map(r => ({
         id: `req-${r.id}`,
         title: 'Requerimento Pendente',
-        message: `O requerimento de "${r.tipo}" está aguardando sua ação.`,
+        message: `O requerimento de "${r.tipo}" estÃ¡ aguardando sua aÃ§Ã£o.`,
         date: r.created_at || new Date(),
         type: 'urgent' as const,
         actionLink: '/cliente/processo'
       }))
+
+    const contratoReminders = contratos.flatMap((contrato) => {
+      const servico = contrato.servico_nome || contrato.servico?.nome || 'Contrato'
+      const date = contrato.atualizado_em || contrato.criado_em || new Date()
+
+      if (contrato.assinatura_status === 'pendente') {
+        return [{
+          id: `contrato-sign-${contrato.id}`,
+          title: 'Assinatura de contrato pendente',
+          message: `O contrato de ${servico} aguarda envio da assinatura.`,
+          date,
+          type: 'warning' as const,
+          actionLink: '/cliente/contratos'
+        }]
+      }
+
+      if (contrato.assinatura_status === 'recusado') {
+        return [{
+          id: `contrato-sign-rejected-${contrato.id}`,
+          title: 'Contrato recusado',
+          message: contrato.assinatura_recusa_nota || `O contrato de ${servico} foi recusado e precisa de reenvio.`,
+          date,
+          type: 'urgent' as const,
+          actionLink: '/cliente/contratos'
+        }]
+      }
+
+      if (contrato.assinatura_status === 'aprovado' && (contrato.pagamento_status === 'pendente' || contrato.pagamento_status === 'recusado')) {
+        return [{
+          id: `contrato-proof-${contrato.id}`,
+          title: 'Comprovante pendente',
+          message: contrato.pagamento_status === 'recusado'
+            ? (contrato.pagamento_nota_recusa || `O comprovante do contrato de ${servico} foi recusado e precisa de novo envio.`)
+            : `Envie o comprovante de pagamento do contrato de ${servico}.`,
+          date,
+          type: contrato.pagamento_status === 'recusado' ? 'urgent' as const : 'warning' as const,
+          actionLink: '/cliente/contratos'
+        }]
+      }
+
+      return []
+    })
 
     // Deduplicate: if a notification reminder refers to the same document type 
     // that already has a docReminder, skip the notification one to avoid duplicates
@@ -249,13 +295,13 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
       return !matchesDocType
     })
 
-    return [...filteredReminders, ...docReminders, ...reqReminders].sort((a, b) => {
+    return [...filteredReminders, ...docReminders, ...reqReminders, ...contratoReminders].sort((a, b) => {
       // Prioritize urgent
       if (a.type === 'urgent' && b.type !== 'urgent') return -1
       if (a.type !== 'urgent' && b.type === 'urgent') return 1
       return new Date(b.date).getTime() - new Date(a.date).getTime()
     })
-  }, [realPendingActions, documents, uniqueRequerimentos])
+  }, [realPendingActions, documents, uniqueRequerimentos, contratos])
 
   const [showRequiredActionModal, setShowRequiredActionModal] = useState(false)
 
@@ -315,7 +361,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
               className="absolute bottom-4 right-4 hidden md:flex items-center space-x-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors border border-white/20 backdrop-blur-sm"
             >
               <AlertTriangle className="w-4 h-4 text-yellow-300" />
-              <span className="font-semibold text-xs">Ações Solicitadas</span>
+              <span className="font-semibold text-xs">AÃ§Ãµes Solicitadas</span>
             </button>
           </div>
         </div>
@@ -333,10 +379,10 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-bold text-red-800 dark:text-red-300">
-                    Ação Necessária: Requerimento Pendente
+                    AÃ§Ã£o NecessÃ¡ria: Requerimento Pendente
                   </h3>
                   <p className="text-red-700 dark:text-red-400 mt-1">
-                    Você possui {pendingRequerimentos.length} {pendingRequerimentos.length === 1 ? 'requerimento' : 'requerimentos'} em aberto que {pendingRequerimentos.length === 1 ? 'precisa' : 'precisan'} ser regularizados.
+                    VocÃª possui {pendingRequerimentos.length} {pendingRequerimentos.length === 1 ? 'requerimento' : 'requerimentos'} em aberto que {pendingRequerimentos.length === 1 ? 'precisa' : 'precisan'} ser regularizados.
                   </p>
                 </div>
                 <Link to="/cliente/processo">
@@ -351,7 +397,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
       )}
       {/* Reminders Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Próximo Agendamento */}
+        {/* PrÃ³ximo Agendamento */}
         {nextAppointmentData && (
           <AppointmentReminder 
             appointmentDate={nextAppointmentData.data_hora}
@@ -365,7 +411,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
         {/* Only show categories that have real reminders */}
         {legalReminders.length > 0 && (
           <ReminderCard
-            title="Jurídico"
+            title="JurÃ­dico"
             type="legal"
             reminders={legalReminders}
           />
@@ -375,7 +421,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
         {legalReminders.length === 0 && (
           <div className="col-span-full text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
             <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-gray-500 dark:text-gray-400">Nenhum lembrete ou ação pendente no momento.</p>
+            <p className="text-gray-500 dark:text-gray-400">Nenhum lembrete ou aÃ§Ã£o pendente no momento.</p>
           </div>
         )}
       </div>
@@ -493,7 +539,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
                 ))
               ) : (
                 <div className="text-center py-4">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum passo do processo disponível.</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum passo do processo disponÃ­vel.</p>
                 </div>
               )}
             </div>
@@ -534,7 +580,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
                       className="text-xs"
                     >
                       {doc.status === 'pending' ? 'Pendente' :
-                        doc.status.toLowerCase().includes('analyzing') ? 'Análise' :
+                        doc.status.toLowerCase().includes('analyzing') ? 'AnÃ¡lise' :
                           doc.status === 'approved' ? 'Aprovado' :
                             doc.status === 'rejected' ? 'Rejeitado' :
                               doc.status.replace('_', ' ')}

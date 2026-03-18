@@ -12,6 +12,11 @@ import LeadsPage from './Leads'
 import AgendamentosPage from '@/modules/comercial/Agendamentos'
 import { AgendamentoEditPage } from './AgendamentoEditPage'
 import GanhosPage from './Ganhos'
+import ServicosComerciais from './ServicosComerciais'
+import SelecaoLeadCliente from './SelecaoLeadCliente'
+import ContratosFixosPage from './ContratosFixosPage'
+import ContratoServicoDetailPage from './ContratoServicoDetailPage'
+import FormularioAssessoriaPage from './FormularioAssessoriaPage'
 import ProximosAgendamentosCard from './components/ProximosAgendamentosCard'
 import CadastroRapidoLeadCard from './components/CadastroRapidoLeadCard'
 import { Config } from '../../components/ui/Config'
@@ -503,10 +508,10 @@ export default function Comercial() {
           comercialService.getAllProcessos(),
           comercialService.getAllRequerimentos()
         ])
-        
+
         // Clientes filtrados (sem leads)
         setClientes(clientesData.filter((c: any) => c.status === 'cliente'))
-        
+
         // Contratos vindos de processos
         setContratos(processosData.map((p: any) => ({
           id: p.id,
@@ -673,6 +678,7 @@ export default function Comercial() {
       items: [
         { label: 'Dashboard', to: '/comercial', icon: Home },
         { label: 'DNA do Cliente', to: '/comercial/dna', icon: Dna },
+        { label: 'Serviços', to: '/comercial/servicos', icon: FileText },
         { label: 'Agendamento', to: '/comercial/agendamento', icon: Calendar },
         { label: "Meus Agendamentos", to: "/comercial/meus-agendamentos", icon: Calendar },
         { label: 'Clientes', to: '/comercial/clientes', icon: Users },
@@ -769,13 +775,23 @@ export default function Comercial() {
           />
           <Route
             path="/contratos"
-            element={
-              <ContratosPage
-                contratos={contratos}
-                onShowGeracaoContrato={() => setShowGeracaoContrato(true)}
-                onSetContratoParaAssinar={setContratoParaAssinar}
-              />
-            }
+            element={<ContratosFixosPage />}
+          />
+          <Route
+            path="/contratos/:id"
+            element={<ContratoServicoDetailPage />}
+          />
+          <Route
+            path="/contratos/assessoria/:id"
+            element={<FormularioAssessoriaPage />}
+          />
+          <Route
+            path="/servicos"
+            element={<ServicosComerciais />}
+          />
+          <Route
+            path="/selecao-lead-cliente"
+            element={<SelecaoLeadCliente />}
           />
           <Route path="/dna" element={<ClientDNAPage />} />
           <Route path="*" element={<Navigate to="/comercial" replace />} />
