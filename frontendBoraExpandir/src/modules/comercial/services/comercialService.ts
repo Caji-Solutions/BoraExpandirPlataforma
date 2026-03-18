@@ -185,29 +185,6 @@ export async function uploadComprovanteContrato(id: string, file: File): Promise
     return result.data
 }
 
-// Stubs para funÃ§Ãµes faltantes no frontend (referenciadas em Comercial.tsx)
-export async function getAllProcessos(): Promise<any[]> {
-    try {
-        const response = await fetch(`${API_BASE_URL}/comercial/processos`);
-        if (!response.ok) return [];
-        const result = await response.json();
-        return result.data || [];
-    } catch {
-        return [];
-    }
-}
-
-export async function getAllRequerimentos(): Promise<any[]> {
-    try {
-        const response = await fetch(`${API_BASE_URL}/comercial/requerimentos`);
-        if (!response.ok) return [];
-        const result = await response.json();
-        return result.data || [];
-    } catch {
-        return [];
-    }
-}
-
 
 // Novos mÃ©todos para o fluxo Draft / Assessoria
 export async function updateContratoDraft(id: string, payload: { etapa_fluxo: number; draft_dados: any }): Promise<any> {
@@ -264,8 +241,6 @@ export default {
     aprovarContratoServico,
     recusarContratoServico,
     uploadComprovanteContrato,
-    getAllProcessos,
-    getAllRequerimentos,
     updateContratoDraft,
     gerarContratoPdf,
     enviarContratoAssinatura
