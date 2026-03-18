@@ -80,22 +80,23 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
         ).length;
 
         // Em análise: Status iniciados com ANALYZING
-        const analyzing = docs.filter(d =>
-            d.status && (
-                d.status === 'ANALYZING' ||
-                d.status === 'ANALYZING_APOSTILLE' ||
-                d.status === 'ANALYZING_TRANSLATION'
-            )
-        ).length;
+        const analyzing = docs.filter(d => {
+            if (!d.status) return false;
+            const s = d.status.toUpperCase();
+            return s === 'ANALYZING' || s === 'ANALYZING_APOSTILLE' || s === 'ANALYZING_TRANSLATION';
+        }).length;
 
-        // Aguardando Ação (Pendentes): PENDING, REJECTED, ou WAITING_* ou EXECUTING_*
-        const waitingAction = docs.filter(d =>
-            !d.status ||
-            d.status === 'PENDING' ||
-            d.status === 'REJECTED' ||
-            d.status.startsWith('WAITING') ||
-            d.status.startsWith('EXECUTING')
-        ).length;
+        // Aguardando Ação (Pendentes): PENDING, REJECTED, ou WAITING_* ou EXECUTING_* ou PENDING_VERIFICATION
+        const waitingAction = docs.filter(d => {
+            if (!d.status) return true;
+            const s = d.status.toUpperCase();
+            return s === 'PENDING' || 
+                   s === 'REJECTED' || 
+                   s === 'AGUARDANDO_PAGAMENTO' ||
+                   s.startsWith('WAITING') || 
+                   s.startsWith('EXECUTING') || 
+                   s.startsWith('ANALYZING_') && s.endsWith('_PAYMENT');
+        }).length;
 
         // Manter contagens específicas para visualização detalhada se necessário
         const apostilled = docs.filter(d => d.apostilado).length;
@@ -289,16 +290,20 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
             // Count stats
             member.docs++;
 
-            const status = doc.status || 'PENDING';
-            const statusLower = status.toLowerCase();
+            const statusUpper = (doc.status || 'PENDING').toUpperCase();
 
-            if (statusLower === 'analyzing' || statusLower === 'analyzing_apostille' || statusLower === 'analyzing_translation') {
+            if (statusUpper === 'ANALYZING' || statusUpper === 'ANALYZING_APOSTILLE' || statusUpper === 'ANALYZING_TRANSLATION') {
                 member.analyzing++;
             }
-            else if (statusLower === 'approved' && doc.apostilado && doc.traduzido) {
+            else if (statusUpper === 'APPROVED' && doc.apostilado && doc.traduzido) {
                 member.completed++;
             }
-            else if (statusLower === 'rejected' || statusLower.startsWith('waiting') || statusLower.startsWith('executing') || statusLower === 'pending') {
+            else if (statusUpper === 'REJECTED' || 
+                     statusUpper === 'PENDING' || 
+                     statusUpper === 'AGUARDANDO_PAGAMENTO' ||
+                     statusUpper.startsWith('WAITING') || 
+                     statusUpper.startsWith('EXECUTING') ||
+                     (statusUpper.startsWith('ANALYZING_') && statusUpper.endsWith('_PAYMENT'))) {
                 member.waitingAction++;
             }
 

@@ -410,8 +410,13 @@ export function ProcessAnalysis({
   };
 
   const currentStageIndex = selectedDoc ? getStageIndex(selectedDoc.currentStage) : 0;
-  const isApostilleWaiting = selectedDoc?.status === 'waiting_apostille';
-  const isTranslationWaiting = selectedDoc?.status === 'waiting_translation';
+  const isApostilleWaiting = ['waiting_apostille', 'analyzing_apostille_payment', 'executing_apostille', 'aguardando_pagamento', 'pronto_para_apostilagem'].includes(selectedDoc?.status.toLowerCase() || '');
+  const isTranslationWaiting = ['waiting_translation', 'waiting_translation_quote', 'waiting_quote_approval', 'analyzing_translation_payment', 'executing_translation'].includes(selectedDoc?.status.toLowerCase() || '');
+  
+  const isLocked = selectedDoc && 
+    !['analyzing', 'analyzing_apostille', 'analyzing_translation'].includes(selectedDoc.status.toLowerCase()) &&
+    selectedDoc.status.toLowerCase() !== 'pending' &&
+    selectedDoc.status.toLowerCase() !== 'rejected';
 
   return (
     <>
@@ -847,6 +852,7 @@ export function ProcessAnalysis({
                           variant="destructive"
                           className="flex-1 h-12 text-base shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
                           onClick={() => handleAction('reject')}
+                          disabled={isLocked}
                         >
                           <XCircle className="w-5 h-5 mr-2" />
                           Rejeitar Documento
@@ -894,6 +900,7 @@ export function ProcessAnalysis({
                           className="flex-1 h-12 text-base bg-green-600 hover:bg-green-700 text-white shadow-sm hover:shadow-green-200 dark:hover:shadow-none active:scale-[0.98]"
                           onClick={() => handleAction('next')}
                           disabled={
+                            isLocked ||
                             (selectedDoc.currentStage === 'apostille_check' && (isApostilleWaiting || selectedDoc.status === 'executing_apostille')) ||
                             (selectedDoc.currentStage === 'translation_check' && (isTranslationWaiting || selectedDoc.status === 'executing_translation'))
                           }

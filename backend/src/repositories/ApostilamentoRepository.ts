@@ -43,7 +43,7 @@ class ApostilamentoRepository {
         documento_id: params.documentoId,
         documento_url: params.documentoUrl,
         observacoes: params.observacoes,
-        status: 'pendente'
+        status: 'aguardando_pagamento'
       }])
       .select()
       .single();
@@ -149,7 +149,7 @@ class ApostilamentoRepository {
     const documentoIds = orcamentos.map(o => o.documento_id)
     await supabase
       .from('documentos')
-      .update({ status: 'analyzing_translation_payment' })
+      .update({ status: 'ANALYZING_APOSTILLE_PAYMENT' })
       .in('id', documentoIds)
 
     return orcamentos

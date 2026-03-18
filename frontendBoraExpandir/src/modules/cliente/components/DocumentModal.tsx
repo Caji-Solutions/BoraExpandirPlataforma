@@ -75,10 +75,40 @@ const statusConfig: Record<Document['status'], {
     variant: 'default',
     description: 'O documento foi enviado para o processo de apostilamento.',
   },
+  ANALYZING_APOSTILLE_PAYMENT: {
+    label: 'Análise de Pagamento',
+    variant: 'warning',
+    description: 'Estamos verificando o pagamento do seu apostilamento.',
+  },
+  ANALYZING_TRANSLATION_PAYMENT: {
+    label: 'Análise de Pagamento',
+    variant: 'warning',
+    description: 'Estamos verificando o pagamento da sua tradução.',
+  },
   analyzing_translation_payment: {
-    label: 'Aguardando Análise',
-    variant: 'default',
+    label: 'Análise de Pagamento',
+    variant: 'warning',
     description: 'Seu pagamento está sendo analisado pela nossa equipe.',
+  },
+  EXECUTING_APOSTILLE: {
+    label: 'Em Apostilamento',
+    variant: 'default',
+    description: 'Seu documento está em processo de apostilamento.',
+  },
+  EXECUTING_TRANSLATION: {
+    label: 'Em Tradução',
+    variant: 'default',
+    description: 'Seu documento está em processo de tradução juramentada.',
+  },
+  aguardando_pagamento: {
+    label: 'Aguardando Pagamento',
+    variant: 'warning',
+    description: 'O pagamento do serviço está sendo aguardado.',
+  },
+  pronto_para_apostilagem: {
+    label: 'Pronto para Apostila',
+    variant: 'success',
+    description: 'O pagamento foi aprovado e o documento seguiu para o cartório.',
   },
 }
 

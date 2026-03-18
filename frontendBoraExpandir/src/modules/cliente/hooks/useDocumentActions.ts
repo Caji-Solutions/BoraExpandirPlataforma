@@ -102,10 +102,33 @@ export function useDocumentActions({
         if (status === 'rejected') return 'rejected'
         const isWaitingQuote = status === 'waiting_quote_approval'
 
-        if (status.includes('apostille') || (status === 'approved' && !doc.isApostilled) || (isWaitingQuote && !doc.isApostilled)) {
+        // Apostille stage detection
+        const apostilleStatuses = [
+            'waiting_apostille', 
+            'analyzing_apostille_payment', 
+            'executing_apostille', 
+            'pronto_para_apostilagem',
+            'waiting_apostille_quote',
+            'aguardando_pagamento'
+        ]
+        
+        const isApostilleStatus = apostilleStatuses.includes(status) || status.includes('apostille')
+        
+        if (isApostilleStatus || (status === 'approved' && !doc.isApostilled) || (isWaitingQuote && !doc.isApostilled)) {
             return 'apostille'
         }
-        if (status.includes('translation') || (isWaitingQuote && doc.isApostilled) || (status === 'approved' && doc.isApostilled && !doc.isTranslated)) {
+
+        // Translation stage detection
+        const translationStatuses = [
+            'waiting_translation',
+            'analyzing_translation_payment',
+            'executing_translation',
+            'waiting_translation_quote'
+        ]
+
+        const isTranslationStatus = translationStatuses.includes(status) || status.includes('translation')
+
+        if (isTranslationStatus || (isWaitingQuote && doc.isApostilled) || (status === 'approved' && doc.isApostilled && !doc.isTranslated)) {
             return 'translation'
         }
 
@@ -121,7 +144,8 @@ export function useDocumentActions({
     }
 
     const docIsWaitingApostille = (doc: ClientDocument) => {
-        return getDocStage(doc) === 'apostille'
+        const stage = getDocStage(doc)
+        return stage === 'apostille'
     }
 
     const getDocumentsForStage = (stageId: string) => {

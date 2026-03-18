@@ -93,7 +93,7 @@ export function AdminApostilamento() {
             }
 
             map[titularId].totalDocs++
-            if (ap.status === 'pendente' || ap.status === 'pronto_para_apostilagem') map[titularId].pendingDocs++
+            if (ap.status === 'pronto_para_apostilagem') map[titularId].pendingDocs++
             map[titularId].members[memberId].apostilamentos.push(ap)
         })
 
@@ -260,7 +260,7 @@ export function AdminApostilamento() {
                                 </div>
                                 <div className="col-span-3 flex justify-center gap-2">
                                     <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                                        {member.apostilamentos.filter(a => a.status === 'pendente' || a.status === 'pronto_para_apostilagem').length} Pendentes
+                                        {member.apostilamentos.filter(a => a.status === 'pronto_para_apostilagem').length} Pendentes
                                     </Badge>
                                 </div>
                                 <div className="col-span-3 flex justify-end">
@@ -294,12 +294,12 @@ export function AdminApostilamento() {
                                         <Badge 
                                             className={cn(
                                                 "rounded-lg px-3 py-1",
-                                                (ap.status === 'pendente' || ap.status === 'pronto_para_apostilagem') ? "bg-amber-100 text-amber-700 border-amber-200" :
+                                                ap.status === 'pronto_para_apostilagem' ? "bg-amber-100 text-amber-700 border-amber-200" :
                                                 ap.status === 'concluido' ? "bg-green-100 text-green-700 border-green-200" :
                                                 "bg-blue-100 text-blue-700 border-blue-200"
                                             )}
                                         >
-                                            {(ap.status === 'pendente' || ap.status === 'pronto_para_apostilagem') ? "Aguardando Apostila" : 
+                                            {ap.status === 'pronto_para_apostilagem' ? "Pronto para Apostila" : 
                                              ap.status === 'concluido' ? "Apostilado" : ap.status}
                                         </Badge>
                                     </div>
@@ -366,7 +366,7 @@ export function AdminApostilamento() {
                                         </Button>
                                     )}
 
-                                    {(ap.status === 'pendente' || ap.status === 'pronto_para_apostilagem') && (
+                                    {ap.status === 'pronto_para_apostilagem' && (
                                         <Button 
                                             variant="ghost" 
                                             size="sm" 

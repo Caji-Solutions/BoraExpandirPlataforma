@@ -176,10 +176,10 @@ export function DocumentItemCard({
                         </div>
                     )}
 
-                    {/* Apostille stage actions */}
                     {stageId === 'apostille' && doc && (
                         <div className="flex gap-2">
-                            {(doc.status === 'waiting_apostille' || doc.status === 'approved') ? (
+                            {/* State: Initial request or waiting for manual action */}
+                            {(doc.status?.toLowerCase() === 'waiting_apostille' || doc.status?.toLowerCase() === 'approved') ? (
                                 <>
                                     <Button
                                         size="sm"
@@ -201,7 +201,7 @@ export function DocumentItemCard({
                                         Solicitar Apostila
                                     </Button>
                                 </>
-                            ) : doc.status?.toLowerCase() === 'waiting_quote_approval' ? (
+                            ) : (doc.status?.toLowerCase() === 'waiting_quote_approval' || doc.status?.toLowerCase() === 'aguardando_pagamento') ? (
                                 <div className="flex gap-2">
                                     <Button
                                         size="sm"
@@ -209,7 +209,7 @@ export function DocumentItemCard({
                                         onClick={() => onOpenClientQuoteModal(doc)}
                                     >
                                         <DollarSign className="h-3 w-3" />
-                                        Ver Orçamento
+                                        Ver Orçamento / Pagar
                                     </Button>
                                     <Button
                                         size="sm"
@@ -222,13 +222,18 @@ export function DocumentItemCard({
                                         Substituir
                                     </Button>
                                 </div>
-                            ) : (doc.status?.toLowerCase() === 'executing_apostille' || doc.status?.toLowerCase() === 'analyzing_apostille' || doc.status?.toLowerCase() === 'analyzing_translation_payment') ? (
+                            ) : doc.status?.toLowerCase() === 'analyzing_apostille_payment' ? (
+                                <div className="flex items-center gap-1 text-amber-600 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full border border-amber-100">
+                                    <Clock className="h-4 w-4" />
+                                    <span>Análise de Pagamento</span>
+                                </div>
+                            ) : (doc.status?.toLowerCase() === 'executing_apostille' || doc.status?.toLowerCase() === 'pronto_para_apostilagem') ? (
                                 <div className="flex items-center gap-1 text-amber-600 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full border border-amber-100">
                                     <Clock className="h-4 w-4" />
                                     <span>Em Apostilagem</span>
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-1 text-amber-600 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full">
+                                <div className="flex items-center gap-1 text-amber-600 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full border border-amber-100">
                                     <Clock className="h-4 w-4" />
                                     <span>Aguardando Análise</span>
                                 </div>
@@ -236,10 +241,9 @@ export function DocumentItemCard({
                         </div>
                     )}
 
-                    {/* Translation stage actions */}
                     {stageId === 'translation' && doc && (
                         <div className="flex gap-2">
-                            {(doc.status === 'waiting_translation' || (doc.status === 'approved' && doc.isApostilled)) ? (
+                            {(doc.status?.toLowerCase() === 'waiting_translation' || (doc.status?.toLowerCase() === 'approved' && doc.isApostilled)) ? (
                                 <>
                                     <Button
                                         size="sm"
@@ -261,15 +265,20 @@ export function DocumentItemCard({
                                         Solicitar Tradução
                                     </Button>
                                 </>
+                            ) : doc.status?.toLowerCase() === 'waiting_translation_quote' ? (
+                                <div className="flex items-center gap-1 text-purple-600 text-xs font-medium px-2 py-1 bg-purple-50 rounded-full border border-purple-100">
+                                    <Clock className="h-4 w-4" />
+                                    <span>Aguardando Orçamento</span>
+                                </div>
                             ) : doc.status?.toLowerCase() === 'waiting_quote_approval' ? (
                                 <div className="flex gap-2">
                                     <Button
                                         size="sm"
                                         className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white gap-1.5"
-                                        onClick={() => onOpenClientQuoteModal(doc)}
+                                        onClick={() => onOpenQuoteModal(doc)}
                                     >
                                         <DollarSign className="h-3 w-3" />
-                                        Ver Orçamento
+                                        Ver Orçamento / Pagar
                                     </Button>
                                     <Button
                                         size="sm"
@@ -282,13 +291,18 @@ export function DocumentItemCard({
                                         Substituir
                                     </Button>
                                 </div>
-                            ) : (doc.status?.toLowerCase() === 'executing_translation' || doc.status?.toLowerCase() === 'analyzing_translation' || doc.status?.toLowerCase() === 'analyzing_translation_payment') ? (
+                            ) : (doc.status?.toLowerCase() === 'analyzing_translation_payment' || doc.status?.toLowerCase() === 'analyzing_payment') ? (
+                                <div className="flex items-center gap-1 text-purple-600 text-xs font-medium px-2 py-1 bg-purple-50 rounded-full border border-purple-100">
+                                    <Clock className="h-4 w-4" />
+                                    <span>Análise de Pagamento</span>
+                                </div>
+                            ) : (doc.status?.toLowerCase() === 'executing_translation' || doc.status?.toLowerCase() === 'analyzing_translation') ? (
                                 <div className="flex items-center gap-1 text-purple-600 text-xs font-medium px-2 py-1 bg-purple-50 rounded-full border border-purple-100">
                                     <Clock className="h-4 w-4" />
                                     <span>Em Tradução</span>
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-1 text-purple-600 text-xs font-medium px-2 py-1 bg-purple-50 rounded-full">
+                                <div className="flex items-center gap-1 text-purple-600 text-xs font-medium px-2 py-1 bg-purple-50 rounded-full border border-purple-100">
                                     <Clock className="h-4 w-4" />
                                     <span>Aguardando Análise</span>
                                 </div>

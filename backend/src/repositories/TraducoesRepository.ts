@@ -200,7 +200,7 @@ class TraducoesRepository {
     // 3. Atualizar status de cada documento baseado no fluxo
     for (const doc of docs) {
       const orcamento = orcamentos.find(o => o.documento_id === doc.id)
-      const isApostille = orcamento?.observacoes?.includes('Apostilamento')
+      const isApostille = doc.status === 'ANALYZING_APOSTILLE_PAYMENT' || orcamento?.observacoes?.includes('Apostilamento')
       
       const targetStatus = isApostille ? 'EXECUTING_APOSTILLE' : 'EXECUTING_TRANSLATION'
 
@@ -407,7 +407,7 @@ class TraducoesRepository {
     // 4. Update document status to indicate it's waiting for payment verification
     await supabase
       .from('documentos')
-      .update({ status: 'analyzing_translation_payment' }) // New status for payment analysis
+      .update({ status: 'ANALYZING_TRANSLATION_PAYMENT' })
       .eq('id', orcamento.documento_id)
 
     return orcamento
