@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileText, Loader2 } from 'lucide-react'
+import { AlertTriangle, FileText, Loader2, PencilLine } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import comercialService from './services/comercialService'
 import type { ContratoServico } from '../../types/comercial'
@@ -45,7 +45,21 @@ export default function ContratosFixosPage() {
   }
 
   const getServicoNome = (contrato: ContratoServico) => {
-    return contrato.servico_nome || contrato.servico?.nome || 'Serviço'
+    return contrato.servico_nome || contrato.servico?.nome || 'Servico'
+  }
+
+  const getEtapaLabel = (etapa?: number) => {
+    const etapaNumerica = Number(etapa || 1)
+    return `Etapa ${etapaNumerica}`
+  }
+
+  const handleOpenContrato = (contrato: ContratoServico) => {
+    if (contrato.is_draft) {
+      navigate(`/comercial/contratos/assessoria/${contrato.id}`)
+      return
+    }
+
+    navigate(`/comercial/contratos/${contrato.id}`)
   }
 
   if (loading) {
@@ -64,7 +78,7 @@ export default function ContratosFixosPage() {
         </div>
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Contratos Fixos</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Acompanhe contratos e status de pagamento.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Acompanhe contratos, etapas e status de pagamento.</p>
         </div>
       </div>
 
@@ -77,7 +91,7 @@ export default function ContratosFixosPage() {
           {contratos.map((contrato) => (
             <button
               key={contrato.id}
-              onClick={() => navigate(`/comercial/contratos/${contrato.id}`)}
+              onClick={() => handleOpenContrato(contrato)}
               className="w-full text-left bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-emerald-300 transition"
             >
               <div>
@@ -85,6 +99,18 @@ export default function ContratosFixosPage() {
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{getClienteNome(contrato)}</p>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
+                {contrato.is_draft && (
+                  <Badge variant="secondary">
+                    <PencilLine className="w-3 h-3 mr-1" />
+                    Rascunho - {getEtapaLabel(contrato.etapa_fluxo)}
+                  </Badge>
+                )}
+                {contrato.draft_dados?.__erroGeracao?.ativo && (
+                  <Badge variant="destructive">
+                    <AlertTriangle className="w-3 h-3 mr-1" />
+                    Erro na geracao
+                  </Badge>
+                )}
                 <Badge variant={assinaturaVariant(contrato.assinatura_status)}>
                   Assinatura: {contrato.assinatura_status}
                 </Badge>

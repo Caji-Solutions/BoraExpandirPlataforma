@@ -16,7 +16,7 @@ class ContratoServicoRepository {
     return data
   }
 
-  async getContratos(filters?: { clienteId?: string }) {
+  async getContratos(filters?: { clienteId?: string; isDraft?: boolean }) {
     let query = supabase
       .from('contratos_servicos')
       .select(`
@@ -42,6 +42,28 @@ class ContratoServicoRepository {
     }
 
     return data || []
+  }
+
+  async getUltimoContratoComDados(clienteId: string, servicoId?: string) {
+    let query = supabase
+      .from('contratos_servicos')
+      .select('*')
+      .eq('cliente_id', clienteId)
+      .order('criado_em', { ascending: false })
+      .limit(1)
+
+    if (servicoId) {
+      query = query.eq('servico_id', servicoId)
+    }
+
+    const { data, error } = await query.maybeSingle()
+
+    if (error) {
+      console.error('[ContratoServicoRepository] Erro ao buscar ultimo contrato com dados:', error)
+      throw error
+    }
+
+    return data || null
   }
 
   async getContratoById(id: string) {

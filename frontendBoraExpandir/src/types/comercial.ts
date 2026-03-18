@@ -87,7 +87,7 @@ export interface RequerimentoFormData {
 export interface AssinaturaDigital {
   id: string
   contrato_id: string
-  assinado_por: string // nome do signatário
+  assinado_por: string // nome do signatÃ¡rio
   tipo: 'cliente' | 'empresa'
   ip_assinatura: string
   data_assinatura: string
@@ -145,6 +145,13 @@ export interface AgendamentoFormData {
 export type ContratoAssinaturaStatus = 'pendente' | 'em_analise' | 'aprovado' | 'recusado'
 export type ContratoPagamentoStatus = 'pendente' | 'em_analise' | 'aprovado' | 'recusado'
 
+export interface ContratoDraftErroGeracao {
+  ativo: boolean
+  etapa?: number
+  mensagem?: string
+  ocorrido_em?: string
+}
+
 export interface ContratoServico {
   id: string
   cliente_id: string
@@ -162,6 +169,12 @@ export interface ContratoServico {
   pagamento_comprovante_url?: string | null
   pagamento_nota_recusa?: string | null
   pagamento_comprovante_upload_em?: string | null
+  contrato_gerado_url?: string | null
+  is_draft?: boolean
+  etapa_fluxo?: number
+  draft_dados?: Record<string, any> & {
+    __erroGeracao?: ContratoDraftErroGeracao
+  }
   criado_em?: string
   atualizado_em?: string
   cliente?: Partial<Cliente>

@@ -6,6 +6,7 @@ import type { ContratoServico } from '../../types/comercial'
 import { Badge } from '../../components/ui/Badge'
 import { useToast, ToastContainer } from '../../components/ui/Toast'
 import { useAuth } from '../../contexts/AuthContext'
+import { formatPhoneDisplay } from '../../utils/formatters'
 
 const assinaturaVariant = (status: string) => {
   if (status === 'aprovado') return 'success'
@@ -39,6 +40,10 @@ export default function ContratoServicoDetailPage() {
     try {
       setLoading(true)
       const data = await comercialService.getContratoServicoById(id)
+      if (data?.is_draft) {
+        navigate(`/comercial/contratos/assessoria/${id}`, { replace: true })
+        return
+      }
       setContrato(data)
     } catch (err) {
       console.error('Erro ao buscar contrato:', err)
@@ -57,14 +62,14 @@ export default function ContratoServicoDetailPage() {
     return {
       nome: contrato.cliente_nome || contrato.cliente?.nome || 'Cliente',
       email: contrato.cliente_email || contrato.cliente?.email || '',
-      telefone: contrato.cliente_telefone || contrato.cliente?.whatsapp || ''
+      telefone: formatPhoneDisplay(contrato.cliente_telefone || contrato.cliente?.whatsapp || '')
     }
   }
 
   const getServicoInfo = () => {
-    if (!contrato) return { nome: 'Serviço', id: '' }
+    if (!contrato) return { nome: 'ServiÃ§o', id: '' }
     return {
-      nome: contrato.servico_nome || contrato.servico?.nome || 'Serviço',
+      nome: contrato.servico_nome || contrato.servico?.nome || 'ServiÃ§o',
       id: contrato.servico_id || contrato.servico?.id || ''
     }
   }
@@ -211,7 +216,7 @@ export default function ContratoServicoDetailPage() {
 
         {contrato.assinatura_status === 'em_analise' && (
           <div className="space-y-3">
-            <p className="text-sm text-gray-500">Contrato enviado pelo cliente. Aguardando aprovação.</p>
+            <p className="text-sm text-gray-500">Contrato enviado pelo cliente. Aguardando aprovaÃ§Ã£o.</p>
             <div className="flex items-center gap-2">
               <button
                 onClick={handleAprovar}
@@ -263,13 +268,13 @@ export default function ContratoServicoDetailPage() {
               disabled={uploadingComprovante || contrato.assinatura_status !== 'aprovado'}
             />
             {contrato.assinatura_status !== 'aprovado' && (
-              <p className="text-xs text-gray-500">Aguarde a aprovação do contrato para enviar o comprovante.</p>
+              <p className="text-xs text-gray-500">Aguarde a aprovaÃ§Ã£o do contrato para enviar o comprovante.</p>
             )}
           </div>
         ) : null}
 
         {contrato.pagamento_status === 'em_analise' && (
-          <p className="text-sm text-gray-500">Comprovante em análise pelo financeiro.</p>
+          <p className="text-sm text-gray-500">Comprovante em anÃ¡lise pelo financeiro.</p>
         )}
 
         {contrato.pagamento_status === 'aprovado' && (
@@ -279,7 +284,7 @@ export default function ContratoServicoDetailPage() {
               onClick={handleAgendar}
               className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 flex items-center gap-2"
             >
-              <Calendar className="w-4 h-4" /> Agendar serviço
+              <Calendar className="w-4 h-4" /> Agendar serviÃ§o
             </button>
           </div>
         )}
