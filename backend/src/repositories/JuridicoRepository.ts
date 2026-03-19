@@ -341,8 +341,6 @@ class JuridicoRepository {
                 formularios_cliente!agendamento_id (*)
             `)
             .eq('responsavel_juridico_id', responsavelId)
-            .eq('requer_delegacao', true)
-            .eq('status', 'confirmado')
             .order('data_hora', { ascending: true })
 
         if (error) {

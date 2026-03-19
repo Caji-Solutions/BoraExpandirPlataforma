@@ -79,6 +79,7 @@ export interface JuridicoDocument {
   originalName?: string;
   type: string;
   url: string;
+  traducaoUrl?: string;
   status: 'pending' | 'analyzing' | 'rejected' | 'waiting_apostille' | 'executing_apostille' | 'analyzing_apostille' | 'waiting_translation' | 'executing_translation' | 'analyzing_translation' | 'approved';
   currentStage: AnalysisStage;
   rejectionReason?: string;
@@ -169,17 +170,17 @@ export function ProcessAnalysis({
           d.status === 'rejected'
         );
       case 'apostilamento':
-        return allDocs.filter(d =>
-          d.currentStage === 'apostille_check' ||
-          d.status === 'waiting_apostille' ||
-          d.status === 'analyzing_apostille'
-        );
+        return allDocs.filter(d => {
+          const s = d.status.toLowerCase();
+          return d.currentStage === 'apostille_check' ||
+            ['waiting_apostille', 'waiting_apostille_quote', 'analyzing_apostille', 'analyzing_apostille_payment', 'executing_apostille', 'aguardando_pagamento', 'pronto_para_apostilagem'].includes(s);
+        });
       case 'traducao':
-        return allDocs.filter(d =>
-          d.currentStage === 'translation_check' ||
-          d.status === 'waiting_translation' ||
-          d.status === 'analyzing_translation'
-        );
+        return allDocs.filter(d => {
+          const s = d.status.toLowerCase();
+          return d.currentStage === 'translation_check' ||
+            ['waiting_translation', 'waiting_translation_quote', 'waiting_quote_approval', 'aguardando_orcamento', 'waiting_quote', 'analyzing_translation_payment', 'executing_translation', 'analyzing_translation'].includes(s);
+        });
       case 'finalizados':
         return allDocs.filter(d =>
           d.currentStage === 'completed' ||
@@ -410,8 +411,8 @@ export function ProcessAnalysis({
   };
 
   const currentStageIndex = selectedDoc ? getStageIndex(selectedDoc.currentStage) : 0;
-  const isApostilleWaiting = ['waiting_apostille', 'analyzing_apostille_payment', 'executing_apostille', 'aguardando_pagamento', 'pronto_para_apostilagem'].includes(selectedDoc?.status.toLowerCase() || '');
-  const isTranslationWaiting = ['waiting_translation', 'waiting_translation_quote', 'waiting_quote_approval', 'analyzing_translation_payment', 'executing_translation'].includes(selectedDoc?.status.toLowerCase() || '');
+  const isApostilleWaiting = ['waiting_apostille', 'waiting_apostille_quote', 'aguardando_orcamento', 'waiting_quote', 'analyzing_apostille_payment', 'executing_apostille', 'aguardando_pagamento', 'pronto_para_apostilagem'].includes(selectedDoc?.status.toLowerCase() || '');
+  const isTranslationWaiting = ['waiting_translation', 'waiting_translation_quote', 'aguardando_orcamento', 'waiting_quote', 'waiting_quote_approval', 'analyzing_translation_payment', 'executing_translation', 'analyzing_translation'].includes(selectedDoc?.status.toLowerCase() || '');
   
   const isLocked = selectedDoc && 
     !['analyzing', 'analyzing_apostille', 'analyzing_translation'].includes(selectedDoc.status.toLowerCase()) &&
@@ -456,9 +457,9 @@ export function ProcessAnalysis({
                 const Icon = stage.icon;
                 const isActive = activeTab === stage.id;
                 let count = 0;
-                if (stage.id === 'analise_tecnica') count = initialDocs.filter(d => d.currentStage === 'initial_analysis' || d.status === 'pending' || d.status === 'analyzing' || d.status === 'rejected').length;
-                else if (stage.id === 'apostilamento') count = initialDocs.filter(d => d.currentStage === 'apostille_check' || d.status === 'waiting_apostille' || d.status === 'analyzing_apostille').length;
-                else if (stage.id === 'traducao') count = initialDocs.filter(d => d.currentStage === 'translation_check' || d.status === 'waiting_translation' || d.status === 'analyzing_translation').length;
+                if (stage.id === 'analise_tecnica') count = initialDocs.filter(d => d.currentStage === 'initial_analysis' || ['pending', 'analyzing', 'rejected'].includes(d.status.toLowerCase())).length;
+                else if (stage.id === 'apostilamento') count = initialDocs.filter(d => d.currentStage === 'apostille_check' || ['waiting_apostille', 'waiting_apostille_quote', 'analyzing_apostille', 'analyzing_apostille_payment', 'executing_apostille', 'aguardando_pagamento', 'pronto_para_apostilagem'].includes(d.status.toLowerCase())).length;
+                else if (stage.id === 'traducao') count = initialDocs.filter(d => d.currentStage === 'translation_check' || ['waiting_translation', 'waiting_translation_quote', 'waiting_quote_approval', 'aguardando_orcamento', 'waiting_quote', 'analyzing_translation_payment', 'executing_translation', 'analyzing_translation'].includes(d.status.toLowerCase())).length;
                 else if (stage.id === 'finalizados') count = initialDocs.filter(d => d.currentStage === 'completed' || d.status === 'approved').length;
 
                 const colorMap: Record<string, { activeBg: string, activeBorder: string, activeText: string, countBg: string }> = {
@@ -662,14 +663,50 @@ export function ProcessAnalysis({
                                   {isApproved ? 'Concluído' : item.status}
                                 </Badge>
                               ) : (
-                                <Badge variant={isApproved ? "success" : "outline"} className={cn(
-                                  "text-[9px] font-black uppercase tracking-wider py-0 px-2 border-2",
-                                  isApproved ? "bg-green-600 text-white border-transparent" :
-                                    (item as JuridicoDocument).status === 'rejected' ? "border-red-500/30 text-red-600" :
-                                      "border-gray-200 text-gray-500"
-                                )}>
-                                  {isApproved ? 'Aprovado' : (item as JuridicoDocument).status.replace('_', ' ')}
-                                </Badge>
+                                (() => {
+                                  const status = (item as JuridicoDocument).status.toLowerCase();
+                                  const isWaitingQuote = ['waiting_translation_quote', 'waiting_apostille_quote', 'aguardando_orcamento', 'waiting_quote'].includes(status);
+                                  const isWaitingPayment = ['waiting_quote_approval', 'aguardando_pagamento', 'analyzing_apostille_payment', 'analyzing_translation_payment', 'analyzing_payment'].includes(status);
+                                  const isExecuting = ['executing_apostille', 'executing_translation', 'pronto_para_apostilagem'].includes(status);
+
+                                  if (isWaitingQuote) {
+                                    return (
+                                      <Badge variant="warning" className="text-[9px] font-black uppercase tracking-wider py-0 px-2 border-2 bg-amber-50 text-amber-700 border-amber-200">
+                                        <Clock className="h-3 w-3 mr-1" />
+                                        Aguardando Orçamento
+                                      </Badge>
+                                    );
+                                  }
+
+                                  if (isWaitingPayment) {
+                                    return (
+                                      <Badge variant="warning" className="text-[9px] font-black uppercase tracking-wider py-0 px-2 border-2 bg-purple-50 text-purple-700 border-purple-200">
+                                        <Clock className="h-3 w-3 mr-1" />
+                                        Aguardando Pagamento
+                                      </Badge>
+                                    );
+                                  }
+
+                                  if (isExecuting) {
+                                    return (
+                                      <Badge className="text-[9px] font-black uppercase tracking-wider py-0 px-2 border-2 bg-blue-50 text-blue-700 border-blue-200">
+                                        <Clock className="h-3 w-3 mr-1" />
+                                        Em Processamento
+                                      </Badge>
+                                    );
+                                  }
+
+                                  return (
+                                    <Badge variant={isApproved ? "success" : "outline"} className={cn(
+                                      "text-[9px] font-black uppercase tracking-wider py-0 px-2 border-2",
+                                      isApproved ? "bg-green-600 text-white border-transparent" :
+                                        status === 'rejected' ? "border-red-500/30 text-red-600" :
+                                          "border-gray-200 text-gray-500"
+                                    )}>
+                                      {isApproved ? 'Aprovado' : status.replace('_', ' ')}
+                                    </Badge>
+                                  );
+                                })()
                               )}
                             </div>
                           </div>
@@ -823,7 +860,7 @@ export function ProcessAnalysis({
                     {selectedDoc.url ? (
                       <div className="w-full h-full max-w-5xl bg-white dark:bg-gray-800 shadow-2xl rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
                         <iframe
-                          src={selectedDoc.url}
+                          src={(selectedDoc.currentStage === 'translation_check' && selectedDoc.traducaoUrl) ? selectedDoc.traducaoUrl : selectedDoc.url}
                           className="w-full h-full border-none"
                           title={selectedDoc.name}
                         />
@@ -902,7 +939,10 @@ export function ProcessAnalysis({
                           disabled={
                             isLocked ||
                             (selectedDoc.currentStage === 'apostille_check' && (isApostilleWaiting || selectedDoc.status === 'executing_apostille')) ||
-                            (selectedDoc.currentStage === 'translation_check' && (isTranslationWaiting || selectedDoc.status === 'executing_translation'))
+                            (selectedDoc.currentStage === 'translation_check' && 
+                              (isTranslationWaiting && !selectedDoc.traducaoUrl) || 
+                              selectedDoc.status === 'executing_translation'
+                            )
                           }
                         >
                           <CheckCircle className="w-5 h-5 mr-2" />

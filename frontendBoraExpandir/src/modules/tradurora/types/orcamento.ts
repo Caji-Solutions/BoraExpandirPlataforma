@@ -27,6 +27,10 @@ export interface OrcamentoItem {
     nome_completo: string
     parentesco: string
   }
+  traducaoUrl?: string
+  traducaoStoragePath?: string
+  traducaoNomeOriginal?: string
+  rawStatus?: string
 }
 
 export interface OrcamentoFormData {

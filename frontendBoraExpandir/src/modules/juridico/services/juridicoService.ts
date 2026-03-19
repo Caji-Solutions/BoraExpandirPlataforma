@@ -52,8 +52,10 @@ export interface Processo {
 
 export interface ClienteComResponsavel {
   id: string;
+  client_id?: string;
   nome: string;
   email: string;
+  whatsapp?: string;
   responsavel_juridico_id: string | null;
   responsavel?: FuncionarioJuridico | null;
   data_agendamento?: string;
@@ -677,6 +679,17 @@ export async function getProfileById(profileId: string): Promise<any> {
   return result.data;
 }
 
+export async function getAllSubservices(): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/juridico/subservicos`);
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error('Erro ao buscar subserviços:', errorBody);
+    throw new Error('Falha ao buscar subserviços');
+  }
+  const result = await response.json();
+  return result.data;
+}
+
 export default {
     getProcessos,
     getProcessosByResponsavel,
@@ -746,4 +759,5 @@ export default {
     },
     requestApostille,
     getProfileById,
+    getAllSubservices,
 };

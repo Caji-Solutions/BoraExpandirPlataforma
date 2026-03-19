@@ -287,6 +287,8 @@ class JuridicoController {
         try {
             const clientes = await JuridicoRepository.getAllClientesComResponsavel()
 
+            console.log(`[JuridicoController] Total de clientes recuperados: ${clientes.length}`);
+
             return res.status(200).json({
                 message: 'Clientes recuperados com sucesso',
                 data: clientes,
@@ -298,6 +300,24 @@ class JuridicoController {
                 message: 'Erro ao buscar clientes', 
                 error: error.message 
             })
+        }
+    }
+
+    // GET /juridico/subservicos
+    async getSubservices(req: any, res: any) {
+        try {
+            const subservicos = await AdmRepository.getAllSubservices();
+            
+            return res.status(200).json({
+                message: 'Subserviços recuperados com sucesso',
+                data: subservicos
+            });
+        } catch (error: any) {
+            console.error('Erro ao buscar subserviços:', error);
+            return res.status(500).json({
+                message: 'Erro ao buscar subserviços',
+                error: error.message
+            });
         }
     }
 
@@ -946,6 +966,8 @@ class JuridicoController {
 
             const agendamentos = await JuridicoRepository.getAgendamentosPorResponsavel(responsavelId)
 
+            console.log(`[JuridicoController] Agendamentos para responsavel ${responsavelId}: ${agendamentos.length} encontrados`);
+            
             return res.status(200).json({
                 message: 'Agendamentos do responsável recuperados com sucesso',
                 data: agendamentos,

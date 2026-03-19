@@ -38,8 +38,8 @@ export default function DeliveryModal({ item, onClose, onSubmit }: DeliveryModal
     if (!arquivo || !revisada) return
     setUploading(true)
     try {
-      const compressedArquivo = await compressFile(arquivo)
-      await onSubmit(item.documentoId, compressedArquivo)
+      // const compressedArquivo = await compressFile(arquivo)
+      await onSubmit(item.documentoId, arquivo)
       setArquivo(null)
       setRevisada(false)
       onClose()

@@ -93,9 +93,9 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
             return s === 'PENDING' || 
                    s === 'REJECTED' || 
                    s === 'AGUARDANDO_PAGAMENTO' ||
-                   s.startsWith('WAITING') || 
-                   s.startsWith('EXECUTING') || 
-                   s.startsWith('ANALYZING_') && s.endsWith('_PAYMENT');
+                   (s.startsWith('WAITING') && s !== 'WAITING_APOSTILLE') || 
+                   (s.startsWith('EXECUTING') && s !== 'EXECUTING_APOSTILLE') || 
+                   (s.startsWith('ANALYZING_') && s.endsWith('_PAYMENT'));
         }).length;
 
         // Manter contagens específicas para visualização detalhada se necessário
@@ -361,6 +361,7 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                     originalName: doc.nome_original,
                     type: doc.tipo,
                     url: doc.public_url || '',
+                    traducaoUrl: doc.traducao_url || '',
                     status: status as any,
                     currentStage: stage,
                     solicitado_pelo_juridico: doc.solicitado_pelo_juridico,

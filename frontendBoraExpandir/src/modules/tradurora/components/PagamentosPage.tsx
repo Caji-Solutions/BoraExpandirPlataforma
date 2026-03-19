@@ -28,11 +28,11 @@ export default function PagamentosPage({ items }: PagamentosPageProps) {
           valorServico,
           valorComissao,
           status: 'pendente' as const, // All delivered items are pending payment by default
-          dataEntrega: item.updated_at,
+          data: item.status === 'aprovado' ? item.prazoEntrega : item.updated_at,
           dependente: item.dependente,
         }
       })
-      .sort((a, b) => new Date(b.dataEntrega).getTime() - new Date(a.dataEntrega).getTime())
+      .sort((a, b) => new Date(b.data || 0).getTime() - new Date(a.data || 0).getTime())
   }, [items])
 
   const totalPendente = pagamentosCalculados
@@ -64,16 +64,16 @@ export default function PagamentosPage({ items }: PagamentosPageProps) {
         {/* Total Ganhos */}
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-500/10 dark:to-blue-500/5 p-6 rounded-xl shadow-sm border border-blue-200 dark:border-blue-500/30">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-blue-900 dark:text-blue-300">Total Ganhos</h3>
+            <h3 className="text-sm font-medium text-blue-900 dark:text-blue-300">Recebidos Totais</h3>
             <div className="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-lg">
               <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
           <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">
-            R$ {totalGanhos.toFixed(2).replace('.', ',')}
+            R$ 0,00
           </p>
           <p className="text-xs text-blue-700 dark:text-blue-400 mt-2">
-            Soma de todos os serviços
+            Total já pago pelo administrativo
           </p>
         </div>
 
@@ -125,7 +125,7 @@ export default function PagamentosPage({ items }: PagamentosPageProps) {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Documento</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Cliente</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Valor</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Data Entrega</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Data</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">Status</th>
                 </tr>
               </thead>
@@ -147,7 +147,7 @@ export default function PagamentosPage({ items }: PagamentosPageProps) {
                       R$ {pagamento.valorComissao.toFixed(2).replace('.', ',')}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                      {new Date(pagamento.dataEntrega).toLocaleDateString('pt-BR')}
+                      {pagamento.data ? new Date(pagamento.data).toLocaleDateString('pt-BR') : '—'}
                     </td>
                     <td className="px-6 py-4">
                       <Badge variant={statusConfig[pagamento.status].variant}>
@@ -200,7 +200,7 @@ export default function PagamentosPage({ items }: PagamentosPageProps) {
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">Data de Entrega</p>
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {new Date(comprovanteModal.pagamento.dataEntrega).toLocaleDateString('pt-BR')}
+                    {comprovanteModal.pagamento.data ? new Date(comprovanteModal.pagamento.data).toLocaleDateString('pt-BR') : '—'}
                   </p>
                 </div>
                 <div>

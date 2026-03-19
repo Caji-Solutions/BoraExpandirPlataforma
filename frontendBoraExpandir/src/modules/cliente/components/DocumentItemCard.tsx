@@ -232,6 +232,11 @@ export function DocumentItemCard({
                                     <Clock className="h-4 w-4" />
                                     <span>Em Apostilagem</span>
                                 </div>
+                            ) : ['waiting_apostille_quote', 'aguardando_orcamento', 'waiting_quote'].includes(doc.status?.toLowerCase() || '') ? (
+                                <div className="flex items-center gap-1 text-amber-600 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full border border-amber-100">
+                                    <Clock className="h-4 w-4" />
+                                    <span>Aguardando Orçamento</span>
+                                </div>
                             ) : (
                                 <div className="flex items-center gap-1 text-amber-600 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full border border-amber-100">
                                     <Clock className="h-4 w-4" />
@@ -265,7 +270,7 @@ export function DocumentItemCard({
                                         Solicitar Tradução
                                     </Button>
                                 </>
-                            ) : doc.status?.toLowerCase() === 'waiting_translation_quote' ? (
+                            ) : ['waiting_translation_quote', 'aguardando_orcamento', 'waiting_quote'].includes(doc.status?.toLowerCase() || '') ? (
                                 <div className="flex items-center gap-1 text-purple-600 text-xs font-medium px-2 py-1 bg-purple-50 rounded-full border border-purple-100">
                                     <Clock className="h-4 w-4" />
                                     <span>Aguardando Orçamento</span>

@@ -116,13 +116,16 @@ export default function EntreguesPage({ items }: EntreguesPageProps) {
                               Documento
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">
+                              Status
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">
                               Data Entrega
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">
                               Valor
                             </th>
                             <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">
-                              Original
+                              Arquivos
                             </th>
                           </tr>
                         </thead>
@@ -145,6 +148,13 @@ export default function EntreguesPage({ items }: EntreguesPageProps) {
                                   </div>
                                 </div>
                               </td>
+                              <td className="px-6 py-4">
+                                {item.rawStatus === 'ANALYZING_TRANSLATION' ? (
+                                  <Badge variant="warning">Em Análise</Badge>
+                                ) : (
+                                  <Badge variant="success">Finalizado</Badge>
+                                )}
+                              </td>
                               <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                                 {new Date(item.updated_at).toLocaleString('pt-BR', {
                                   dateStyle: 'short',
@@ -156,16 +166,25 @@ export default function EntreguesPage({ items }: EntreguesPageProps) {
                                   `R$ ${item.valorOrcamento.toFixed(2).replace('.', ',')}`
                                 ) : '—'}
                               </td>
-                              <td className="px-6 py-4 text-center">
-                                {item.publicUrl ? (
-                                  <button
-                                    onClick={() => window.open(item.publicUrl, '_blank')}
-                                    className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded text-xs font-medium hover:bg-blue-200 transition-colors"
-                                  >
-                                    <ExternalLink className="h-3 w-3" />
-                                    Ver
-                                  </button>
-                                ) : '—'}
+                              <td className="px-6 py-4">
+                                <div className="flex flex-col gap-1 items-center">
+                                  {item.publicUrl && (
+                                    <button
+                                      onClick={() => window.open(item.publicUrl, '_blank')}
+                                      className="w-20 inline-flex items-center justify-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded text-xs font-medium hover:bg-blue-200 transition-colors"
+                                    >
+                                      Original
+                                    </button>
+                                  )}
+                                  {item.traducaoUrl && (
+                                    <button
+                                      onClick={() => window.open(item.traducaoUrl, '_blank')}
+                                      className="w-20 inline-flex items-center justify-center gap-1 px-2 py-1 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded text-xs font-medium hover:bg-emerald-200 transition-colors"
+                                    >
+                                      Tradução
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           ))}

@@ -227,7 +227,7 @@ class TraducoesRepository {
     // Fetch documents that are approved for translation (translator needs to work on them)
     const { data: documentos, error: docError } = await supabase
       .from('documentos')
-      .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id')
+      .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id, traducao_url, traducao_storage_path, traducao_nome_original')
       .in('status', ['EXECUTING_TRANSLATION'])
       .order('criado_em', { ascending: true })
 
@@ -268,8 +268,8 @@ class TraducoesRepository {
     // Fetch documents that have been translated and delivered
     const { data: documentos, error: docError } = await supabase
       .from('documentos')
-      .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id')
-      .in('status', ['APPROVED'])
+      .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id, traducao_url, traducao_storage_path, traducao_nome_original')
+      .in('status', ['APPROVED', 'ANALYZING_TRANSLATION'])
       .order('atualizado_em', { ascending: false })
 
     if (docError) {

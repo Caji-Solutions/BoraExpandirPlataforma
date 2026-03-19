@@ -65,9 +65,15 @@ export function AdminApostilamento() {
     const folders = useMemo(() => {
         const map: Record<string, FolderData> = {}
 
-        apostilamentos.forEach(ap => {
-            const doc = ap.documentos
-            if (!doc) return
+        // FILTRO: Só exibe documentos que já passaram pela conferência de pagamento
+        // Status aceitáveis para o administrativo processar ou visualizar histórico
+        const allowedStatuses = ['pronto_para_apostilagem', 'executing_apostille', 'concluido', 'em_processamento'];
+
+        apostilamentos
+            .filter(ap => allowedStatuses.includes(ap.status.toLowerCase()))
+            .forEach(ap => {
+                const doc = ap.documentos
+                if (!doc) return
 
             const titularId = doc.cliente_id
             const titularName = doc.clientes?.nome || 'Titular Desconhecido'

@@ -59,6 +59,10 @@ export default function Tradutora() {
     valorOrcamento: item.orcamento?.valor_orcamento,
     prazoEntrega: item.orcamento?.prazo_entrega,
     observacoes: item.orcamento?.observacoes,
+    traducaoUrl: item.traducao_url,
+    traducaoStoragePath: item.traducao_storage_path,
+    traducaoNomeOriginal: item.traducao_nome_original,
+    rawStatus: item.status,
   })
 
   const fetchOrcamentos = async () => {
@@ -167,7 +171,7 @@ export default function Tradutora() {
           <Route path="/orcamentos" element={<OrcamentosPage orcamentos={orcamentos} onResponderOrcamento={handleResponderOrcamento} />} />
           <Route path="/fila" element={<FilaDeTrabalho items={filaItems} onSubmitTraducao={handleSubmitTraducao} />} />
           <Route path="/entregues" element={<EntreguesPage items={entregueItems} />} />
-          <Route path="/pagamentos" element={<PagamentosPage items={[...entregueItems]} />} />
+          <Route path="/pagamentos" element={<PagamentosPage items={[...entregueItems, ...filaItems]} />} />
           <Route path="/configuracoes" element={<Config />} />
           <Route path="*" element={<Navigate to="/tradutor/orcamentos" replace />} />
         </Routes>

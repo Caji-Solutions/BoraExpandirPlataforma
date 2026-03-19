@@ -14,14 +14,16 @@ import {
   CheckCircle2,
   Trash2,
   FileSearch,
-  Send
+  Send,
+  Calendar,
+  RotateCcw
 } from "lucide-react";
+import { Badge } from "../../../components/ui/Badge";
+import { Button } from "../../../components/ui/Button";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import juridicoService, { ClienteComResponsavel } from "../services/juridicoService";
 import { RequirementRequestModal } from './RequirementRequestModal';
-import { Badge } from "../../../components/ui/Badge";
-import { Button } from "./ui/button";
 
 interface Question {
   id: string;
@@ -38,8 +40,17 @@ export function AssessoriaJuridica() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [allClientes, setAllClientes] = useState<ClienteComResponsavel[]>([]);
+  const [isSearchingAll, setIsSearchingAll] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  
+  // Novos estados para o fluxo de duas etapas
+  const [viewMode, setViewMode] = useState<'selection' | 'assessment'>('selection');
+  const [allSubservices, setAllSubservices] = useState<any[]>([]);
+  const [subserviceSearchTerm, setSubserviceSearchTerm] = useState("");
+  const [filteredSubservices, setFilteredSubservices] = useState<any[]>([]);
+  const [selectedSubserviceId, setSelectedSubserviceId] = useState<string>("");
 
   // Perguntas de Assessoria
   const [questions, setQuestions] = useState<Question[]>([
@@ -141,24 +152,31 @@ export function AssessoriaJuridica() {
         setLoading(true);
         if (!activeProfile?.id) return;
         
-        // Buscar agendamentos delegados ao usuário e catálogo em paralelo
-        // O usuário solicitou que apenas assessorias delegadas sejam exibidas e ordenadas por data
-        const [agendamentosData, servicesData] = await Promise.all([
+        // Buscar agendamentos delegados ao usuário, catálogo, subserviços e TODOS os clientes em paralelo
+        const [agendamentosData, servicesData, allClientesData, subservicesData] = await Promise.all([
           juridicoService.getAgendamentosByResponsavel(activeProfile.id),
-          juridicoService.getCatalogServices()
+          juridicoService.getCatalogServices(),
+          juridicoService.getAllClientesComResponsavel(),
+          juridicoService.getAllSubservices()
         ]);
         
         // Mapear agendamentos para o formato esperado pelo componente, incluindo a data
-        const mappedClientes = agendamentosData.map((ag: any) => ({
-          ...ag.clientes,
-          agendamento_id: ag.id,
-          data_agendamento: ag.data_hora,
-          status_agendamento: ag.status
-        }));
+        const mappedAgendamentos = agendamentosData.map((ag: any) => {
+          const cliente = Array.isArray(ag.clientes) ? ag.clientes[0] : ag.clientes;
+          return {
+            ...cliente,
+            agendamento_id: ag.id,
+            data_agendamento: ag.data_hora,
+            status_agendamento: ag.status
+          };
+        });
         
-        setClientes(mappedClientes);
-        setFilteredClientes(mappedClientes);
+        setClientes(mappedAgendamentos);
+        setAllClientes(allClientesData);
+        setFilteredClientes(mappedAgendamentos);
         setCatalogServices(servicesData);
+        setAllSubservices(subservicesData);
+        setFilteredSubservices(subservicesData);
       } catch (err) {
         console.error("Erro ao buscar dados:", err);
         setError("Não foi possível carregar os dados.");
@@ -184,12 +202,51 @@ export function AssessoriaJuridica() {
   }, [clienteIdParam, clientes, selectedCliente]);
 
   useEffect(() => {
-    const filtered = clientes.filter(c => 
-      c.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      c.email.toLowerCase().includes(searchTerm.toLowerCase())
+    const termLower = searchTerm.trim().toLowerCase();
+    
+    // Se não tem busca, prioriza os delegados (se existirem), senão mostra todos os globais
+    if (!termLower) {
+      if (clientes.length > 0) {
+        setFilteredClientes(clientes);
+        setIsSearchingAll(false);
+      } else {
+        setFilteredClientes(allClientes);
+        setIsSearchingAll(true);
+      }
+      return;
+    }
+
+    // Ao buscar, mergeamos as duas listas para garantir que tudo seja pesquisável
+    const combinedBase = [
+      ...clientes, 
+      ...allClientes.filter(ac => !clientes.some(c => c.id === ac.id))
+    ];
+
+    const filtered = combinedBase.filter(c => 
+      (c.nome && c.nome.toLowerCase().includes(termLower)) || 
+      (c.email && c.email.toLowerCase().includes(termLower))
     );
+
+    console.log(`[Search Logic] Termo: "${termLower}" | Combined Base: ${combinedBase.length} | Filteed: ${filtered.length}`);
+    
     setFilteredClientes(filtered);
-  }, [searchTerm, clientes]);
+    
+    // Determinamos se a busca resultou apenas em itens globais que NÃO estão nos delegados
+    const hasOnlyGlobal = filtered.length > 0 && !filtered.some(f => clientes.some(c => c.id === f.id));
+    setIsSearchingAll(hasOnlyGlobal);
+  }, [searchTerm, clientes, allClientes]);
+
+  // Filtro de Subserviços
+  useEffect(() => {
+    if (!subserviceSearchTerm.trim()) {
+      setFilteredSubservices(allSubservices);
+      return;
+    }
+    const filtered = allSubservices.filter(s => 
+      s.nome.toLowerCase().includes(subserviceSearchTerm.toLowerCase())
+    );
+    setFilteredSubservices(filtered);
+  }, [subserviceSearchTerm, allSubservices]);
 
   const handleQuestionChange = (id: string, value: any) => {
     setQuestions(prev => prev.map(q => q.id === id ? { ...q, value } : q));
@@ -240,451 +297,391 @@ export function AssessoriaJuridica() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-muted-foreground">Carregando seus clientes...</p>
+  const handleSelectCliente = (cliente: ClienteComResponsavel) => {
+    setSelectedCliente(cliente);
+    setViewMode('assessment');
+    window.scrollTo(0, 0);
+  };
+
+  const handleBackToSelection = () => {
+    setViewMode('selection');
+    setSelectedCliente(null);
+    setSubserviceSearchTerm("");
+  };
+
+  // ETAPA 1: SELEÇÃO DE CLIENTE
+  const renderClientSelection = () => (
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
+      <div className="text-center space-y-4">
+        <div className="inline-flex p-3 bg-blue-100 text-blue-600 rounded-2xl shadow-inner">
+          <Users size={32} />
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Criar Assessoria Jurídica</h1>
-        <p className="text-muted-foreground mt-1">Selecione um cliente para iniciar o questionário de assessoria.</p>
+        <h1 className="text-4xl font-extrabold tracking-tight text-gray-900">Nova Assessoria Jurídica</h1>
+        <p className="text-lg text-gray-500 max-w-lg mx-auto">Busque e selecione um cliente para iniciar o processo de consultoria.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Lista de Clientes */}
-        <div className="lg:col-span-1 space-y-4">
-          <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-            <div className="p-4 border-b bg-gray-50/50">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input 
-                  type="text" 
-                  placeholder="Buscar cliente..."
-                  className="w-full pl-10 pr-4 py-2 bg-white border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-            
-            <div className="max-h-[500px] overflow-y-auto divide-y divide-gray-100">
-              {filteredClientes.length > 0 ? (
-                filteredClientes.map(cliente => (
-                  <button
-                    key={cliente.id}
-                    onClick={() => setSelectedCliente(cliente)}
-                    className={`w-full text-left p-4 hover:bg-blue-50 transition-colors flex items-center justify-between group ${selectedCliente?.id === cliente.id ? 'bg-blue-50 border-l-4 border-blue-600' : ''}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-full ${selectedCliente?.id === cliente.id ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
-                        <User className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className={`font-semibold text-sm ${selectedCliente?.id === cliente.id ? 'text-blue-700' : 'text-gray-900'}`}>
-                          {cliente.nome}
-                        </p>
-                        <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
-                          <ClipboardCheck className="h-3 w-3" />
-                          <span>
-                            {cliente.data_agendamento 
-                              ? new Date(cliente.data_agendamento).toLocaleString('pt-BR', { 
-                                  day: '2-digit', 
-                                  month: '2-digit',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                }) 
-                              : 'Sem data'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <ChevronRight className={`h-4 w-4 transition-transform ${selectedCliente?.id === cliente.id ? 'text-blue-600 translate-x-1' : 'text-gray-300 group-hover:text-gray-400'}`} />
-                  </button>
-                ))
-              ) : (
-                <div className="p-8 text-center">
-                  <p className="text-sm text-gray-500">Nenhum cliente encontrado.</p>
-                </div>
-              )}
-            </div>
+      <div className="bg-white rounded-3xl border shadow-xl shadow-blue-900/5 overflow-hidden">
+        <div className="p-6 border-b bg-gray-50/50">
+          <div className="relative max-w-2xl mx-auto">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <input 
+              type="text" 
+              placeholder="Digite o nome ou e-mail do cliente..."
+              className="w-full pl-12 pr-4 py-4 bg-white border-2 border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:outline-none text-lg transition-all shadow-sm"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              autoFocus
+            />
           </div>
         </div>
-
-        {/* Formulário de Assessoria */}
-        <div className="lg:col-span-2">
-          {selectedCliente ? (
-            <div className="bg-white rounded-xl border shadow-sm overflow-hidden flex flex-col h-full">
-              <div className="p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200">
-                    <Scale className="h-6 w-6" />
+        
+        <div className="max-h-[600px] overflow-y-auto p-2 space-y-2 custom-scrollbar">
+          {filteredClientes.length > 0 ? (
+            filteredClientes.map(cliente => (
+              <button
+                key={cliente.id}
+                onClick={() => handleSelectCliente(cliente)}
+                className="w-full text-left p-5 hover:bg-blue-50/50 rounded-2xl transition-all flex items-center justify-between group border-2 border-transparent hover:border-blue-100"
+              >
+                <div className="flex items-center gap-5">
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-500 group-hover:from-blue-600 group-hover:to-blue-700 group-hover:text-white transition-all shadow-sm">
+                    <User size={24} />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">Assessoria: {selectedCliente.nome}</h2>
-                    <p className="text-sm text-blue-700 font-medium">Preencha os detalhes judiciais abaixo</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-8 space-y-8 flex-grow">
-                {error && (
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-700 animate-in fade-in slide-in-from-top-2">
-                    <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-bold">Atenção</p>
-                      <p className="text-xs opacity-90">{error}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Seletor de Serviço */}
-                <div className="pb-6 border-b">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Scale className="h-5 w-5 text-blue-600" />
-                    <h3 className="text-lg font-bold text-gray-900">Serviço em Avaliação</h3>
-                  </div>
-                  <div className="max-w-md">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Selecione o Serviço do Catálogo</label>
-                    <select 
-                      value={selectedServiceId}
-                      onChange={(e) => setSelectedServiceId(e.target.value)}
-                      className="w-full p-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                    >
-                      <option value="">Selecione um serviço...</option>
-                      {catalogServices.map(service => (
-                        <option key={service.id} value={service.id}>
-                          {service.name} {service.value ? `- €${service.value}` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Seção de Dependentes */}
-                <div className="pt-6 border-t mt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                      <Users className="h-5 w-5 text-blue-600" />
-                      Dependentes do Cliente
+                    <h3 className="font-bold text-gray-900 text-lg group-hover:text-blue-700 transition-colors">
+                      {cliente.nome}
                     </h3>
-                  </div>
-
-                  {/* Lista de Dependentes Atual */}
-                  {dependentes.length > 0 ? (
-                    <div className="mb-6 grid grid-cols-1 gap-3">
-                      {dependentes.map((dep: any) => (
-                        <div key={dep.id} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all group">
-                          <div className="flex items-start gap-4">
-                            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-                              <User className="h-5 w-5" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="text-sm font-bold text-gray-900 truncate">{dep.nome_completo}</p>
-                                <Badge variant="outline" className="text-[9px] uppercase font-bold py-0 h-4 bg-gray-50">
-                                  {dep.parentesco}
-                                </Badge>
-                                {dep.is_ancestral_direto && (
-                                  <Badge variant="default" className="text-[9px] uppercase font-bold py-0 h-4 bg-purple-100 text-purple-700 hover:bg-purple-100 border-none">
-                                    Ancestral
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
-                                {dep.cpf && <p className="text-[10px] text-gray-400">CPF: {dep.cpf}</p>}
-                                {dep.data_nascimento && <p className="text-[10px] text-gray-400">Nascimento: {new Date(dep.data_nascimento).toLocaleDateString()}</p>}
-                                {dep.email && <p className="text-[10px] text-gray-400">Email: {dep.email}</p>}
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => {
-                                setReqModalMember({
-                                  id: dep.id,
-                                  name: dep.nome_completo,
-                                  type: dep.parentesco
-                                });
-                                setIsReqModalOpen(true);
-                              }}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-2 text-xs font-semibold"
-                              title="Solicitar Documentos"
-                            >
-                              <Send className="h-4 w-4" />
-                              <span className="hidden sm:inline">Solicitar Docs</span>
-                            </button>
-                            
-                            {currentProcess && (
-                              <button
-                                onClick={() => navigate(`/juridico/analise?processoId=${currentProcess.id}`)}
-                                className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-2 text-xs font-semibold"
-                                title="Ver na Fila de Análise"
-                              >
-                                <FileSearch className="h-4 w-4" />
-                                <span className="hidden sm:inline">Ver Fila</span>
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-sm text-gray-500 flex items-center gap-1">
+                        <Badge variant="outline" className="text-[10px] font-bold py-0 h-5">
+                          {cliente.client_id || 'CLIENTE'}
+                        </Badge>
+                      </span>
+                      {cliente.data_agendamento && (
+                        <span className="flex items-center gap-1 text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-full">
+                          <Calendar size={12} />
+                          {new Date(cliente.data_agendamento).toLocaleDateString('pt-BR')}
+                        </span>
+                      )}
                     </div>
-                  ) : !loadingDependentes && (
-                    <div className="mb-6 p-8 text-center bg-gray-50/50 border border-dashed rounded-xl">
-                      <Users className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                      <p className="text-sm text-gray-500">Nenhum dependente cadastrado.</p>
-                    </div>
-                  )}
-
-                  {loadingDependentes && dependentes.length === 0 && (
-                    <div className="flex items-center justify-center p-12 text-sm text-gray-400 mb-6 bg-gray-50/50 rounded-xl border border-dashed">
-                      <Loader2 className="h-5 w-5 animate-spin mr-3" />
-                      Carregando dependentes...
-                    </div>
-                  )}
-
-                  <div className="bg-white rounded-xl p-6 border border-blue-100 shadow-sm space-y-4">
-                    <h4 className="text-sm font-bold text-gray-800 border-b pb-2 mb-4">Adicionar Novo Dependente</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Nome Completo</label>
-                        <input 
-                          type="text" 
-                          value={depForm.nome}
-                          onChange={(e) => setDepForm({...depForm, nome: e.target.value})}
-                          placeholder="Nome" 
-                          className="w-full p-2 bg-gray-50 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Parentesco</label>
-                        <select 
-                          value={depForm.parentesco}
-                          onChange={(e) => setDepForm({...depForm, parentesco: e.target.value})}
-                          className="w-full p-2 bg-gray-50 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                        >
-                          <option value="">Selecione...</option>
-                          <option value="filho">Filho(a)</option>
-                          <option value="conjuge">Cônjuge</option>
-                          <option value="pai_mae">Pai/Mãe</option>
-                          <option value="outro">Outro</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Data de Nascimento</label>
-                        <input 
-                          type="date" 
-                          value={depForm.dataNascimento}
-                          onChange={(e) => setDepForm({...depForm, dataNascimento: e.target.value})}
-                          className="w-full p-2 bg-gray-50 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">CPF</label>
-                        <input 
-                          type="text" 
-                          value={depForm.cpf}
-                          onChange={(e) => setDepForm({...depForm, cpf: e.target.value})}
-                          placeholder="000.000.000-00" 
-                          className="w-full p-2 bg-gray-50 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">RG</label>
-                        <input 
-                          type="text" 
-                          value={depForm.rg}
-                          onChange={(e) => setDepForm({...depForm, rg: e.target.value})}
-                          placeholder="RG" 
-                          className="w-full p-2 bg-gray-50 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Passaporte</label>
-                        <input 
-                          type="text" 
-                          value={depForm.passaporte}
-                          onChange={(e) => setDepForm({...depForm, passaporte: e.target.value})}
-                          placeholder="Passaporte" 
-                          className="w-full p-2 bg-gray-50 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 px-1 py-2">
-                      <input 
-                        type="checkbox" 
-                        id="new_dep_is_ancestral" 
-                        checked={depForm.isAncestral}
-                        onChange={(e) => setDepForm({...depForm, isAncestral: e.target.checked})}
-                        className="h-4 w-4 text-blue-600 rounded cursor-pointer" 
-                      />
-                      <label htmlFor="new_dep_is_ancestral" className="text-sm font-medium text-gray-700 select-none cursor-pointer">É ancestral direto?</label>
-                    </div>
-
-                    <button 
-                      onClick={async () => {
-                        if (depForm.nome && depForm.parentesco && selectedCliente) {
-                          try {
-                            await juridicoService.createDependent(
-                              selectedCliente.id, 
-                              depForm.nome, 
-                              depForm.parentesco,
-                              {
-                                documento: depForm.cpf,
-                                dataNascimento: depForm.dataNascimento,
-                                rg: depForm.rg,
-                                passaporte: depForm.passaporte,
-                                nacionalidade: depForm.nacionalidade,
-                                email: depForm.email,
-                                telefone: depForm.telefone,
-                                isAncestralDireto: depForm.isAncestral
-                              }
-                            );
-                            
-                            // Reset formulário
-                            setDepForm({
-                              nome: '',
-                              parentesco: '',
-                              dataNascimento: '',
-                              cpf: '',
-                              rg: '',
-                              passaporte: '',
-                              nacionalidade: 'Brasileira',
-                              email: '',
-                              telefone: '',
-                              isAncestral: false
-                            });
-
-                            alert('Dependente cadastrado com sucesso!');
-                            fetchDependentes();
-                          } catch (err) {
-                            alert('Erro ao cadastrar dependente');
-                          }
-                        } else {
-                          alert('Preencha os campos obrigatórios (Nome e Parentesco)');
-                        }
-                      }}
-                      className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-100"
-                    >
-                      <PlusCircle className="h-4 w-4" />
-                      Cadastrar Dependente
-                    </button>
                   </div>
                 </div>
-
-                <div className="space-y-8 mt-10">
-                  {questions.map((q) => (
-                    <div key={q.id} className="space-y-3">
-                      <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                        <HelpCircle className="h-4 w-4 text-blue-500" />
-                        {q.text}
-                      </label>
-                      
-                      {q.type === 'yes_no' && (
-                        <div className="flex gap-4">
-                          <button
-                            onClick={() => handleQuestionChange(q.id, true)}
-                            className={`px-6 py-2 rounded-lg text-sm font-medium border transition-all ${q.value === true ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-white border-gray-200 text-gray-600 hover:border-blue-200 hover:bg-blue-50'}`}
-                          >
-                            Sim
-                          </button>
-                          <button
-                            onClick={() => handleQuestionChange(q.id, false)}
-                            className={`px-6 py-2 rounded-lg text-sm font-medium border transition-all ${q.value === false ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-white border-gray-200 text-gray-600 hover:border-blue-200 hover:bg-blue-50'}`}
-                          >
-                            Não
-                          </button>
-                        </div>
-                      )}
-
-                      {q.type === 'text' && (
-                        <textarea
-                          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none min-h-[100px] text-sm"
-                          placeholder="Digite aqui..."
-                          value={q.value as string}
-                          onChange={(e) => handleQuestionChange(q.id, e.target.value)}
-                        />
-                      )}
-
-                      {q.type === 'number' && (
-                        <input
-                          type="number"
-                          className="w-32 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                          value={q.value as number}
-                          onChange={(e) => handleQuestionChange(q.id, parseInt(e.target.value) || 0)}
-                        />
-                      )}
-                    </div>
-                  ))}
+                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-gray-50 text-gray-300 group-hover:bg-blue-100 group-hover:text-blue-600 transition-all">
+                  <ChevronRight size={20} className="group-hover:translate-x-0.5 transition-transform" />
                 </div>
-              </div>
-
-              <div className="p-6 bg-gray-50 border-t flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {showSuccess && (
-                    <div className="flex items-center gap-2 text-green-600 animate-in fade-in slide-in-from-left-2 transition-all">
-                      <CheckCircle2 className="h-5 w-5" />
-                      <span className="text-sm font-medium">Salvo com sucesso!</span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-3">
-                  <button 
-                    onClick={() => setSelectedCliente(null)}
-                    className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                  <button 
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    Salvar Assessoria
-                  </button>
-                </div>
-              </div>
-            </div>
+              </button>
+            ))
           ) : (
-            <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center p-20 text-center space-y-4">
-              <div className="p-4 bg-white rounded-full shadow-sm border">
-                <ClipboardCheck className="h-10 w-10 text-gray-300" />
+            <div className="py-20 text-center space-y-4">
+              <div className="h-20 w-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto text-gray-300">
+                <Search size={32} />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Nenhum cliente selecionado</h3>
-                <p className="text-muted-foreground text-sm max-w-[300px] mx-auto">
-                  Selecione um cliente da lista à esquerda para começar a consultoria jurídica.
-                </p>
+                <p className="text-gray-900 font-bold text-lg">Nenhum cliente encontrado</p>
+                <p className="text-gray-500 text-sm">Tente buscar por outro nome ou e-mail.</p>
               </div>
             </div>
           )}
         </div>
       </div>
+    </div>
+  );
 
-      {selectedCliente && currentProcess && (
+  // ETAPA 2: FORMULÁRIO DE ASSESSORIA
+  const renderAssessoriaForm = () => (
+    <div className="space-y-8 animate-in slide-in-from-right-4 duration-500 pb-20">
+      <div className="bg-white rounded-3xl border shadow-lg border-blue-100 overflow-hidden sticky top-4 z-40">
+        <div className="p-6 bg-gradient-to-r from-blue-600 to-indigo-700 flex items-center justify-between text-white">
+          <div className="flex items-center gap-5">
+            <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 shadow-xl">
+              <Scale size={28} />
+            </div>
+            <div>
+              <p className="text-blue-100 text-xs font-black uppercase tracking-widest mb-1">Assessoria em Andamento</p>
+              <h1 className="text-2xl font-bold">Realizando assessoria de: <span className="text-white underline decoration-blue-300/50 underline-offset-4">{selectedCliente?.nome}</span></h1>
+            </div>
+          </div>
+          <button 
+            onClick={handleBackToSelection}
+            className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-all border border-white/20 group backdrop-blur-sm"
+          >
+            <RotateCcw size={16} className="group-hover:-rotate-45 transition-transform" />
+            Mudar Cliente
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-1 space-y-6">
+          <div className="bg-white rounded-3xl border shadow-sm p-6 space-y-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-blue-600">
+                <HelpCircle size={18} className="font-bold" />
+                <h3 className="font-black text-xs uppercase tracking-wider">Selecione o Subserviço</h3>
+              </div>
+              <p className="text-xs text-gray-500">Busque o serviço específico para este cliente.</p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input 
+                  type="text" 
+                  placeholder="Buscar subserviço..."
+                  className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm transition-all"
+                  value={subserviceSearchTerm}
+                  onChange={(e) => setSubserviceSearchTerm(e.target.value)}
+                />
+              </div>
+
+              <div className="max-h-[300px] overflow-y-auto space-y-2 custom-scrollbar pr-2">
+                {filteredSubservices.length > 0 ? (
+                  filteredSubservices.map(sub => (
+                    <button
+                      key={sub.id}
+                      onClick={() => setSelectedSubserviceId(sub.id)}
+                      className={`w-full text-left p-4 rounded-2xl transition-all border-2 flex items-center justify-between group ${
+                        selectedSubserviceId === sub.id 
+                          ? 'bg-blue-50 border-blue-600 shadow-sm' 
+                          : 'bg-white border-gray-100 hover:border-blue-300'
+                      }`}
+                    >
+                      <div className="flex-1">
+                        <p className={`text-sm font-bold ${selectedSubserviceId === sub.id ? 'text-blue-700' : 'text-gray-900'}`}>
+                          {sub.nome}
+                        </p>
+                      </div>
+                      <div className={`h-6 w-6 rounded-full flex items-center justify-center transition-all ${
+                        selectedSubserviceId === sub.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-transparent'
+                      }`}>
+                        <CheckCircle2 size={12} />
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <p className="text-center py-8 text-xs text-gray-400">Nenhum subserviço encontrado.</p>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {selectedCliente && (
+            <div className="bg-blue-50/50 rounded-3xl border border-blue-100 p-6 space-y-4">
+              <h3 className="font-black text-[10px] uppercase tracking-widest text-blue-600">Dados do Contato</h3>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center text-blue-500 shadow-sm border border-blue-100">
+                    <Send size={14} />
+                  </div>
+                  <p className="text-sm font-medium text-gray-700">{selectedCliente.email || 'N/A'}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center text-green-500 shadow-sm border border-blue-100">
+                    <HelpCircle size={14} />
+                  </div>
+                  <p className="text-sm font-medium text-gray-700">{selectedCliente.whatsapp || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="lg:col-span-2 space-y-8">
+          <div className="bg-white rounded-3xl border shadow-sm p-8 space-y-8">
+            <div className="flex items-center gap-3 pb-4 border-b">
+              <ClipboardCheck className="h-6 w-6 text-blue-600" />
+              <h2 className="text-2xl font-bold text-gray-900">Questionário</h2>
+            </div>
+
+            {error && (
+              <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-4 text-red-700 animate-in shake duration-500">
+                <AlertCircle className="h-6 w-6 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-sm">Atenção</p>
+                  <p className="text-xs opacity-80">{error}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-8">
+              {questions.map((q) => (
+                <div key={q.id} className="space-y-4 group">
+                  <label className="text-base font-bold text-gray-800 flex items-center gap-2 group-hover:text-blue-700 transition-colors">
+                    {q.text}
+                  </label>
+                  
+                  {q.type === 'yes_no' ? (
+                    <div className="flex gap-4">
+                      <button
+                        onClick={() => handleQuestionChange(q.id, true)}
+                        className={`flex-1 py-3 px-6 rounded-2xl font-bold transition-all border-2 ${
+                          q.value === true 
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200' 
+                            : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200 hover:bg-blue-50/30'
+                        }`}
+                      >
+                        Sim
+                      </button>
+                      <button
+                        onClick={() => handleQuestionChange(q.id, false)}
+                        className={`flex-1 py-3 px-6 rounded-2xl font-bold transition-all border-2 ${
+                          q.value === false 
+                            ? 'bg-gray-800 border-gray-800 text-white shadow-lg shadow-gray-200' 
+                            : 'bg-white border-gray-100 text-gray-600 hover:border-gray-300 hover:bg-gray-50/30'
+                        }`}
+                      >
+                        Não
+                      </button>
+                    </div>
+                  ) : q.type === 'number' ? (
+                    <input
+                      type="number"
+                      value={q.value as number}
+                      onChange={(e) => handleQuestionChange(q.id, parseInt(e.target.value) || 0)}
+                      className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all text-lg font-medium"
+                      placeholder="0"
+                    />
+                  ) : (
+                    <textarea
+                      value={q.value as string}
+                      onChange={(e) => handleQuestionChange(q.id, e.target.value)}
+                      className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all min-h-[120px] text-lg"
+                      placeholder="Descreva aqui..."
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-8 border-t space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  <h3 className="font-bold text-gray-900">Gerenciar Dependentes</h3>
+                </div>
+              </div>
+
+              {dependentes.length > 0 && (
+                <div className="grid grid-cols-1 gap-3">
+                  {dependentes.map((dep: any) => (
+                    <div key={dep.id} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all group">
+                      <div className="flex items-start gap-4">
+                        <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                          <User className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold text-gray-900 truncate">{dep.nome_completo}</p>
+                            <Badge variant="outline" className="text-[9px] uppercase font-bold py-0 h-4 bg-gray-50">
+                              {dep.parentesco}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setReqModalMember({
+                              id: dep.id,
+                              name: dep.nome_completo,
+                              type: dep.parentesco
+                            });
+                            setIsReqModalOpen(true);
+                          }}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-2 text-xs font-semibold"
+                        >
+                          <Send className="h-4 w-4" />
+                          <span className="hidden sm:inline">Solicitar Docs</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="bg-gray-50 rounded-2xl p-6 border border-dashed border-gray-300 space-y-4">
+                <h4 className="text-sm font-bold text-gray-800">Novo Dependente</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input 
+                    type="text" 
+                    value={depForm.nome}
+                    onChange={(e) => setDepForm({...depForm, nome: e.target.value})}
+                    placeholder="Nome Completo" 
+                    className="w-full p-3 bg-white border rounded-xl text-sm" 
+                  />
+                  <select 
+                    value={depForm.parentesco}
+                    onChange={(e) => setDepForm({...depForm, parentesco: e.target.value})}
+                    className="w-full p-3 bg-white border rounded-xl text-sm"
+                  >
+                    <option value="">Parentesco...</option>
+                    <option value="filho">Filho(a)</option>
+                    <option value="conjuge">Cônjuge</option>
+                    <option value="pai_mae">Pai/Mãe</option>
+                    <option value="outro">Outro</option>
+                  </select>
+                </div>
+                <Button 
+                  onClick={async () => {
+                    if (!depForm.nome || !depForm.parentesco || !selectedCliente) return;
+                    await juridicoService.createDependent(selectedCliente.id, depForm.nome, depForm.parentesco, depForm);
+                    setDepForm({
+                      nome: '', parentesco: '', dataNascimento: '', cpf: '', rg: '', passaporte: '',
+                      nacionalidade: 'Brasileira', email: '', telefone: '', isAncestral: false
+                    });
+                    fetchDependentes();
+                  }}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 rounded-xl"
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Cadastrar Dependente
+                </Button>
+              </div>
+            </div>
+
+            <div className="pt-8 border-t flex flex-col gap-4">
+               <button 
+                onClick={handleSubmit}
+                disabled={isSubmitting || !selectedSubserviceId}
+                className={`w-full py-6 rounded-2xl font-black text-xl uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-3 ${
+                  isSubmitting || !selectedSubserviceId
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-none'
+                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:scale-[1.01] hover:shadow-blue-500/30'
+                }`}
+              >
+                {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : <Save size={24} />}
+                {isSubmitting ? "Salvando..." : (!selectedSubserviceId ? "Selecione um Subserviço" : "Finalizar Assessoria")}
+              </button>
+              
+              {showSuccess && (
+                <div className="flex items-center justify-center gap-2 text-green-600 font-bold animate-pulse">
+                  <CheckCircle2 size={20} />
+                  Assessoria salva com sucesso!
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {viewMode === 'selection' ? renderClientSelection() : renderAssessoriaForm()}
+
+      {selectedCliente && (
         <RequirementRequestModal
           isOpen={isReqModalOpen}
           onOpenChange={setIsReqModalOpen}
           clienteId={selectedCliente.id}
-          processoId={currentProcess.id}
+          processoId={currentProcess?.id}
           members={[
             { id: selectedCliente.id, name: selectedCliente.nome, type: 'Titular', isTitular: true },
             ...dependentes.map(d => ({ id: d.id, name: d.nome_completo, type: d.parentesco, isTitular: false }))
           ]}
           initialMemberId={reqModalMember?.id}
-          onSuccess={() => {
-            alert('Requerimento criado com sucesso!');
-          }}
         />
       )}
     </div>

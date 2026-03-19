@@ -74,6 +74,7 @@ juridico.post('/processo', JuridicoController.createProcess.bind(JuridicoControl
 
 // Lista todos os clientes com seus responsáveis
 juridico.get('/clientes', JuridicoController.getAllClientes.bind(JuridicoController))
+juridico.get('/subservicos', JuridicoController.getSubservices.bind(JuridicoController))
 
 // Lista clientes sem responsável (vagos)
 juridico.get('/clientes/vagos', JuridicoController.getClientesVagos.bind(JuridicoController))
