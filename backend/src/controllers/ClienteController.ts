@@ -236,6 +236,35 @@ class ClienteController {
     }
   }
 
+  // GET /cliente/:clienteId/dna
+  async getDNA(req: any, res: any) {
+    try {
+      const { clienteId } = req.params;
+      if (!clienteId) return res.status(400).json({ message: 'clienteId é obrigatório' });
+
+      const supabase = (await import('../config/SupabaseClient')).supabase;
+      const { data: cliente, error } = await supabase
+        .from('clientes')
+        .select('perfil_unificado')
+        .eq('id', clienteId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('[ClienteController] Erro ao buscar DNA:', error);
+        return res.status(500).json({ message: 'Erro ao buscar DNA', error: error.message });
+      }
+
+      if (!cliente || !cliente.perfil_unificado) {
+        return res.status(200).json({ data: {} });
+      }
+
+      return res.status(200).json({ data: cliente.perfil_unificado.data || {} });
+    } catch (err: any) {
+      console.error('[ClienteController] Erro inesperado getDNA:', err);
+      return res.status(500).json({ message: 'Erro interno ao buscar DNA', error: err.message });
+    }
+  }
+
   // GET /cliente/:clienteId
   async getCliente(req: any, res: any) {
     try {

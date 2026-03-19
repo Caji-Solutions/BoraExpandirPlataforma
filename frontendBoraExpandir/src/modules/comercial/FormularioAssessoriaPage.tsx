@@ -116,6 +116,22 @@ export default function FormularioAssessoriaPage() {
         return
       }
 
+      // NOVO: Buscar o DNA atualizado do cliente
+      if (data.cliente_id) {
+        try {
+          const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/cliente/${data.cliente_id}/dna`);
+          if (res.ok) {
+            const dnaData = await res.json();
+            if (dnaData.data && Object.keys(dnaData.data).length > 0) {
+              // Os dados DNA sobrescrevem ou complementam o draft_dados atual (Prioridade de visualização)
+              data.draft_dados = { ...data.draft_dados, ...dnaData.data };
+            }
+          }
+        } catch (err) {
+          console.error('[FormularioAssessoria] Erro ao buscar DNA:', err);
+        }
+      }
+
       hydrateFromContrato(data)
       initializedRef.current = true
     } catch (err: any) {

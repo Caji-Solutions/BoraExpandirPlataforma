@@ -1,5 +1,6 @@
 import { supabase } from '../config/SupabaseClient'
 import EmailService from '../services/EmailService'
+import DNAService from '../services/DNAService'
 
 function generatePassword(length = 10): string {
     const chars = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$'
@@ -270,6 +271,11 @@ class FormularioController {
                 console.warn('[FormularioController] Tabela formularios_cliente pode não existir. Dados serão salvos no metadata do cliente.')
             }
 
+            // Atualiza o DNA Centralizado do Cliente com Prioridade Máxima
+            if (clienteId) {
+                await DNAService.mergeDNA(clienteId, formularioData, 'HIGH')
+            }
+
             // 6. Confirmar o agendamento e verificar se já estava pago
             let isPago = false
             if (agendamento_id) {
@@ -469,13 +475,27 @@ class FormularioController {
             // 1. Buscar agendamento
             const { data: agendamento, error: agErr } = await supabase
                 .from('agendamentos')
-                .select('id, status, data_hora, pagamento_status, pagamento_nota_recusa, email, telefone')
+                .select('id, status, data_hora, pagamento_status, pagamento_nota_recusa, email, telefone, cliente_id')
                 .eq('id', agendamento_id)
                 .single()
 
             if (agErr || !agendamento) {
                 console.error('[FormularioController] Erro ao buscar agendamento status:', agErr)
                 return res.status(404).json({ found: false })
+            }
+
+            // 1.5. Buscar DNA do cliente se existir
+            let dnaData = null
+            if (agendamento.cliente_id) {
+                const { data: clienteData } = await supabase
+                    .from('clientes')
+                    .select('perfil_unificado')
+                    .eq('id', agendamento.cliente_id)
+                    .maybeSingle()
+                
+                if (clienteData?.perfil_unificado?.data) {
+                    dnaData = clienteData.perfil_unificado.data
+                }
             }
 
             // 2. Verificar se o formulário já foi preenchido na tabela formularios_cliente
@@ -508,7 +528,8 @@ class FormularioController {
                 formulario_preenchido: formularioPreenchido,
                 expirado,
                 cancelado: agendamento.status === 'cancelado',
-                bloqueado_cron: !!bloqueadoCron
+                bloqueado_cron: !!bloqueadoCron,
+                dna: dnaData // <- Dados preenchidos para o pre-fill
             })
 
         } catch (error: any) {

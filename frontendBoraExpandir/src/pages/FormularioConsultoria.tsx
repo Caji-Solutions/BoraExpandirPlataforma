@@ -160,6 +160,9 @@ export default function FormularioConsultoria() {
                 }
 
                 // Formulário não preenchido e dentro do prazo — exibir normalmente
+                if (data.dna) {
+                    setFormData(prev => ({ ...prev, ...data.dna }))
+                }
                 setStep('form')
             } catch (err) {
                 console.error('Erro ao verificar status do agendamento:', err)

@@ -47,6 +47,7 @@ cliente.post('/contratos/:id/comprovante', upload.single('file'), ClienteControl
 
 // Rotas de documentos
 cliente.get('/by-user/:userId', ClienteController.getClienteByUserId.bind(ClienteController))
+cliente.get('/:clienteId/dna', ClienteController.getDNA.bind(ClienteController))
 cliente.get('/:clienteId', ClienteController.getCliente.bind(ClienteController))
 cliente.get('/:clienteId/documentos-requeridos', ClienteController.getDocumentosRequeridos.bind(ClienteController))
 cliente.get('/:clienteId/dependentes', ClienteController.getDependentes.bind(ClienteController))

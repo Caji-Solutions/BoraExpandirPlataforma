@@ -6,6 +6,7 @@ import ContratoServicoRepository from '../repositories/ContratoServicoRepository
 import EmailService from '../services/EmailService';
 import NotificationService from '../services/NotificationService';
 import { normalizeCpf, normalizePhone } from '../utils/normalizers';
+import DNAService from '../services/DNAService';
 
 
 class ComercialController {
@@ -1304,11 +1305,15 @@ class ComercialController {
                 }
             }
 
-            const updatedData = await ContratoServicoRepository.updateContrato(id, {
+                        const updatedData = await ContratoServicoRepository.updateContrato(id, {
                 etapa_fluxo: etapaNumerica,
                 draft_dados: mergedDraft,
                 atualizado_em: new Date().toISOString()
             })
+
+            if (contrato.cliente_id) {
+                await DNAService.mergeDNA(contrato.cliente_id, mergedDraft, 'MEDIUM')
+            }
 
             return res.status(200).json({ data: updatedData })
         } catch (error: any) {
