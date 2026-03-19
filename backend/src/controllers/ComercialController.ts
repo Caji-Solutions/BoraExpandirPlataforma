@@ -496,7 +496,7 @@ class ComercialController {
                         for (const docId of documentoIds) {
                             const orcamento = await TraducoesRepository.getOrcamentoByDocumento(docId)
                             if (orcamento) {
-                                await TraducoesRepository.aprovarOrcamento(orcamento.id, docId)
+                                await TraducoesRepository.aprovarOrcamento(orcamento.id)
                             }
                         }
                         console.log('OrÃ§amentos aprovados com sucesso via Webhook Stripe')
@@ -1411,6 +1411,12 @@ class ComercialController {
                 return res.status(400).json({ message: 'Gere o contrato antes de enviar para assinatura.' })
             }
 
+            const contratoUrl = String(contrato.contrato_gerado_url || '')
+            const contratoGeradoEhPdf = /\.pdf(?:\?|$)/i.test(contratoUrl)
+            if (!contratoGeradoEhPdf) {
+                return res.status(400).json({ message: 'O contrato atual nao esta em PDF. Gere novamente antes de enviar.' })
+            }
+
             const draftSemErro = this.mergeDraftDados(contrato.draft_dados, {})
             if (draftSemErro.__erroGeracao) {
                 delete draftSemErro.__erroGeracao
@@ -1427,12 +1433,18 @@ class ComercialController {
 
             try {
                 const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')
-                const contratoLink = `${frontendUrl}/cliente/contratos`
+                const areaClienteLink = `${frontendUrl}/cliente/contratos`
+                const contratoArquivoUrl = updatedData?.contrato_gerado_url || contrato.contrato_gerado_url
+
+                if (!contratoArquivoUrl) {
+                    throw new Error('Contrato gerado nao encontrado para anexo no email.')
+                }
 
                 await EmailService.sendContratoEmail({
                     to: emailDestino,
                     clientName: contrato.cliente_nome || 'Cliente',
-                    contratoLink: contrato.contrato_gerado_url || contratoLink,
+                    areaClienteLink,
+                    contratoArquivoUrl,
                     servicoNome: contrato.servico_nome || 'Assessoria'
                 })
             } catch (emailError) {

@@ -148,7 +148,7 @@ export default function ContratoServicoDetailPage() {
           email: cliente.email,
           telefone: cliente.telefone
         },
-        preSelectedProduto: servico.id,
+        preSelectedProduto: servico.nome || servico.id,
         step: 'data_hora',
         paid: true
       }

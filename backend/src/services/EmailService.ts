@@ -1,6 +1,4 @@
 import nodemailer from 'nodemailer'
-import fs from 'fs'
-import path from 'path'
 
 class EmailService {
     private transporter: nodemailer.Transporter | null = null
@@ -241,7 +239,8 @@ class EmailService {
     async sendContratoEmail(params: {
         to: string
         clientName: string
-        contratoLink: string
+        areaClienteLink: string
+        contratoArquivoUrl: string
         servicoNome: string
     }): Promise<void> {
         const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@boraexpandir.com'
@@ -271,11 +270,15 @@ class EmailService {
                 Para assinar, acesse sua área do cliente e envie o arquivo assinado.
             </p>
             <div style="text-align:center;margin:32px 0;">
-                <a href="${params.contratoLink}"
+                <a href="${params.areaClienteLink}"
                    style="display:inline-block;background:#076CA5;color:#ffffff;text-decoration:none;padding:14px 40px;border-radius:10px;font-size:16px;font-weight:700;letter-spacing:0.5px;">
                     Acessar Área do Cliente
                 </a>
             </div>
+            <p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 12px;">
+                Caso prefira, você também pode baixar o contrato diretamente:
+                <a href="${params.contratoArquivoUrl}" style="color:#076CA5;">Baixar contrato (PDF)</a>.
+            </p>
             <p style="color:#999;font-size:12px;text-align:center;margin:24px 0 0;">
                 Se você não solicitou este serviço, por favor desconsidere este email.
             </p>
@@ -290,21 +293,40 @@ class EmailService {
 </html>
         `.trim()
 
-        const attachmentPath = path.resolve(__dirname, '../../assets/contrato-mock.pdf')
+        if (!params.contratoArquivoUrl) {
+            throw new Error('URL do contrato gerado nao informada para envio de email.')
+        }
+
+        const nomeServicoArquivo = String(params.servicoNome || 'assessoria')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-zA-Z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .toLowerCase() || 'assessoria'
+
         let attachments: any[] = []
         try {
-            if (fs.existsSync(attachmentPath)) {
-                const buffer = fs.readFileSync(attachmentPath)
-                attachments = [{
-                    filename: 'contrato-mock.pdf',
-                    content: buffer,
-                    contentType: 'application/pdf'
-                }]
-            } else {
-                console.warn('[EmailService] Arquivo de contrato mock não encontrado:', attachmentPath)
+            const fileResponse = await fetch(params.contratoArquivoUrl)
+            if (!fileResponse.ok) {
+                throw new Error(`Falha ao baixar contrato gerado. HTTP ${fileResponse.status}`)
             }
+
+            const contentType = fileResponse.headers.get('content-type') || ''
+            const isPdf = contentType.includes('application/pdf') || /\.pdf(?:\?|$)/i.test(params.contratoArquivoUrl)
+
+            if (!isPdf) {
+                throw new Error(`Contrato gerado nao esta em PDF (content-type: ${contentType || 'desconhecido'})`)
+            }
+
+            const contractBuffer = Buffer.from(await fileResponse.arrayBuffer())
+            attachments = [{
+                filename: `contrato-${nomeServicoArquivo}.pdf`,
+                content: contractBuffer,
+                contentType: 'application/pdf'
+            }]
         } catch (err) {
-            console.warn('[EmailService] Erro ao ler contrato mock:', err)
+            console.error('[EmailService] Erro ao anexar contrato gerado no email:', err)
+            throw err
         }
 
         try {

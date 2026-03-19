@@ -54,13 +54,12 @@ class TraducoesController {
   async aprovarOrcamento(req: Request, res: Response) {
     try {
       const { id } = req.params
-      const { documentoId } = req.body
 
-      if (!id || !documentoId) {
-        return res.status(400).json({ error: 'Parâmetros orcamentoId ou documentoId ausentes' })
+      if (!id) {
+        return res.status(400).json({ error: 'Parâmetro orcamentoId ausente' })
       }
 
-      await TraducoesRepository.aprovarOrcamento(id, documentoId)
+      await TraducoesRepository.aprovarOrcamento(id)
 
       return res.status(200).json({ message: 'Orçamento aprovado com sucesso' })
     } catch (error) {

@@ -142,6 +142,16 @@ export default function ClienteContratos({ clienteId }: ClienteContratosProps) {
 
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Contrato</h4>
+                {contrato.contrato_gerado_url && (
+                  <a
+                    href={contrato.contrato_gerado_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    <FileText className="w-4 h-4" /> Baixar contrato gerado
+                  </a>
+                )}
                 {contrato.contrato_assinado_url && (
                   <a
                     href={contrato.contrato_assinado_url}
@@ -149,7 +159,7 @@ export default function ClienteContratos({ clienteId }: ClienteContratosProps) {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
                   >
-                    <FileText className="w-4 h-4" /> Ver contrato
+                    <FileText className="w-4 h-4" /> Ver contrato assinado enviado
                   </a>
                 )}
                 {contrato.assinatura_recusa_nota && (

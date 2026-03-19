@@ -1210,13 +1210,54 @@ class ClienteController {
   // GET /cliente/contratos?clienteId=...
   async getContratos(req: any, res: any) {
     try {
-      const clienteId = (req.query?.clienteId || req.query?.cliente_id || req.params?.clienteId) as string | undefined
+      const clienteIdRaw = (req.query?.clienteId || req.query?.cliente_id || req.params?.clienteId) as string | undefined
 
-      if (!clienteId) {
+      if (!clienteIdRaw) {
         return res.status(400).json({ message: 'clienteId Ã© obrigatÃ³rio' })
       }
 
-      const contratos = await ContratoServicoRepository.getContratos({ clienteId, isDraft: false })
+      const clienteId = String(clienteIdRaw).trim()
+      let contratos = await ContratoServicoRepository.getContratos({ clienteId, isDraft: false })
+
+      // Fallback para cenarios em que o frontend envia client_id ou Auth user_id.
+      if ((!contratos || contratos.length === 0) && clienteId) {
+        const supabase = (await import('../config/SupabaseClient')).supabase
+        let clienteRealId: string | null = null
+
+        const { data: clienteByClientCode } = await supabase
+          .from('clientes')
+          .select('id')
+          .eq('client_id', clienteId)
+          .maybeSingle()
+
+        if (clienteByClientCode?.id) {
+          clienteRealId = clienteByClientCode.id
+        }
+
+        if (!clienteRealId) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('id', clienteId)
+            .maybeSingle()
+
+          if (profile?.email) {
+            const { data: clienteByEmail } = await supabase
+              .from('clientes')
+              .select('id')
+              .ilike('email', profile.email)
+              .maybeSingle()
+
+            if (clienteByEmail?.id) {
+              clienteRealId = clienteByEmail.id
+            }
+          }
+        }
+
+        if (clienteRealId && clienteRealId !== clienteId) {
+          contratos = await ContratoServicoRepository.getContratos({ clienteId: clienteRealId, isDraft: false })
+        }
+      }
 
       return res.status(200).json({
         message: 'Contratos recuperados com sucesso',

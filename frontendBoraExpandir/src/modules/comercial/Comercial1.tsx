@@ -190,6 +190,11 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
   const { id: editId } = useParams<{ id: string }>()
   const [loadingEdit, setLoadingEdit] = useState(false)
+  const preselectedProdutoHandledRef = useRef(false)
+
+  useEffect(() => {
+    preselectedProdutoHandledRef.current = false
+  }, [navigationState?.preSelectedProduto])
 
   // Carregar dados para edição se ID estiver presente
   useEffect(() => {
@@ -262,14 +267,25 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       if (!navigationState?.step) setPasso('produto')
     }
 
-    if (navigationState?.preSelectedProduto && produtos.length > 0) {
-      const pEncontrado = produtos.find(p => p.nome === navigationState.preSelectedProduto || p.id === navigationState.preSelectedProduto)
+    if (navigationState?.preSelectedProduto && produtos.length > 0 && !preselectedProdutoHandledRef.current) {
+      preselectedProdutoHandledRef.current = true
+      const preSelectedValue = String(navigationState.preSelectedProduto).trim()
+      const normalizedPreSelected = preSelectedValue.toLowerCase()
+
+      const pEncontrado = produtos.find((p) => {
+        const nomeProduto = String(p.nome || '').trim().toLowerCase()
+        return p.id === preSelectedValue || p.nome === preSelectedValue || nomeProduto === normalizedPreSelected
+      })
+
       if (pEncontrado) {
         setProdutoSelecionado(pEncontrado)
         setDuracaoMinutos(pEncontrado.duracaoMinutos || 60)
+      } else if (navigationState?.step === 'data_hora') {
+        setPasso('produto')
+        error('Nao encontramos o servico para este agendamento. Selecione o produto para continuar.')
       }
     }
-  }, [preSelectedClient, navigationState, produtos])
+  }, [preSelectedClient, navigationState, produtos, error])
 
   const [searchCliente, setSearchCliente] = useState('')
   const [mostrarListaClientes, setMostrarListaClientes] = useState(false)
@@ -473,9 +489,29 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
         }
         break
       case 'data_hora':
-        if (dataSelecionada && horaSelecionada) {
-          handleFinalizarAgendamento()
+        if (!dataSelecionada || !horaSelecionada) {
+          error('Selecione data e horario para continuar.')
+          return
         }
+
+        if (!agendamentoPreview) {
+          if (!produtoSelecionado) {
+            setPasso('produto')
+            error('Selecione o produto para finalizar o agendamento.')
+            return
+          }
+
+          if (!isClientView && !clienteSelecionado) {
+            setPasso('cliente')
+            error('Selecione o cliente para finalizar o agendamento.')
+            return
+          }
+
+          error('Nao foi possivel montar o agendamento. Revise os dados e tente novamente.')
+          return
+        }
+
+        handleFinalizarAgendamento()
         break
       default:
         break
@@ -570,7 +606,10 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   }
 
   const handleFinalizarAgendamento = async () => {
-    if (!agendamentoPreview) return
+    if (!agendamentoPreview) {
+      error('Nao foi possivel finalizar o agendamento. Revise os dados e tente novamente.')
+      return
+    }
 
     const emailFinal = emailTemporario || (agendamentoPreview.cliente.email && !agendamentoPreview.cliente.email.includes('lead_') ? agendamentoPreview.cliente.email : '');
 
@@ -974,7 +1013,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                   </div>
                 )}
 
-                <BotoesNavegacao canNext={!!dataSelecionada && !!horaSelecionada} />
+                <BotoesNavegacao canNext={!!dataSelecionada && !!horaSelecionada && !!agendamentoPreview} />
               </div>
             )}
 
