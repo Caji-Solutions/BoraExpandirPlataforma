@@ -279,6 +279,19 @@ export default function FormularioAssessoriaPage() {
     try {
       setSaving(true)
       await comercialService.enviarContratoAssinatura(id, formData.email)
+
+      // Download automatico do contrato gerado
+      const pdfUrl = contrato?.contrato_gerado_url
+      if (pdfUrl) {
+        const link = document.createElement('a')
+        link.href = pdfUrl
+        link.download = `contrato-${formData.nome || 'cliente'}.pdf`
+        link.target = '_blank'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      }
+
       toast.success('Contrato enviado com sucesso!')
       navigate(`/comercial/contratos/${id}`)
     } catch (err: any) {
@@ -330,12 +343,15 @@ export default function FormularioAssessoriaPage() {
       )}
 
       <div className="flex items-center justify-between mb-8 mt-4 relative">
-        <div className="absolute top-1/2 left-0 right-0 h-1 bg-gray-200 dark:bg-neutral-800 -z-10 -translate-y-1/2 rounded" />
-        <div className="absolute top-1/2 left-0 h-1 bg-emerald-500 -z-10 -translate-y-1/2 rounded transition-all duration-300" style={{ width: `${((etapaAtual - 1) / 3) * 100}%` }} />
+        <div className="absolute top-1/2 left-0 right-0 h-1 bg-gray-200 dark:bg-neutral-800 -z-10 -translate-y-1/2 rounded-full" />
+        <div className="absolute top-1/2 left-0 h-1 bg-gradient-to-r from-emerald-500 to-emerald-400 -z-10 -translate-y-1/2 rounded-full transition-all duration-500 ease-out" style={{ width: `${((etapaAtual - 1) / 3) * 100}%` }} />
 
-        {[1, 2, 3, 4].map(step => (
-          <div key={step} className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${etapaAtual >= step ? 'bg-emerald-500 text-white' : 'bg-gray-200 dark:bg-neutral-800 text-gray-500'}`}>
-            {etapaAtual > step ? <CheckCircle2 className="w-5 h-5" /> : step}
+        {[{ n: 1, label: 'Dados' }, { n: 2, label: 'Valores' }, { n: 3, label: 'Pagamento' }, { n: 4, label: 'Resumo' }].map(({ n, label }) => (
+          <div key={n} className="flex flex-col items-center gap-1">
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${etapaAtual >= n ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-gray-200 dark:bg-neutral-800 text-gray-500'}`}>
+              {etapaAtual > n ? <CheckCircle2 className="w-5 h-5" /> : n}
+            </div>
+            <span className={`text-[10px] font-bold uppercase tracking-wider hidden md:block ${etapaAtual >= n ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}>{label}</span>
           </div>
         ))}
       </div>
@@ -396,7 +412,7 @@ export default function FormularioAssessoriaPage() {
               </div>
             </div>
             <div className="pt-4 flex justify-end">
-              <button onClick={handleNext} disabled={saving || isLockedByGeracaoErro} className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+              <button onClick={handleNext} disabled={saving || isLockedByGeracaoErro} className="px-6 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-emerald-600/20">
                 Proximo {saving && <Loader2 className="w-4 h-4 animate-spin" />}
               </button>
             </div>
@@ -429,8 +445,8 @@ export default function FormularioAssessoriaPage() {
               </div>
             </div>
             <div className="pt-4 flex justify-between">
-              <button onClick={handleBack} disabled={saving || isLockedByGeracaoErro} className="px-6 py-2 border border-gray-300 dark:border-neutral-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-neutral-800 disabled:opacity-50">Anterior</button>
-              <button onClick={handleNext} disabled={saving || isLockedByGeracaoErro} className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+              <button onClick={handleBack} disabled={saving || isLockedByGeracaoErro} className="px-6 py-2.5 border border-gray-300 dark:border-neutral-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-neutral-800 disabled:opacity-50 transition-all">Anterior</button>
+              <button onClick={handleNext} disabled={saving || isLockedByGeracaoErro} className="px-6 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-emerald-600/20">
                 Proximo {saving && <Loader2 className="w-4 h-4 animate-spin" />}
               </button>
             </div>
@@ -445,8 +461,8 @@ export default function FormularioAssessoriaPage() {
               <textarea rows={4} disabled={saving || isLockedByGeracaoErro} value={formData.forma_pagamento} onChange={(e) => setFormData({ ...formData, forma_pagamento: e.target.value, formaPagamento: e.target.value })} placeholder="Descreva como sera pago (ex: via PIX ou transferencia em 3 parcelas)." className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm" />
             </div>
             <div className="pt-4 flex justify-between">
-              <button onClick={handleBack} disabled={saving || isLockedByGeracaoErro} className="px-6 py-2 border border-gray-300 dark:border-neutral-700 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-neutral-800 disabled:opacity-50">Anterior</button>
-              <button onClick={handleNext} disabled={saving || isLockedByGeracaoErro} className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+              <button onClick={handleBack} disabled={saving || isLockedByGeracaoErro} className="px-6 py-2.5 border border-gray-300 dark:border-neutral-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-neutral-800 disabled:opacity-50 transition-all">Anterior</button>
+              <button onClick={handleNext} disabled={saving || isLockedByGeracaoErro} className="px-6 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-emerald-600/20">
                 Revisar {saving && <Loader2 className="w-4 h-4 animate-spin" />}
               </button>
             </div>
@@ -457,20 +473,44 @@ export default function FormularioAssessoriaPage() {
           <div className="space-y-6 animate-in fade-in">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Resumo e Geracao</h2>
 
-            <div className="bg-gray-50 dark:bg-neutral-800 p-4 rounded-lg space-y-2 text-sm text-gray-700 dark:text-gray-300">
-              <p><strong>Nome:</strong> {formData.nome}</p>
-              <p><strong>Email:</strong> {formData.email}</p>
-              <p><strong>Documento:</strong> {formData.documento}</p>
-              <p><strong>Telefone:</strong> {formData.telefone}</p>
-              <p><strong>Servico:</strong> {formData.tipo_servico}</p>
-              <p><strong>Valor desconto:</strong> {formData.valor_desconto}</p>
-              <p><strong>Forma pagamento:</strong> Definida na Etapa 3</p>
+            <div className="bg-gray-50 dark:bg-neutral-800/50 rounded-2xl border border-gray-100 dark:border-neutral-800 overflow-hidden">
+              <div className="px-5 py-3 bg-gray-100/50 dark:bg-neutral-800 border-b border-gray-100 dark:border-neutral-700">
+                <h3 className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">Dados do Contrato</h3>
+              </div>
+              <div className="p-5 space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                  <div>
+                    <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Nome</span>
+                    <p className="text-gray-900 dark:text-white font-medium mt-0.5">{formData.nome || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Documento</span>
+                    <p className="text-gray-900 dark:text-white font-medium mt-0.5 font-mono">{formData.documento || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Email</span>
+                    <p className="text-gray-900 dark:text-white font-medium mt-0.5">{formData.email || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Telefone</span>
+                    <p className="text-gray-900 dark:text-white font-medium mt-0.5">{formData.telefone || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Servico</span>
+                    <p className="text-gray-900 dark:text-white font-medium mt-0.5">{formData.tipo_servico || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Valor com Desconto</span>
+                    <p className="text-gray-900 dark:text-white font-medium mt-0.5">{formData.valor_desconto || '-'}</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {!contrato?.contrato_gerado_url || isLockedByGeracaoErro ? (
               <div className="flex flex-col gap-3">
                 <p className="text-sm text-gray-500">Tudo pronto para gerar o contrato preenchido.</p>
-                <button onClick={handleGerarContrato} disabled={saving} className="w-full py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-60 flex justify-center items-center gap-2">
+                <button onClick={handleGerarContrato} disabled={saving} className="w-full py-3.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-60 flex justify-center items-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-emerald-600/20">
                   <FileText className="w-5 h-5" /> Gerar Contrato (DOCX)
                   {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                 </button>
@@ -480,10 +520,10 @@ export default function FormularioAssessoriaPage() {
               </div>
             ) : (
               <div className="flex flex-col sm:flex-row gap-4">
-                <a href={contrato.contrato_gerado_url} target="_blank" rel="noopener noreferrer" className="flex-1 px-4 py-3 bg-white dark:bg-neutral-800 border border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold justify-center rounded-xl hover:bg-emerald-50 dark:hover:bg-neutral-700 flex items-center gap-2 transition">
+                <a href={contrato.contrato_gerado_url} target="_blank" rel="noopener noreferrer" className="flex-1 px-4 py-3.5 bg-white dark:bg-neutral-800 border-2 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold justify-center rounded-xl hover:bg-emerald-50 dark:hover:bg-neutral-700 flex items-center gap-2 transition-all active:scale-[0.98]">
                   <FileText className="w-5 h-5" /> Ver Contrato
                 </a>
-                <button onClick={handleFinalizarEEnviar} disabled={saving} className="flex-1 px-4 py-3 bg-emerald-600 text-white font-bold justify-center rounded-xl hover:bg-emerald-700 disabled:opacity-60 flex items-center gap-2 transition">
+                <button onClick={handleFinalizarEEnviar} disabled={saving} className="flex-1 px-4 py-3.5 bg-emerald-600 text-white font-bold justify-center rounded-xl hover:bg-emerald-700 disabled:opacity-60 flex items-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-emerald-600/20">
                   Criar Contrato (Enviar Email) {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                 </button>
               </div>

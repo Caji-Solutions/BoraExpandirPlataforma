@@ -22,9 +22,12 @@ import {
   Clock,
   Euro,
   FileText,
-  CalendarCheck,
   Loader2,
-  Layers
+  Layers,
+  ChevronDown,
+  ChevronRight,
+  Link2,
+  Unlink
 } from "lucide-react";
 import {
   Table,
@@ -49,13 +52,25 @@ import { toast } from "sonner";
 
 export default function ServiceCatalog() {
   const [services, setServices] = useState<Service[]>([]);
+  const [allSubservices, setAllSubservices] = useState<Subservice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingService, setEditingService] = useState<Service | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Section collapse
+  const [servicesExpanded, setServicesExpanded] = useState(true);
+  const [subservicesExpanded, setSubservicesExpanded] = useState(true);
+
+  // Service Dialog
+  const [isServiceDialogOpen, setIsServiceDialogOpen] = useState(false);
+  const [editingService, setEditingService] = useState<Service | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Form State
+  // Subservice Dialog
+  const [isSubDialogOpen, setIsSubDialogOpen] = useState(false);
+  const [editingSubservice, setEditingSubservice] = useState<Subservice | null>(null);
+  const [isSavingSub, setIsSavingSub] = useState(false);
+
+  // Service Form State
   const [formData, setFormData] = useState<Omit<Service, "id">>({
     name: "",
     value: "",
@@ -67,29 +82,44 @@ export default function ServiceCatalog() {
     documents: [],
     subservices: [],
   });
-
-  // Local state for duration parts
   const [durationValue, setDurationValue] = useState("");
   const [durationUnit, setDurationUnit] = useState("horas");
 
+  // Subservice Form State
+  const [subFormData, setSubFormData] = useState<{ name: string; servicoId: string; documents: DocumentRequirement[] }>({
+    name: "",
+    servicoId: "",
+    documents: [],
+  });
+
+  // Linked subservices for service form (fixo type)
+  const [linkedSubIds, setLinkedSubIds] = useState<Set<string>>(new Set());
+  const [subSearchTerm, setSubSearchTerm] = useState("");
+
   useEffect(() => {
-    fetchServices();
+    fetchAll();
   }, []);
 
-  const fetchServices = async () => {
+  const fetchAll = async () => {
     try {
       setLoading(true);
-      const data = await catalogService.getCatalogServices();
-      setServices(data);
+      const [servicesData, subsData] = await Promise.all([
+        catalogService.getCatalogServices(),
+        catalogService.getSubservices().catch(() => [])
+      ]);
+      setServices(servicesData);
+      setAllSubservices(subsData);
     } catch (error) {
-      console.error("Erro ao buscar serviços:", error);
-      toast.error("Não foi possível carregar o catálogo de serviços.");
+      console.error("Erro ao buscar dados:", error);
+      toast.error("Nao foi possivel carregar o catalogo.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOpenAdd = () => {
+  // ======= SERVICE HANDLERS =======
+
+  const handleOpenAddService = () => {
     setEditingService(null);
     setFormData({
       name: "",
@@ -104,10 +134,12 @@ export default function ServiceCatalog() {
     });
     setDurationValue("");
     setDurationUnit("horas");
-    setIsDialogOpen(true);
+    setLinkedSubIds(new Set());
+    setSubSearchTerm("");
+    setIsServiceDialogOpen(true);
   };
 
-  const handleOpenEdit = (service: Service) => {
+  const handleOpenEditService = (service: Service) => {
     setEditingService(service);
     setFormData({
       name: service.name,
@@ -120,8 +152,6 @@ export default function ServiceCatalog() {
       documents: service.documents,
       subservices: service.subservices || [],
     });
-
-    // Tentar extrair valor e unidade da duração (Ex: "10 horas")
     const durationParts = service.duration.split(" ");
     if (durationParts.length >= 2) {
       setDurationValue(durationParts[0]);
@@ -130,11 +160,12 @@ export default function ServiceCatalog() {
       setDurationValue(service.duration);
       setDurationUnit("horas");
     }
-
-    setIsDialogOpen(true);
+    setLinkedSubIds(new Set((service.subservices || []).map(s => s.id)));
+    setSubSearchTerm("");
+    setIsServiceDialogOpen(true);
   };
 
-  const addDocumentToForm = () => {
+  const addDocumentToServiceForm = () => {
     const newDoc: DocumentRequirement = {
       id: Math.random().toString(36).substr(2, 9),
       name: "",
@@ -144,247 +175,420 @@ export default function ServiceCatalog() {
     setFormData({ ...formData, documents: [...formData.documents, newDoc] });
   };
 
-  const removeDocumentFromForm = (id: string) => {
+  const removeDocumentFromServiceForm = (docId: string) => {
+    setFormData({ ...formData, documents: formData.documents.filter(d => d.id !== docId) });
+  };
+
+  const updateDocumentInServiceForm = (docId: string, field: keyof DocumentRequirement, value: any) => {
     setFormData({
       ...formData,
-      documents: formData.documents.filter((doc) => doc.id !== id),
+      documents: formData.documents.map(d => d.id === docId ? { ...d, [field]: value } : d),
     });
   };
 
-  const updateDocumentInForm = (id: string, field: keyof DocumentRequirement, value: any) => {
-    setFormData({
-      ...formData,
-      documents: formData.documents.map((doc) =>
-        doc.id === id ? { ...doc, [field]: value } : doc
-      ),
-    });
-  };
-
-  // Subservicos handlers
-  const addSubserviceToForm = () => {
-    const newSub: Subservice = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: "",
-    };
-    setFormData({ ...formData, subservices: [...formData.subservices, newSub] });
-  };
-
-  const removeSubserviceFromForm = (id: string) => {
-    setFormData({
-      ...formData,
-      subservices: formData.subservices.filter((sub) => sub.id !== id),
-    });
-  };
-
-  const updateSubserviceInForm = (id: string, name: string) => {
-    setFormData({
-      ...formData,
-      subservices: formData.subservices.map((sub) =>
-        sub.id === id ? { ...sub, name } : sub
-      ),
-    });
-  };
-
-  const handleSave = async () => {
+  const handleSaveService = async () => {
     if (!formData.name || !formData.value) {
-      toast.error("Nome e valor são obrigatórios.");
+      toast.error("Nome e valor sao obrigatorios.");
       return;
     }
 
     const finalDuration = durationValue ? `${durationValue} ${durationUnit}` : "";
-    const submissionData = { 
-      ...formData, 
+    
+    // Build subservices from linked IDs
+    const linkedSubs = allSubservices
+      .filter(s => linkedSubIds.has(s.id))
+      .map(s => ({ id: s.id, name: s.name, documents: s.documents || [] }));
+
+    const submissionData = {
+      ...formData,
       duration: finalDuration,
-      showInCommercial: true
+      showInCommercial: true,
+      subservices: formData.type === 'fixo' ? linkedSubs : [],
     };
 
     try {
       setIsSaving(true);
       if (editingService) {
         await catalogService.updateCatalogService(editingService.id, submissionData);
-        toast.success("Serviço atualizado com sucesso!");
+        toast.success("Servico atualizado com sucesso!");
       } else {
         await catalogService.createCatalogService(submissionData);
-        toast.success("Serviço criado com sucesso!");
+        toast.success("Servico criado com sucesso!");
       }
-      setIsDialogOpen(false);
-      fetchServices();
+      setIsServiceDialogOpen(false);
+      fetchAll();
     } catch (error) {
-      console.error("Erro ao salvar serviço:", error);
-      toast.error("Ocorreu um erro ao salvar o serviço.");
+      console.error("Erro ao salvar servico:", error);
+      toast.error("Ocorreu um erro ao salvar o servico.");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir este serviço?")) return;
-
+  const handleDeleteService = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este servico?")) return;
     try {
       await catalogService.deleteCatalogService(id);
-      toast.success("Serviço removido com sucesso!");
-      fetchServices();
+      toast.success("Servico removido com sucesso!");
+      fetchAll();
     } catch (error) {
-      console.error("Erro ao excluir serviço:", error);
-      toast.error("Erro ao excluir serviço.");
+      console.error("Erro ao excluir servico:", error);
+      toast.error("Erro ao excluir servico.");
     }
   };
+
+  // ======= SUBSERVICE HANDLERS =======
+
+  const handleOpenAddSubservice = () => {
+    setEditingSubservice(null);
+    setSubFormData({ name: "", servicoId: "", documents: [] });
+    setIsSubDialogOpen(true);
+  };
+
+  const handleOpenEditSubservice = (sub: Subservice) => {
+    setEditingSubservice(sub);
+    setSubFormData({
+      name: sub.name,
+      servicoId: sub.servicoId || "",
+      documents: sub.documents || [],
+    });
+    setIsSubDialogOpen(true);
+  };
+
+  const addDocToSubForm = () => {
+    const newDoc: DocumentRequirement = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: "",
+      stage: "1",
+      required: true,
+    };
+    setSubFormData({ ...subFormData, documents: [...subFormData.documents, newDoc] });
+  };
+
+  const removeDocFromSubForm = (docId: string) => {
+    setSubFormData({
+      ...subFormData,
+      documents: subFormData.documents.filter(d => d.id !== docId),
+    });
+  };
+
+  const updateDocInSubForm = (docId: string, field: keyof DocumentRequirement, value: any) => {
+    setSubFormData({
+      ...subFormData,
+      documents: subFormData.documents.map(d => d.id === docId ? { ...d, [field]: value } : d),
+    });
+  };
+
+  const handleSaveSubservice = async () => {
+    if (!subFormData.name) {
+      toast.error("Nome do subservico e obrigatorio.");
+      return;
+    }
+
+    try {
+      setIsSavingSub(true);
+      if (editingSubservice) {
+        await catalogService.updateSubservice(editingSubservice.id, subFormData);
+        toast.success("Subservico atualizado!");
+      } else {
+        await catalogService.createSubservice(subFormData);
+        toast.success("Subservico criado!");
+      }
+      setIsSubDialogOpen(false);
+      fetchAll();
+    } catch (error) {
+      console.error("Erro ao salvar subservico:", error);
+      toast.error("Erro ao salvar subservico.");
+    } finally {
+      setIsSavingSub(false);
+    }
+  };
+
+  const handleDeleteSubservice = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este subservico?")) return;
+    try {
+      await catalogService.deleteSubservice(id);
+      toast.success("Subservico removido!");
+      fetchAll();
+    } catch (error) {
+      console.error("Erro ao excluir subservico:", error);
+      toast.error("Erro ao excluir subservico.");
+    }
+  };
+
+  // ======= FILTERING =======
 
   const filteredServices = (services || []).filter(s =>
     s.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const filteredSubservices = (allSubservices || []).filter(s =>
+    s.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Available subs for linking (not already linked to this service, filtered by search)
+  const availableSubsForLinking = (allSubservices || []).filter(s =>
+    s.name.toLowerCase().includes(subSearchTerm.toLowerCase())
+  );
+
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="p-8 space-y-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black text-foreground tracking-tight">Catálogo de Serviços</h1>
+          <h1 className="text-4xl font-black text-foreground tracking-tight">Catalogo de Servicos</h1>
           <p className="text-muted-foreground mt-1 text-lg">
-            Gerencie o portfólio de serviços, precificação e requisitos documentais.
+            Gerencie servicos, subservicos e requisitos documentais.
           </p>
         </div>
-        <Button onClick={handleOpenAdd} className="bg-primary hover:bg-primary/90 text-primary-foreground h-12 px-6 rounded-2xl shadow-lg shadow-primary/20 flex gap-2 font-bold transition-all active:scale-95">
-          <Plus className="h-5 w-5" />
-          Novo Serviço
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleOpenAddSubservice} variant="outline" className="h-12 px-5 rounded-2xl font-bold flex gap-2 border-2 border-dashed hover:border-blue-500 hover:text-blue-600 transition-all">
+            <Plus className="h-5 w-5" />
+            Novo Subservico
+          </Button>
+          <Button onClick={handleOpenAddService} className="bg-primary hover:bg-primary/90 text-primary-foreground h-12 px-6 rounded-2xl shadow-lg shadow-primary/20 flex gap-2 font-bold transition-all active:scale-95">
+            <Plus className="h-5 w-5" />
+            Novo Servico
+          </Button>
+        </div>
       </div>
 
+      {/* Search bar */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar servicos e subservicos..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10 h-11 bg-background border-border rounded-xl focus:ring-primary/20"
+        />
+      </div>
+
+      {/* ==================== SECAO 1: SERVICOS ==================== */}
       <Card className="border-none shadow-2xl bg-card overflow-hidden rounded-3xl">
-        <CardHeader className="border-b bg-muted/30 pb-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <CardTitle className="text-2xl font-bold">Serviços Cadastrados</CardTitle>
-              <CardDescription>Visualize e edite todos os serviços disponíveis na plataforma.</CardDescription>
-            </div>
-            <div className="relative max-w-sm w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar serviços..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-11 bg-background border-border rounded-xl focus:ring-primary/20"
-              />
+        <CardHeader
+          className="border-b bg-muted/30 pb-4 cursor-pointer select-none"
+          onClick={() => setServicesExpanded(!servicesExpanded)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {servicesExpanded ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+              <div>
+                <CardTitle className="text-2xl font-bold">Servicos</CardTitle>
+                <CardDescription>Servicos principais do catalogo ({filteredServices.length})</CardDescription>
+              </div>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader className="bg-muted/30">
-              <TableRow className="hover:bg-transparent border-b">
-                <TableHead className="font-bold text-xs uppercase tracking-widest py-5 pl-8">Serviço</TableHead>
-                <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Valor</TableHead>
-                <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Duração Est.</TableHead>
-                <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Tipo</TableHead>
-                <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Visib. Cliente</TableHead>
-                <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Documentos</TableHead>
-                <TableHead className="w-[100px] py-5 pr-8"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-48 text-center text-muted-foreground">
-                    <Loader2 className="h-10 w-10 animate-spin mx-auto mb-2 opacity-20" />
-                    Carregando serviços...
-                  </TableCell>
+        {servicesExpanded && (
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader className="bg-muted/30">
+                <TableRow className="hover:bg-transparent border-b">
+                  <TableHead className="font-bold text-xs uppercase tracking-widest py-5 pl-8">Servico</TableHead>
+                  <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Valor</TableHead>
+                  <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Duracao</TableHead>
+                  <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Tipo</TableHead>
+                  <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Subservicos</TableHead>
+                  <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Docs</TableHead>
+                  <TableHead className="w-[80px] py-5 pr-8"></TableHead>
                 </TableRow>
-              ) : filteredServices.length > 0 ? (
-                filteredServices.map((service) => (
-                  <TableRow key={service.id} className="group border-b hover:bg-muted/20 transition-colors">
-                    <TableCell className="py-4 pl-8">
-                      <div className="font-bold text-base text-foreground group-hover:text-primary transition-colors">
-                        {service.name}
-                      </div>
-                      <div className="text-xs text-muted-foreground font-mono">ID: {service.id}</div>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-48 text-center text-muted-foreground">
+                      <Loader2 className="h-10 w-10 animate-spin mx-auto mb-2 opacity-20" />
+                      Carregando servicos...
                     </TableCell>
-                    <TableCell className="py-4">
-                      <div className="flex items-center gap-1.5 font-bold text-green-600 dark:text-green-400">
-                        <Euro className="h-4 w-4" />
-                        {Number(service.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-4">
-                      <div className="flex items-center gap-2 text-sm text-foreground">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        {service.duration}
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-4">
-                      <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/10 rounded-lg">
-                        {service.type === 'fixo' ? 'Fixo' : service.type === 'diverso' ? 'Diverso' : 'Agendável'}
-                      </Badge>
-                    </TableCell>
-
-                    <TableCell className="py-4">
-                      {service.showToClient ? (
-                        <Badge variant="success" className="bg-blue-500/10 text-blue-600 border-blue-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1.5 w-fit">
-                          <Plus className="h-3.5 w-3.5" />
-                          Visível
+                  </TableRow>
+                ) : filteredServices.length > 0 ? (
+                  filteredServices.map((service) => (
+                    <TableRow key={service.id} className="group border-b hover:bg-muted/20 transition-colors">
+                      <TableCell className="py-4 pl-8">
+                        <div className="font-bold text-base text-foreground group-hover:text-primary transition-colors">
+                          {service.name}
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-4">
+                        <div className="flex items-center gap-1.5 font-bold text-green-600 dark:text-green-400">
+                          <Euro className="h-4 w-4" />
+                          {Number(service.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-4">
+                        <div className="flex items-center gap-2 text-sm text-foreground">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          {service.duration}
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-4">
+                        <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/10 rounded-lg">
+                          {service.type === 'fixo' ? 'Fixo' : service.type === 'diverso' ? 'Diverso' : 'Agendavel'}
                         </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-muted-foreground border-dashed border-muted-foreground/30 px-2.5 py-1 rounded-lg w-fit">
-                          Oculto
+                      </TableCell>
+                      <TableCell className="py-4">
+                        <Badge variant="secondary" className="bg-blue-500/5 text-blue-600 dark:text-blue-400 border-blue-500/10 rounded-lg">
+                          <Layers className="h-3 w-3 mr-1" />
+                          {(service.subservices || []).length}
                         </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="py-4">
-                      <div className="flex items-center gap-2">
+                      </TableCell>
+                      <TableCell className="py-4">
                         <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/10 rounded-lg">
                           {service.documents.length} Requisitos
                         </Badge>
+                      </TableCell>
+                      <TableCell className="py-4 pr-8 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted rounded-lg">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-xl border-border shadow-2xl">
+                            <DropdownMenuItem onClick={() => handleOpenEditService(service)} className="flex gap-2 cursor-pointer font-medium p-2.5">
+                              <Edit2 className="h-4 w-4 text-blue-500" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDeleteService(service.id)} className="flex gap-2 cursor-pointer font-medium p-2.5 text-destructive hover:bg-destructive/10">
+                              <Trash2 className="h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-48 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-3 opacity-30">
+                        <Search className="h-12 w-12" />
+                        <p className="text-lg font-bold">Nenhum servico encontrado</p>
                       </div>
                     </TableCell>
-                    <TableCell className="py-4 pr-8 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted rounded-lg">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="rounded-xl border-border shadow-2xl">
-                          <DropdownMenuItem onClick={() => handleOpenEdit(service)} className="flex gap-2 cursor-pointer font-medium p-2.5">
-                            <Edit2 className="h-4 w-4 text-blue-500" />
-                            Editar Dados
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete(service.id)} className="flex gap-2 cursor-pointer font-medium p-2.5 text-destructive hover:bg-destructive/10">
-                            <Trash2 className="h-4 w-4" />
-                            Excluir Serviço
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-48 text-center">
-                    <div className="flex flex-col items-center justify-center space-y-3 opacity-30">
-                      <Search className="h-12 w-12" />
-                      <p className="text-lg font-bold">Nenhum serviço encontrado</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        )}
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      {/* ==================== SECAO 2: SUBSERVICOS ==================== */}
+      <Card className="border-none shadow-2xl bg-card overflow-hidden rounded-3xl">
+        <CardHeader
+          className="border-b bg-muted/30 pb-4 cursor-pointer select-none"
+          onClick={() => setSubservicesExpanded(!subservicesExpanded)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {subservicesExpanded ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+              <div>
+                <CardTitle className="text-2xl font-bold flex items-center gap-2">
+                  <Layers className="h-6 w-6 text-blue-500" />
+                  Subservicos
+                </CardTitle>
+                <CardDescription>Tipos e variacoes de servicos ({filteredSubservices.length})</CardDescription>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        {subservicesExpanded && (
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader className="bg-muted/30">
+                <TableRow className="hover:bg-transparent border-b">
+                  <TableHead className="font-bold text-xs uppercase tracking-widest py-5 pl-8">Subservico</TableHead>
+                  <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Servico Pai</TableHead>
+                  <TableHead className="font-bold text-xs uppercase tracking-widest py-5">Documentos</TableHead>
+                  <TableHead className="w-[80px] py-5 pr-8"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 opacity-20" />
+                      Carregando...
+                    </TableCell>
+                  </TableRow>
+                ) : filteredSubservices.length > 0 ? (
+                  filteredSubservices.map((sub) => (
+                    <TableRow key={sub.id} className="group border-b hover:bg-muted/20 transition-colors">
+                      <TableCell className="py-4 pl-8">
+                        <div className="font-bold text-base text-foreground group-hover:text-blue-600 transition-colors">
+                          {sub.name}
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-4">
+                        {sub.servicoNome ? (
+                          <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/10 rounded-lg">
+                            <Link2 className="h-3 w-3 mr-1" />
+                            {sub.servicoNome}
+                          </Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Sem vinculo</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-4">
+                        <Badge variant="secondary" className="rounded-lg">
+                          <FileText className="h-3 w-3 mr-1" />
+                          {(sub.documents || []).length} Docs
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-4 pr-8 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted rounded-lg">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-xl border-border shadow-2xl">
+                            <DropdownMenuItem onClick={() => handleOpenEditSubservice(sub)} className="flex gap-2 cursor-pointer font-medium p-2.5">
+                              <Edit2 className="h-4 w-4 text-blue-500" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDeleteSubservice(sub.id)} className="flex gap-2 cursor-pointer font-medium p-2.5 text-destructive hover:bg-destructive/10">
+                              <Trash2 className="h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-32 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-2 opacity-30">
+                        <Layers className="h-10 w-10" />
+                        <p className="font-bold">Nenhum subservico encontrado</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* ==================== SERVICE DIALOG ==================== */}
+      <Dialog open={isServiceDialogOpen} onOpenChange={setIsServiceDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl border-none shadow-2xl p-0">
           <DialogHeader className="p-8 bg-gradient-to-br from-primary/10 to-transparent border-b">
             <DialogTitle className="text-3xl font-black tracking-tight">
-              {editingService ? "Editar Serviço" : "Cadastrar Novo Serviço"}
+              {editingService ? "Editar Servico" : "Cadastrar Novo Servico"}
             </DialogTitle>
             <DialogDescription className="text-base text-muted-foreground">
-              Preencha os dados abaixo para disponibilizar o serviço na plataforma.
+              Preencha os dados abaixo para disponibilizar o servico na plataforma.
             </DialogDescription>
           </DialogHeader>
 
           <div className="p-8 space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2 md:col-span-2">
-                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Nome do Serviço</Label>
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Nome do Servico</Label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -394,7 +598,7 @@ export default function ServiceCatalog() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Valor Unitário (€)</Label>
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Valor Unitario (EUR)</Label>
                 <div className="relative">
                   <Euro className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -408,7 +612,7 @@ export default function ServiceCatalog() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Duração Estimada</Label>
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Duracao Estimada</Label>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -435,7 +639,7 @@ export default function ServiceCatalog() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo do Serviço</Label>
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo do Servico</Label>
                 <Select
                   value={formData.type}
                   onValueChange={(val) => setFormData({ ...formData, type: val as any })}
@@ -444,19 +648,17 @@ export default function ServiceCatalog() {
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="agendavel">Agendável</SelectItem>
+                    <SelectItem value="agendavel">Agendavel</SelectItem>
                     <SelectItem value="fixo">Fixo</SelectItem>
                     <SelectItem value="diverso">Diverso</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-
-
               <div className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-xl">
                 <div className="space-y-0.5">
                   <Label className="text-sm font-bold">Exibir para Cliente</Label>
-                  <p className="text-xs text-muted-foreground">Visível no painel do cliente</p>
+                  <p className="text-xs text-muted-foreground">Visivel no painel do cliente</p>
                 </div>
                 <Switch
                   checked={formData.showToClient}
@@ -466,8 +668,8 @@ export default function ServiceCatalog() {
 
               <div className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-xl">
                 <div className="space-y-0.5">
-                  <Label className="text-sm font-bold">Requer Delegação Jurídica</Label>
-                  <p className="text-xs text-muted-foreground">Exige atribuição de responsável</p>
+                  <Label className="text-sm font-bold">Requer Delegacao Juridica</Label>
+                  <p className="text-xs text-muted-foreground">Exige atribuicao de responsavel</p>
                 </div>
                 <Switch
                   checked={formData.requiresLegalDelegation}
@@ -476,77 +678,99 @@ export default function ServiceCatalog() {
               </div>
             </div>
 
-            {/* Seção de Subserviços (apenas para tipo fixo) */}
+            {/* Linked subservices (fixo type only) */}
             {formData.type === 'fixo' && (
               <>
                 <Separator className="bg-border/50" />
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-xl font-bold flex items-center gap-2">
-                        <Layers className="h-5 w-5 text-blue-500" />
-                        Subserviços
-                      </h3>
-                      <p className="text-sm text-muted-foreground">Adicione os tipos/variações deste serviço fixo.</p>
-                    </div>
-                    <Button onClick={addSubserviceToForm} variant="outline" size="sm" className="rounded-lg border-2 border-dashed font-bold hover:bg-blue-500/5 hover:text-blue-600 transition-all">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Adicionar Subserviço
-                    </Button>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                      <Layers className="h-5 w-5 text-blue-500" />
+                      Subservicos Vinculados
+                    </h3>
+                    <p className="text-sm text-muted-foreground">Selecione os subservicos que pertencem a este servico.</p>
                   </div>
 
-                  <div className="space-y-3">
-                    {formData.subservices.length === 0 ? (
-                      <div className="py-8 border-2 border-dashed border-border rounded-2xl text-center bg-muted/10">
-                        <p className="text-sm text-muted-foreground font-medium">Nenhum subserviço cadastrado.</p>
-                      </div>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar subservicos para vincular..."
+                      value={subSearchTerm}
+                      onChange={(e) => setSubSearchTerm(e.target.value)}
+                      className="pl-10 h-10 border-border bg-background rounded-xl"
+                    />
+                  </div>
+
+                  <div className="max-h-48 overflow-y-auto space-y-1 border border-border rounded-xl p-2">
+                    {availableSubsForLinking.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">Nenhum subservico encontrado. Crie um primeiro.</p>
                     ) : (
-                      formData.subservices.map((sub) => (
-                        <div key={sub.id} className="flex items-center gap-4 p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 group animate-in slide-in-from-top-2">
-                          <GripVertical className="h-5 w-5 text-muted-foreground opacity-30 cursor-move hidden md:block" />
-                          <Input
-                            placeholder="Nome do subserviço..."
-                            value={sub.name}
-                            onChange={(e) => updateSubserviceInForm(sub.id, e.target.value)}
-                            className="bg-background border-border rounded-xl h-10 flex-1"
+                      availableSubsForLinking.map(sub => (
+                        <label
+                          key={sub.id}
+                          className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors ${
+                            linkedSubIds.has(sub.id)
+                              ? 'bg-blue-500/10 border border-blue-500/20'
+                              : 'hover:bg-muted/50 border border-transparent'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={linkedSubIds.has(sub.id)}
+                            onChange={() => {
+                              const newSet = new Set(linkedSubIds);
+                              if (newSet.has(sub.id)) {
+                                newSet.delete(sub.id);
+                              } else {
+                                newSet.add(sub.id);
+                              }
+                              setLinkedSubIds(newSet);
+                            }}
+                            className="rounded border-border text-blue-500 focus:ring-blue-500/20"
                           />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeSubserviceFromForm(sub.id)}
-                            className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-lg shrink-0"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                          <div className="flex-1">
+                            <span className="font-medium text-sm">{sub.name}</span>
+                            {sub.documents && sub.documents.length > 0 && (
+                              <span className="text-xs text-muted-foreground ml-2">({sub.documents.length} docs)</span>
+                            )}
+                          </div>
+                          {linkedSubIds.has(sub.id) ? (
+                            <Link2 className="h-4 w-4 text-blue-500" />
+                          ) : (
+                            <Unlink className="h-4 w-4 text-muted-foreground/30" />
+                          )}
+                        </label>
                       ))
                     )}
                   </div>
+
+                  {linkedSubIds.size > 0 && (
+                    <p className="text-xs text-muted-foreground">{linkedSubIds.size} subservico(s) vinculado(s)</p>
+                  )}
                 </div>
               </>
             )}
 
+            {/* Documents (service level) */}
             <Separator className="bg-border/50" />
-
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-xl font-bold flex items-center gap-2">
                     <FileText className="h-5 w-5 text-primary" />
-                    Documentos Necessários
+                    Documentos Necessarios
                   </h3>
-                  <p className="text-sm text-muted-foreground">Adicione os requisitos documentais para este serviço.</p>
+                  <p className="text-sm text-muted-foreground">Requisitos documentais do servico.</p>
                 </div>
-                <Button onClick={addDocumentToForm} variant="outline" size="sm" className="rounded-lg border-2 border-dashed font-bold hover:bg-primary/5 hover:text-primary transition-all">
+                <Button onClick={addDocumentToServiceForm} variant="outline" size="sm" className="rounded-lg border-2 border-dashed font-bold hover:bg-primary/5 hover:text-primary transition-all">
                   <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Requisito
+                  Adicionar
                 </Button>
               </div>
-
               <div className="space-y-3">
                 {formData.documents.length === 0 ? (
-                  <div className="py-12 border-2 border-dashed border-border rounded-2xl text-center bg-muted/10">
-                    <p className="text-sm text-muted-foreground font-medium">Nenhum documento configurado ainda.</p>
+                  <div className="py-8 border-2 border-dashed border-border rounded-2xl text-center bg-muted/10">
+                    <p className="text-sm text-muted-foreground font-medium">Nenhum documento configurado.</p>
                   </div>
                 ) : (
                   formData.documents.map((doc) => (
@@ -556,41 +780,30 @@ export default function ServiceCatalog() {
                         <Input
                           placeholder="Nome do documento..."
                           value={doc.name}
-                          onChange={(e) => updateDocumentInForm(doc.id, "name", e.target.value)}
+                          onChange={(e) => updateDocumentInServiceForm(doc.id, "name", e.target.value)}
                           className="bg-background border-border rounded-xl h-10"
                         />
                       </div>
-
                       <div className="flex items-center gap-4 w-full md:w-auto">
-                        <Select
-                          value={doc.stage}
-                          onValueChange={(val) => updateDocumentInForm(doc.id, "stage", val)}
-                        >
+                        <Select value={doc.stage} onValueChange={(val) => updateDocumentInServiceForm(doc.id, "stage", val)}>
                           <SelectTrigger className="w-[140px] bg-background border-border rounded-xl h-10">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl border-border">
                             <SelectItem value="1">Etapa 1: Base</SelectItem>
                             <SelectItem value="2">Etapa 2: Apostila</SelectItem>
-                            <SelectItem value="3">Etapa 3: Tradução</SelectItem>
+                            <SelectItem value="3">Etapa 3: Traducao</SelectItem>
                           </SelectContent>
                         </Select>
-
                         <div className="flex items-center gap-2 px-3 h-10 bg-background border border-border rounded-xl min-w-[120px]">
                           <Switch
                             checked={doc.required}
-                            onCheckedChange={(val) => updateDocumentInForm(doc.id, "required", val)}
+                            onCheckedChange={(val) => updateDocumentInServiceForm(doc.id, "required", val)}
                             className="scale-75"
                           />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Obrigatório</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Obrigatorio</span>
                         </div>
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeDocumentFromForm(doc.id)}
-                          className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-lg shrink-0"
-                        >
+                        <Button variant="ghost" size="icon" onClick={() => removeDocumentFromServiceForm(doc.id)} className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-lg shrink-0">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -603,12 +816,132 @@ export default function ServiceCatalog() {
 
           <DialogFooter className="p-8 bg-muted/30 border-t rounded-b-3xl">
             <div className="flex gap-3 w-full justify-end">
-              <Button variant="ghost" onClick={() => setIsDialogOpen(false)} disabled={isSaving} className="rounded-xl px-6 font-bold text-muted-foreground">
+              <Button variant="ghost" onClick={() => setIsServiceDialogOpen(false)} disabled={isSaving} className="rounded-xl px-6 font-bold text-muted-foreground">
                 Cancelar
               </Button>
-              <Button onClick={handleSave} disabled={isSaving} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl px-10 font-bold shadow-xl shadow-primary/20 h-12 transition-all active:scale-95">
+              <Button onClick={handleSaveService} disabled={isSaving} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl px-10 font-bold shadow-xl shadow-primary/20 h-12 transition-all active:scale-95">
                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {editingService ? "Atualizar Serviço" : "Confirmar Cadastro"}
+                {editingService ? "Atualizar Servico" : "Confirmar Cadastro"}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ==================== SUBSERVICE DIALOG ==================== */}
+      <Dialog open={isSubDialogOpen} onOpenChange={setIsSubDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border-none shadow-2xl p-0">
+          <DialogHeader className="p-8 bg-gradient-to-br from-blue-500/10 to-transparent border-b">
+            <DialogTitle className="text-3xl font-black tracking-tight flex items-center gap-2">
+              <Layers className="h-7 w-7 text-blue-500" />
+              {editingSubservice ? "Editar Subservico" : "Cadastrar Subservico"}
+            </DialogTitle>
+            <DialogDescription className="text-base text-muted-foreground">
+              Defina o subservico e seus requisitos documentais.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-8 space-y-8">
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Nome do Subservico</Label>
+                <Input
+                  value={subFormData.name}
+                  onChange={(e) => setSubFormData({ ...subFormData, name: e.target.value })}
+                  placeholder="Ex: Cidadania Italiana via Judicial"
+                  className="h-12 border-border bg-muted/30 rounded-xl px-4 text-base focus:ring-primary/20 shadow-inner"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Servico Pai (Opcional)</Label>
+                <Select value={subFormData.servicoId || "none"} onValueChange={(val) => setSubFormData({ ...subFormData, servicoId: val === "none" ? "" : val })}>
+                  <SelectTrigger className="w-full h-12 border-border bg-muted/30 rounded-xl px-4">
+                    <SelectValue placeholder="Selecione um servico pai..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem vinculo</SelectItem>
+                    {services.filter(s => s.type === 'fixo').map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Separator className="bg-border/50" />
+
+            {/* Documents */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-blue-500" />
+                    Documentos Necessarios
+                  </h3>
+                  <p className="text-sm text-muted-foreground">Requisitos documentais para este subservico.</p>
+                </div>
+                <Button onClick={addDocToSubForm} variant="outline" size="sm" className="rounded-lg border-2 border-dashed font-bold hover:bg-blue-500/5 hover:text-blue-600 transition-all">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {subFormData.documents.length === 0 ? (
+                  <div className="py-8 border-2 border-dashed border-border rounded-2xl text-center bg-muted/10">
+                    <p className="text-sm text-muted-foreground font-medium">Nenhum documento configurado.</p>
+                  </div>
+                ) : (
+                  subFormData.documents.map((doc) => (
+                    <div key={doc.id} className="flex flex-col md:flex-row items-center gap-4 p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 group animate-in slide-in-from-top-2">
+                      <div className="flex items-center gap-3 flex-1 w-full">
+                        <GripVertical className="h-5 w-5 text-muted-foreground opacity-30 cursor-move hidden md:block" />
+                        <Input
+                          placeholder="Nome do documento..."
+                          value={doc.name}
+                          onChange={(e) => updateDocInSubForm(doc.id, "name", e.target.value)}
+                          className="bg-background border-border rounded-xl h-10"
+                        />
+                      </div>
+                      <div className="flex items-center gap-4 w-full md:w-auto">
+                        <Select value={doc.stage} onValueChange={(val) => updateDocInSubForm(doc.id, "stage", val)}>
+                          <SelectTrigger className="w-[140px] bg-background border-border rounded-xl h-10">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl border-border">
+                            <SelectItem value="1">Etapa 1: Base</SelectItem>
+                            <SelectItem value="2">Etapa 2: Apostila</SelectItem>
+                            <SelectItem value="3">Etapa 3: Traducao</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div className="flex items-center gap-2 px-3 h-10 bg-background border border-border rounded-xl min-w-[120px]">
+                          <Switch
+                            checked={doc.required}
+                            onCheckedChange={(val) => updateDocInSubForm(doc.id, "required", val)}
+                            className="scale-75"
+                          />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Obrigatorio</span>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => removeDocFromSubForm(doc.id)} className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-lg shrink-0">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="p-8 bg-muted/30 border-t rounded-b-3xl">
+            <div className="flex gap-3 w-full justify-end">
+              <Button variant="ghost" onClick={() => setIsSubDialogOpen(false)} disabled={isSavingSub} className="rounded-xl px-6 font-bold text-muted-foreground">
+                Cancelar
+              </Button>
+              <Button onClick={handleSaveSubservice} disabled={isSavingSub} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-10 font-bold shadow-xl shadow-blue-600/20 h-12 transition-all active:scale-95">
+                {isSavingSub && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {editingSubservice ? "Atualizar Subservico" : "Criar Subservico"}
               </Button>
             </div>
           </DialogFooter>

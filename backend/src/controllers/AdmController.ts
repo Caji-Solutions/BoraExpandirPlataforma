@@ -5,7 +5,7 @@ export class AdmController {
   async getCatalog(req: Request, res: Response) {
     try {
       const services = await AdmRepository.getCatalogServices();
-      // Mapear para o formato que o frontend espera (id, name, value, etc)
+      // Mapear para o formato que o frontend espera
       const mapped = services.map((s: any) => ({
         id: s.id,
         name: s.nome,
@@ -15,22 +15,29 @@ export class AdmController {
         showInCommercial: s.exibir_comercial,
         showToClient: s.exibir_cliente,
         requiresLegalDelegation: s.requer_delegacao_juridico || false,
-        documents: s.requisitos.map((r: any) => ({
-          id: r.id,
-          name: r.nome,
-          stage: r.etapa,
-          required: r.obrigatorio
-        })),
+        documents: (s.requisitos || [])
+          .filter((r: any) => !r.subservico_id)
+          .map((r: any) => ({
+            id: r.id,
+            name: r.nome,
+            stage: r.etapa,
+            required: r.obrigatorio
+          })),
         subservices: (s.subservicos || []).map((sub: any) => ({
           id: sub.id,
-          name: sub.nome
+          name: sub.nome,
+          documents: (sub.requisitos || []).map((r: any) => ({
+            id: r.id,
+            name: r.nome,
+            stage: r.etapa,
+            required: r.obrigatorio
+          }))
         }))
       }));
-      console.log(mapped);
       return res.json({ data: mapped });
     } catch (error: any) {
-      console.error('Erro ao buscar catálogo:', error);
-      return res.status(500).json({ message: 'Erro ao buscar catálogo de serviços' });
+      console.error('Erro ao buscar catalogo:', error);
+      return res.status(500).json({ message: 'Erro ao buscar catalogo de servicos' });
     }
   }
 
@@ -39,8 +46,8 @@ export class AdmController {
       const service = await AdmRepository.createCatalogService(req.body);
       return res.status(201).json({ data: service });
     } catch (error: any) {
-      console.error('Erro ao criar serviço no catálogo:', error);
-      return res.status(500).json({ message: 'Erro ao criar serviço' });
+      console.error('Erro ao criar servico no catalogo:', error);
+      return res.status(500).json({ message: 'Erro ao criar servico' });
     }
   }
 
@@ -50,8 +57,8 @@ export class AdmController {
       const service = await AdmRepository.updateCatalogService(id, req.body);
       return res.json({ data: service });
     } catch (error: any) {
-      console.error('Erro ao atualizar serviço:', error);
-      return res.status(500).json({ message: 'Erro ao atualizar serviço' });
+      console.error('Erro ao atualizar servico:', error);
+      return res.status(500).json({ message: 'Erro ao atualizar servico' });
     }
   }
 
@@ -59,10 +66,66 @@ export class AdmController {
     try {
       const { id } = req.params;
       await AdmRepository.deleteCatalogService(id);
-      return res.json({ message: 'Serviço excluído com sucesso' });
+      return res.json({ message: 'Servico excluido com sucesso' });
     } catch (error: any) {
-      console.error('Erro ao excluir serviço:', error);
-      return res.status(500).json({ message: 'Erro ao excluir serviço' });
+      console.error('Erro ao excluir servico:', error);
+      return res.status(500).json({ message: 'Erro ao excluir servico' });
+    }
+  }
+
+  // ======= Subservicos =======
+
+  async getSubservices(req: Request, res: Response) {
+    try {
+      const subservices = await AdmRepository.getAllSubservices();
+      const mapped = (subservices || []).map((sub: any) => ({
+        id: sub.id,
+        name: sub.nome,
+        servicoId: sub.servico_id,
+        servicoNome: sub.servico?.nome || null,
+        documents: (sub.requisitos || []).map((r: any) => ({
+          id: r.id,
+          name: r.nome,
+          stage: r.etapa,
+          required: r.obrigatorio
+        }))
+      }));
+      return res.json({ data: mapped });
+    } catch (error: any) {
+      console.error('Erro ao buscar subservicos:', error);
+      return res.status(500).json({ message: 'Erro ao buscar subservicos' });
+    }
+  }
+
+  async createSubservice(req: Request, res: Response) {
+    try {
+      const sub = await AdmRepository.createSubservice(req.body);
+      return res.status(201).json({ data: sub });
+    } catch (error: any) {
+      console.error('Erro ao criar subservico:', error);
+      return res.status(500).json({ message: 'Erro ao criar subservico' });
+    }
+  }
+
+  async updateSubservice(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const sub = await AdmRepository.updateSubservice(id, req.body);
+      return res.json({ data: sub });
+    } catch (error: any) {
+      console.error('Erro ao atualizar subservico:', error);
+      return res.status(500).json({ message: 'Erro ao atualizar subservico' });
+    }
+  }
+
+  async deleteSubservice(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      await AdmRepository.deleteSubservice(id);
+      return res.json({ message: 'Subservico excluido com sucesso' });
+    } catch (error: any) {
+      console.error('Erro ao excluir subservico:', error);
+      return res.status(500).json({ message: 'Erro ao excluir subservico' });
     }
   }
 }

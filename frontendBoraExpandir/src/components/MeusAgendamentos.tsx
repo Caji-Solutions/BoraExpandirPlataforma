@@ -147,9 +147,11 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
           
           if (clienteId) {
             console.log(`DEBUG: Verificando formulários para cliente: ${clienteId}`);
-            const forms = await juridicoService.getFormulariosWithStatus(clienteId);
-            console.log(`DEBUG: Formulários encontrados (${forms.length}):`, forms);
-            setHasFormulario(forms.length > 0);
+            if (activeTab === 'consultorias') {
+              setHasFormulario(!!selectedItem.cliente_is_user);
+            } else {
+              setHasFormulario(!!selectedItem.respostas);
+            }
           } else {
              console.warn("DEBUG: Item selecionado não possui cliente_id!");
              setHasFormulario(false);
@@ -677,11 +679,11 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                         <AlertCircle className="h-5 w-5 text-rose-500" />
                       )}
                       <div>
-                        <p className="text-sm font-bold">Formulário Jurídico: {hasFormulario ? 'Encontrado' : 'Não Encontrado'}</p>
+                        <p className="text-sm font-bold">{activeTab === 'consultorias' ? 'Formulário de Agendamento' : 'Formulário de Assessoria'}: {hasFormulario ? 'Encontrado' : 'Não Encontrado'}</p>
                         <p className="text-xs opacity-80">
                           {hasFormulario 
-                            ? 'O cliente possui formulários registrados na tabela jurídica.' 
-                            : 'Atenção: Nenhum formulário encontrado na tabela formularios_juridico.'}
+                            ? 'O formulário inicial foi preenchido corretamente pelo cliente.' 
+                            : 'Atenção: O formulário inicial deste atendimento ainda não foi preenchido.'}
                         </p>
                       </div>
                     </div>

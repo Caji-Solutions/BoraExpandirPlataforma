@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, FileText, Layers, Loader2 } from 'lucide-react'
+import { Calendar, FileText, Layers, Loader2, Search } from 'lucide-react'
 import { catalogService, Service } from '../adm/services/catalogService'
 import comercialService from './services/comercialService'
 import { useAuth } from '../../contexts/AuthContext'
@@ -18,6 +18,15 @@ export default function ServicosComerciais() {
 
   const [selectedServico, setSelectedServico] = useState<Service | null>(null)
   const [showSubserviceModal, setShowSubserviceModal] = useState(false)
+  const [subSearchTerm, setSubSearchTerm] = useState('')
+
+  const filteredSubservices = useMemo(() => {
+    if (!selectedServico?.subservices) return []
+    if (!subSearchTerm.trim()) return selectedServico.subservices
+    return selectedServico.subservices.filter(sub =>
+      sub.name.toLowerCase().includes(subSearchTerm.toLowerCase())
+    )
+  }, [selectedServico?.subservices, subSearchTerm])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -76,6 +85,7 @@ export default function ServicosComerciais() {
     if (servico.subservices && servico.subservices.length > 0) {
       setSelectedServico(servico)
       setShowSubserviceModal(true)
+      setSubSearchTerm('')
     } else {
       navigate('/comercial/selecao-lead-cliente', {
         state: {
@@ -192,13 +202,26 @@ export default function ServicosComerciais() {
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-lg p-6 border border-gray-200 dark:border-neutral-800 animate-in fade-in zoom-in-95">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Qual o tipo de Assessoria?</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 flex items-center gap-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 flex items-center gap-2">
               <Layers className="w-4 h-4 text-blue-500" />
               {selectedServico.name}
             </p>
 
+            {(selectedServico.subservices?.length || 0) > 4 && (
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar subservico..."
+                  value={subSearchTerm}
+                  onChange={(e) => setSubSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-3 py-2.5 border border-gray-200 dark:border-neutral-700 rounded-xl bg-white dark:bg-neutral-800 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                />
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-2">
-              {selectedServico.subservices?.map((sub) => (
+              {filteredSubservices.map((sub) => (
                 <button
                   key={sub.id}
                   onClick={() => handleSelectSubservice(sub.id, sub.name)}

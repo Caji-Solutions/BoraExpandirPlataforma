@@ -1,13 +1,9 @@
-import fs from 'fs';
+﻿import fs from 'fs';
 import path from 'path';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
-import libre from 'libreoffice-convert';
-import { promisify } from 'util';
 import { supabase } from '../config/SupabaseClient';
 import { formatCpfDisplay, formatPhoneDisplay } from '../utils/normalizers';
-
-const convertAsync = promisify(libre.convert);
 
 class PdfService {
     /**
@@ -18,7 +14,7 @@ class PdfService {
         try {
             console.log(`[PdfService] Iniciando geracao de DOCX para o contrato ${contratoId}`);
 
-            const docPath = path.resolve(__dirname, '../../assets/contrato-base.docx');
+            const docPath = path.resolve(__dirname, '../../assets/contrato-mock.docx');
             if (!fs.existsSync(docPath)) {
                 throw new Error(`Template de contrato nao encontrado em: ${docPath}`);
             }
@@ -40,21 +36,21 @@ class PdfService {
                 : String(documentoRaw);
 
             doc.render({
-                'NOME': payload.nome || '',
-                'nacionalidade': payload.nacionalidade || '',
-                'estado civil': payload.estado_civil || '',
-                'profissão': payload.profissao || '',
-                'nome do(s) documento(s) e número(s)': documentoApresentacao,
-                'endereço': payload.endereco || '',
-                'email': payload.email || '',
-                'TELEFONE': formatPhoneDisplay(payload.telefone || ''),
-                '(preencher o tipo de consultoria contratada. Ex: CONSULTORIA COMPLETA – NACIONALIDADE PORTUGUESA / ASSESSORIA JURÍDICA COMPLETA….)': payload.tipo_servico || '',
-                'nome completo de todos os envolvidos': payload.descricao_pessoas || payload.servicoDescricao || '',
-                'valor por extenso': payload.valor_pavao || '',
-                'valor atualizado referente ao serviço': payload.valor_desconto || '',
-                '(valor final da consultoria por extenso)': payload.valor_consultoria || '',
-                'FORMA DE PAGAMENTO': payload.forma_pagamento || '',
-                'data': payload.data || dataAtual
+                nome: payload.nome || '',
+                nacionalidade: payload.nacionalidade || '',
+                estado_civil: payload.estado_civil || '',
+                profissao: payload.profissao || '',
+                documento: documentoApresentacao,
+                endereco: payload.endereco || '',
+                email: payload.email || '',
+                telefone: formatPhoneDisplay(payload.telefone || ''),
+                tipo_servico: payload.tipo_servico || '',
+                descricao_pessoas: payload.descricao_pessoas || payload.servicoDescricao || '',
+                valor_pavao: payload.valor_pavao || '',
+                valor_desconto: payload.valor_desconto || '',
+                valor_consultoria: payload.valor_consultoria || '',
+                forma_pagamento: payload.forma_pagamento || '',
+                data: payload.data || dataAtual
             });
 
             const buf = doc.getZip().generate({
@@ -62,24 +58,14 @@ class PdfService {
                 compression: 'DEFLATE'
             });
 
-            console.log(`[PdfService] Convertendo DOCX para PDF usando LibreOffice...`);
-            let pdfBuf: Buffer;
-            try {
-                pdfBuf = await convertAsync(buf, '.pdf', undefined) as Buffer;
-            } catch (convErr) {
-                console.error('[PdfService] Erro ao converter para PDF:', convErr);
-                throw new Error('Falha na conversão para PDF. Verifique se o LibreOffice está instalado no sistema.');
-            }
-
             const sanitize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
             const servicoNome = sanitize(payload.tipo_servico || 'servico');
             const subservicoNome = payload.subservico_nome ? `_${sanitize(payload.subservico_nome)}` : '';
-            const pathStorage = `contratos-gerados/${servicoNome}${subservicoNome}_${contratoId}_${Date.now()}.pdf`;
-            
+            const pathStorage = `contratos-gerados/${servicoNome}${subservicoNome}_${contratoId}_${Date.now()}.docx`;
             const { error: uploadError } = await supabase.storage
                 .from('contratos')
-                .upload(pathStorage, pdfBuf, {
-                    contentType: 'application/pdf',
+                .upload(pathStorage, buf, {
+                    contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                     upsert: true
                 });
 

@@ -1412,9 +1412,8 @@ class ComercialController {
             }
 
             const contratoUrl = String(contrato.contrato_gerado_url || '')
-            const contratoGeradoEhPdf = /\.pdf(?:\?|$)/i.test(contratoUrl)
-            if (!contratoGeradoEhPdf) {
-                return res.status(400).json({ message: 'O contrato atual nao esta em PDF. Gere novamente antes de enviar.' })
+            if (!contratoUrl) {
+                return res.status(400).json({ message: 'O contrato atual nao esta gerado. Gere novamente antes de enviar.' })
             }
 
             const draftSemErro = this.mergeDraftDados(contrato.draft_dados, {})
