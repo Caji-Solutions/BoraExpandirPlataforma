@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
     Table,
     TableBody,
@@ -11,7 +10,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "../../adm/components/ui/card";
 import { Button } from "../../adm/components/ui/button";
 import { Input } from "../../adm/components/ui/input";
-import { Search, Plus, Filter, FileSpreadsheet } from "lucide-react";
+import { Search, Plus, Filter, FileSpreadsheet, Loader2 } from "lucide-react";
 
 interface Cliente {
     id: string;
@@ -24,162 +23,62 @@ interface Cliente {
     profissao: string;
     paisNascimento: string;
     dataNascimento?: string;
+    status?: string;
 }
-
-const mockClientes: Cliente[] = [
-    {
-        id: "1",
-        nomeCompleto: "Açucena da Anunciação Queiroz",
-        cpf: "862.326.915-20",
-        passaporte: "GH128749",
-        lugarNascimento: "Salvador/BA",
-        nacionalidade: "Brasileira",
-        estadoCivil: "Casada",
-        profissao: "Atendente de Farmácia",
-        paisNascimento: "Brasil",
-    },
-    {
-        id: "2",
-        nomeCompleto: "Alba Moreira Fontenele",
-        cpf: "935.663.522-68",
-        passaporte: "GK148186",
-        lugarNascimento: "Fortaleza/CE",
-        nacionalidade: "Brasileira",
-        estadoCivil: "Casada",
-        profissao: "Biomédica",
-        paisNascimento: "Brasil",
-    },
-    {
-        id: "3",
-        nomeCompleto: "Ana Paula Lima Dos Santos",
-        cpf: "293.515.648-00",
-        passaporte: "Não consta no cadastro",
-        lugarNascimento: "São Paulo/SP",
-        nacionalidade: "brasileira",
-        estadoCivil: "Casada",
-        profissao: "supervisora",
-        paisNascimento: "Brasil",
-    },
-    {
-        id: "4",
-        nomeCompleto: "Andeecleebson Xeineeclee Fabiano Roques M",
-        cpf: "053.544.589-00",
-        passaporte: "GM170017",
-        lugarNascimento: "São Ludgero/SC",
-        nacionalidade: "Brasileira",
-        estadoCivil: "Casado",
-        profissao: "Analista",
-        paisNascimento: "Brasil",
-    },
-    {
-        id: "5",
-        nomeCompleto: "Antônio Marcos Viana Antunes",
-        cpf: "967.798.100-53",
-        passaporte: "FS872755",
-        lugarNascimento: "Belo Horizonte/MG",
-        nacionalidade: "brasileiro",
-        estadoCivil: "Divorciado",
-        profissao: "eletrotécnico",
-        paisNascimento: "Brasil",
-    },
-    {
-        id: "6",
-        nomeCompleto: "Camile Khristime Souza Da Silva",
-        cpf: "116.270.896.40",
-        passaporte: "FP336629",
-        lugarNascimento: "Rio de Janeiro/RJ",
-        nacionalidade: "Brasileira",
-        estadoCivil: "Solteira",
-        profissao: "ajudante de cozinha",
-        paisNascimento: "Brasil",
-    },
-    {
-        id: "7",
-        nomeCompleto: "Clistenes Fernandes Dos Reis",
-        cpf: "268.159.822-20",
-        passaporte: "Não consta no cadastro",
-        lugarNascimento: "Goiania/GO",
-        nacionalidade: "brasileiro",
-        estadoCivil: "Casado",
-        profissao: "empresário",
-        paisNascimento: "Brasil",
-    },
-    {
-        id: "8",
-        nomeCompleto: "Cristiane Germano Paes",
-        cpf: "008.517.340-14",
-        passaporte: "FW632787",
-        lugarNascimento: "Curitiba/PR",
-        nacionalidade: "Brasileira",
-        estadoCivil: "Solteira",
-        profissao: "Fisioterapeuta e Maquiadora",
-        paisNascimento: "Brasil",
-    },
-    {
-        id: "9",
-        nomeCompleto: "Daniel Breves Nogueirol",
-        cpf: "101.584.377-80",
-        passaporte: "RG nº 13.115.629",
-        lugarNascimento: "Porto Alegre/RS",
-        nacionalidade: "brasileiro",
-        estadoCivil: "casado",
-        profissao: "arquiteto",
-        paisNascimento: "Brasil",
-    },
-    {
-        id: "10",
-        nomeCompleto: "Débora França de Mendonça Silva",
-        cpf: "223.185.538-07",
-        passaporte: "GF495851",
-        lugarNascimento: "Recife/PE",
-        nacionalidade: "Brasileira",
-        estadoCivil: "casada",
-        profissao: "Designer de jóias",
-        paisNascimento: "Brasil",
-    },
-    {
-        id: "11",
-        nomeCompleto: "Diego Campos Fontenele",
-        cpf: "112.971.637-61",
-        passaporte: "GK439212",
-        lugarNascimento: "Manaus/AM",
-        nacionalidade: "Brasileiro",
-        estadoCivil: "casado",
-        profissao: "empresário",
-        paisNascimento: "Brasil",
-    },
-    {
-        id: "12",
-        nomeCompleto: "Elsie Barros Vales",
-        cpf: "567.782.952.87",
-        passaporte: "GC908964",
-        lugarNascimento: "Belem/PA",
-        nacionalidade: "Brasileiro",
-        estadoCivil: "Casado",
-        profissao: "Tec. em Radiologia",
-        paisNascimento: "Brasil",
-    },
-    {
-        id: "13",
-        nomeCompleto: "Erenildo Pereira de Souza",
-        cpf: "449.426.458-08",
-        passaporte: "GL586209",
-        lugarNascimento: "Salvador/BA",
-        nacionalidade: "Brasileiro",
-        estadoCivil: "Casado",
-        profissao: "Operador de Logística",
-        paisNascimento: "Brasil",
-    }
-];
 
 export function Clientes() {
     const [searchTerm, setSearchTerm] = useState("");
-    const [clientes] = useState<Cliente[]>(mockClientes);
-    const filteredClientes = clientes.filter(cliente =>
-        cliente.nomeCompleto.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cliente.cpf.includes(searchTerm) ||
-        cliente.passaporte.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const [clientes, setClientes] = useState<Cliente[]>([]);
+    const [loading, setLoading] = useState(true);
+    const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || '';
+
+    const fetchClientes = useCallback(async () => {
+        try {
+            setLoading(true);
+            const response = await fetch(`${backendUrl}/cliente/clientes`);
+            if (!response.ok) throw new Error('Erro ao buscar clientes');
+            
+            const result = await response.json();
+            const all = result.data || [];
+
+            // Filtrar somente registros com status 'cliente'
+            const onlyClients: Cliente[] = all
+                .filter((c: any) => c.status?.toUpperCase() === 'CLIENTE')
+                .map((c: any) => {
+                    const dna = c.perfil_unificado?.data || {};
+                    return {
+                        id: c.id,
+                        nomeCompleto: c.nome || dna.nome || 'Sem Nome',
+                        cpf: c.documento || dna.cpf || dna.documento || '-',
+                        passaporte: dna.passaporte || '-',
+                        lugarNascimento: dna.local_nascimento || dna.lugarNascimento || '-',
+                        nacionalidade: dna.nacionalidade || '-',
+                        estadoCivil: dna.estado_civil || dna.estadoCivil || '-',
+                        profissao: dna.profissao || '-',
+                        paisNascimento: dna.pais_nascimento || dna.paisNascimento || 'Brasil',
+                        status: c.status
+                    };
+                });
+            
+            setClientes(onlyClients);
+        } catch (err) {
+            console.error('Erro ao carregar base de clientes:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [backendUrl]);
+
+    useEffect(() => {
+        fetchClientes();
+    }, [fetchClientes]);
+
+    const filteredClientes = useMemo(() => {
+        return clientes.filter(cliente =>
+            cliente.nomeCompleto.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            cliente.cpf.includes(searchTerm) ||
+            cliente.passaporte.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [clientes, searchTerm]);
 
     return (
         <div className="space-y-6">
@@ -236,18 +135,35 @@ export function Clientes() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredClientes.map((cliente) => (
-                                    <TableRow key={cliente.id} className="hover:bg-muted/50">
-                                        <TableCell className="font-medium text-foreground">{cliente.nomeCompleto}</TableCell>
-                                        <TableCell className="text-muted-foreground">{cliente.cpf}</TableCell>
-                                        <TableCell className="text-muted-foreground">{cliente.passaporte}</TableCell>
-                                        <TableCell className="text-muted-foreground">{cliente.lugarNascimento || "-"}</TableCell>
-                                        <TableCell className="text-muted-foreground capitalize">{cliente.nacionalidade}</TableCell>
-                                        <TableCell className="text-muted-foreground capitalize">{cliente.estadoCivil}</TableCell>
-                                        <TableCell className="text-muted-foreground capitalize">{cliente.profissao}</TableCell>
-                                        <TableCell className="text-muted-foreground">{cliente.paisNascimento}</TableCell>
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="py-12 text-center">
+                                            <div className="flex flex-col items-center justify-center gap-3">
+                                                <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
+                                                <p className="text-muted-foreground">Carregando base de clientes...</p>
+                                            </div>
+                                        </TableCell>
                                     </TableRow>
-                                ))}
+                                ) : filteredClientes.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="py-12 text-center text-muted-foreground">
+                                            Nenhum cliente encontrado
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    filteredClientes.map((cliente) => (
+                                        <TableRow key={cliente.id} className="hover:bg-muted/50">
+                                            <TableCell className="font-medium text-foreground">{cliente.nomeCompleto}</TableCell>
+                                            <TableCell className="text-muted-foreground">{cliente.cpf}</TableCell>
+                                            <TableCell className="text-muted-foreground">{cliente.passaporte}</TableCell>
+                                            <TableCell className="text-muted-foreground">{cliente.lugarNascimento || "-"}</TableCell>
+                                            <TableCell className="text-muted-foreground capitalize">{cliente.nacionalidade}</TableCell>
+                                            <TableCell className="text-muted-foreground capitalize">{cliente.estadoCivil}</TableCell>
+                                            <TableCell className="text-muted-foreground capitalize">{cliente.profissao}</TableCell>
+                                            <TableCell className="text-muted-foreground">{cliente.paisNascimento}</TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
                             </TableBody>
                         </Table>
                     </div>
