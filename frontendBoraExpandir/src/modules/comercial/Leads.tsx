@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
-import { Plus, Trash2, Phone, Search, Edit2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, X, User, Sparkles, Loader2, CheckCircle2, Copy, Key, Mail } from 'lucide-react'
+import { Plus, Trash2, Phone, Search, Edit2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, X, User, Sparkles, Loader2, CheckCircle2, Copy, Key, Mail, StickyNote, Send } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { PhoneInput } from '../../components/ui/PhoneInput'
 import { cn } from '@/lib/utils'
@@ -35,6 +35,13 @@ export default function LeadsPage() {
   const [saving, setSaving] = useState(false)
   const [isConverting, setIsConverting] = useState<string | null>(null)
   const [conversionSuccess, setConversionSuccess] = useState<any | null>(null)
+
+  // Notas do Lead
+  const [notesModalLead, setNotesModalLead] = useState<Lead | null>(null)
+  const [leadNotes, setLeadNotes] = useState<any[]>([])
+  const [newLeadNote, setNewLeadNote] = useState('')
+  const [loadingNotes, setLoadingNotes] = useState(false)
+  const [savingNote, setSavingNote] = useState(false)
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || ''
 
@@ -248,6 +255,58 @@ export default function LeadsPage() {
     }
   }
 
+  // ========= NOTAS =========
+  const handleOpenNotes = async (lead: Lead) => {
+    setNotesModalLead(lead)
+    setNewLeadNote('')
+    setLoadingNotes(true)
+    try {
+      const response = await fetch(`${backendUrl}/cliente/lead-notas/${lead.id}`)
+      if (response.ok) {
+        const result = await response.json()
+        setLeadNotes(result.data || [])
+      }
+    } catch (err) {
+      console.error('Erro ao buscar notas:', err)
+    } finally {
+      setLoadingNotes(false)
+    }
+  }
+
+  const handleSaveNote = async () => {
+    if (!newLeadNote.trim() || !notesModalLead) return
+    setSavingNote(true)
+    try {
+      const response = await fetch(`${backendUrl}/cliente/lead-notas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId: notesModalLead.id,
+          texto: newLeadNote,
+          autorId: activeProfile?.id
+        })
+      })
+      if (response.ok) {
+        const result = await response.json()
+        setLeadNotes(prev => [result.data, ...prev])
+        setNewLeadNote('')
+      }
+    } catch (err) {
+      console.error('Erro ao salvar nota:', err)
+    } finally {
+      setSavingNote(false)
+    }
+  }
+
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      await fetch(`${backendUrl}/cliente/lead-notas/${noteId}`, { method: 'DELETE' })
+      setLeadNotes(prev => prev.filter(n => n.id !== noteId))
+    } catch (err) {
+      console.error('Erro ao deletar nota:', err)
+    }
+  }
+
   const formatDate = (iso: string) => {
     try {
       return new Date(iso).toLocaleDateString('pt-BR', {
@@ -388,6 +447,13 @@ export default function LeadsPage() {
                           ) : (
                             <Sparkles className="h-4 w-4" />
                           )}
+                        </button>
+                        <button
+                          onClick={() => handleOpenNotes(lead)}
+                          className="p-2 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-colors border border-amber-100 dark:border-amber-500/20 shadow-sm"
+                          title="Notas do lead"
+                        >
+                          <StickyNote className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleOpenEdit(lead)}
@@ -593,6 +659,92 @@ export default function LeadsPage() {
                   Fechar
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Notas do Lead */}
+      {notesModalLead && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-gray-200 dark:border-neutral-700 flex flex-col max-h-[80vh] relative">
+            <button
+              onClick={() => setNotesModalLead(null)}
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 z-10"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="p-6 border-b border-gray-200 dark:border-neutral-700">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <StickyNote className="h-5 w-5 text-amber-500" />
+                Notas — {notesModalLead.nome}
+              </h3>
+            </div>
+
+            {/* Input */}
+            <div className="p-4 border-b border-gray-100 dark:border-neutral-800">
+              <div className="flex gap-2">
+                <textarea
+                  value={newLeadNote}
+                  onChange={e => setNewLeadNote(e.target.value)}
+                  placeholder="Escreva uma nota..."
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm resize-none min-h-[60px]"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      handleSaveNote()
+                    }
+                  }}
+                />
+                <button
+                  onClick={handleSaveNote}
+                  disabled={!newLeadNote.trim() || savingNote}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed self-end"
+                >
+                  {savingNote ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Notes list */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {loadingNotes ? (
+                <div className="text-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-amber-500 mx-auto" />
+                  <p className="text-sm text-gray-500 mt-2">Carregando notas...</p>
+                </div>
+              ) : leadNotes.length === 0 ? (
+                <div className="text-center py-8">
+                  <StickyNote className="h-10 w-10 text-gray-300 dark:text-neutral-600 mx-auto mb-3" />
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Nenhuma nota ainda</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">Adicione observações sobre este lead</p>
+                </div>
+              ) : (
+                leadNotes.map((note: any) => (
+                  <div key={note.id} className="bg-gray-50 dark:bg-neutral-800 border border-gray-100 dark:border-neutral-700 rounded-lg p-3 group">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {note.autor?.full_name || 'Usuário'}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-gray-400">
+                          {new Date(note.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteNote(note.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-600 transition-all"
+                          title="Excluir nota"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{note.texto}</p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

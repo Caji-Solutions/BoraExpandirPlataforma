@@ -1,6 +1,8 @@
 import { supabase } from '../config/SupabaseClient'
 import EmailService from '../services/EmailService'
 import DNAService from '../services/DNAService'
+import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 
 function generatePassword(length = 10): string {
     const chars = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$'
@@ -91,93 +93,44 @@ class FormularioController {
             // 1. Gerar senha aleatória para o cliente
             const senhaGerada = generatePassword()
 
-            // 2. Criar conta no Supabase Auth
-            let userId: string | undefined
-            const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-                email,
-                password: senhaGerada,
-                email_confirm: true,
-                user_metadata: {
-                    full_name: nome_completo,
-                    role: 'cliente'
-                }
-            })
+            // 2. Criar conta no Profile
+            const salt = await bcrypt.genSalt(10)
+            const password_hash = await bcrypt.hash(senhaGerada, salt)
+            let userId: string
 
-            if (authError) {
-                console.error('[FormularioController] Erro ao criar auth user:', authError.message)
-
-                // Se o usuário já existe, buscar o ID existente e atualizar a senha
-                if (authError.message.includes('already')) {
-                    console.log('[FormularioController] Usuário já existe, buscando ID existente no profiles...')
-                    
-                    // Buscar o email usando a tabela profiles que é mais rápida e não falha como o listUsers
-                    const { data: existingProfile } = await supabase
-                        .from('profiles')
-                        .select('id')
-                        .ilike('email', email)
-                        .maybeSingle()
-                        
-                    if (existingProfile) {
-                        userId = existingProfile.id
-                    } else {
-                        // Tentar buscar na tabela clientes caso não tenha profile
-                        // ATENÇÃO: clientes não tem user_id, então não tem como pegar o userId daqui diretamente.
-                        // O unico jeito seria procurar de novo via listUsers, que infelizmente tá dando 500 as vezes
-                        // Mas só vamos cair aqui se o profiles também falhou antes.
-                        console.log('[FormularioController] Buscando via listUsers como fallback...')
-                        try {
-                            const { data: listData, error: listError } = await supabase.auth.admin.listUsers()
-                            if (listError) console.error("List users error fallback:", listError)
-                            const existingUser = listData?.users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase())
-                            if (existingUser) {
-                                userId = existingUser.id
-                            }
-                        } catch (err) {
-                            console.error("Erro critico listUsers fallback:", err)
-                        }
-                    }
-
-                    if (userId) {
-                        // Atualizar a senha do usuário existente
-                        const { error: updateAuthError } = await supabase.auth.admin.updateUserById(userId, {
-                            password: senhaGerada,
-                            user_metadata: { full_name: nome_completo, role: 'cliente' }
-                        })
-                        if (updateAuthError) {
-                             console.error(`[FormularioController] Falha ao atualizar senha do user ${userId}:`, updateAuthError)
-                        } else {
-                             console.log(`[FormularioController] Usuário existente encontrado: ${userId}, senha atualizada`)
-                        }
-                    } else {
-                        console.error('[FormularioController] Não foi possível encontrar o ID do usuário existente!')
-                    }
-                } else {
-                    return res.status(400).json({
-                        message: 'Erro ao criar conta',
-                        error: authError.message
-                    })
-                }
+            const { data: existingProfile } = await supabase
+                .from('profiles')
+                .select('id')
+                .ilike('email', email)
+                .maybeSingle()
+                
+            if (existingProfile) {
+                userId = existingProfile.id
             } else {
-                userId = authData?.user?.id
+                userId = crypto.randomUUID()
             }
 
-            // 3. Criar/atualizar registro na tabela profiles
-            if (userId) {
-                const { error: profileError } = await supabase
-                    .from('profiles')
-                    .upsert({
-                        id: userId,
-                        full_name: nome_completo,
-                        email,
-                        role: 'cliente',
-                        cpf: cpf || null,
-                        telefone: whatsapp
-                    })
-                if (profileError) {
-                    console.error('[FormularioController] Erro ao criar profile:', profileError)
-                } else {
-                    console.log(`[FormularioController] Profile criado/atualizado com sucesso: ${userId}`)
-                }
+            // 3. Criar/atualizar registro na tabela profiles com a nova senha
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .upsert({
+                    id: userId,
+                    full_name: nome_completo,
+                    email,
+                    role: 'cliente',
+                    password_hash,
+                    cpf: cpf || null,
+                    telefone: whatsapp
+                })
+                
+            if (profileError) {
+                console.error('[FormularioController] Erro ao criar/atualizar profile:', profileError)
+                return res.status(400).json({
+                    message: 'Erro ao criar conta',
+                    error: profileError.message
+                })
+            } else {
+                console.log(`[FormularioController] Profile criado/atualizado com sucesso: ${userId}`)
             }
 
             // 4. Verificar se o cliente já existe na tabela clientes (por email ou whatsapp)

@@ -1,5 +1,7 @@
 import type { ClienteDTO } from '../types/parceiro';
 import { supabase } from '../config/SupabaseClient';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import ClienteRepository from '../repositories/ClienteRepository';
 import JuridicoRepository from '../repositories/JuridicoRepository';
 import NotificationService from '../services/NotificationService';
@@ -421,57 +423,39 @@ class ClienteController {
         console.log('Email:', normalizedEmail)
         console.log('Senha Temporária Gerada:', tempPassword)
         console.log('==============================================')
-        // 2. Tentar criar usuário no Auth do Supabase
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-          email: normalizedEmail,
-          password: tempPassword,
-          email_confirm: true,
-          user_metadata: {
-            full_name: nome,
-            role: 'cliente',
-            temp_password: tempPassword
-          }
-        });
-
-        if (authError) {
-          // Se o erro for de "usuário já existe" (mesmo que não esteja em clientes ou profiles)
-          if (authError.message.toLowerCase().includes('already') || authError.status === 422) {
-            console.log('ClienteController.register - Usuário já existe no Auth (Auth-only). Buscando ID...');
-            
-            const { data: profileData } = await supabase.from('profiles').select('id').ilike('email', normalizedEmail).maybeSingle();
-            
-            if (profileData && profileData.id) {
-               usuarioId = profileData.id;
-               isNewUser = false; // Mark as not new, so we don't send tempPassword
-               console.log('ClienteController.register - User ID encontrado via profiles:', usuarioId);
-            } else {
-               // Fallback via Admin API listUsers if profile sync failed
-               try {
-                  const { data: listData, error: listError } = await supabase.auth.admin.listUsers();
-                  if (!listError && listData?.users) {
-                     const existingUser = listData.users.find((u: any) => u.email?.toLowerCase() === normalizedEmail);
-                     if (existingUser) {
-                        usuarioId = existingUser.id;
-                        isNewUser = false;
-                        console.log('ClienteController.register - User ID encontrado via listUsers:', usuarioId);
-                     }
-                  }
-               } catch (err) {
-                  console.error('Erro ao buscar listUsers:', err);
-               }
-            }
-
-            if (!usuarioId) {
-                console.error('Erro fatal ao buscar auth user ID existente:', authError.message);
-                return res.status(400).json({ message: 'Usuário já existe, mas não foi possível encontrar seu ID.' });
-            }
-          } else {
-            console.error('Erro fatal ao criar auth user:', authError.message);
-            return res.status(authError.status || 400).json({ message: authError.message });
-          }
+        const salt = await bcrypt.genSalt(10);
+        const password_hash = await bcrypt.hash(tempPassword, salt);
+        
+        // Verificar se já existe no profiles
+        const { data: profileData } = await supabase.from('profiles').select('id').ilike('email', normalizedEmail).maybeSingle();
+        
+        if (profileData && profileData.id) {
+            usuarioId = profileData.id;
+            isNewUser = false; // Tem profile, então não criamos um novo
+            console.log('ClienteController.register - User ID encontrado via profiles:', usuarioId);
+            // Atualizar senha por segurança
+            await supabase.from('profiles').update({ password_hash }).eq('id', usuarioId);
         } else {
-          usuarioId = authData.user.id;
-          console.log('ClienteController.register - Novo usuário criado com ID:', usuarioId);
+            // Gerar novo ID
+            usuarioId = crypto.randomUUID();
+            console.log('ClienteController.register - Novo ID gerado para profile:', usuarioId);
+            
+            // Criar profile básico com a senha
+            const { error: insertError } = await supabase.from('profiles').insert({
+                id: usuarioId,
+                full_name: nome,
+                email: normalizedEmail,
+                role: 'cliente',
+                password_hash
+            });
+            if (insertError) {
+                console.error('Erro fatal ao criar profile:', insertError.message);
+                return res.status(400).json({ message: insertError.message });
+            }
+        }
+
+        if (!usuarioId) {
+            return res.status(500).json({ message: 'Falha ao determinar ID do perfil do cliente.' });
         }
       }
 
@@ -1541,44 +1525,94 @@ class ClienteController {
 
       const { supabase } = await import('../config/SupabaseClient');
 
-      // 1. Primeiro busca o ID na tabela profiles pelo email
+      // 1. Buscar o ID na tabela profiles pelo email
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, email')
         .eq('email', email)
         .single();
 
       if (profileError || !profile) {
-        // Fallback: Tenta listar usuários se não achar no profile (pode acontecer com usuários recém-criados ou sem profile)
-        const { data: usersData, error: listError } = await supabase.auth.admin.listUsers();
-        if (listError) throw listError;
-
-        const targetUser = usersData.users.find(u => u.email === email);
-        if (!targetUser) {
           return res.status(404).json({ message: 'Usuário não encontrado' });
-        }
-
-        return res.status(200).json({
-          email: targetUser.email,
-          password: targetUser.user_metadata?.temp_password || null
-        });
       }
 
-      // 2. Com o ID, busca os metadados do Auth
-      const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(profile.id);
-
-      if (authError || !authUser.user) {
-        return res.status(404).json({ message: 'Credenciais não encontradas no Auth' });
-      }
-
+      // Já não temos o temp_password em plaintext no auth, vamos usar uma senha temporária em fallback ou focar no reset password
+      // Mas para manter a funcionalidade antiga, retornar um aviso ou a senha que a pessoa consiga
       return res.status(200).json({
-        email: authUser.user.email,
-        password: authUser.user.user_metadata?.temp_password || null
+        email: profile.email,
+        password: 'Senha protegida por criptografia.'
       });
 
     } catch (error: any) {
       console.error('Erro ao buscar credenciais:', error);
       return res.status(500).json({ message: 'Erro ao buscar credenciais', error: error.message });
+    }
+  }
+
+  // =============================================
+  // NOTAS DE LEAD
+  // =============================================
+
+  async createLeadNote(req: any, res: any) {
+    try {
+      const { leadId, texto, autorId } = req.body
+
+      if (!leadId || !texto) {
+        return res.status(400).json({ message: 'leadId e texto são obrigatórios' })
+      }
+
+      const nota = await JuridicoRepository.createNote({
+        clienteId: leadId,
+        etapa: 'lead_note',
+        autorId: autorId || 'system',
+        texto
+      })
+
+      return res.status(201).json({
+        message: 'Nota do lead criada com sucesso',
+        data: nota
+      })
+    } catch (error: any) {
+      console.error('Erro ao criar nota do lead:', error)
+      return res.status(500).json({ message: 'Erro ao criar nota do lead', error: error.message })
+    }
+  }
+
+  async getLeadNotes(req: any, res: any) {
+    try {
+      const { leadId } = req.params
+
+      if (!leadId) {
+        return res.status(400).json({ message: 'leadId é obrigatório' })
+      }
+
+      const allNotes = await JuridicoRepository.getNotesByClienteId(leadId)
+      const leadNotes = allNotes.filter((n: any) => n.etapa === 'lead_note')
+
+      return res.status(200).json({
+        message: 'Notas do lead recuperadas com sucesso',
+        data: leadNotes
+      })
+    } catch (error: any) {
+      console.error('Erro ao buscar notas do lead:', error)
+      return res.status(500).json({ message: 'Erro ao buscar notas do lead', error: error.message })
+    }
+  }
+
+  async deleteLeadNote(req: any, res: any) {
+    try {
+      const { noteId } = req.params
+
+      if (!noteId) {
+        return res.status(400).json({ message: 'noteId é obrigatório' })
+      }
+
+      await JuridicoRepository.deleteNote(noteId)
+
+      return res.status(200).json({ message: 'Nota do lead deletada com sucesso' })
+    } catch (error: any) {
+      console.error('Erro ao deletar nota do lead:', error)
+      return res.status(500).json({ message: 'Erro ao deletar nota do lead', error: error.message })
     }
   }
 }

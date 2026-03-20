@@ -12,7 +12,8 @@ import {
     Clock,
     AlertCircle,
     ArrowLeft,
-    ChevronDown
+    ChevronDown,
+    StickyNote
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ClientDNAData, ClientNote, CATEGORIAS_LIST, formatDate } from './ClientDNA'
@@ -48,11 +49,13 @@ export function DNAClientDetailView({
     const [loadingMembers, setLoadingMembers] = useState(false)
     const [selectedRequerimentoId, setSelectedRequerimentoId] = useState<string | undefined>(undefined)
     const [areaFilter, setAreaFilter] = useState<'todos' | 'juridico' | 'comercial' | 'administrativo'>('todos')
-    const [activeTab, setActiveTab] = useState<'timeline' | 'formularios' | 'comprovantes'>('timeline')
+    const [activeTab, setActiveTab] = useState<'timeline' | 'formularios' | 'comprovantes' | 'lead_notes'>('timeline')
     const [agendamentos, setAgendamentos] = useState<any[]>([])
     const [loadingAgendamentos, setLoadingAgendamentos] = useState(false)
     const [contratosServicos, setContratosServicos] = useState<any[]>([])
     const [loadingContratos, setLoadingContratos] = useState(false)
+    const [leadNotesData, setLeadNotesData] = useState<any[]>([])
+    const [loadingLeadNotes, setLoadingLeadNotes] = useState(false)
 
     // Handle adding document to a specific requirement
     const handleAddDocToReq = (reqId: string) => {
@@ -150,6 +153,22 @@ export function DNAClientDetailView({
             }
             fetchAgendamentos()
             fetchContratos()
+        }
+        if (activeTab === 'lead_notes') {
+            const fetchLeadNotes = async () => {
+                try {
+                    setLoadingLeadNotes(true)
+                    const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
+                    const response = await fetch(`${baseUrl}/cliente/lead-notas/${client.true_id || client.id}`)
+                    const result = await response.json()
+                    setLeadNotesData(result.data || [])
+                } catch (err) {
+                    console.error('Erro ao buscar notas do lead:', err)
+                } finally {
+                    setLoadingLeadNotes(false)
+                }
+            }
+            fetchLeadNotes()
         }
     }, [activeTab, client.id, client.true_id])
 
@@ -322,6 +341,18 @@ export function DNAClientDetailView({
                                 Comprovantes/Contratos
                             </button>
                         )}
+                        <button
+                            onClick={() => setActiveTab('lead_notes')}
+                            className={cn(
+                                "px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
+                                activeTab === 'lead_notes'
+                                    ? "bg-background text-amber-600 shadow-sm border border-border"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            <StickyNote className="h-4 w-4" />
+                            Notas do Lead
+                        </button>
                     </div>
 
                     <div className="flex items-center gap-2 pr-2">
@@ -611,6 +642,48 @@ export function DNAClientDetailView({
                                         )}
                                     </section>
                                 </div>
+                            </div>
+                        )}
+                        {activeTab === 'lead_notes' && (
+                            <div className="bg-card border border-border rounded-2xl p-8 relative">
+                                <h3 className="text-xl font-bold text-foreground flex items-center gap-3 mb-8">
+                                    <StickyNote className="h-6 w-6 text-amber-500" />
+                                    Notas do Lead
+                                </h3>
+
+                                {loadingLeadNotes ? (
+                                    <div className="text-center p-12 text-muted-foreground animate-pulse text-sm">Carregando notas do lead...</div>
+                                ) : leadNotesData.length === 0 ? (
+                                    <div className="text-center p-12">
+                                        <StickyNote className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
+                                        <p className="text-muted-foreground font-medium">Nenhuma nota registrada como lead</p>
+                                        <p className="text-sm text-muted-foreground/70 mt-1">Notas adicionadas na fase de lead aparecerão aqui.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {leadNotesData.map((note: any) => (
+                                            <div key={note.id} className="bg-muted/30 border border-border/50 rounded-xl p-4 text-sm">
+                                                <div className="flex justify-between items-center mb-2 opacity-70">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="font-bold flex items-center gap-1.5">
+                                                            <User className="h-3 w-3" />
+                                                            {note.autor?.full_name || 'Usuário'}
+                                                        </span>
+                                                        <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-tight bg-amber-100 text-amber-700">
+                                                            lead
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-[10px]">
+                                                        {new Date(note.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                </div>
+                                                <p className="text-foreground/90 leading-relaxed italic border-l-2 border-amber-500/30 pl-3">
+                                                    "{note.texto}"
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

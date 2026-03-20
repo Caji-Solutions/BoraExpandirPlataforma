@@ -1,5 +1,7 @@
 import { supabase } from '../config/SupabaseClient'
 import type { RegisterParceiroDTO, Parceiro } from '../types/parceiro'
+import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 
 // Implementação temporária em memória até existir o modelo Prisma `Parceiro`.
 const store: Map<string, Parceiro> = new Map()
@@ -18,27 +20,18 @@ class ParceiroRepository {
         const { nome, email, telefone, documento, senha } = payload;
         const clientId = this.generateClientId();
 
-        // 1. Criar Auth User no Supabase
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-            email,
-            password: senha as string,
-            email_confirm: true,
-            user_metadata: { 
-                full_name: nome, 
-                role: 'cliente' 
-            }
-        });
+        // 1. Criar Senha Hash
+        const salt = await bcrypt.genSalt(10);
+        const password_hash = await bcrypt.hash(senha as string, salt);
+        const userId = crypto.randomUUID();
 
-        if (authError) throw authError;
-
-        const userId = authData.user.id;
-
-        // 2. Criar Profile
+        // 2. Criar Profile em vez de usar Supabase Auth
         const { error: profileError } = await supabase.from('profiles').upsert({
             id: userId,
             full_name: nome,
             email: email,
             role: 'cliente',
+            password_hash,
             telefone: telefone || null,
             cpf: documento || null
         });

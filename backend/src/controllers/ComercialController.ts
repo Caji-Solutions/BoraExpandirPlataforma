@@ -1436,24 +1436,35 @@ class ComercialController {
             })
 
             try {
-                const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')
-                const areaClienteLink = `${frontendUrl}/cliente/contratos`
                 const contratoArquivoUrl = updatedData?.contrato_gerado_url || contrato.contrato_gerado_url
 
                 if (!contratoArquivoUrl) {
                     throw new Error('Contrato gerado nao encontrado para anexo no email.')
                 }
 
-                await EmailService.sendContratoEmail({
-                    to: emailDestino,
-                    clientName: contrato.cliente_nome || 'Cliente',
-                    areaClienteLink,
+                console.log(`[ComercialController] Iniciando envio para Autentique do contrato ${id}...`)
+                
+                const AutentiqueService = (await import('../services/AutentiqueService')).default
+                const autentiqueDoc = await AutentiqueService.createDocument(
+                    `Contrato: ${contrato.servico_nome || 'Assessoria'} - ${contrato.cliente_nome || 'Cliente'}`,
                     contratoArquivoUrl,
-                    servicoNome: contrato.servico_nome || 'Assessoria'
-                })
-            } catch (emailError) {
-                console.error('[ComercialController] Erro ao enviar email de contrato:', emailError)
-                return res.status(500).json({ message: 'Contrato finalizado, mas ocorreu um erro no envio do e-mail.' })
+                    contrato.cliente_nome || 'Cliente',
+                    emailDestino
+                )
+
+                // Salvar o ID do documento da Autentique nos dados (draft_dados json/jsonb) para rastreio
+                if (autentiqueDoc?.id) {
+                    const draftComAutentique = this.mergeDraftDados(draftSemErro, {
+                        autentique_document_id: autentiqueDoc.id
+                    })
+                    await ContratoServicoRepository.updateContrato(id, {
+                        draft_dados: draftComAutentique
+                    })
+                }
+
+            } catch (authError) {
+                console.error('[ComercialController] Erro ao enviar contrato via Autentique:', authError)
+                return res.status(500).json({ message: 'Contrato gerado, mas ocorreu um erro no envio para a Autentique.' })
             }
 
             const clienteStatus = contrato?.cliente?.status || null
