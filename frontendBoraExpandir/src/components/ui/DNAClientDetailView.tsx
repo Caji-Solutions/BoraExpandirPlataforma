@@ -50,7 +50,7 @@ export function DNAClientDetailView({
     const [loadingMembers, setLoadingMembers] = useState(false)
     const [selectedRequerimentoId, setSelectedRequerimentoId] = useState<string | undefined>(undefined)
     const [areaFilter, setAreaFilter] = useState<'todos' | 'juridico' | 'comercial' | 'administrativo'>('todos')
-    const [activeTab, setActiveTab] = useState<'timeline' | 'formularios' | 'comprovantes' | 'lead_notes'>('timeline')
+    const [activeTab, setActiveTab] = useState<'timeline' | 'formularios' | 'contrato_comprovantes' | 'notas'>('timeline')
     const [agendamentos, setAgendamentos] = useState<any[]>([])
     const [loadingAgendamentos, setLoadingAgendamentos] = useState(false)
     const [contratosServicos, setContratosServicos] = useState<any[]>([])
@@ -130,7 +130,7 @@ export function DNAClientDetailView({
     }, [client.id, client.true_id, client.nome])
 
     useEffect(() => {
-        if (activeTab === 'comprovantes') {
+        if (activeTab === 'contrato_comprovantes') {
             const fetchAgendamentos = async () => {
                 try {
                     setLoadingAgendamentos(true)
@@ -156,7 +156,7 @@ export function DNAClientDetailView({
             fetchAgendamentos()
             fetchContratos()
         }
-        if (activeTab === 'lead_notes') {
+        if (activeTab === 'notas') {
             const fetchLeadNotes = async () => {
                 try {
                     setLoadingLeadNotes(true)
@@ -171,8 +171,9 @@ export function DNAClientDetailView({
                 }
             }
             fetchLeadNotes()
+            fetchNotes()
         }
-    }, [activeTab, client.id, client.true_id])
+    }, [activeTab, client.id, client.true_id, fetchNotes])
 
     const toggleStage = (stageId: string) => {
         const next = new Set(expandedStages)
@@ -260,7 +261,10 @@ export function DNAClientDetailView({
 
     const currentStageIndex = CATEGORIAS_LIST.findIndex(cat => cat.id === client.categoria)
     const contratosAprovados = contratosServicos.filter((c: any) => c.assinatura_status === 'aprovado' && c.contrato_assinado_url)
-    const comprovantesContrato = contratosServicos.filter((c: any) => c.pagamento_comprovante_url)
+    const todosComprovantes = [
+        ...agendamentos.filter((a: any) => a.pagamento_status === 'aprovado' && a.comprovante_url).map(a => ({ ...a, tipo: 'Consultoria' })),
+        ...contratosServicos.filter((c: any) => c.pagamento_status === 'aprovado' && c.pagamento_comprovante_url).map(c => ({ ...c, tipo: 'Serviço', produto_nome: c.servico_nome || c.servico?.nome, data_referencia: c.pagamento_comprovante_upload_em || c.criado_em, comprovante_url: c.pagamento_comprovante_url }))
+    ].sort((a, b) => new Date(b.data_referencia || b.data_hora || b.created_at || 0).getTime() - new Date(a.data_referencia || a.data_hora || a.created_at || 0).getTime())
 
     return (
         <div className="p-8">
@@ -362,31 +366,31 @@ export function DNAClientDetailView({
                             <FileText className="h-4 w-4" />
                             Formulários
                         </button>
-                        {activeProfile?.role === 'comercial' && (
+                        {(activeProfile?.role === 'comercial' || activeProfile?.role === 'super_admin' || activeProfile?.role === 'administrativo') && (
                             <button
-                                onClick={() => setActiveTab('comprovantes')}
+                                onClick={() => setActiveTab('contrato_comprovantes')}
                                 className={cn(
                                     "px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
-                                    activeTab === 'comprovantes'
+                                    activeTab === 'contrato_comprovantes'
                                         ? "bg-background text-primary shadow-sm border border-border"
                                         : "text-muted-foreground hover:text-foreground"
                                 )}
                             >
                                 <Copy className="h-4 w-4" />
-                                Comprovantes/Contratos
+                                Contrato e Comprovantes
                             </button>
                         )}
                         <button
-                            onClick={() => setActiveTab('lead_notes')}
+                            onClick={() => setActiveTab('notas')}
                             className={cn(
                                 "px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
-                                activeTab === 'lead_notes'
+                                activeTab === 'notas'
                                     ? "bg-background text-amber-600 shadow-sm border border-border"
                                     : "text-muted-foreground hover:text-foreground"
                             )}
                         >
                             <StickyNote className="h-4 w-4" />
-                            Notas do Lead
+                            Notas
                         </button>
                     </div>
 
@@ -398,11 +402,11 @@ export function DNAClientDetailView({
                                     key={area}
                                     onClick={() => {
                                         setAreaFilter(area)
-                                        if (activeTab !== 'timeline') setActiveTab('timeline')
+                                        if (activeTab !== 'timeline' && activeTab !== 'notas') setActiveTab('timeline')
                                     }}
                                     className={cn(
                                         "px-3 py-1.5 rounded-lg text-xs font-bold transition-all capitalize",
-                                        areaFilter === area && activeTab === 'timeline'
+                                        areaFilter === area && (activeTab === 'timeline' || activeTab === 'notas')
                                             ? "bg-primary text-primary-foreground shadow-sm"
                                             : "text-muted-foreground hover:text-foreground hover:bg-muted"
                                     )}
@@ -570,33 +574,33 @@ export function DNAClientDetailView({
                             </div>
                         ) : activeTab === 'formularios' ? (
                             <ClientQuestionnaireAnswers clienteId={client.true_id || client.id} />
-                        ) : (
+                        ) : activeTab === 'contrato_comprovantes' ? (
                             <div className="bg-card border border-border rounded-2xl p-8 relative">
                                 <h3 className="text-xl font-bold text-foreground flex items-center gap-3 mb-8">
                                     <Copy className="h-6 w-6 text-primary" />
-                                    Comprovantes & Contratos
+                                    Contrato e Comprovantes
                                 </h3>
 
                                 <div className="space-y-8">
-                                    {/* Sub-sessão: Comprovantes */}
+                                    {/* Section 1: Comprovantes de Pagamento */}
                                     <section>
                                         <h4 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
                                             <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                                             Comprovantes de Pagamento
                                         </h4>
-                                        {loadingAgendamentos ? (
+                                        {(loadingAgendamentos || loadingContratos) ? (
                                             <div className="text-center p-8 text-muted-foreground animate-pulse text-sm">Carregando comprovantes...</div>
-                                        ) : agendamentos.filter(a => a.comprovante_url).length > 0 ? (
+                                        ) : todosComprovantes.length > 0 ? (
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {agendamentos.filter(a => a.comprovante_url).map(ag => (
-                                                    <div key={ag.id} className="bg-muted border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-primary/30 transition-all">
+                                                {todosComprovantes.map((item: any, idx) => (
+                                                    <div key={item.id || idx} className="bg-muted border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-primary/30 transition-all">
                                                         <div>
                                                             <div className="text-sm font-bold text-foreground flex items-center gap-2">
-                                                                Comprovante <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md uppercase tracking-tight">{ag.produto_nome || ag.servico_nome || 'Serviço'}</span>
+                                                                Comprovante <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md uppercase tracking-tight">{item.tipo}: {item.produto_nome || item.servico_nome || 'Serviço'}</span>
                                                             </div>
-                                                            <div className="text-xs text-muted-foreground mt-1">Ref: {formatDate(ag.data_hora || ag.data_agendamento)}</div>
+                                                            <div className="text-xs text-muted-foreground mt-1">Ref: {formatDate(item.data_referencia || item.data_hora || item.data_agendamento)}</div>
                                                         </div>
-                                                        <a href={ag.comprovante_url} target="_blank" rel="noopener noreferrer" className="p-2 bg-background border border-border rounded-lg shadow-sm hover:text-primary transition-all group-hover:scale-105 active:scale-95 text-xs font-bold flex items-center gap-2">
+                                                        <a href={item.comprovante_url} target="_blank" rel="noopener noreferrer" className="p-2 bg-background border border-border rounded-lg shadow-sm hover:text-primary transition-all group-hover:scale-105 active:scale-95 text-xs font-bold flex items-center gap-2">
                                                             <ExternalLink className="h-3 w-3" />
                                                             Ver
                                                         </a>
@@ -604,22 +608,22 @@ export function DNAClientDetailView({
                                                 ))}
                                             </div>
                                         ) : (
-                                            <div className="bg-muted/30 border border-dashed border-border/60 rounded-xl p-8 text-center bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAiPjwvcmVjdD4KPHBhdGggZD0iTTAgMEwyIDJNMCA0TDIgMk00IDBMMiAyTTQgNEwyIDIiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLW9wYWNpdHk9IjAuMDUiPjwvcGF0aD4KPC9zdmc+')]">
+                                            <div className="bg-muted/30 border border-dashed border-border/60 rounded-xl p-8 text-center">
                                                 <div className="flex justify-center mb-3">
                                                     <div className="w-12 h-12 rounded-full bg-background border shadow-sm flex items-center justify-center">
                                                         <FileText className="h-6 w-6 text-muted-foreground/30" />
                                                     </div>
                                                 </div>
-                                                <p className="text-sm font-medium text-muted-foreground">Nenhum comprovante atrelado aos agendamentos deste lead.</p>
+                                                <p className="text-sm font-medium text-muted-foreground">Nenhum comprovante confirmado pelo financeiro.</p>
                                             </div>
                                         )}
                                     </section>
 
-                                    {/* Sub-sessão: Contratos */}
+                                    {/* Section 2: Contratos */}
                                     <section>
                                         <h4 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2 pt-6 border-t border-border">
                                             <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                                            Contratos Firmados
+                                            Contratos
                                         </h4>
                                         {loadingContratos ? (
                                             <div className="text-center p-8 text-muted-foreground animate-pulse text-sm">Carregando contratos...</div>
@@ -641,106 +645,144 @@ export function DNAClientDetailView({
                                                 ))}
                                             </div>
                                         ) : (
-                                            <div className="bg-muted border border-dashed border-border/60 rounded-xl p-8 text-center bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAiPjwvcmVjdD4KPHBhdGggZD0iTTAgMEwyIDJNMCA0TDIgMk00IDBMMiAyTTQgNEwyIDIiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLW9wYWNpdHk9IjAuMDUiPjwvcGF0aD4KPC9zdmc+')]">
+                                            <div className="bg-muted border border-dashed border-border/60 rounded-xl p-8 text-center">
                                                 <div className="flex justify-center mb-3">
                                                     <div className="w-12 h-12 rounded-full bg-background border shadow-sm flex items-center justify-center">
                                                         <Copy className="h-6 w-6 text-muted-foreground/30" />
                                                     </div>
                                                 </div>
-                                                <p className="text-sm font-medium text-muted-foreground">Ainda não há contratos vinculados a este cliente.</p>
-                                            </div>
-                                        )}
-                                    </section>
-
-                                    <section>
-                                        <h4 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2 pt-6 border-t border-border">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                                            Comprovantes de Contrato
-                                        </h4>
-                                        {loadingContratos ? (
-                                            <div className="text-center p-8 text-muted-foreground animate-pulse text-sm">Carregando comprovantes...</div>
-                                        ) : comprovantesContrato.length > 0 ? (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {comprovantesContrato.map((contrato: any) => (
-                                                    <div key={contrato.id} className="bg-muted border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-primary/30 transition-all">
-                                                        <div>
-                                                            <div className="text-sm font-bold text-foreground flex items-center gap-2">
-                                                                Comprovante <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md uppercase tracking-tight">{contrato.servico_nome || contrato.servico?.nome || 'Serviço'}</span>
-                                                            </div>
-                                                            <div className="text-xs text-muted-foreground mt-1">Ref: {formatDate(contrato.pagamento_comprovante_upload_em || contrato.criado_em)}</div>
-                                                        </div>
-                                                        <a href={contrato.pagamento_comprovante_url} target="_blank" rel="noopener noreferrer" className="p-2 bg-background border border-border rounded-lg shadow-sm hover:text-primary transition-all group-hover:scale-105 active:scale-95 text-xs font-bold flex items-center gap-2">
-                                                            <ExternalLink className="h-3 w-3" />
-                                                            Ver
-                                                        </a>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="bg-muted border border-dashed border-border/60 rounded-xl p-8 text-center bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAiPjwvcmVjdD4KPHBhdGggZD0iTTAgMEwyIDJNMCA0TDIgMk00IDBMMiAyTTQgNEwyIDIiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLW9wYWNpdHk9IjAuMDUiPjwvcGF0aD4KPC9zdmc+')]">
-                                                <div className="flex justify-center mb-3">
-                                                    <div className="w-12 h-12 rounded-full bg-background border shadow-sm flex items-center justify-center">
-                                                        <FileText className="h-6 w-6 text-muted-foreground/30" />
-                                                    </div>
-                                                </div>
-                                                <p className="text-sm font-medium text-muted-foreground">Nenhum comprovante de contrato encontrado.</p>
+                                                <p className="text-sm font-medium text-muted-foreground">Ainda não há contratos assinados vinculados a este cliente.</p>
                                             </div>
                                         )}
                                     </section>
                                 </div>
                             </div>
-                        )}
-                        {activeTab === 'lead_notes' && (
+                        ) : activeTab === 'notas' && (
                             <div className="bg-card border border-border rounded-2xl p-8 relative">
-                                <h3 className="text-xl font-bold text-foreground flex items-center gap-3 mb-8">
-                                    <StickyNote className="h-6 w-6 text-amber-500" />
-                                    Notas do Lead
-                                </h3>
+                                <div className="flex items-center justify-between mb-8">
+                                    <h3 className="text-xl font-bold text-foreground flex items-center gap-3">
+                                        <StickyNote className="h-6 w-6 text-amber-500" />
+                                        Notas do Cliente
+                                    </h3>
+                                    <button 
+                                        onClick={() => setNoteStageId(noteStageId === 'general' ? null : 'general')}
+                                        className="text-sm font-bold bg-primary text-primary-foreground px-4 py-2 rounded-xl hover:bg-primary/90 transition-all flex items-center gap-2 shadow-sm"
+                                    >
+                                        <StickyNote className="h-4 w-4" />
+                                        Nova Nota
+                                    </button>
+                                </div>
 
-                                {loadingLeadNotes ? (
-                                    <div className="text-center p-12 text-muted-foreground animate-pulse text-sm">Carregando notas do lead...</div>
-                                ) : leadNotesData.length === 0 ? (
-                                    <div className="text-center p-12">
-                                        <StickyNote className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
-                                        <p className="text-muted-foreground font-medium">Nenhuma nota registrada como lead</p>
-                                        <p className="text-sm text-muted-foreground/70 mt-1">Notas adicionadas na fase de lead aparecerão aqui.</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {leadNotesData.map((note: any) => (
-                                            <div key={note.id} className="bg-muted/30 border border-border/50 rounded-xl p-4 text-sm relative group">
-                                                <div className="flex justify-between items-center mb-2 opacity-70">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="font-bold flex items-center gap-1.5">
-                                                            <User className="h-3 w-3" />
-                                                            {note.autor_nome || note.autor?.full_name || 'Usuário'}
-                                                        </span>
-                                                        <span className={cn("text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-tight", note.autor_setor ? "bg-gray-200 text-gray-700 dark:bg-neutral-700 dark:text-gray-300" : "bg-amber-100 text-amber-700")}>
-                                                            {note.autor_setor || 'lead'}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[10px]">
-                                                            {new Date(note.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                        </span>
-                                                        {note.autor_id === activeProfile?.id && (
+                                {noteStageId === 'general' && (
+                                    <form
+                                        onSubmit={(e) => {
+                                            handleAddNote(e)
+                                            setNoteStageId(null)
+                                        }}
+                                        className="mb-8 bg-muted/30 p-6 rounded-2xl border border-primary/20 animate-in zoom-in-95 duration-200 shadow-inner"
+                                    >
+                                        <textarea
+                                            autoFocus
+                                            value={newNote}
+                                            onChange={(e) => setNewNote(e.target.value)}
+                                            placeholder="Escreva uma nota geral sobre o cliente..."
+                                            className="w-full bg-card border border-border rounded-xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 min-h-[120px] resize-none shadow-sm"
+                                        />
+                                        <div className="flex justify-end gap-3 mt-4">
+                                            <button
+                                                type="button"
+                                                onClick={() => setNoteStageId(null)}
+                                                className="px-5 py-2.5 text-sm font-bold text-muted-foreground hover:bg-muted rounded-xl transition-all"
+                                            >
+                                                Cancelar
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                className="bg-primary text-primary-foreground px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-primary/90 shadow-lg transition-all active:scale-95"
+                                            >
+                                                Salvar Nota
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
+
+                                <div className="space-y-6">
+                                    {/* Unified Notes List */}
+                                    {loadingNotes || loadingLeadNotes ? (
+                                        <div className="text-center p-12 text-muted-foreground animate-pulse text-sm">Carregando todas as notas...</div>
+                                    ) : (
+                                        <>
+                                            {/* Combined notes from both sources */}
+                                            {[
+                                                ...notes.map(n => ({ ...n, type: 'process' })),
+                                                ...leadNotesData.map(n => ({
+                                                    id: n.id,
+                                                    text: n.texto,
+                                                    author: n.autor_nome || n.autor?.full_name || 'Usuário',
+                                                    area: n.autor_setor || 'lead',
+                                                    createdAt: n.created_at,
+                                                    autorId: n.autor_id,
+                                                    type: 'lead'
+                                                }))
+                                            ]
+                                            .filter(n => areaFilter === 'todos' || n.area === areaFilter)
+                                            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                                            .map((note) => (
+                                                <div key={note.id} className="bg-muted/30 border border-border/50 rounded-2xl p-5 text-sm relative group hover:border-primary/20 transition-all shadow-sm">
+                                                    <div className="flex justify-between items-center mb-3">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                                <User className="h-4 w-4" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-bold text-foreground flex items-center gap-2">
+                                                                    {note.author}
+                                                                    <span className={cn(
+                                                                        "text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider",
+                                                                        note.area === 'juridico' ? "bg-purple-100 text-purple-700" :
+                                                                        note.area === 'comercial' ? "bg-blue-100 text-blue-700" :
+                                                                        note.area === 'lead' ? "bg-amber-100 text-amber-700" :
+                                                                        "bg-emerald-100 text-emerald-700"
+                                                                    )}>
+                                                                        {note.area}
+                                                                    </span>
+                                                                    {note.type === 'process' && note.stageId && (
+                                                                        <span className="text-[9px] bg-muted px-2 py-0.5 rounded-md text-muted-foreground font-bold uppercase">
+                                                                            Etapa: {note.stageId}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="text-[10px] text-muted-foreground font-medium">
+                                                                    {new Date(note.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        {note.autorId === activeProfile?.id && (
                                                             <button
-                                                                onClick={() => handleDeleteLeadNote(note.id)}
-                                                                className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-600 transition-all"
+                                                                onClick={() => note.type === 'lead' ? handleDeleteLeadNote(note.id) : handleDeleteNote(note.id)}
+                                                                className="opacity-0 group-hover:opacity-100 p-2 text-muted-foreground hover:text-red-500 transition-all hover:bg-red-50 rounded-lg"
                                                                 title="Excluir nota"
                                                             >
-                                                                <Trash2 className="h-3 w-3" />
+                                                                <Trash2 className="h-4 w-4" />
                                                             </button>
                                                         )}
                                                     </div>
+                                                    <p className="text-foreground/90 leading-relaxed pl-11 border-l-2 border-primary/10 ml-4 py-1">
+                                                        {note.text}
+                                                    </p>
                                                 </div>
-                                                <p className="text-foreground/90 leading-relaxed italic border-l-2 border-amber-500/30 pl-3">
-                                                    "{note.texto}"
-                                                </p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                            ))}
+
+                                            {notes.length === 0 && leadNotesData.length === 0 && (
+                                                <div className="text-center p-16 bg-muted/20 rounded-3xl border border-dashed border-border">
+                                                    <StickyNote className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
+                                                    <p className="text-muted-foreground font-bold">Nenhuma nota registrada</p>
+                                                    <p className="text-sm text-muted-foreground/60 mt-2">Use o botão acima para adicionar a primeira nota deste cliente.</p>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>

@@ -257,6 +257,27 @@ class FormularioController {
                 isPago = true
             }
 
+            if (isPago && clienteId) {
+                const { data: clienteBanco } = await supabase
+                    .from('clientes')
+                    .select('status')
+                    .eq('id', clienteId)
+                    .single()
+
+                if (clienteBanco && String(clienteBanco.status).toUpperCase() === 'LEAD') {
+                    const { error: clienteUpdateError } = await supabase
+                        .from('clientes')
+                        .update({ status: 'cliente', atualizado_em: new Date().toISOString() })
+                        .eq('id', clienteId)
+                        
+                    if (clienteUpdateError) {
+                        console.error('[FormularioController] Erro ao converter lead em cliente:', clienteUpdateError)
+                    } else {
+                        console.log(`[FormularioController] Lead convertido em cliente após pagamento e formulário: ${clienteId}`)
+                    }
+                }
+            }
+
             // 7. Enviar email de boas-vindas com credenciais apenas se pago/confirmado
             let emailEnviado = false
             const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')

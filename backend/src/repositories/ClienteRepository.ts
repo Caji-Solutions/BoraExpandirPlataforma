@@ -681,6 +681,12 @@ class ClienteRepository {
                     etapa_atual,
                     responsavel_id
                 ),
+                agendamentos (
+                    id,
+                    produto_nome,
+                    status,
+                    data_hora
+                ),
                 requerimentos (*)
             `)
             .order('criado_em', { ascending: false })

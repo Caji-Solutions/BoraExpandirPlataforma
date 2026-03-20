@@ -100,6 +100,56 @@ class ContratoServicoRepository {
 
     return data
   }
+
+  /**
+   * Busca um contrato pelo ID do documento da Autentique.
+   */
+  async findByAutentiqueDocumentId(autentiqueDocumentId: string) {
+    const { data, error } = await supabase
+      .from('contratos_servicos')
+      .select('*')
+      .eq('autentique_document_id', autentiqueDocumentId)
+      .maybeSingle()
+
+    if (error) {
+      console.error('[ContratoServicoRepository] Erro ao buscar contrato por autentique_document_id:', error)
+      throw error
+    }
+
+    return data || null
+  }
+
+  /**
+   * Atualiza o status de assinatura e, opcionalmente, a URL do PDF assinado.
+   */
+  async updateAssinaturaStatus(id: string, status: string, signedUrl?: string | null) {
+    const payload: any = {
+      assinatura_status: status,
+      atualizado_em: new Date().toISOString()
+    }
+
+    if (status === 'aprovado') {
+      payload.assinatura_aprovado_em = new Date().toISOString()
+    }
+
+    if (signedUrl) {
+      payload.contrato_assinado_url = signedUrl
+    }
+
+    const { data, error } = await supabase
+      .from('contratos_servicos')
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('[ContratoServicoRepository] Erro ao atualizar status de assinatura:', error)
+      throw error
+    }
+
+    return data
+  }
 }
 
 export default new ContratoServicoRepository()

@@ -33,6 +33,10 @@ app.post('/webhooks/mercadopago', express.json(), (req, res) => {
   const ComercialController = require('./controllers/ComercialController').default
   ComercialController.handleMercadoPagoWebhook(req, res)
 })
+app.post('/webhooks/autentique', express.json(), (req, res) => {
+  const WebhookController = require('./controllers/WebhookController').default
+  WebhookController.handleAutentiqueWebhook(req, res)
+})
 app.use(express.json())
 app.use(morgan('dev'))
 

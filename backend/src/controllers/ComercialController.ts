@@ -1439,26 +1439,25 @@ class ComercialController {
                 const contratoArquivoUrl = updatedData?.contrato_gerado_url || contrato.contrato_gerado_url
 
                 if (!contratoArquivoUrl) {
-                    throw new Error('Contrato gerado nao encontrado para anexo no email.')
+                    throw new Error('Contrato gerado nao encontrado para envio.')
                 }
 
                 console.log(`[ComercialController] Iniciando envio para Autentique do contrato ${id}...`)
-                
+
                 const AutentiqueService = (await import('../services/AutentiqueService')).default
-                const autentiqueDoc = await AutentiqueService.createDocument(
+                const autentiqueDoc = await AutentiqueService.createDocumentWithCompanySignature(
                     `Contrato: ${contrato.servico_nome || 'Assessoria'} - ${contrato.cliente_nome || 'Cliente'}`,
                     contratoArquivoUrl,
                     contrato.cliente_nome || 'Cliente',
                     emailDestino
                 )
 
-                // Salvar o ID do documento da Autentique nos dados (draft_dados json/jsonb) para rastreio
+                // Salvar o ID do documento da Autentique na coluna dedicada para rastreio e webhook
                 if (autentiqueDoc?.id) {
-                    const draftComAutentique = this.mergeDraftDados(draftSemErro, {
-                        autentique_document_id: autentiqueDoc.id
-                    })
                     await ContratoServicoRepository.updateContrato(id, {
-                        draft_dados: draftComAutentique
+                        autentique_document_id: autentiqueDoc.id,
+                        empresa_assinado_em: new Date().toISOString(),
+                        atualizado_em: new Date().toISOString()
                     })
                 }
 
