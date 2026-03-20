@@ -247,7 +247,7 @@ class ClienteController {
       const supabase = (await import('../config/SupabaseClient')).supabase;
       const { data: cliente, error } = await supabase
         .from('clientes')
-        .select('perfil_unificado')
+        .select('perfil_unificado, id, status')
         .eq('id', clienteId)
         .maybeSingle();
 
@@ -256,11 +256,21 @@ class ClienteController {
         return res.status(500).json({ message: 'Erro ao buscar DNA', error: error.message });
       }
 
-      if (!cliente || !cliente.perfil_unificado) {
-        return res.status(200).json({ data: {} });
+      let responseData = {};
+      if (cliente && cliente.perfil_unificado) {
+        responseData = cliente.perfil_unificado.data || {};
+      }
+      
+      // Sincroniza em read-time com a tabela root clientes
+      if (cliente) {
+        responseData = {
+            ...responseData,
+            status: cliente.status,
+            cliente_id: cliente.id
+        }
       }
 
-      return res.status(200).json({ data: cliente.perfil_unificado.data || {} });
+      return res.status(200).json({ data: responseData });
     } catch (err: any) {
       console.error('[ClienteController] Erro inesperado getDNA:', err);
       return res.status(500).json({ message: 'Erro interno ao buscar DNA', error: err.message });
@@ -1555,7 +1565,7 @@ class ClienteController {
 
   async createLeadNote(req: any, res: any) {
     try {
-      const { leadId, texto, autorId } = req.body
+      const { leadId, texto, autorId, autorNome, autorSetor } = req.body
 
       if (!leadId || !texto) {
         return res.status(400).json({ message: 'leadId e texto são obrigatórios' })
@@ -1565,6 +1575,8 @@ class ClienteController {
         clienteId: leadId,
         etapa: 'lead_note',
         autorId: autorId || 'system',
+        autorNome,
+        autorSetor,
         texto
       })
 
@@ -1602,9 +1614,23 @@ class ClienteController {
   async deleteLeadNote(req: any, res: any) {
     try {
       const { noteId } = req.params
+      const userId = req.query.userId || req.body?.userId
 
       if (!noteId) {
         return res.status(400).json({ message: 'noteId é obrigatório' })
+      }
+
+      if (!userId) {
+        return res.status(400).json({ message: 'userId é obrigatório para deletar a nota' })
+      }
+
+      const nota = await JuridicoRepository.getNoteById(noteId)
+      if (!nota) {
+        return res.status(404).json({ message: 'Nota não encontrada' })
+      }
+
+      if (nota.autor_id !== userId && userId !== 'admin') {
+        return res.status(403).json({ message: 'Sem permissão para deletar esta nota' })
       }
 
       await JuridicoRepository.deleteNote(noteId)

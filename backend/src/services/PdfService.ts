@@ -2,12 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
-import libre from 'libreoffice-convert';
-import { promisify } from 'util';
+import ILovePDFApi from '@ilovepdf/ilovepdf-nodejs';
+import ILovePDFFile from '@ilovepdf/ilovepdf-nodejs/ILovePDFFile';
+import os from 'os';
 import { supabase } from '../config/SupabaseClient';
 import { formatCpfDisplay, formatPhoneDisplay } from '../utils/normalizers';
-
-const convertAsync = promisify(libre.convert);
 
 class PdfService {
     /**
@@ -57,18 +56,60 @@ class PdfService {
                 'data': payload.data || dataAtual
             });
 
-            const buf = doc.getZip().generate({
+            // Remover marcacoes (grifados) de todos os arquivos XML antes de exportar
+            const zipExport = doc.getZip();
+            for (const fileKey in zipExport.files) {
+                if (fileKey.endsWith('.xml')) {
+                    let xmlContent = zipExport.files[fileKey].asText();
+                    if (xmlContent.includes('w:highlight') || xmlContent.includes('FFFF00') || xmlContent.includes('ffff00')) {
+                        // Remove tags de grifado da formatacao dos runs
+                        xmlContent = xmlContent.replace(/<w:highlight[^>]*\/>/g, '');
+                        // Remove shading amarelo de paragrafos e runs (background color)
+                        xmlContent = xmlContent.replace(/<w:shd[^>]*w:fill="(FFFF00|ffff00)"[^>]*\/>/g, '');
+                        zipExport.file(fileKey, xmlContent);
+                    }
+                }
+            }
+
+            const buf = zipExport.generate({
                 type: 'nodebuffer',
                 compression: 'DEFLATE'
             });
 
-            console.log(`[PdfService] Convertendo DOCX para PDF usando LibreOffice...`);
+            console.log(`[PdfService] Convertendo DOCX para PDF usando ILovePDF...`);
             let pdfBuf: Buffer;
+            const tempDocxPath = path.join(os.tmpdir(), `temp_contrato_${Date.now()}.docx`);
+            
             try {
-                pdfBuf = await convertAsync(buf, '.pdf', undefined) as Buffer;
+                const ilovepdfPublicKey = process.env.ILOVE_PUBLIC_KEY;
+                const ilovepdfSecretKey = process.env.ILOVE_SECRET_KEY;
+                
+                if (!ilovepdfPublicKey || !ilovepdfSecretKey) {
+                    throw new Error('Chaves da API do ILovePDF (ILOVE_PUBLIC_KEY e ILOVE_SECRET_KEY) nao estao configuradas no .env');
+                }
+                
+                fs.writeFileSync(tempDocxPath, buf);
+
+                const instance = new ILovePDFApi(ilovepdfPublicKey, ilovepdfSecretKey);
+                const task = instance.newTask('officepdf');
+                
+                await task.start();
+                const file = new ILovePDFFile(tempDocxPath);
+                await task.addFile(file);
+                await task.process();
+                const pdfData = await task.download();
+
+                pdfBuf = Buffer.from(pdfData);
+                
             } catch (convErr) {
-                console.error('[PdfService] Erro ao converter para PDF:', convErr);
-                throw new Error('Falha na conversão para PDF. Verifique se o LibreOffice está instalado no sistema.');
+                console.error('[PdfService] Erro ao converter para PDF via ILovePDF:', convErr);
+                throw new Error('Falha na conversao para PDF via ILovePDF.');
+            } finally {
+                try {
+                    if (fs.existsSync(tempDocxPath)) fs.unlinkSync(tempDocxPath);
+                } catch (cleanupErr) {
+                    console.error('[PdfService] Falha ao limpar arquivo temporario:', cleanupErr);
+                }
             }
 
             const sanitize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');

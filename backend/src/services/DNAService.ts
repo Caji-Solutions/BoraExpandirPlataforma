@@ -10,8 +10,6 @@ const ROOT_COLUMNS_SYNC = [
     'nome',
     'email',
     'whatsapp',
-    'cpf',
-    'passaporte', // Not essentially on root depending on DB, but often updated
     'data_nascimento',
     'nacionalidade',
     'estado_civil'
@@ -25,11 +23,8 @@ const VALID_CLIENT_COLUMNS = [
     'nome',
     'email',
     'whatsapp',
-    'cpf',
     'foto_perfil'
-    // 'data_nascimento', 'nacionalidade', 'estado_civil' podem não estar no root.
-    // O banco ignoraria ou daria erro se enviássemos colunas inexistentes na tabela.
-    // Como confirmamos em check_schema/types, as essenciais são nome, email, whatsapp, cpf.
+    // 'cpf' nao existe como coluna na tabela clientes, informacoes de documento ficam no perfil_unificado
 ];
 
 export class DNAService {
@@ -59,6 +54,10 @@ export class DNAService {
             let dna: UnifiedDNA = cliente.perfil_unificado || { data: {}, metadata: {} };
             if (!dna.data) dna.data = {};
             if (!dna.metadata) dna.metadata = {};
+
+            // Sincroniza status e id reais da tabela raiz para dentro do DNA Unificado
+            dna.data.status = cliente.status;
+            dna.data.cliente_id = cliente.id;
 
             let dnaUpdated = false;
             let rootUpdatePayload: Record<string, any> = {};

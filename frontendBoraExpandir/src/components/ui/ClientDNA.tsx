@@ -19,6 +19,7 @@ export type ClientNote = {
     area: string
     createdAt: string
     stageId?: string
+    autorId?: string
 }
 
 // ... (ClientDNAData remains same)

@@ -13,7 +13,8 @@ import {
     AlertCircle,
     ArrowLeft,
     ChevronDown,
-    StickyNote
+    StickyNote,
+    Trash2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ClientDNAData, ClientNote, CATEGORIAS_LIST, formatDate } from './ClientDNA'
@@ -81,10 +82,11 @@ export function DNAClientDetailView({
                 const mappedNotes: ClientNote[] = result.data.map((n: any) => ({
                     id: n.id,
                     text: n.texto,
-                    author: n.autor?.full_name || 'Usuário',
-                    area: n.autor?.role || 'juridico',
+                    author: n.autor_nome || n.autor?.full_name || 'Usuário',
+                    area: n.autor_setor || n.autor?.role || 'juridico',
                     createdAt: n.created_at,
-                    stageId: n.etapa
+                    stageId: n.etapa,
+                    autorId: n.autor_id
                 }))
                 setNotes(mappedNotes)
             }
@@ -199,7 +201,9 @@ export function DNAClientDetailView({
                     processoId: client.processo_id,
                     etapa: stageId || noteStageId || undefined,
                     texto: newNote,
-                    autorId: activeProfile?.id
+                    autorId: activeProfile?.id,
+                    autorNome: activeProfile?.full_name,
+                    autorSetor: activeProfile?.role
                 })
             })
 
@@ -209,10 +213,11 @@ export function DNAClientDetailView({
                 const note: ClientNote = {
                     id: n.id,
                     text: n.texto,
-                    author: n.autor?.full_name || 'Usuário',
-                    area: n.autor?.role || 'juridico',
+                    author: n.autor_nome || n.autor?.full_name || 'Usuário',
+                    area: n.autor_setor || n.autor?.role || 'juridico',
                     createdAt: n.created_at,
-                    stageId: n.etapa
+                    stageId: n.etapa,
+                    autorId: n.autor_id
                 }
                 setNotes([note, ...notes])
                 setNewNote('')
@@ -220,6 +225,36 @@ export function DNAClientDetailView({
             }
         } catch (err) {
             console.error('Erro ao salvar nota:', err)
+        }
+    }
+
+    const handleDeleteNote = async (noteId: string) => {
+        try {
+            const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
+            const response = await fetch(`${baseUrl}/juridico/notas/${noteId}?userId=${activeProfile?.id}`, { method: 'DELETE' })
+            if (response.ok) {
+                setNotes(notes.filter(n => n.id !== noteId))
+            } else {
+                const errorData = await response.json()
+                alert(errorData.message || 'Erro ao deletar nota da timeline')
+            }
+        } catch (err) {
+            console.error('Erro ao deletar nota da timeline:', err)
+        }
+    }
+
+    const handleDeleteLeadNote = async (noteId: string) => {
+        try {
+            const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
+            const response = await fetch(`${baseUrl}/cliente/lead-notas/${noteId}?userId=${activeProfile?.id}`, { method: 'DELETE' })
+            if (response.ok) {
+                setLeadNotesData(prev => prev.filter(n => n.id !== noteId))
+            } else {
+                const errData = await response.json()
+                alert(errData.message || 'Erro ao deletar nota do lead')
+            }
+        } catch (err) {
+            console.error('Erro ao deletar nota do lead:', err)
         }
     }
 
@@ -494,7 +529,7 @@ export function DNAClientDetailView({
                                                     {(stageNotes.length > 0 && expandedStages.has(stage.id)) && (
                                                         <div className="mt-3 space-y-3 animate-in slide-in-from-top-2 duration-300">
                                                             {stageNotes.map(note => (
-                                                                <div key={note.id} className="bg-muted/30 border border-border/50 rounded-xl p-4 text-sm relative">
+                                                                <div key={note.id} className="bg-muted/30 border border-border/50 rounded-xl p-4 text-sm relative group">
                                                                     <div className="flex justify-between items-center mb-2 opacity-70">
                                                                         <div className="flex items-center gap-3">
                                                                             <span className="font-bold flex items-center gap-1.5"><User className="h-3 w-3" /> {note.author}</span>
@@ -507,7 +542,18 @@ export function DNAClientDetailView({
                                                                                 {note.area}
                                                                             </span>
                                                                         </div>
-                                                                        <span className="text-[10px]">{new Date(note.createdAt).toLocaleDateString('pt-BR')}</span>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-[10px]">{new Date(note.createdAt).toLocaleDateString('pt-BR')}</span>
+                                                                            {note.autorId === activeProfile?.id && (
+                                                                                <button
+                                                                                    onClick={() => handleDeleteNote(note.id)}
+                                                                                    className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-600 transition-all"
+                                                                                    title="Excluir nota"
+                                                                                >
+                                                                                    <Trash2 className="h-4 w-4" />
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
                                                                     <p className="text-foreground/90 leading-relaxed italic border-l-2 border-primary/20 pl-3">
                                                                         "{note.text}"
@@ -662,20 +708,31 @@ export function DNAClientDetailView({
                                 ) : (
                                     <div className="space-y-4">
                                         {leadNotesData.map((note: any) => (
-                                            <div key={note.id} className="bg-muted/30 border border-border/50 rounded-xl p-4 text-sm">
+                                            <div key={note.id} className="bg-muted/30 border border-border/50 rounded-xl p-4 text-sm relative group">
                                                 <div className="flex justify-between items-center mb-2 opacity-70">
                                                     <div className="flex items-center gap-3">
                                                         <span className="font-bold flex items-center gap-1.5">
                                                             <User className="h-3 w-3" />
-                                                            {note.autor?.full_name || 'Usuário'}
+                                                            {note.autor_nome || note.autor?.full_name || 'Usuário'}
                                                         </span>
-                                                        <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-tight bg-amber-100 text-amber-700">
-                                                            lead
+                                                        <span className={cn("text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-tight", note.autor_setor ? "bg-gray-200 text-gray-700 dark:bg-neutral-700 dark:text-gray-300" : "bg-amber-100 text-amber-700")}>
+                                                            {note.autor_setor || 'lead'}
                                                         </span>
                                                     </div>
-                                                    <span className="text-[10px]">
-                                                        {new Date(note.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px]">
+                                                            {new Date(note.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                        {note.autor_id === activeProfile?.id && (
+                                                            <button
+                                                                onClick={() => handleDeleteLeadNote(note.id)}
+                                                                className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-600 transition-all"
+                                                                title="Excluir nota"
+                                                            >
+                                                                <Trash2 className="h-3 w-3" />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <p className="text-foreground/90 leading-relaxed italic border-l-2 border-amber-500/30 pl-3">
                                                     "{note.texto}"

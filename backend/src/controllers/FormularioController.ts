@@ -144,14 +144,13 @@ class FormularioController {
 
             if (clienteExistente) {
                 clienteId = clienteExistente.id
-                // Atualizar dados do cliente existente
+                // Atualizar dados do cliente existente sem tocar no seu status atual
                 const { error: updateError } = await supabase
                     .from('clientes')
                     .update({
                         nome: nome_completo,
                         email,
                         whatsapp,
-                        status: 'cliente',
                         stage: 'formularios',
                         atualizado_em: new Date().toISOString()
                     })
@@ -162,23 +161,24 @@ class FormularioController {
                     console.log('[FormularioController] Cliente atualizado com sucesso:', clienteId)
                 }
             } else {
-                // Criar novo registro na tabela clientes
-                const { data: novoCliente, error: clienteError } = await supabase
+                // Novo cliente (inicia como LEAD até confirmação financeira)
+                const { data: newCliente, error: createError } = await supabase
                     .from('clientes')
                     .insert([{
                         nome: nome_completo,
                         email,
                         whatsapp,
-                        status: 'cliente',
-                        stage: 'formularios'
+                        status: 'LEAD',
+                        stage: 'formularios',
+                        perfil_unificado: { data: {}, metadata: {} }
                     }])
-                    .select()
+                    .select('id')
                     .single()
 
-                if (clienteError) {
-                    console.error('[FormularioController] Erro ao criar cliente:', clienteError)
+                if (createError) {
+                    console.error('[FormularioController] Erro ao criar cliente:', createError)
                 } else {
-                    clienteId = novoCliente.id
+                    clienteId = newCliente.id
                 }
             }
 
