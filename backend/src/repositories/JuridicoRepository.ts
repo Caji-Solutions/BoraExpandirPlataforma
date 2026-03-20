@@ -1,5 +1,6 @@
 import NotificationService from '../services/NotificationService'
 import { supabase } from '../config/SupabaseClient'
+import { DocumentStatus } from '../constants/DocumentStatus'
 
 // Interface do funcionário jurídico
 interface FuncionarioJuridico {
@@ -981,7 +982,7 @@ class JuridicoRepository {
             const { data: updatedDoc, error: err } = await supabase
                 .from('documentos')
                 .update({
-                    status: 'PENDING',
+                    status: DocumentStatus.PENDING,
                     solicitado_pelo_juridico: params.solicitado_pelo_juridico ?? true,
                     atualizado_em: new Date().toISOString()
                 })
@@ -1001,7 +1002,7 @@ class JuridicoRepository {
                     processo_id: params.processoId || null,
                     dependente_id: dependenteId,
                     requerimento_id: params.requerimentoId || null,
-                    status: 'PENDING',
+                    status: DocumentStatus.PENDING,
                     nome_original: params.tipo,
                     nome_arquivo: params.tipo,
                     storage_path: 'pending',
@@ -1126,7 +1127,7 @@ class JuridicoRepository {
                             tipo: 'Anexo de Requerimento',
                             processo_id: params.processoId || null,
                             requerimento_id: requirementId,
-                            status: 'ANALYZING', // Já enviado pelo jurídico
+                            status: DocumentStatus.ANALYZING, // Já enviado pelo jurídico
                             nome_original: file.originalname,
                             nome_arquivo: fileName,
                             storage_path: filePath,

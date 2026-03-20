@@ -1,4 +1,5 @@
 import { supabase } from '../config/SupabaseClient'
+import { DocumentStatus } from '../constants/DocumentStatus'
 
 class TraducoesRepository {
   async getOrcamentos() {
@@ -6,7 +7,7 @@ class TraducoesRepository {
     const { data: documentos, error: docError } = await supabase
       .from('documentos')
       .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id')
-      .in('status', ['solicitado', 'WAITING_TRANSLATION_QUOTE', 'em_analise', 'disponivel'])
+      .in('status', [DocumentStatus.PENDING, DocumentStatus.WAITING_TRANSLATION_QUOTE, DocumentStatus.ANALYZING, 'disponivel'])
       .order('criado_em', { ascending: false })
 
     if (docError) {
@@ -108,7 +109,7 @@ class TraducoesRepository {
     // 3. Atualizar o status do documento para liberar visualização/pagamento pro cliente
     await supabase
       .from('documentos')
-      .update({ status: 'WAITING_QUOTE_APPROVAL' })
+      .update({ status: DocumentStatus.WAITING_QUOTE_APPROVAL })
       .eq('id', dados.documentoId)
 
     return orcamento
@@ -157,7 +158,7 @@ class TraducoesRepository {
     // 2. Liberar para o cliente pagar
     const { error: docError } = await supabase
       .from('documentos')
-      .update({ status: 'WAITING_QUOTE_APPROVAL' })
+      .update({ status: DocumentStatus.WAITING_QUOTE_APPROVAL })
       .eq('id', dados.documentoId)
 
     if (docError) {
@@ -174,7 +175,7 @@ class TraducoesRepository {
     // 1. Atualizar o status de todos os orçamentos para 'aprovado'
     const { data: orcamentos, error: orcError } = await supabase
       .from('orcamentos')
-      .update({ status: 'aprovado' })
+      .update({ status: DocumentStatus.APPROVED })
       .in('id', ids)
       .select('documento_id, observacoes')
 
@@ -202,7 +203,7 @@ class TraducoesRepository {
       const orcamento = orcamentos.find(o => o.documento_id === doc.id)
       const isApostille = doc.status === 'ANALYZING_APOSTILLE_PAYMENT' || orcamento?.observacoes?.includes('Apostilamento')
       
-      const targetStatus = isApostille ? 'EXECUTING_APOSTILLE' : 'EXECUTING_TRANSLATION'
+      const targetStatus = isApostille ? DocumentStatus.EXECUTING_APOSTILLE : DocumentStatus.EXECUTING_TRANSLATION
 
       console.log(`[TraducoesRepository.aprovarOrcamento] Atualizando status do doc ${doc.id} para ${targetStatus}`);
 
@@ -228,7 +229,7 @@ class TraducoesRepository {
     const { data: documentos, error: docError } = await supabase
       .from('documentos')
       .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id, traducao_url, traducao_storage_path, traducao_nome_original')
-      .in('status', ['EXECUTING_TRANSLATION'])
+      .in('status', [DocumentStatus.EXECUTING_TRANSLATION])
       .order('criado_em', { ascending: true })
 
     if (docError) {
@@ -269,7 +270,7 @@ class TraducoesRepository {
     const { data: documentos, error: docError } = await supabase
       .from('documentos')
       .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id, traducao_url, traducao_storage_path, traducao_nome_original')
-      .in('status', ['APPROVED', 'ANALYZING_TRANSLATION'])
+      .in('status', [DocumentStatus.APPROVED, DocumentStatus.ANALYZING_TRANSLATION])
       .order('atualizado_em', { ascending: false })
 
     if (docError) {
@@ -338,7 +339,7 @@ class TraducoesRepository {
     const { data: doc, error: updateError } = await supabase
       .from('documentos')
       .update({
-        status: 'ANALYZING_TRANSLATION',
+        status: DocumentStatus.ANALYZING_TRANSLATION,
         traducao_url: publicUrl,
         traducao_storage_path: dados.filePath,
         traducao_nome_original: dados.nomeOriginal,
@@ -407,7 +408,7 @@ class TraducoesRepository {
     // 4. Update document status to indicate it's waiting for payment verification
     await supabase
       .from('documentos')
-      .update({ status: 'ANALYZING_TRANSLATION_PAYMENT' })
+      .update({ status: DocumentStatus.ANALYZING_TRANSLATION_PAYMENT })
       .eq('id', orcamento.documento_id)
 
     return orcamento

@@ -115,7 +115,9 @@ const statusConfig: Record<Document['status'], {
 export function DocumentModal({ document, isOpen, onClose }: DocumentModalProps) {
   if (!isOpen || !document) return null
 
-  const config = statusConfig[document.status]
+  // Normalize status to lowercase to match statusConfig keys
+  const statusKey = document.status.toLowerCase() as keyof typeof statusConfig
+  const config = statusConfig[statusKey] || statusConfig.pending
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">

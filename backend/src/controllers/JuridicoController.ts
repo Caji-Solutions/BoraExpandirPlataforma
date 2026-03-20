@@ -347,8 +347,7 @@ class JuridicoController {
     // FORMULÁRIOS DO JURÍDICO (enviados para clientes)
     // =============================================
 
-    // Mocked funcionario juridico ID (will be replaced by auth middleware later)
-    private MOCKED_FUNCIONARIO_JURIDICO_ID = '99b8bc2e-75ed-49dd-b23a-b34146b80647'
+    // Métodos removidos: MOCKED_FUNCIONARIO_JURIDICO_ID foi substituído pelo authMiddleware
 
     // POST /juridico/formularios - Upload document from juridico to client
     async uploadFormularioJuridico(req: any, res: any) {
@@ -357,7 +356,7 @@ class JuridicoController {
             const file = req.file
 
             // TODO: Get from auth middleware when implemented
-            const funcionarioJuridicoId = req.body.funcionarioJuridicoId || this.MOCKED_FUNCIONARIO_JURIDICO_ID
+            const funcionarioJuridicoId = req.userId
 
             console.log('========== UPLOAD FORMULARIO JURIDICO DEBUG ==========')
             console.log('funcionarioJuridicoId:', funcionarioJuridicoId)
@@ -553,7 +552,7 @@ class JuridicoController {
             const { clienteId, processoId, etapa, texto, autorNome, autorSetor } = req.body
             
             // TODO: Pegar do middleware de auth
-            const autorId = req.body.autorId || this.MOCKED_FUNCIONARIO_JURIDICO_ID
+            const autorId = req.userId
 
             console.log('========== JURIDICO CREATE NOTE DEBUG ==========')
             console.log('clienteId:', clienteId)
@@ -621,7 +620,7 @@ class JuridicoController {
     async deleteNote(req: any, res: any) {
         try {
             const { noteId } = req.params
-            const userId = req.query.userId || req.body?.userId
+            const userId = req.userId
 
             if (!noteId) {
                 return res.status(400).json({ message: 'noteId é obrigatório' })
@@ -666,7 +665,7 @@ class JuridicoController {
             }
 
             // TODO: Pegar do middleware de auth
-            const criadorId = req.body.criadorId || this.MOCKED_FUNCIONARIO_JURIDICO_ID
+            const criadorId = req.userId
 
             const documento = await JuridicoRepository.solicitarDocumento({
                 clienteId,
@@ -706,7 +705,7 @@ class JuridicoController {
             }
 
             // TODO: Pegar do middleware de auth
-            const criadorId = req.body.criadorId || this.MOCKED_FUNCIONARIO_JURIDICO_ID
+            const criadorId = req.userId
 
             // Parse documentosAcoplados if it's a string (from FormData)
             let parsedDocs = []
@@ -810,7 +809,7 @@ class JuridicoController {
             const { clienteId, respostas, observacoes, servicoId } = req.body
             
             // TODO: Pegar do middleware de auth
-            const responsavelId = req.body.responsavelId || this.MOCKED_FUNCIONARIO_JURIDICO_ID
+            const responsavelId = req.userId
 
             if (!clienteId || !respostas) {
                 return res.status(400).json({ 

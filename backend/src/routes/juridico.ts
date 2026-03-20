@@ -1,8 +1,12 @@
 import { Router, Request } from 'express'
 import multer, { FileFilterCallback } from 'multer'
 import JuridicoController from '../controllers/JuridicoController'
+import { authMiddleware } from '../middlewares/auth'
 
 const juridico = Router()
+
+// Todas as rotas do jurídico requerem autenticação
+juridico.use(authMiddleware)
 
 // Configuração do multer para armazenar em memória (buffer)
 const storage = multer.memoryStorage()

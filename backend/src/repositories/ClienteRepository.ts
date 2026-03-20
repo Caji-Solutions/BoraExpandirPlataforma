@@ -1,6 +1,7 @@
 import NotificationService from '../services/NotificationService'
 import { supabase } from '../config/SupabaseClient'
 import type { ClienteDTO } from '../types/parceiro';
+import { DocumentStatus } from '../constants/DocumentStatus'
 
 interface UploadDocumentParams {
     filePath: string
@@ -25,7 +26,7 @@ interface CreateDocumentoParams {
     publicUrl?: string
     contentType?: string
     tamanho?: number
-    status?: 'PENDING' | 'ANALYZING' | 'WAITING_APOSTILLE' | 'ANALYZING_APOSTILLE' | 'WAITING_TRANSLATION' | 'ANALYZING_TRANSLATION' | 'WAITING_TRANSLATION_QUOTE' | 'WAITING_QUOTE_APPROVAL' | 'APPROVED' | 'REJECTED'
+    status?: DocumentStatus
     dependenteId?: string
     solicitado_pelo_juridico?: boolean
 }
@@ -42,7 +43,7 @@ interface DocumentoRecord {
     public_url: string | null
     content_type: string | null
     tamanho: number | null
-    status: 'PENDING' | 'ANALYZING' | 'WAITING_APOSTILLE' | 'ANALYZING_APOSTILLE' | 'WAITING_TRANSLATION' | 'ANALYZING_TRANSLATION' | 'WAITING_TRANSLATION_QUOTE' | 'WAITING_QUOTE_APPROVAL' | 'APPROVED' | 'REJECTED'
+    status: DocumentStatus
     motivo_rejeicao: string | null
     analisado_por: string | null
     analisado_em: string | null
@@ -289,7 +290,7 @@ class ClienteRepository {
                 public_url: params.publicUrl || null,
                 content_type: params.contentType || null,
                 tamanho: params.tamanho || null,
-                status: params.status || 'PENDING',
+                status: params.status || DocumentStatus.PENDING,
                 dependente_id: params.dependenteId || null,
                 solicitado_pelo_juridico: params.solicitado_pelo_juridico || false,
                 atualizado_em: new Date().toISOString()
@@ -435,7 +436,7 @@ class ClienteRepository {
             publicUrl?: string
             contentType?: string
             tamanho?: number
-            status: 'ANALYZING' | 'ANALYZING_APOSTILLE' | 'ANALYZING_TRANSLATION'
+            status: DocumentStatus.ANALYZING | DocumentStatus.ANALYZING_APOSTILLE | DocumentStatus.ANALYZING_TRANSLATION
         }
     ): Promise<DocumentoRecord> {
         const { data, error } = await supabase
@@ -506,14 +507,27 @@ class ClienteRepository {
         publicUrl: string
         contentType: string
         tamanho: number
+        funcionarioJuridicoId?: string
     }): Promise<any> {
-        // Mocked ID for client uploads (or system uploads)
-        const SYSTEM_JURIDICO_ID = '41f21e5c-dd93-4592-9470-e043badc3a18'
+        // Se não foi passado um ID, tentamos buscar o responsável pelo processo
+        let funcionarioId = params.funcionarioJuridicoId
+
+        if (!funcionarioId && params.processoId) {
+            const { data: processo } = await supabase
+                .from('processos')
+                .select('responsavel_id')
+                .eq('id', params.processoId)
+                .single()
+            
+            if (processo?.responsavel_id) {
+                funcionarioId = processo.responsavel_id
+            }
+        }
 
         const { data, error } = await supabase
-            .from('formularios_juridico') // Changed from 'formularios'
+            .from('formularios_juridico')
             .insert([{
-                funcionario_juridico_id: SYSTEM_JURIDICO_ID,
+                funcionario_juridico_id: funcionarioId || null,
                 cliente_id: params.clienteId,
                 membro_id: params.memberId,
                 processo_id: params.processoId,

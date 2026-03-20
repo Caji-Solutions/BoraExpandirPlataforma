@@ -1,3 +1,4 @@
+import { DocumentStatus } from '../constants/DocumentStatus';
 import type { ClienteDTO } from '../types/parceiro';
 import { supabase } from '../config/SupabaseClient';
 import bcrypt from 'bcryptjs';
@@ -391,111 +392,122 @@ class ClienteController {
 
   async register(req: any, res: any) {
     try {
-      const { nome, email, whatsapp, parceiro_id, status, documento, endereco } = req.body
+      const { nome, email, whatsapp, parceiro_id, documento, endereco } = req.body
       const whatsappNormalizado = normalizePhone(whatsapp)
       const cpfNormalizado = normalizeCpf(documento || req.body.cpf)
+
+      if (!nome || !whatsappNormalizado || !email) {
+        return res.status(400).json({ message: 'Nome, E-mail e WhatsApp são obrigatórios para registro completo' })
+      }
+
+      const supabase = (await import('../config/SupabaseClient')).supabase;
+      const normalizedEmail = email.trim().toLowerCase();
+      
+      console.log('[ClienteController.register] Iniciando registro completo:', { nome, normalizedEmail });
+
+      // 1. Verificar se o cliente já existe na tabela 'clientes'
+      const { data: existingCliente } = await supabase
+        .from('clientes')
+        .select('id, email')
+        .ilike('email', normalizedEmail)
+        .maybeSingle();
+
+      let usuarioId = existingCliente?.id;
+      let tempPassword = Math.random().toString(36).substring(2, 10);
+      const salt = await bcrypt.genSalt(10);
+      const password_hash = await bcrypt.hash(tempPassword, salt);
+      
+      // 2. Lógica de Profile (Auth)
+      const { data: profileData } = await supabase.from('profiles').select('id').ilike('email', normalizedEmail).maybeSingle();
+      
+      if (profileData && profileData.id) {
+          usuarioId = profileData.id;
+          console.log('[ClienteController.register] Atualizando senha de profile existente:', usuarioId);
+          await supabase.from('profiles').update({ 
+            password_hash, 
+            cpf: cpfNormalizado || undefined, 
+            telefone: whatsappNormalizado || undefined 
+          }).eq('id', usuarioId);
+      } else {
+          if (!usuarioId) usuarioId = crypto.randomUUID();
+          
+          console.log('[ClienteController.register] Criando novo profile (Auth):', usuarioId);
+          const { error: insertError } = await supabase.from('profiles').insert({
+              id: usuarioId,
+              full_name: nome,
+              email: normalizedEmail,
+              role: 'cliente',
+              password_hash,
+              cpf: cpfNormalizado || null,
+              telefone: whatsappNormalizado || null
+          });
+
+          if (insertError) {
+              console.error('Erro ao criar profile:', insertError.message);
+              return res.status(400).json({ message: 'Erro ao criar perfil de acesso' });
+          }
+      }
+
+      // 3. Upsert na tabela clientes (Apenas colunas válidas)
+      const clienteData: any = {
+        id: usuarioId,
+        nome,
+        email: normalizedEmail,
+        whatsapp: whatsappNormalizado,
+        parceiro_id: parceiro_id || null,
+        status: req.body.status || 'cliente'
+      }
+
+      const createdData = await ClienteRepository.register(clienteData);
+
+      return res.status(201).json({
+        ...createdData,
+        message: 'Cliente registrado com sucesso e acesso liberado',
+        loginInfo: {
+          email: normalizedEmail,
+          password: tempPassword
+        }
+      })
+    } catch (error: any) {
+      console.error('Erro no registro completo:', error)
+      return res.status(500).json({ message: 'Erro interno ao registrar cliente', error: error.message })
+    }
+  }
+
+  async registerLead(req: any, res: any) {
+    try {
+      const { nome, email, whatsapp, parceiro_id, criado_por, criado_por_nome } = req.body
+      const whatsappNormalizado = normalizePhone(whatsapp)
 
       if (!nome || !whatsappNormalizado) {
         return res.status(400).json({ message: 'Nome e WhatsApp são obrigatórios' })
       }
 
-      const supabase = (await import('../config/SupabaseClient')).supabase;
-      
-      const normalizedEmail = email ? email.trim().toLowerCase() : `lead_${Date.now()}@temp.com`;
-      console.log('ClienteController.register - Iniciando busca por e-mail (normalizado):', normalizedEmail);
-      
-      // 1. Verificar se o cliente já existe na tabela 'clientes' (Insensível a maiúsculas)
-      const { data: existingCliente, error: clienteError } = await supabase
-        .from('clientes')
-        .select('id, email, status')
-        .ilike('email', normalizedEmail)
-        .maybeSingle();
+      console.log('[ClienteController.registerLead] Criando Lead (Apenas Clientes):', { nome, email });
 
-      if (clienteError) {
-         console.error('ClienteController.register - Erro ao buscar na tabela clientes:', clienteError);
-      }
-
-      console.log('ClienteController.register - Resultado da busca:', existingCliente);
-
-      let usuarioId = existingCliente?.id;
-      let tempPassword = Math.random().toString(36).substring(2, 10);
-      let isNewUser = !usuarioId;
-      
-      console.log('ClienteController.register - Detalhes da busca na tabela [clientes]:', {
-        encontrado: !!existingCliente,
-        id: existingCliente?.id,
-        status_atual: existingCliente?.status,
-        isNewUser
-      })
-
-      if (isNewUser) {
-        console.log('========== REGISTRO DE NOVO USUÁRIO ==========')
-        console.log('Email:', normalizedEmail)
-        console.log('Senha Temporária Gerada:', tempPassword)
-        console.log('==============================================')
-        const salt = await bcrypt.genSalt(10);
-        const password_hash = await bcrypt.hash(tempPassword, salt);
-        
-        // Verificar se já existe no profiles
-        const { data: profileData } = await supabase.from('profiles').select('id').ilike('email', normalizedEmail).maybeSingle();
-        
-        if (profileData && profileData.id) {
-            usuarioId = profileData.id;
-            isNewUser = false; // Tem profile, então não criamos um novo
-            console.log('ClienteController.register - User ID encontrado via profiles:', usuarioId);
-            // Atualizar senha por segurança
-            await supabase.from('profiles').update({ password_hash }).eq('id', usuarioId);
-        } else {
-            // Gerar novo ID
-            usuarioId = crypto.randomUUID();
-            console.log('ClienteController.register - Novo ID gerado para profile:', usuarioId);
-            
-            // Criar profile básico com a senha
-            const { error: insertError } = await supabase.from('profiles').insert({
-                id: usuarioId,
-                full_name: nome,
-                email: normalizedEmail,
-                role: 'cliente',
-                password_hash
-            });
-            if (insertError) {
-                console.error('Erro fatal ao criar profile:', insertError.message);
-                return res.status(400).json({ message: insertError.message });
-            }
-        }
-
-        if (!usuarioId) {
-            return res.status(500).json({ message: 'Falha ao determinar ID do perfil do cliente.' });
-        }
-      }
-
-      // 3. Upsert na tabela clientes (usando email como chave de conflito no repositório)
-      const clienteData: any = {
-        id: usuarioId || require('crypto').randomUUID(), // Mantendo o vínculo com Auth ou garantindo um ID
+      const leadData = {
+        id: crypto.randomUUID(),
         nome,
-        email: normalizedEmail,
+        email: email ? String(email).trim().toLowerCase() : null,
         whatsapp: whatsappNormalizado,
         parceiro_id: parceiro_id || null,
-        status: status || 'cliente',
-        cpf: cpfNormalizado,
-        endereco: endereco || null
+        status: 'LEAD',
+        criado_por: criado_por || null,
+        criado_por_nome: criado_por_nome || null,
       }
 
-      const createdData = await ClienteRepository.register(clienteData);
-
-      console.log('ClienteController.register - Registro em [clientes] concluído com sucesso');
+      const createdData = await ClienteRepository.register(leadData as any)
 
       return res.status(201).json({
         ...createdData,
-        message: 'Registro de cliente processado com sucesso',
-        loginInfo: {
-          email: normalizedEmail,
-          password: isNewUser || normalizedEmail.startsWith('lead_') ? tempPassword : 'Usa sua senha cadastrada' // Se for lead sem email real, sempre mostramos a senha gerada
-        }
+        message: 'Lead registrado com sucesso'
       })
     } catch (error: any) {
-      console.error('Erro no registro de cliente:', error)
-      return res.status(500).json({ message: 'Erro interno ao registrar cliente', error: error.message })
+      console.error('Erro ao registrar lead:', error)
+      return res.status(500).json({
+        message: 'Erro ao registrar lead',
+        error: error.message
+      })
     }
   }
   async AttStatusClientebyWpp(req: any, res: any) {
@@ -598,11 +610,11 @@ class ClienteController {
         const docs = await ClienteRepository.getDocumentosByClienteId(clienteId);
         const docAtual = docs.find(d => d.id === documentoId);
 
-        let novoStatus: 'ANALYZING' | 'ANALYZING_APOSTILLE' | 'ANALYZING_TRANSLATION' = 'ANALYZING';
+        let novoStatus: DocumentStatus = DocumentStatus.ANALYZING;
         if (docAtual?.status === 'WAITING_APOSTILLE') {
-          novoStatus = 'ANALYZING_APOSTILLE';
+          novoStatus = DocumentStatus.ANALYZING_APOSTILLE;
         } else if (docAtual?.status === 'WAITING_TRANSLATION') {
-          novoStatus = 'ANALYZING_TRANSLATION';
+          novoStatus = DocumentStatus.ANALYZING_TRANSLATION;
         }
 
         documentoRecord = await ClienteRepository.updateDocumentoFile(documentoId, {
@@ -626,7 +638,7 @@ class ClienteController {
           publicUrl: uploadResult.publicUrl,
           contentType: file.mimetype,
           tamanho: file.size,
-          status: 'ANALYZING',
+          status: DocumentStatus.ANALYZING,
           dependenteId: (memberId && memberId !== clienteId) ? memberId : undefined
         })
       }
@@ -1493,37 +1505,7 @@ class ClienteController {
     }
   }
 
-  async registerLead(req: any, res: any) {
-    try {
-      const { nome, email, whatsapp, parceiro_id, criado_por, criado_por_nome } = req.body
-      const whatsappNormalizado = normalizePhone(whatsapp)
-
-      if (!nome || !whatsappNormalizado) {
-        return res.status(400).json({ message: 'Nome e WhatsApp são obrigatórios' })
-      }
-
-      const leadData = {
-        id: require('crypto').randomUUID(),
-        nome,
-        email: email ? String(email).trim().toLowerCase() : null,
-        whatsapp: whatsappNormalizado,
-        parceiro_id: parceiro_id || null,
-        status: 'LEAD',
-        criado_por: criado_por || null,
-        criado_por_nome: criado_por_nome || null,
-      }
-
-      const createdData = await ClienteRepository.register(leadData as any)
-
-      return res.status(201).json(createdData)
-    } catch (error: any) {
-      console.error('Erro ao registrar lead:', error)
-      return res.status(500).json({
-        message: 'Erro ao registrar lead',
-        error: error.message
-      })
-    }
-  }
+  // registerLead removido para unificação no método register
 
   async getClienteCredentials(req: any, res: any) {
     try {

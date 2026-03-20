@@ -1,4 +1,5 @@
 import { supabase } from '../config/SupabaseClient';
+import { DocumentStatus } from '../constants/DocumentStatus';
 
 class ApostilamentoRepository {
   async create(params: {
@@ -84,7 +85,7 @@ class ApostilamentoRepository {
     // 3. Atualizar status do documento para liberar pagamento
     await supabase
       .from('documentos')
-      .update({ status: 'WAITING_QUOTE_APPROVAL' })
+      .update({ status: DocumentStatus.WAITING_QUOTE_APPROVAL })
       .eq('id', params.documentoId);
 
     return {
@@ -149,7 +150,7 @@ class ApostilamentoRepository {
     const documentoIds = orcamentos.map(o => o.documento_id)
     await supabase
       .from('documentos')
-      .update({ status: 'ANALYZING_APOSTILLE_PAYMENT' })
+      .update({ status: DocumentStatus.ANALYZING_APOSTILLE_PAYMENT })
       .in('id', documentoIds)
 
     return orcamentos
@@ -193,7 +194,7 @@ class ApostilamentoRepository {
     if (params.status === 'concluido' && data.documento_id) {
       await supabase
         .from('documentos')
-        .update({ status: 'ANALYZING_APOSTILLE' })
+        .update({ status: DocumentStatus.ANALYZING_APOSTILLE })
         .eq('id', data.documento_id);
     }
 
