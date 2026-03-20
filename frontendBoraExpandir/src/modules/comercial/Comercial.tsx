@@ -20,7 +20,7 @@ import FormularioAssessoriaPage from './FormularioAssessoriaPage'
 import ProximosAgendamentosCard from './components/ProximosAgendamentosCard'
 import CadastroRapidoLeadCard from './components/CadastroRapidoLeadCard'
 import { Config } from '../../components/ui/Config'
-import { Plus, Home, Users, FileText, CreditCard, AlertCircle, PenTool, CheckCircle, Calendar, Settings, Search, Filter, X, DollarSign, Dna } from 'lucide-react'
+import { Plus, Home, Users, FileText, CreditCard, AlertCircle, PenTool, CheckCircle, Calendar, Settings, Search, Filter, X, DollarSign } from 'lucide-react'
 import { ClientDNAPage } from '../../components/ui/ClientDNA'
 import { TimeRangeFilter, filterByTimeRange, type TimeRange } from '../../components/ui/TimeRangeFilter'
 import { SortControl, sortData, type SortDirection, type SortOption } from '../../components/ui/SortControl'
@@ -677,14 +677,10 @@ export default function Comercial() {
       label: 'Menu Principal',
       items: [
         { label: 'Dashboard', to: '/comercial', icon: Home },
-        { label: 'DNA do Cliente', to: '/comercial/dna', icon: Dna },
-        { label: 'Serviços', to: '/comercial/servicos', icon: FileText },
-        { label: 'Agendamento', to: '/comercial/agendamento', icon: Calendar },
-        { label: "Meus Agendamentos", to: "/comercial/meus-agendamentos", icon: Calendar },
-        { label: 'Clientes', to: '/comercial/clientes', icon: Users },
         { label: 'Leads', to: '/comercial/leads', icon: Users },
-        { label: 'Ganhos', to: '/comercial/ganhos', icon: DollarSign },
-        { label: 'Contratos', to: '/comercial/contratos', icon: FileText },
+        { label: 'Serviços', to: '/comercial/servicos', icon: FileText },
+        { label: 'Meus Agendamentos', to: '/comercial/meus-agendamentos', icon: Calendar },
+        { label: 'Minhas Comissões', to: '/comercial/ganhos', icon: DollarSign },
       ],
     },
   ]

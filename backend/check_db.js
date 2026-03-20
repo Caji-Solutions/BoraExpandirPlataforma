@@ -1,20 +1,37 @@
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+const { createClient } = require('@supabase/supabase-js');
 
-const { createClient } = require('@supabase/supabase-client');
-const supabase = createClient('https://rtuxziaxeegbaaihpjni.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0dXh6aWF4ZWVnYmFhaWhwam5pIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDYxMzYxMywiZXhwIjoyMDgwMTg5NjEzfQ.uWeF9ihRMIRFYhID4Il1sFIsykACs9TTEfmpA7sGPFA');
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE;
 
-async function check() {
-    const { data, error } = await supabase.rpc('get_table_columns', { table_name: 'clientes' });
-    if (error) {
-        // Fallback: try raw query via another RPC if exists or just standard select
-        console.log('RPC get_table_columns failed, trying standard select limit 0');
-        const { data: d2, error: e2 } = await supabase.from('clientes').select('*').limit(1);
-        if (d2 && d2.length > 0) {
-            console.log('Columns:', Object.keys(d2[0]));
-        } else {
-            console.log('No data to infer columns');
-        }
-    } else {
-        console.log('Columns:', data);
-    }
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function run() {
+  console.log('Buscando servico "Assessoria Nômade Digital"...');
+  
+  // 1. Procurar o servico
+  const { data: servico, error: errServico } = await supabase
+    .from('catalogo_servicos')
+    .select('id, nome')
+    .ilike('nome', '%Nômade%')
+    .single();
+    
+  if (errServico || !servico) {
+    console.error('Servico nao encontrado!', errServico);
+    
+    // Tentar listar para ver o que tem:
+    const { data: todos } = await supabase.from('catalogo_servicos').select('id, nome');
+    console.log('Servicos disponiveis no banco:', todos?.map(t => t.nome));
+    return;
+  }
+  
+  console.log('Encontrado:', servico.nome, '-', servico.id);
+  
+  // 2. Verificar o que tem em servico_requisitos para ver a "etapa" comum
+  const { data: reqs } = await supabase.from('servico_requisitos').select('etapa').limit(5);
+  console.log('Etapas comuns no banco:', [...new Set(reqs?.map(r => r.etapa))]);
+  
 }
-check();
+
+run();

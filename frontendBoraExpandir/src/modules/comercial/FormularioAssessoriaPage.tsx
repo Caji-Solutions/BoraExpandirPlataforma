@@ -540,7 +540,7 @@ export default function FormularioAssessoriaPage() {
                   <FileText className="w-5 h-5" /> Ver Contrato
                 </a>
                 <button onClick={handleFinalizarEEnviar} disabled={saving} className="flex-1 px-4 py-3.5 bg-emerald-600 text-white font-bold justify-center rounded-xl hover:bg-emerald-700 disabled:opacity-60 flex items-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-emerald-600/20">
-                  Criar Contrato (Enviar Email) {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Criar Contrato (Autentique) {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                 </button>
               </div>
             )}

@@ -72,5 +72,10 @@ cliente.patch('/notificacoes/:notificacaoId/status', ClienteController.updateNot
 cliente.post('/:clienteId/notificacoes/read-all', ClienteController.markAllNotificacoesAsRead.bind(ClienteController))
 cliente.get('/:clienteId/requerimentos', ClienteController.getRequerimentosByCliente.bind(ClienteController))
 
+// Notas de Lead
+cliente.post('/lead-notas', ClienteController.createLeadNote.bind(ClienteController))
+cliente.get('/lead-notas/:leadId', ClienteController.getLeadNotes.bind(ClienteController))
+cliente.delete('/lead-notas/:noteId', ClienteController.deleteLeadNote.bind(ClienteController))
+
 export default cliente
 

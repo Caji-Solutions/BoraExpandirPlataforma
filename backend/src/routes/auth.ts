@@ -1,17 +1,34 @@
 import { Router, Request, Response } from 'express'
 import { supabase } from '../config/SupabaseClient'
-import { createClient } from '@supabase/supabase-js'
+import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 
 const router = Router()
 
-// Helper: monta o profile completo mesclando dados da tabela profiles + user_metadata do Auth
-function buildFullProfile(profile: any, authUserMetadata: any) {
+// Helper: monta o profile completo a partir da tabela profiles apenas
+function buildFullProfile(profile: any) {
     return {
         ...profile,
-        is_supervisor: authUserMetadata?.is_supervisor || false,
-        nivel: authUserMetadata?.nivel || null,
+        // Agora o profile carrega is_supervisor e nivel se forem persistidos na tabela
+        is_supervisor: profile?.is_supervisor || false,
+        nivel: profile?.nivel || null,
         horario_trabalho: profile?.horario_trabalho || null,
     }
+}
+
+// Helper: buscar usuário a partir do token (Bearer UUID)
+async function getUserByToken(req: Request) {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return null
+
+    const token = authHeader.split(' ')[1]
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('auth_token', token)
+        .single()
+        
+    return profile
 }
 
 // ============================================
@@ -25,43 +42,42 @@ router.post('/login', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Email e senha são obrigatórios' })
         }
 
-        // Usa um cliente temporário para não poluir o singleton
-        const tempSupabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE!, {
-            auth: { persistSession: false, autoRefreshToken: false }
-        })
+        const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('email', email)
+            .single()
 
-        const { data: authData, error: authError } = await tempSupabase.auth.signInWithPassword({
-            email,
-            password
-        })
-
-        if (authError) {
-            console.error('Erro ao fazer login:', authError.message)
+        if (error || !profile) {
             return res.status(401).json({ error: 'Email ou senha inválidos' })
         }
 
-        // Buscar profile na tabela (colunas que já existem)
-        const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', authData.user.id)
-            .single()
-
-        if (profileError || !profile) {
-            console.error(`Erro ao buscar profile para ID ${authData.user.id}:`, profileError?.message)
-            return res.status(404).json({ error: 'Perfil não encontrado. Contate o administrador.' })
+        if (!profile.password_hash) {
+            return res.status(401).json({ error: 'Erro de autenticação: Conta sem senha definida' })
         }
 
-        // Mescla dados extras do user_metadata
-        const fullProfile = buildFullProfile(profile, authData.user.user_metadata)
+        const isMatch = await bcrypt.compare(password, profile.password_hash)
+
+        if (!isMatch) {
+            return res.status(401).json({ error: 'Email ou senha inválidos' })
+        }
+
+        const token = crypto.randomUUID()
+        
+        await supabase
+            .from('profiles')
+            .update({ auth_token: token })
+            .eq('id', profile.id)
+
+        const fullProfile = buildFullProfile(profile)
 
         return res.json({
-            user: authData.user,
+            user: { id: profile.id, email: profile.email },
             profile: fullProfile,
             session: {
-                access_token: authData.session.access_token,
-                refresh_token: authData.session.refresh_token,
-                expires_at: authData.session.expires_at
+                access_token: token,
+                refresh_token: token,
+                expires_at: Date.now() + 1000 * 60 * 60 * 24 * 30 // 30 dias
             }
         })
     } catch (error: any) {
@@ -85,26 +101,30 @@ router.post('/reset-password', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres' })
         }
 
-        // 1. Validar e obter o ID do usuário através do access_token do hash
-        const { data: { user }, error: authError } = await supabase.auth.getUser(access_token)
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('auth_token', access_token)
+            .single()
 
-        if (authError || !user) {
+        if (!profile) {
             return res.status(401).json({ error: 'Link de recuperação inválido ou expirado' })
         }
 
-        // 2. Atualizar a senha usando a permissão admin do backend
-        const { error: updateError } = await supabase.auth.admin.updateUserById(user.id, {
-            password: new_password
-        })
+        const salt = await bcrypt.genSalt(10)
+        const password_hash = await bcrypt.hash(new_password, salt)
+
+        const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ password_hash })
+            .eq('id', profile.id)
 
         if (updateError) {
-            console.error('Erro ao redefinir senha:', updateError)
-            return res.status(500).json({ error: updateError.message || 'Erro ao atualizar a senha no sistema' })
+            return res.status(500).json({ error: updateError.message })
         }
 
         return res.json({ message: 'Senha atualizada com sucesso' })
     } catch (error: any) {
-        console.error('Erro no reset-password:', error)
         return res.status(500).json({ error: 'Erro interno do servidor' })
     }
 })
@@ -114,31 +134,14 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 // ============================================
 router.get('/me', async (req: Request, res: Response) => {
     try {
-        const authHeader = req.headers.authorization
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ error: 'Token não fornecido' })
-        }
+        const profile = await getUserByToken(req)
 
-        const token = authHeader.split(' ')[1]
-        const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-
-        if (authError || !user) {
+        if (!profile) {
             return res.status(401).json({ error: 'Token inválido ou expirado' })
         }
 
-        const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single()
-
-        if (profileError || !profile) {
-            return res.status(404).json({ error: 'Perfil não encontrado' })
-        }
-
-        const fullProfile = buildFullProfile(profile, user.user_metadata)
-
-        return res.json({ user, profile: fullProfile })
+        const fullProfile = buildFullProfile(profile)
+        return res.json({ user: { id: profile.id, email: profile.email }, profile: fullProfile })
     } catch (error: any) {
         console.error('Erro ao buscar /me:', error)
         return res.status(500).json({ error: 'Erro interno do servidor' })
@@ -150,25 +153,7 @@ router.get('/me', async (req: Request, res: Response) => {
 // ============================================
 router.post('/register', async (req: Request, res: Response) => {
     try {
-        // Verificar se quem está chamando é Super Admin
-        const authHeader = req.headers.authorization
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ error: 'Token não fornecido' })
-        }
-
-        const token = authHeader.split(' ')[1]
-        const { data: { user: adminUser }, error: adminError } = await supabase.auth.getUser(token)
-
-        if (adminError || !adminUser) {
-            return res.status(401).json({ error: 'Token inválido' })
-        }
-
-        // Verificar se é super_admin
-        const { data: adminProfile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', adminUser.id)
-            .single()
+        const adminProfile = await getUserByToken(req)
 
         if (!adminProfile || adminProfile.role !== 'super_admin') {
             return res.status(403).json({ error: 'Apenas Super Admin pode registrar colaboradores' })
@@ -180,65 +165,43 @@ router.post('/register', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Nome, email, senha e função são obrigatórios' })
         }
 
-        // Validar role
         const validRoles = ['comercial', 'juridico', 'administrativo', 'tradutor', 'super_admin']
         if (!validRoles.includes(role)) {
             return res.status(400).json({ error: `Função inválida. Opções: ${validRoles.join(', ')}` })
         }
 
-        // Tradutor não pode ser supervisor
         const isSupervisor = role === 'tradutor' ? false : (is_supervisor || false)
 
-        // Criar no Supabase Auth (dados extras vão em user_metadata)
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-            email,
-            password,
-            email_confirm: true,
-            user_metadata: {
-                full_name: name,
-                role,
-                is_supervisor: isSupervisor,
-                nivel: nivel || null,
-            }
-        })
+        const salt = await bcrypt.genSalt(10)
+        const password_hash = await bcrypt.hash(password, salt)
+        const newId = crypto.randomUUID()
 
-        if (authError) {
-            console.error('Erro ao criar auth user:', authError.message)
-            if (authError.message.includes('already')) {
-                return res.status(409).json({ error: 'Já existe um usuário com esse email' })
-            }
-            return res.status(400).json({ error: authError.message })
-        }
-
-        // Upsert no profiles (Supabase tem trigger que auto-cria o registro, por isso usamos upsert)
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .upsert({
-                id: authData.user.id,
+            .insert({
+                id: newId,
                 full_name: name,
                 email,
                 role,
                 cpf: cpf || null,
                 telefone: telefone || null,
                 horario_trabalho: horario_trabalho || null,
+                password_hash,
+                is_supervisor: isSupervisor, // Note: certifique-se que o profile aceita adds sem dar erro nas colunas q faltam
+                nivel: nivel || null
             })
             .select()
             .single()
 
         if (profileError) {
-            console.error('Erro ao criar profile:', profileError.message)
-            // Rollback: deletar o auth user
-            await supabase.auth.admin.deleteUser(authData.user.id)
+            if (profileError.code === '23505') {
+                return res.status(409).json({ error: 'Já existe um usuário com esse email' })
+            }
             return res.status(500).json({ error: 'Erro ao criar perfil', detail: profileError.message })
         }
 
-        // Retorna profile completo mesclando user_metadata
-        const fullProfile = buildFullProfile(profile, authData.user.user_metadata)
-        console.log("Full profile:", fullProfile)
-
-        return res.status(201).json({ user: authData.user, profile: fullProfile })
+        return res.status(201).json({ user: { id: profile.id, email: profile.email }, profile: buildFullProfile(profile) })
     } catch (error: any) {
-        console.error('Erro ao registrar colaborador:', error)
         return res.status(500).json({ error: 'Erro interno do servidor' })
     }
 })
@@ -248,7 +211,6 @@ router.post('/register', async (req: Request, res: Response) => {
 // ============================================
 router.get('/team', async (req: Request, res: Response) => {
     try {
-        // Buscar profiles da tabela
         const { data: profiles, error } = await supabase
             .from('profiles')
             .select('*')
@@ -256,30 +218,12 @@ router.get('/team', async (req: Request, res: Response) => {
             .order('full_name', { ascending: true })
 
         if (error) {
-            console.error('Erro ao listar equipe:', error)
             return res.status(500).json({ error: 'Erro ao listar equipe' })
         }
 
-        // Buscar dados extras do Auth (user_metadata) para mesclar
-        // bypass listUsers() cache to get fresh user_metadata (especially for passwords)
-        const authMap = new Map<string, any>()
-        if (profiles && profiles.length > 0) {
-            await Promise.all(
-                profiles.map(async (p) => {
-                    const { data: userData } = await supabase.auth.admin.getUserById(p.id)
-                    if (userData?.user?.user_metadata) {
-                        authMap.set(p.id, userData.user.user_metadata)
-                    }
-                })
-            )
-        }
-
-        // Mesclar
-        const fullProfiles = (profiles || []).map(p => buildFullProfile(p, authMap.get(p.id)))
-
+        const fullProfiles = (profiles || []).map(p => buildFullProfile(p))
         return res.json(fullProfiles)
     } catch (error: any) {
-        console.error('Erro ao listar equipe:', error)
         return res.status(500).json({ error: 'Erro ao listar equipe' })
     }
 })
@@ -303,28 +247,12 @@ router.get('/team/:role', async (req: Request, res: Response) => {
             .order('full_name', { ascending: true })
 
         if (error) {
-            console.error('Erro ao listar equipe por setor:', error)
             return res.status(500).json({ error: 'Erro ao listar equipe' })
         }
 
-        // Mesclar user_metadata bypassando o cache
-        const authMap = new Map<string, any>()
-        if (profiles && profiles.length > 0) {
-            await Promise.all(
-                profiles.map(async (p) => {
-                    const { data: userData } = await supabase.auth.admin.getUserById(p.id)
-                    if (userData?.user?.user_metadata) {
-                        authMap.set(p.id, userData.user.user_metadata)
-                    }
-                })
-            )
-        }
-
-        const fullProfiles = (profiles || []).map(p => buildFullProfile(p, authMap.get(p.id)))
-
+        const fullProfiles = (profiles || []).map(p => buildFullProfile(p))
         return res.json(fullProfiles)
     } catch (error: any) {
-        console.error('Erro ao listar equipe por setor:', error)
         return res.status(500).json({ error: 'Erro interno do servidor' })
     }
 })
@@ -334,55 +262,25 @@ router.get('/team/:role', async (req: Request, res: Response) => {
 // ============================================
 router.delete('/team/:id', async (req: Request, res: Response) => {
     try {
-        const authHeader = req.headers.authorization
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ error: 'Token não fornecido' })
-        }
-
-        const token = authHeader.split(' ')[1]
-        const { data: { user: adminUser }, error: adminError } = await supabase.auth.getUser(token)
-
-        if (adminError || !adminUser) {
-            return res.status(401).json({ error: 'Token inválido' })
-        }
-
-        const { data: adminProfile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', adminUser.id)
-            .single()
+        const adminProfile = await getUserByToken(req)
 
         if (!adminProfile || adminProfile.role !== 'super_admin') {
             return res.status(403).json({ error: 'Apenas Super Admin pode remover colaboradores' })
         }
 
         const { id } = req.params
-
-        if (id === adminUser.id) {
+        if (id === adminProfile.id) {
             return res.status(400).json({ error: 'Você não pode remover seu próprio usuário' })
         }
 
-        // Deletar profile
-        const { error: profileError } = await supabase
-            .from('profiles')
-            .delete()
-            .eq('id', id)
+        const { error: profileError } = await supabase.from('profiles').delete().eq('id', id)
 
         if (profileError) {
-            console.error('Erro ao deletar profile:', profileError)
-        }
-
-        // Deletar auth user
-        const { error: authError } = await supabase.auth.admin.deleteUser(id)
-
-        if (authError) {
-            console.error('Erro ao deletar auth user:', authError)
             return res.status(500).json({ error: 'Erro ao remover usuário' })
         }
 
         return res.json({ message: 'Colaborador removido com sucesso' })
     } catch (error: any) {
-        console.error('Erro ao remover colaborador:', error)
         return res.status(500).json({ error: 'Erro interno do servidor' })
     }
 })
@@ -392,24 +290,7 @@ router.delete('/team/:id', async (req: Request, res: Response) => {
 // ============================================
 router.patch('/team/:id/password', async (req: Request, res: Response) => {
     try {
-        const authHeader = req.headers.authorization
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ error: 'Token não fornecido' })
-        }
-
-        const token = authHeader.split(' ')[1]
-        const { data: { user: adminUser }, error: adminError } = await supabase.auth.getUser(token)
-
-        if (adminError || !adminUser) {
-            console.error('Password PATCH error: Token inválido', adminError)
-            return res.status(401).json({ error: 'Token inválido' })
-        }
-
-        const { data: adminProfile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', adminUser.id)
-            .single()
+        const adminProfile = await getUserByToken(req)
 
         if (!adminProfile || adminProfile.role !== 'super_admin') {
             return res.status(403).json({ error: 'Apenas Super Admin pode alterar senhas' })
@@ -422,33 +303,23 @@ router.patch('/team/:id/password', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Senha deve ter no mínimo 6 caracteres' })
         }
 
-        // Buscar metadata atual para garantir que nada se perca
-        const { data: targetUser, error: targetError } = await supabase.auth.admin.getUserById(id)
+        const salt = await bcrypt.genSalt(10)
+        const password_hash = await bcrypt.hash(password, salt)
 
-        if (targetError || !targetUser.user) {
-            return res.status(404).json({ error: 'Usuário não encontrado' })
-        }
-
-        const currentMetadata = targetUser.user.user_metadata || {}
-
-        // Atualizar senha no Auth
-        const { error: updateError } = await supabase.auth.admin.updateUserById(id, {
-            password
-        })
+        const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ password_hash, auth_token: null }) // force logout on pass change limit
+            .eq('id', id)
 
         if (updateError) {
-            console.error('Erro ao atualizar senha:', updateError)
             return res.status(500).json({ error: 'Erro ao atualizar senha' })
         }
 
-        const isSelfUpdate = adminUser.id === id
-
         return res.json({
             message: 'Senha atualizada com sucesso',
-            isSelfUpdate
+            isSelfUpdate: adminProfile.id === id
         })
     } catch (error: any) {
-        console.error('Erro ao atualizar senha:', error)
         return res.status(500).json({ error: 'Erro interno do servidor' })
     }
 })
@@ -458,23 +329,7 @@ router.patch('/team/:id/password', async (req: Request, res: Response) => {
 // ============================================
 router.patch('/team/:id', async (req: Request, res: Response) => {
     try {
-        const authHeader = req.headers.authorization
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ error: 'Token não fornecido' })
-        }
-
-        const token = authHeader.split(' ')[1]
-        const { data: { user: adminUser }, error: adminError } = await supabase.auth.getUser(token)
-
-        if (adminError || !adminUser) {
-            return res.status(401).json({ error: 'Token inválido' })
-        }
-
-        const { data: adminProfile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', adminUser.id)
-            .single()
+        const adminProfile = await getUserByToken(req)
 
         if (!adminProfile || adminProfile.role !== 'super_admin') {
             return res.status(403).json({ error: 'Apenas Super Admin pode alterar colaboradores' })
@@ -483,26 +338,6 @@ router.patch('/team/:id', async (req: Request, res: Response) => {
         const { id } = req.params
         const { name, email, role, nivel, is_supervisor, cpf, telefone, horario_trabalho } = req.body
 
-        // 1. Atualizar dados no Auth
-        const updateData: any = {
-            user_metadata: {
-                full_name: name,
-                role,
-                is_supervisor: role === 'tradutor' ? false : (is_supervisor || false),
-                nivel: nivel || null,
-            }
-        }
-
-        if (email) updateData.email = email
-
-        const { error: authError } = await supabase.auth.admin.updateUserById(id, updateData)
-
-        if (authError) {
-            console.error('Erro ao atualizar auth user:', authError.message)
-            return res.status(400).json({ error: authError.message })
-        }
-
-        // 2. Atualizar na tabela profiles
         const { error: profileError } = await supabase
             .from('profiles')
             .update({
@@ -511,18 +346,18 @@ router.patch('/team/:id', async (req: Request, res: Response) => {
                 cpf: cpf || null,
                 telefone: telefone || null,
                 horario_trabalho: horario_trabalho || null,
-                email: email || undefined // Só atualiza se email for enviado
+                is_supervisor: role === 'tradutor' ? false : (is_supervisor || false),
+                nivel: nivel || null,
+                ...(email ? { email } : {})
             })
             .eq('id', id)
 
         if (profileError) {
-            console.error('Erro ao atualizar profile:', profileError.message)
             return res.status(500).json({ error: 'Erro ao atualizar perfil' })
         }
 
         return res.json({ message: 'Colaborador atualizado com sucesso' })
     } catch (error: any) {
-        console.error('Erro ao atualizar colaborador:', error)
         return res.status(500).json({ error: 'Erro interno do servidor' })
     }
 })

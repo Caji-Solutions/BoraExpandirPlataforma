@@ -19,6 +19,7 @@ export type ClientNote = {
     area: string
     createdAt: string
     stageId?: string
+    autorId?: string
 }
 
 // ... (ClientDNAData remains same)
@@ -115,6 +116,8 @@ export function ClientDNAPage() {
                 const mappedClientes: ClientDNAData[] = result.data.map((item: any) => {
                     // Encontra o processo mais recente para determinar o responsável e status
                     const lastProcess = item.processos?.[0]
+                    const agendamentos = item.agendamentos || []
+                    const lastAgendamento = agendamentos.length > 0 ? agendamentos.reduce((latest: any, current: any) => new Date(latest.data_hora) > new Date(current.data_hora) ? latest : current) : null
 
                     return {
                         id: item.client_id || item.id,
@@ -123,7 +126,7 @@ export function ClientDNAPage() {
                         nome: item.nome || 'Sem nome',
                         email: item.email || 'Sem e-mail',
                         telefone: item.whatsapp || '',
-                        tipoAssessoria: lastProcess?.tipo_servico || 'Assessoria',
+                        tipoAssessoria: lastProcess?.tipo_servico || lastAgendamento?.produto_nome || 'Assessoria',
                         contratoAtivo: true, // Padronizado para true para evitar quebras, mas não é mais usado na listagem
                         categoria: lastProcess?.status || item.stage || (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status || 'formularios')),
                         previsaoChegada: item.previsao_chegada || '',

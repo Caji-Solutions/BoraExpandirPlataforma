@@ -550,7 +550,7 @@ class JuridicoController {
     // POST /juridico/notas - Criar nota
     async createNote(req: any, res: any) {
         try {
-            const { clienteId, processoId, etapa, texto } = req.body
+            const { clienteId, processoId, etapa, texto, autorNome, autorSetor } = req.body
             
             // TODO: Pegar do middleware de auth
             const autorId = req.body.autorId || this.MOCKED_FUNCIONARIO_JURIDICO_ID
@@ -573,6 +573,8 @@ class JuridicoController {
                 processoId,
                 etapa,
                 autorId,
+                autorNome,
+                autorSetor,
                 texto
             })
 
@@ -619,9 +621,23 @@ class JuridicoController {
     async deleteNote(req: any, res: any) {
         try {
             const { noteId } = req.params
+            const userId = req.query.userId || req.body?.userId
 
             if (!noteId) {
                 return res.status(400).json({ message: 'noteId é obrigatório' })
+            }
+
+            if (!userId) {
+                return res.status(400).json({ message: 'userId é obrigatório para deletar a nota' })
+            }
+
+            const nota = await JuridicoRepository.getNoteById(noteId)
+            if (!nota) {
+                return res.status(404).json({ message: 'Nota não encontrada' })
+            }
+
+            if (nota.autor_id !== userId && userId !== 'admin') {
+                return res.status(403).json({ message: 'Sem permissão para deletar esta nota' })
             }
 
             await JuridicoRepository.deleteNote(noteId)

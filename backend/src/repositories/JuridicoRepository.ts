@@ -842,6 +842,8 @@ class JuridicoRepository {
         processoId?: string
         etapa?: string
         autorId: string
+        autorNome?: string
+        autorSetor?: string
         texto: string
     }): Promise<any> {
         console.log('[JuridicoRepository] Tentando inserir nota no Supabase...')
@@ -853,6 +855,8 @@ class JuridicoRepository {
                 processo_id: params.processoId || null,
                 etapa: params.etapa || null,
                 autor_id: params.autorId,
+                autor_nome: params.autorNome || null,
+                autor_setor: params.autorSetor || null,
                 texto: params.texto
             }])
             .select(`
@@ -898,6 +902,21 @@ class JuridicoRepository {
         }
 
         return data || []
+    }
+
+    // Buscar uma nota pelo ID
+    async getNoteById(noteId: string): Promise<any> {
+        const { data, error } = await supabase
+            .from('notas_juridico')
+            .select('*')
+            .eq('id', noteId)
+            .single()
+
+        if (error && error.code !== 'PGRST116') { // Ignorar erro de "não encontrado" que o single() retorna
+            console.error('Erro ao buscar nota jurídica por ID:', error)
+            throw error
+        }
+        return data || null
     }
 
     // Deletar uma nota

@@ -208,6 +208,27 @@ class FinanceiroController {
                 return res.status(500).json({ message: 'Erro ao aprovar comprovante' })
             }
 
+            if (agendamento.cliente_id) {
+                const { data: clienteBanco } = await supabase
+                    .from('clientes')
+                    .select('status')
+                    .eq('id', agendamento.cliente_id)
+                    .single()
+                    
+                if (clienteBanco && String(clienteBanco.status).toUpperCase() === 'LEAD') {
+                    const { error: clienteUpdateError } = await supabase
+                        .from('clientes')
+                        .update({ status: 'cliente', atualizado_em: new Date().toISOString() })
+                        .eq('id', agendamento.cliente_id)
+                        
+                    if (clienteUpdateError) {
+                        console.error('[FinanceiroController] Erro ao converter lead em cliente (agendamento):', clienteUpdateError)
+                    } else {
+                        console.log(`[FinanceiroController] Lead convertido em cliente (agendamento aprovado): ${agendamento.cliente_id}`)
+                    }
+                }
+            }
+
             // 5. Verificar se o formulÃ¡rio jÃ¡ foi preenchido (via formularios_cliente)
             let formularioPreenchido = false
             const { data: formData } = await supabase

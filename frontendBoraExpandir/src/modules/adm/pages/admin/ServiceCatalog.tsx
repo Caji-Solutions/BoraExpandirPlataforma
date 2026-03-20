@@ -47,7 +47,7 @@ import {
 } from "../../components/ui/dialog";
 import { Badge } from "../../components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../components/ui/dropdown-menu";
-import { catalogService, Service, DocumentRequirement, Subservice } from "../../services/catalogService";
+import { catalogService, Service, Subservice } from "../../services/catalogService";
 import { toast } from "sonner";
 
 export default function ServiceCatalog() {
@@ -86,7 +86,7 @@ export default function ServiceCatalog() {
   const [durationUnit, setDurationUnit] = useState("horas");
 
   // Subservice Form State
-  const [subFormData, setSubFormData] = useState<{ name: string; servicoId: string; documents: DocumentRequirement[] }>({
+  const [subFormData, setSubFormData] = useState<{ name: string; servicoId: string; documents: any[] }>({
     name: "",
     servicoId: "",
     documents: [],
@@ -165,26 +165,7 @@ export default function ServiceCatalog() {
     setIsServiceDialogOpen(true);
   };
 
-  const addDocumentToServiceForm = () => {
-    const newDoc: DocumentRequirement = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: "",
-      stage: "1",
-      required: true,
-    };
-    setFormData({ ...formData, documents: [...formData.documents, newDoc] });
-  };
 
-  const removeDocumentFromServiceForm = (docId: string) => {
-    setFormData({ ...formData, documents: formData.documents.filter(d => d.id !== docId) });
-  };
-
-  const updateDocumentInServiceForm = (docId: string, field: keyof DocumentRequirement, value: any) => {
-    setFormData({
-      ...formData,
-      documents: formData.documents.map(d => d.id === docId ? { ...d, [field]: value } : d),
-    });
-  };
 
   const handleSaveService = async () => {
     if (!formData.name || !formData.value) {
@@ -255,29 +236,7 @@ export default function ServiceCatalog() {
     setIsSubDialogOpen(true);
   };
 
-  const addDocToSubForm = () => {
-    const newDoc: DocumentRequirement = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: "",
-      stage: "1",
-      required: true,
-    };
-    setSubFormData({ ...subFormData, documents: [...subFormData.documents, newDoc] });
-  };
 
-  const removeDocFromSubForm = (docId: string) => {
-    setSubFormData({
-      ...subFormData,
-      documents: subFormData.documents.filter(d => d.id !== docId),
-    });
-  };
-
-  const updateDocInSubForm = (docId: string, field: keyof DocumentRequirement, value: any) => {
-    setSubFormData({
-      ...subFormData,
-      documents: subFormData.documents.map(d => d.id === docId ? { ...d, [field]: value } : d),
-    });
-  };
 
   const handleSaveSubservice = async () => {
     if (!subFormData.name) {
@@ -751,67 +710,6 @@ export default function ServiceCatalog() {
               </>
             )}
 
-            {/* Documents (service level) */}
-            <Separator className="bg-border/50" />
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    Documentos Necessarios
-                  </h3>
-                  <p className="text-sm text-muted-foreground">Requisitos documentais do servico.</p>
-                </div>
-                <Button onClick={addDocumentToServiceForm} variant="outline" size="sm" className="rounded-lg border-2 border-dashed font-bold hover:bg-primary/5 hover:text-primary transition-all">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {formData.documents.length === 0 ? (
-                  <div className="py-8 border-2 border-dashed border-border rounded-2xl text-center bg-muted/10">
-                    <p className="text-sm text-muted-foreground font-medium">Nenhum documento configurado.</p>
-                  </div>
-                ) : (
-                  formData.documents.map((doc) => (
-                    <div key={doc.id} className="flex flex-col md:flex-row items-center gap-4 p-4 rounded-2xl bg-muted/40 border border-border group animate-in slide-in-from-top-2">
-                      <div className="flex items-center gap-3 flex-1 w-full">
-                        <GripVertical className="h-5 w-5 text-muted-foreground opacity-30 cursor-move hidden md:block" />
-                        <Input
-                          placeholder="Nome do documento..."
-                          value={doc.name}
-                          onChange={(e) => updateDocumentInServiceForm(doc.id, "name", e.target.value)}
-                          className="bg-background border-border rounded-xl h-10"
-                        />
-                      </div>
-                      <div className="flex items-center gap-4 w-full md:w-auto">
-                        <Select value={doc.stage} onValueChange={(val) => updateDocumentInServiceForm(doc.id, "stage", val)}>
-                          <SelectTrigger className="w-[140px] bg-background border-border rounded-xl h-10">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-xl border-border">
-                            <SelectItem value="1">Etapa 1: Base</SelectItem>
-                            <SelectItem value="2">Etapa 2: Apostila</SelectItem>
-                            <SelectItem value="3">Etapa 3: Traducao</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <div className="flex items-center gap-2 px-3 h-10 bg-background border border-border rounded-xl min-w-[120px]">
-                          <Switch
-                            checked={doc.required}
-                            onCheckedChange={(val) => updateDocumentInServiceForm(doc.id, "required", val)}
-                            className="scale-75"
-                          />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Obrigatorio</span>
-                        </div>
-                        <Button variant="ghost" size="icon" onClick={() => removeDocumentFromServiceForm(doc.id)} className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-lg shrink-0">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
           </div>
 
           <DialogFooter className="p-8 bg-muted/30 border-t rounded-b-3xl">
@@ -869,69 +767,6 @@ export default function ServiceCatalog() {
               </div>
             </div>
 
-            <Separator className="bg-border/50" />
-
-            {/* Documents */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-blue-500" />
-                    Documentos Necessarios
-                  </h3>
-                  <p className="text-sm text-muted-foreground">Requisitos documentais para este subservico.</p>
-                </div>
-                <Button onClick={addDocToSubForm} variant="outline" size="sm" className="rounded-lg border-2 border-dashed font-bold hover:bg-blue-500/5 hover:text-blue-600 transition-all">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar
-                </Button>
-              </div>
-
-              <div className="space-y-3">
-                {subFormData.documents.length === 0 ? (
-                  <div className="py-8 border-2 border-dashed border-border rounded-2xl text-center bg-muted/10">
-                    <p className="text-sm text-muted-foreground font-medium">Nenhum documento configurado.</p>
-                  </div>
-                ) : (
-                  subFormData.documents.map((doc) => (
-                    <div key={doc.id} className="flex flex-col md:flex-row items-center gap-4 p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 group animate-in slide-in-from-top-2">
-                      <div className="flex items-center gap-3 flex-1 w-full">
-                        <GripVertical className="h-5 w-5 text-muted-foreground opacity-30 cursor-move hidden md:block" />
-                        <Input
-                          placeholder="Nome do documento..."
-                          value={doc.name}
-                          onChange={(e) => updateDocInSubForm(doc.id, "name", e.target.value)}
-                          className="bg-background border-border rounded-xl h-10"
-                        />
-                      </div>
-                      <div className="flex items-center gap-4 w-full md:w-auto">
-                        <Select value={doc.stage} onValueChange={(val) => updateDocInSubForm(doc.id, "stage", val)}>
-                          <SelectTrigger className="w-[140px] bg-background border-border rounded-xl h-10">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-xl border-border">
-                            <SelectItem value="1">Etapa 1: Base</SelectItem>
-                            <SelectItem value="2">Etapa 2: Apostila</SelectItem>
-                            <SelectItem value="3">Etapa 3: Traducao</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <div className="flex items-center gap-2 px-3 h-10 bg-background border border-border rounded-xl min-w-[120px]">
-                          <Switch
-                            checked={doc.required}
-                            onCheckedChange={(val) => updateDocInSubForm(doc.id, "required", val)}
-                            className="scale-75"
-                          />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Obrigatorio</span>
-                        </div>
-                        <Button variant="ghost" size="icon" onClick={() => removeDocFromSubForm(doc.id)} className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-lg shrink-0">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
           </div>
 
           <DialogFooter className="p-8 bg-muted/30 border-t rounded-b-3xl">

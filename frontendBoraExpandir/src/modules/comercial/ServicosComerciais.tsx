@@ -80,23 +80,17 @@ export default function ServicosComerciais() {
   }
 
   const handleCriarContrato = (servico: Service) => {
-    // Se o serviço fixo tem subserviços, abre o modal de seleção.
-    // Caso contrário, vai direto para a tela de seleção de lead/cliente.
-    if (servico.subservices && servico.subservices.length > 0) {
-      setSelectedServico(servico)
-      setShowSubserviceModal(true)
-      setSubSearchTerm('')
-    } else {
-      navigate('/comercial/selecao-lead-cliente', {
-        state: {
-          servicoId: servico.id,
-          servicoNome: servico.name
-        }
-      })
-    }
+    // Nova regra: Comercial NÃO seleciona subserviço. Isso é responsabilidade do Jurídico depois.
+    navigate('/comercial/selecao-lead-cliente', {
+      state: {
+        servicoId: servico.id,
+        servicoNome: servico.name
+      }
+    })
   }
 
   const handleSelectSubservice = (subserverId: string, subserverNome: string) => {
+    // Mantido por compatibilidade se necessário, mas não chamado pelo card.
     if (!selectedServico) return
     
     setShowSubserviceModal(false)
