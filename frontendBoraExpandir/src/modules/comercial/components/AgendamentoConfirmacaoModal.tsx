@@ -7,6 +7,7 @@ interface AgendamentoConfirmacaoModalProps {
   onClose: () => void
   onSuccess: (responseData: any) => void
   onError: (message: string) => void
+  onNavigateToAgendamentos: () => void
   payload: {
     nome: string
     email: string
@@ -33,6 +34,7 @@ export const AgendamentoConfirmacaoModal: React.FC<AgendamentoConfirmacaoModalPr
   onClose,
   onSuccess,
   onError,
+  onNavigateToAgendamentos,
   payload,
   exchangeRate = 6.27
 }) => {
@@ -196,8 +198,7 @@ Obrigado! 🚀
   }
 
   const handleFinalizar = () => {
-    toast.success('Agendamento finalizado com sucesso! 🎉')
-    onSuccess(agendamentoCriado || {})
+    onNavigateToAgendamentos()
   }
 
   return (

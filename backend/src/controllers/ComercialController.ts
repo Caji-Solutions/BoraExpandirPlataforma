@@ -461,10 +461,43 @@ class ComercialController {
 
                         if (agendamentoId) {
                             console.log('Atualizando agendamento existente:', agendamentoId)
-                            await ComercialRepository.updateAgendamentoStatus(agendamentoId, status)
+                            const currentAgendamento = await ComercialRepository.getAgendamentoById(agendamentoId);
+                            
+                            if (currentAgendamento?.status === 'cancelado') {
+                                console.log('Agendamento já está cancelado. Ignorando atualização de status de pagamento.');
+                            } else {
+                                await ComercialRepository.updateAgendamentoStatus(agendamentoId, status)
+                                
+                                // TASK 2: Gerar link do Google Meet se pagamento aprovado E formulário enviado
+                                const refreshedAgendamento = await ComercialRepository.getAgendamentoById(agendamentoId);
+                                if (refreshedAgendamento && refreshedAgendamento.pagamento_status === 'aprovado' && refreshedAgendamento.cliente_is_user === true && !refreshedAgendamento.meet_link) {
+                                    try {
+                                        console.log('Gerando Google Meet link via Composio...');
+                                        const ComposioService = (await import('../services/ComposioService')).default;
+                                        // O createCalendarEvent criará a reunião e a migration adicionará o meet_link no db futuramente (Task 2 Frontend precisa dele)
+                                        const eventResult = await ComposioService.createCalendarEvent(
+                                            refreshedAgendamento.usuario_id || 'default',
+                                            {
+                                                summary: `Consultoria - ${refreshedAgendamento.nome}`,
+                                                description: `Consultoria confirmada.\nTelefone: ${refreshedAgendamento.telefone}\nEmail: ${refreshedAgendamento.email}`,
+                                                startTime: new Date(refreshedAgendamento.data_hora),
+                                                endTime: new Date(new Date(refreshedAgendamento.data_hora).getTime() + (refreshedAgendamento.duracao_minutos || 60) * 60000),
+                                                attendees: [refreshedAgendamento.email]
+                                            }
+                                        );
+
+                                        if (eventResult.success && eventResult.eventLink) {
+                                            await ComercialRepository.updateMeetLink(agendamentoId, eventResult.eventLink);
+                                            console.log('Meet link salvo com sucesso:', eventResult.eventLink);
+                                        }
+                                    } catch (errMeet) {
+                                        console.error('Erro ao gerar Google Meet:', errMeet);
+                                    }
+                                }
+                            }
                         } else {
-                            // Fallback caso nÃ£o tenha o ID (legado ou erro)
-                            console.log('ID nÃ£o encontrado no metadata, criando novo agendamento...')
+                            // Fallback caso não tenha o ID (legado ou erro)
+                            console.log('ID não encontrado no metadata, criando novo agendamento...')
                             const agendamento = {
                                 nome: metadata.nome,
                                 email: metadata.email,
@@ -697,7 +730,39 @@ class ComercialController {
 
                     if (agendamentoId) {
                         console.log('Atualizando agendamento existente via Mercado Pago:', agendamentoId)
-                        await ComercialRepository.updateAgendamentoStatus(agendamentoId, status)
+                        const currentAgendamento = await ComercialRepository.getAgendamentoById(agendamentoId);
+                        
+                        if (currentAgendamento?.status === 'cancelado') {
+                            console.log('Agendamento já está cancelado. Ignorando atualização de status de pagamento Mercado Pago.');
+                        } else {
+                            await ComercialRepository.updateAgendamentoStatus(agendamentoId, status)
+                            
+                            // TASK 2: Gerar link do Google Meet se pagamento aprovado E formulário enviado
+                            const refreshedAgendamento = await ComercialRepository.getAgendamentoById(agendamentoId);
+                            if (refreshedAgendamento && refreshedAgendamento.pagamento_status === 'aprovado' && refreshedAgendamento.cliente_is_user === true && !refreshedAgendamento.meet_link) {
+                                try {
+                                    console.log('Gerando Google Meet link via Composio...');
+                                    const ComposioService = (await import('../services/ComposioService')).default;
+                                    const eventResult = await ComposioService.createCalendarEvent(
+                                        refreshedAgendamento.usuario_id || 'default',
+                                        {
+                                            summary: `Consultoria - ${refreshedAgendamento.nome}`,
+                                            description: `Consultoria confirmada.\nTelefone: ${refreshedAgendamento.telefone}\nEmail: ${refreshedAgendamento.email}`,
+                                            startTime: new Date(refreshedAgendamento.data_hora),
+                                            endTime: new Date(new Date(refreshedAgendamento.data_hora).getTime() + (refreshedAgendamento.duracao_minutos || 60) * 60000),
+                                            attendees: [refreshedAgendamento.email]
+                                        }
+                                    );
+
+                                    if (eventResult.success && eventResult.eventLink) {
+                                        await ComercialRepository.updateMeetLink(agendamentoId, eventResult.eventLink);
+                                        console.log('Meet link salvo com sucesso:', eventResult.eventLink);
+                                    }
+                                } catch (errMeet) {
+                                    console.error('Erro ao gerar Google Meet:', errMeet);
+                                }
+                            }
+                        }
                     } else {
                         // Fallback
                         const agendamento = {

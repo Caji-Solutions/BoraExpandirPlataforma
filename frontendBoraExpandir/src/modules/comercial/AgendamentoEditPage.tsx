@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ChevronLeft, Save, Loader2, Calendar, Clock, User, Mail, Phone, CreditCard, FileText, Package, X, AlertCircle, Upload, CheckCircle2, XCircle } from 'lucide-react'
+import { ChevronLeft, Save, Loader2, Calendar, Clock, User, Mail, Phone, CreditCard, FileText, Package, X, AlertCircle, Upload, CheckCircle2, XCircle, Copy } from 'lucide-react'
 import { useToast } from '../../components/ui/Toast'
 import { CalendarPicker } from '../../components/ui/CalendarPicker'
 import { catalogService, Service } from '../adm/services/catalogService'
 import comercialService from './services/comercialService'
+import juridicoService from '../juridico/services/juridicoService'
 
 const HORARIOS_DISPONIVEIS = [
     '08:00', '09:00', '10:00', '11:00',
@@ -39,6 +40,7 @@ export function AgendamentoEditPage() {
 
     const [agendamento, setAgendamento] = useState<any>(null)
     const [produtos, setProdutos] = useState<Service[]>([])
+    const [usuariosSistema, setUsuariosSistema] = useState<any[]>([])
 
     const [dataSelecionada, setDataSelecionada] = useState<Date | undefined>(undefined)
     const [horaSelecionada, setHoraSelecionada] = useState<string>('')
@@ -79,8 +81,13 @@ export function AgendamentoEditPage() {
         async function fetchData() {
             try {
                 setLoading(true)
-                const prods = await catalogService.getCatalogServices()
+                const [prods, usuariosData] = await Promise.all([
+                    catalogService.getCatalogServices(),
+                    juridicoService.getFuncionariosJuridico().catch(() => [])
+                ])
                 setProdutos(prods)
+                setUsuariosSistema(Array.isArray(usuariosData) ? usuariosData : [])
+
 
                 const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/comercial/agendamento/${id}`)
                 if (!response.ok) throw new Error('Agendamento não encontrado')
@@ -510,6 +517,42 @@ export function AgendamentoEditPage() {
                     </div>
                 )}
 
+                {/* ═══ LINK DO GOOGLE MEET ═══ */}
+                {agendamento.meet_link && (
+                    <div className="bg-white dark:bg-neutral-900 rounded-2xl p-6 border border-gray-100 dark:border-neutral-800 shadow-sm mb-6">
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <Calendar className="w-5 h-5 text-emerald-600" />
+                            Link do Google Meet
+                        </h2>
+                        <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 border border-emerald-200 dark:border-emerald-800/30">
+                            <p className="text-sm text-emerald-800 dark:text-emerald-300 mb-3 font-medium">
+                                📹 Link da videochamada para a consultoria:
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    readOnly
+                                    value={agendamento.meet_link}
+                                    className="flex-1 text-xs bg-white dark:bg-neutral-800 border border-emerald-200 dark:border-emerald-700/50 rounded-lg px-3 py-2 text-gray-700 dark:text-gray-200 font-mono"
+                                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                                />
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(agendamento.meet_link)
+                                        toast.success('Link do Google Meet copiado!')
+                                    }}
+                                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5"
+                                >
+                                    <Copy className="w-3.5 h-3.5" /> Copiar Link
+                                </button>
+                            </div>
+                            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2">
+                                Este link foi gerado automaticamente e enviado para o cliente. Use-o no dia da consultoria.
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 {/* ═══ UPLOAD DE COMPROVANTE ═══ */}
                 <div className="bg-white dark:bg-neutral-900 rounded-2xl p-6 border border-gray-100 dark:border-neutral-800 shadow-sm mb-6">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
@@ -760,7 +803,15 @@ export function AgendamentoEditPage() {
                                     </div>
                                     <div>
                                         <span className="text-gray-500 dark:text-gray-400 text-xs">Criado por</span>
-                                        <p className="font-medium text-gray-900 dark:text-white truncate text-xs">{conflictPopup.agendamento.usuario_id || '—'}</p>
+                                        <p className="font-medium text-gray-900 dark:text-white truncate text-xs">
+                                            {(() => {
+                                                const uid = conflictPopup.agendamento.usuario_id
+                                                if (!uid) return '—'
+                                                const user = usuariosSistema.find((u: any) => u.id === uid)
+                                                if (user) return user.full_name
+                                                return `Usuario (${uid.substring(0, 8)})`
+                                            })()}
+                                        </p>
                                     </div>
                                 </div>
 

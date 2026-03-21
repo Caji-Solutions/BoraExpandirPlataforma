@@ -11,6 +11,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { catalogService, Service } from '../adm/services/catalogService'
 import comercialService from './services/comercialService'
 import { useLocation } from 'react-router-dom'
+import juridicoService from '../juridico/services/juridicoService'
 
 /**
  * Converte string de duração do catálogo (ex: "1 horas", "30 minutos") para minutos.
@@ -90,6 +91,7 @@ export interface Comercial1Props {
 export default function Comercial1({ preSelectedClient, isClientView = false }: Comercial1Props) {
   const { success, error } = useToast()
   const { activeProfile } = useAuth()
+  const navigate = useNavigate()
   const location = useLocation()
   const navigationState = location.state as { preSelectedClient?: Cliente, preSelectedProduto?: string, step?: 'produto' | 'data_hora' | 'cliente', paid?: boolean } | undefined
   const isPaidFromContrato = navigationState?.paid === true
@@ -98,16 +100,20 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [loadingProdutos, setLoadingProdutos] = useState(false)
+  const [usuariosSistema, setUsuariosSistema] = useState<any[]>([])
 
   useEffect(() => {
     async function fetchInitialData() {
       try {
         setLoadingProdutos(true)
-        // Fetch Clientes e Produtos em paralelo
-        const [clientesData, produtosData] = await Promise.all([
+        // Fetch Clientes, Produtos e Usuarios do sistema em paralelo
+        const [clientesData, produtosData, usuariosData] = await Promise.all([
           comercialService.getAllClientes(),
-          catalogService.getCatalogServices()
+          catalogService.getCatalogServices(),
+          juridicoService.getFuncionariosJuridico().catch(() => [])
         ])
+
+        setUsuariosSistema(Array.isArray(usuariosData) ? usuariosData : [])
 
         // Map Clientes
         const mappedClientes = clientesData.map((c: any) => ({
@@ -685,18 +691,8 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const handleSuccessAgendamento = (responseData: any) => {
     setShowConfirmacao(false)
     console.log('DEBUG AGENDAMENTO: Sucesso. Response data:', responseData)
-
-    setAgendamentos([...agendamentos, agendamentoPreview!])
     success('Agendamento criado com sucesso!')
-
-    // Resetar estado para novo agendamento
-    setDataSelecionada(undefined)
-    setHoraSelecionada('')
-    setProdutoSelecionado(null)
-    setClienteSelecionado(null)
-    setDuracaoMinutos(60)
-    setEmailTemporario('')
-    setPasso('produto')
+    navigate('/comercial/meus-agendamentos', { replace: true })
   }
 
   const handleCadastrarNovoCliente = async () => {
@@ -999,7 +995,15 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                             </div>
                             <div>
                               <span className="text-gray-500 dark:text-gray-400 text-xs">Criado por</span>
-                              <p className="font-medium text-gray-900 dark:text-white truncate text-xs">{conflictPopup.agendamento.usuario_id || '—'}</p>
+                              <p className="font-medium text-gray-900 dark:text-white truncate text-xs">
+                                {(() => {
+                                  const uid = conflictPopup.agendamento.usuario_id
+                                  if (!uid) return '—'
+                                  const user = usuariosSistema.find((u: any) => u.id === uid)
+                                  if (user) return user.full_name
+                                  return `Usuario (${uid.substring(0, 8)})`
+                                })()}
+                              </p>
                             </div>
                           </div>
                           <div className="mt-3 pt-3 border-t border-gray-100 dark:border-neutral-700">
@@ -1434,6 +1438,11 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
             onClose={() => setShowConfirmacao(false)}
             onSuccess={handleSuccessAgendamento}
             onError={(msg) => error(msg)}
+            onNavigateToAgendamentos={() => {
+              setShowConfirmacao(false)
+              success('Agendamento criado com sucesso!')
+              navigate('/comercial/meus-agendamentos', { replace: true })
+            }}
             payload={agendamentoPayload}
             exchangeRate={exchangeRate}
           />

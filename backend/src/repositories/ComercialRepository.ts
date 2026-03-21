@@ -255,6 +255,24 @@ class ComercialRepository {
 
         return data
     }
+
+    async updateMeetLink(id: string, meetLink: string) {
+        console.log('Salvando meet_link no agendamento:', { id, meetLink })
+
+        const { data, error } = await supabase
+            .from('agendamentos')
+            .update({ meet_link: meetLink })
+            .eq('id', id)
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro ao atualizar meet_link do agendamento:', error)
+            throw error
+        }
+
+        return data
+    }
     async getAllAgendamentos() {
         console.log('Buscando todos os agendamentos')
         

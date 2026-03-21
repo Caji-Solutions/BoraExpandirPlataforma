@@ -7,7 +7,8 @@ import {
   Clock, 
   User, 
   X,
-  CreditCard
+  CreditCard,
+  Copy
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import juridicoService from "../modules/juridico/services/juridicoService"; // Keeping the service reference for now
@@ -637,6 +638,22 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                              <span className="text-emerald-600 dark:text-emerald-400 ml-1 font-bold">R$ {Number(selectedItem.valor).toFixed(2)}</span>
                            )}
                         </p>
+                      </div>
+                    )}
+                    {selectedItem.meet_link && (
+                      <div className="flex flex-col">
+                        <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider block mb-1 flex-shrink-0">Google Meet</span>
+                        <div className="flex items-center gap-2 mt-1 min-w-0">
+                          <a href={selectedItem.meet_link} target="_blank" rel="noreferrer" className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 truncate max-w-[150px] sm:max-w-[200px]" title={selectedItem.meet_link}>
+                            {selectedItem.meet_link}
+                          </a>
+                          <button onClick={() => { 
+                            navigator.clipboard.writeText(selectedItem.meet_link); 
+                            setTimeout(() => alert('Link copiado!'), 100);
+                          }} className="p-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 rounded-md transition-colors flex-shrink-0" title="Copiar link">
+                            <Copy className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

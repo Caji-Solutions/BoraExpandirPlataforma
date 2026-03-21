@@ -2,12 +2,12 @@ import cron from 'node-cron';
 import { supabase } from '../config/SupabaseClient';
 
 /**
- * Job que roda a cada 5 minutos
+ * Job que roda a cada 30 minutos
  * Regra: Se um agendamento está agendado para < 1 hora no futuro
  * e o formulário (cliente_is_user) não foi preenchido, ele cancela automaticamente.
  */
 export const startCronJobs = () => {
-    cron.schedule('*/5 * * * *', async () => {
+    cron.schedule('*/30 * * * *', async () => {
         try {
             console.log('[CRON] Executando verificação de formulários atrasados...');
             
@@ -31,12 +31,23 @@ export const startCronJobs = () => {
 
             for (const agendamento of agendamentos) {
                 try {
-                    // Combinar data e hora do agendamento
-                    const agendamentoDateTime = new Date(`${agendamento.data}T${agendamento.hora}`);
+                    // Combinar data e hora do agendamento (compatibilidade com bd legado) ou usar data_hora se existir
+                    const agendamentoDateTime = agendamento.data_hora 
+                        ? new Date(agendamento.data_hora) 
+                        : new Date(`${agendamento.data}T${agendamento.hora}`);
                     
-                    // Se a data/hora do agendamento for menor que agora + 1h, e o formulário não foi preenchido, cancela.
+                    // 1. Log detalhado
+                    console.log(`[CRON] Avaliando ID: ${agendamento.id} | Status: ${agendamento.status} | DataHora: ${agendamentoDateTime.toISOString()} | Pagamento: ${agendamento.pagamento_status} | Formulario(cliente_is_user): ${agendamento.cliente_is_user}`);
+
+                    // 2. Se o formulário já foi enviado (cliente_is_user === true), NUNCA cancela por esse CRON.
+                    if (agendamento.cliente_is_user === true) {
+                        console.log(`[CRON] Poupando agendamento ${agendamento.id}: Formulário já foi enviado ao cliente.`);
+                        continue;
+                    }
+
+                    // 3. Se falta 1h ou menos e NÃO tem formulário enviado, cancela.
                     if (agendamentoDateTime <= cancelLimitTime) {
-                        console.log(`[CRON] Cancelando agendamento ${agendamento.id} por falta de formulário.`);
+                        console.log(`[CRON] Cancelando agendamento ${agendamento.id} por falta de formulário (falta <= 60 min).`);
                         
                         const { error: updateError } = await supabase
                             .from('agendamentos')
@@ -62,5 +73,5 @@ export const startCronJobs = () => {
         }
     });
 
-    console.log('[CRON] Workers iniciados com sucesso. (Verificação a cada 5 minutos)');
+    console.log('[CRON] Workers iniciados com sucesso. (Verificação a cada 30 minutos)');
 };
