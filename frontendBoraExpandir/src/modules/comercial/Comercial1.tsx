@@ -1001,7 +1001,8 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                                   if (!uid) return '—'
                                   const user = usuariosSistema.find((u: any) => u.id === uid)
                                   if (user) return user.full_name
-                                  return `Usuario (${uid.substring(0, 8)})`
+                                  if (activeProfile?.id === uid) return activeProfile?.full_name || 'Você'
+                                  return 'Não identificado'
                                 })()}
                               </p>
                             </div>

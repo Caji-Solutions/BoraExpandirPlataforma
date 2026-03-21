@@ -584,7 +584,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                            const user = usuariosSistema.find(u => u.id === respId);
                            if (user) return user.full_name;
                            if (activeProfile?.id === respId) return activeProfile?.full_name;
-                           return `Usuário (${respId.substring(0,8)})`;
+                           return 'Não identificado';
                          })()}
                        </p>
                        {!selectedItem.responsavel_juridico_id && activeTab === 'consultorias' && (
@@ -608,7 +608,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                             if (user) return user.full_name;
                             if (activeProfile?.id === creatorId) return activeProfile?.full_name;
                             if (cachedProfiles[creatorId]) return cachedProfiles[creatorId];
-                            return creatorId ? `Usuário (${creatorId.substring(0,8)})` : 'Sistema';
+                            return creatorId ? 'Não identificado' : 'Sistema';
                           })()}
                        </p>
                        <p className="text-xs text-gray-500 truncate mt-0.5">

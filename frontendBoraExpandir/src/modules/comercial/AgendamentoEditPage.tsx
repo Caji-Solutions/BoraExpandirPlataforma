@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft, Save, Loader2, Calendar, Clock, User, Mail, Phone, CreditCard, FileText, Package, X, AlertCircle, Upload, CheckCircle2, XCircle, Copy } from 'lucide-react'
 import { useToast } from '../../components/ui/Toast'
+import { useAuth } from '../../contexts/AuthContext'
 import { CalendarPicker } from '../../components/ui/CalendarPicker'
 import { catalogService, Service } from '../adm/services/catalogService'
 import comercialService from './services/comercialService'
@@ -34,6 +35,7 @@ export function AgendamentoEditPage() {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
     const toast = useToast()
+    const { activeProfile } = useAuth()
 
     const [loading, setLoading] = useState(true)
     const [salvando, setSalvando] = useState(false)
@@ -807,9 +809,10 @@ export function AgendamentoEditPage() {
                                             {(() => {
                                                 const uid = conflictPopup.agendamento.usuario_id
                                                 if (!uid) return '—'
+                                                if (activeProfile?.id === uid) return activeProfile?.full_name || 'Você'
                                                 const user = usuariosSistema.find((u: any) => u.id === uid)
                                                 if (user) return user.full_name
-                                                return `Usuario (${uid.substring(0, 8)})`
+                                                return 'Não identificado'
                                             })()}
                                         </p>
                                     </div>
