@@ -83,7 +83,7 @@ class ClienteController {
               }))
             }
           } catch (admError) {
-            console.error(`Erro ao buscar serviço ${processo.servico_id}:`, admError)
+            console.error(`Erro ao buscar servico ${processo.servico_id}:`, admError)
           }
         }
 
@@ -783,7 +783,7 @@ class ClienteController {
 
       const { solicitado_pelo_juridico, prazo } = req.body;
 
-      console.log('Enviando para o repositório...', {
+      console.log('Enviando para o repositorio...', {
         documentoId, status, solicitado_pelo_juridico
       });
 
@@ -797,7 +797,7 @@ class ClienteController {
         solicitado_pelo_juridico
       )
 
-      console.log('Documento atualizado no repositório com sucesso.');
+      console.log('Documento atualizado no repositorio com sucesso.');
 
       // Criar notificação se o status exigir ação do cliente ou se foi solicitado pelo jurídico
       try {
@@ -832,11 +832,11 @@ class ClienteController {
               tipo,
               prazo: Number(prazo) || 15
             });
-            console.log(`Notificação "${titulo}" enviada com sucesso para o cliente ${documento.cliente_id} (Prazo: ${prazo || 15} dias)`);
+            console.log(`Notificacao "${titulo}" enviada com sucesso para o cliente ${documento.cliente_id} (Prazo: ${prazo || 15} dias)`);
           }
         }
       } catch (notifyError) {
-        console.error('Erro ao enviar notificação de status:', notifyError);
+        console.error('Erro ao enviar notificacao de status:', notifyError);
       }
 
       console.log('Finalizando resposta de sucesso.');
@@ -877,7 +877,7 @@ class ClienteController {
         data: formularios
       })
     } catch (error: any) {
-      console.error('Erro ao buscar formulários:', error)
+      console.error('Erro ao buscar formularios:', error)
       return res.status(500).json({
         message: 'Erro ao buscar formulários',
         error: error.message
@@ -950,7 +950,7 @@ class ClienteController {
         }
       })
     } catch (error: any) {
-      console.error('Erro ao upload de formulário:', error)
+      console.error('Erro ao upload de formulario:', error)
       return res.status(500).json({
         message: 'Erro ao enviar formulário',
         error: error.message
@@ -973,7 +973,7 @@ class ClienteController {
         message: 'Formulário deletado com sucesso'
       })
     } catch (error: any) {
-      console.error('Erro ao deletar formulário:', error)
+      console.error('Erro ao deletar formulario:', error)
       return res.status(500).json({
         message: 'Erro ao deletar formulário',
         error: error.message
@@ -1008,7 +1008,7 @@ class ClienteController {
         .single()
 
       if (fetchError || !originalForm) {
-        console.error('Erro ao buscar formulário original:', fetchError)
+        console.error('Erro ao buscar formulario original:', fetchError)
         return res.status(404).json({ message: 'Formulário original não encontrado' })
       }
 
@@ -1050,7 +1050,7 @@ class ClienteController {
         tamanho: file.size
       })
 
-      console.log('Resposta de formulário criada com sucesso:', formularioRecord.id)
+      console.log('Resposta de formulario criada com sucesso:', formularioRecord.id)
 
       return res.status(201).json({
         message: 'Resposta de formulário enviada com sucesso',
@@ -1061,7 +1061,7 @@ class ClienteController {
         }
       })
     } catch (error: any) {
-      console.error('Erro ao enviar resposta de formulário:', error)
+      console.error('Erro ao enviar resposta de formulario:', error)
       return res.status(500).json({
         message: 'Erro ao enviar resposta de formulário',
         error: error.message
@@ -1085,7 +1085,7 @@ class ClienteController {
         data: responses
       })
     } catch (error: any) {
-      console.error('Erro ao buscar respostas de formulários:', error)
+      console.error('Erro ao buscar respostas de formularios:', error)
       return res.status(500).json({
         message: 'Erro ao buscar respostas de formulários',
         error: error.message
@@ -1162,7 +1162,7 @@ class ClienteController {
         data: notificacoes
       })
     } catch (error: any) {
-      console.error('Erro ao buscar notificações:', error)
+      console.error('Erro ao buscar notificacoes:', error)
       return res.status(500).json({
         message: 'Erro ao buscar notificações',
         error: error.message
@@ -1211,7 +1211,7 @@ class ClienteController {
         data: notification
       })
     } catch (error: any) {
-      console.error('Erro ao atualizar status da notificação:', error)
+      console.error('Erro ao atualizar status da notificacao:', error)
       return res.status(500).json({
         message: 'Erro ao atualizar status da notificação',
         error: error.message
@@ -1234,7 +1234,7 @@ class ClienteController {
         message: 'Todas as notificações marcadas como lidas'
       })
     } catch (error: any) {
-      console.error('Erro ao marcar todas notificações como lidas:', error)
+      console.error('Erro ao marcar todas notificacoes como lidas:', error)
       return res.status(500).json({
         message: 'Erro ao marcar todas notificações como lidas',
         error: error.message
@@ -1248,7 +1248,7 @@ class ClienteController {
       const clienteIdRaw = (req.query?.clienteId || req.query?.cliente_id || req.params?.clienteId) as string | undefined
 
       if (!clienteIdRaw) {
-        return res.status(400).json({ message: 'clienteId Ã© obrigatÃ³rio' })
+        return res.status(400).json({ message: 'clienteId é obrigatório' })
       }
 
       const clienteId = String(clienteIdRaw).trim()
@@ -1315,20 +1315,20 @@ class ClienteController {
       const clienteId = req.body.cliente_id || req.body.clienteId
 
       if (!file) {
-        return res.status(400).json({ message: 'Arquivo do contrato Ã© obrigatÃ³rio' })
+        return res.status(400).json({ message: 'Arquivo do contrato é obrigatório' })
       }
 
       if (!clienteId) {
-        return res.status(400).json({ message: 'cliente_id Ã© obrigatÃ³rio' })
+        return res.status(400).json({ message: 'cliente_id é obrigatório' })
       }
 
       const contrato = await ContratoServicoRepository.getContratoById(id)
       if (!contrato) {
-        return res.status(404).json({ message: 'Contrato nÃ£o encontrado' })
+        return res.status(404).json({ message: 'Contrato não encontrado' })
       }
 
       if (contrato.cliente_id !== clienteId) {
-        return res.status(403).json({ message: 'Contrato nÃ£o pertence ao cliente informado' })
+        return res.status(403).json({ message: 'Contrato não pertence ao cliente informado' })
       }
 
       if (this.isClienteLead(contrato)) {
@@ -1399,20 +1399,20 @@ class ClienteController {
       const clienteId = req.body.cliente_id || req.body.clienteId
 
       if (!file) {
-        return res.status(400).json({ message: 'Arquivo do comprovante Ã© obrigatÃ³rio' })
+        return res.status(400).json({ message: 'Arquivo do comprovante é obrigatório' })
       }
 
       if (!clienteId) {
-        return res.status(400).json({ message: 'cliente_id Ã© obrigatÃ³rio' })
+        return res.status(400).json({ message: 'cliente_id é obrigatório' })
       }
 
       const contrato = await ContratoServicoRepository.getContratoById(id)
       if (!contrato) {
-        return res.status(404).json({ message: 'Contrato nÃ£o encontrado' })
+        return res.status(404).json({ message: 'Contrato não encontrado' })
       }
 
       if (contrato.cliente_id !== clienteId) {
-        return res.status(403).json({ message: 'Contrato nÃ£o pertence ao cliente informado' })
+        return res.status(403).json({ message: 'Contrato não pertence ao cliente informado' })
       }
 
       if (this.isClienteLead(contrato)) {
@@ -1420,7 +1420,7 @@ class ClienteController {
       }
 
       if (contrato.assinatura_status !== 'aprovado') {
-        return res.status(400).json({ message: 'Contrato ainda nÃ£o aprovado' })
+        return res.status(400).json({ message: 'Contrato ainda não aprovado' })
       }
 
       if (!['pendente', 'recusado'].includes(contrato.pagamento_status)) {

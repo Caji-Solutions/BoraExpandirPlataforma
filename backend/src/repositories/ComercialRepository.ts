@@ -73,8 +73,8 @@ class ComercialRepository {
             throw error
         }
 
-        // Se o status for aprovado, verifica se o serviço requer delegação jurídica
-        if (status === 'aprovado' && data) {
+        // Se o status for confirmado, verifica se o serviço requer delegação jurídica
+        if (status === 'confirmado' && data?.pagamento_status === 'aprovado') {
             try {
                 // 1. Verificar no catálogo se este serviço requer delegação
                 const { data: service } = await supabase
@@ -108,8 +108,8 @@ class ComercialRepository {
             }
         }
 
-        // Se o status for aprovado, cria uma notificação para o cliente
-        if (status === 'aprovado' && data && data.cliente_id) {
+        // Se o status for confirmado, cria uma notificação para o cliente
+        if (status === 'confirmado' && data?.pagamento_status === 'aprovado' && data.cliente_id) {
             try {
                 const NotificationService = (await import('../services/NotificationService')).default
                 await NotificationService.createNotification({
@@ -173,7 +173,7 @@ class ComercialRepository {
         const { data: agendamentos, error } = await supabase
             .from('agendamentos')
             .select('*')
-            .in('status', ['agendado', 'confirmado', 'aprovado', 'realizado'])
+            .in('status', ['agendado', 'confirmado', 'realizado'])
             .gte('data_hora', data_hora_inicio)
             .lt('data_hora', data_hora_fim)
 
@@ -191,7 +191,7 @@ class ComercialRepository {
         const { data: agendamentos, error } = await supabase
             .from('agendamentos')
             .select('*')
-            .in('status', ['agendado', 'confirmado', 'aprovado', 'realizado'])
+            .in('status', ['agendado', 'confirmado', 'realizado'])
             .gte('data_hora', `${data}T00:00:00`)
             .lt('data_hora', `${data}T23:59:59`)
             .order('data_hora', { ascending: true })

@@ -6,10 +6,6 @@ import { Badge } from '../../components/ui/Badge'
 import { GerenciamentoAgendamentoModal } from './components/GerenciamentoAgendamentoModal'
 
 const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'; label: string }> = {
-	pendente: {
-		variant: 'warning',
-		label: 'Pendente',
-	},
 	agendado: {
 		variant: 'success',
 		label: 'Agendado',
@@ -112,11 +108,11 @@ export default function AgendamentosPage({ agendamentos, onRefresh }: Agendament
 							className="px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
 						>
 							<option value="todos">Todos</option>
-							<option value="pendente">Pendentes</option>
 							<option value="agendado">Agendados</option>
 							<option value="confirmado">Confirmados</option>
 							<option value="realizado">Realizados</option>
 							<option value="cancelado">Cancelados</option>
+							<option value="aguardando_verificacao">Aguardando Verificação</option>
 						</select>
 					</div>
 				</div>
@@ -148,7 +144,7 @@ export default function AgendamentosPage({ agendamentos, onRefresh }: Agendament
 									const isConfirmed = agendamento.status === 'confirmado' || agendamento.status === 'realizado'
 									const isCancelled = agendamento.status === 'cancelado'
 									const isCronBlocked = isCancelled && agendamento.pagamento_nota_recusa?.includes('[SISTEMA]')
-									const isLocked = !!agendamento.cliente_is_user && (agendamento.status === 'pendente' || agendamento.status === 'agendado')
+									const isLocked = !!agendamento.cliente_is_user && agendamento.status === 'agendado'
 									const isEditable = !isConfirmed && !isLocked && !isCancelled
 
 									return (

@@ -243,7 +243,7 @@ class FormularioController {
                 const { error: agUpdateError } = await supabase
                     .from('agendamentos')
                     .update({
-                        status: isPago ? 'confirmado' : 'pendente',
+                        status: isPago ? 'confirmado' : 'agendado',
                         cliente_id: clienteId
                     })
                     .eq('id', agendamento_id)

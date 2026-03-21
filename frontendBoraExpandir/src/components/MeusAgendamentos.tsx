@@ -209,10 +209,8 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
 
   const getStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'aprovado':
       case 'confirmado':
         return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none">Confirmado</Badge>;
-      case 'pendente':
       case 'agendado':
         return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-none">Agendado</Badge>;
       case 'cancelado':

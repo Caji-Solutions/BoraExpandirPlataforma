@@ -40,7 +40,7 @@ class ComercialController {
                 tipo: params.tipo
             })
         } catch (notificationError) {
-            console.error('[ComercialController] Erro ao criar notificaÃ§Ã£o de contrato:', notificationError)
+            console.error('[ComercialController] Erro ao criar notificacao de contrato:', notificationError)
         }
     }
 
@@ -53,25 +53,25 @@ class ComercialController {
 
             console.log('IDs recebidos:', { usuario_id, cliente_id })
 
-            // ValidaÃ§Ã£o bÃ¡sica
+            // Validação básica
             if (!nome || !email || !telefoneNormalizado || !data_hora || !produto_id) {
-                console.error('Campos obrigatÃ³rios faltando:', { nome, email, telefone, data_hora, produto_id })
+                console.error('Campos obrigatorios faltando:', { nome, email, telefone, data_hora, produto_id })
                 return res.status(400).json({
-                    message: 'Campos obrigatÃ³rios: nome, email, telefone, data_hora, produto_id'
+                    message: 'Campos obrigatórios: nome, email, telefone, data_hora, produto_id'
                 })
             }
 
             // Normaliza data_hora para UTC (evita falsos negativos na checagem)
             const dataHoraIso = data_hora?.endsWith('Z') ? data_hora : `${data_hora}Z`
 
-            // Verifica disponibilidade do horÃ¡rio
+            // Verifica disponibilidade do horário
             const duracao = duracao_minutos || 60
             const disponibilidade = await this.verificarDisponibilidade(dataHoraIso, duracao)
             console.log('Disponibilidade verificada:', disponibilidade)
 
             if (!disponibilidade.disponivel) {
                 return res.status(409).json({
-                    message: 'HorÃ¡rio indisponÃ­vel',
+                    message: 'Horário indisponível',
                     conflitos: disponibilidade.agendamentos
                 })
             }
@@ -90,7 +90,7 @@ class ComercialController {
                 requer_delegacao: requer_delegacao !== undefined ? requer_delegacao : false
             }
 
-            // Fallback: se o frontend nÃ£o enviou requer_delegacao, tenta buscar do catÃ¡logo
+            // Fallback: se o frontend não enviou requer_delegacao, tenta buscar do catálogo
             if (requer_delegacao === undefined && produto_id) {
                 try {
                     const servico = await AdmRepository.getServiceById(produto_id)
@@ -107,7 +107,7 @@ class ComercialController {
             const createdData = await ComercialRepository.createAgendamento(agendamento)
             console.log('Agendamento criado com sucesso:', createdData)
 
-            // Verificar se o lead jÃ¡ preencheu o formulÃ¡rio em outro agendamento
+            // Verificar se o lead já preencheu o formulário em outro agendamento
             let avisoFormularioPreenchido = false
             try {
                 if (email) {
@@ -127,7 +127,7 @@ class ComercialController {
                     if (clientePorTel?.user_id) avisoFormularioPreenchido = true
                 }
             } catch (checkErr) {
-                console.warn('Erro ao verificar formulÃ¡rio preenchido do lead:', checkErr)
+                console.warn('Erro ao verificar formulario preenchido do lead:', checkErr)
             }
 
             return res.status(201).json({ ...createdData, aviso_formulario_preenchido: avisoFormularioPreenchido })
@@ -144,8 +144,8 @@ class ComercialController {
     }
 
     /**
-     * Cria sessÃ£o de checkout do MercadoPago e retorna o link
-     * O agendamento serÃ¡ criado pelo webhook apÃ³s confirmaÃ§Ã£o do pagamento
+     * Cria sessão de checkout do MercadoPago e retorna o link
+     * O agendamento será criado pelo webhook após confirmação do pagamento
      */
     async createAgendamentoMercadoPago(req: any, res: any) {
         console.log('========== CREATE MERCADO PAGO CHECKOUT DEBUG ==========')
@@ -156,28 +156,28 @@ class ComercialController {
 
             console.log('IDs recebidos:', { usuario_id, cliente_id })
 
-            // ValidaÃ§Ã£o bÃ¡sica
+            // Validação básica
             if (!nome || !email || !telefoneNormalizado || !data_hora || !produto_id || !produto_nome || !valor) {
                 return res.status(400).json({
-                    message: 'Campos obrigatÃ³rios: nome, email, telefone, data_hora, produto_id, produto_nome, valor'
+                    message: 'Campos obrigatórios: nome, email, telefone, data_hora, produto_id, produto_nome, valor'
                 })
             }
 
             // Normaliza data_hora para UTC
             const dataHoraIso = data_hora?.endsWith('Z') ? data_hora : `${data_hora}Z`
 
-            // Verifica disponibilidade do horÃ¡rio antes de criar o checkout
+            // Verifica disponibilidade do horário antes de criar o checkout
             const duracao = duracao_minutos || 60
             const disponibilidade = await this.verificarDisponibilidade(dataHoraIso, duracao)
 
             if (!disponibilidade.disponivel) {
                 return res.status(409).json({
-                    message: 'HorÃ¡rio indisponÃ­vel',
+                    message: 'Horário indisponível',
                     conflitos: disponibilidade.agendamentos
                 })
             }
 
-            // 0. Verificar se o serviÃ§o requer delegaÃ§Ã£o jurÃ­dica
+            // 0. Verificar se o serviço requer delegação jurídica
             const catalogoServico = await AdmRepository.getServiceById(produto_id)
             const requerDelegacao = catalogoServico?.requer_delegacao_juridico || false
 
@@ -201,7 +201,7 @@ class ComercialController {
             const createdAgendamento = await ComercialRepository.createAgendamento(agendamentoPendente)
             console.log('Agendamento PENDENTE criado no banco:', createdAgendamento.id)
 
-            // 2. Cria a preferÃªncia de checkout no MercadoPago
+            // 2. Cria a preferência de checkout no MercadoPago
             const MercadoPagoService = (await import('../services/MercadoPagoService')).default
             const checkout = await MercadoPagoService.createCheckoutPreference({
                 nome,
@@ -219,11 +219,11 @@ class ComercialController {
 
             console.log('Checkout MercadoPago criado:', checkout.preferenceId)
 
-            // Atualiza com o checkout_url se possÃ­vel para o cliente ver no dashboard depois
+            // Atualiza com o checkout_url se possível para o cliente ver no dashboard depois
             try {
                 await ComercialRepository.updateAgendamentoCheckoutUrl(createdAgendamento.id, checkout.checkoutUrl)
             } catch (err) {
-                console.warn('NÃ£o foi possÃ­vel atualizar checkout_url no agendamento:', err)
+                console.warn('Nao foi possivel atualizar checkout_url no agendamento:', err)
             }
 
             return res.status(200).json({
@@ -255,14 +255,14 @@ class ComercialController {
             const telefoneNormalizado = normalizePhone(telefone)
 
             if (!nome || !email || !telefoneNormalizado || !data_hora || !produto_id || !produto_nome || !valor) {
-                return res.status(400).json({ message: 'Campos obrigatÃ³rios ausentes' })
+                return res.status(400).json({ message: 'Campos obrigatórios ausentes' })
             }
 
             const dataHoraIso = data_hora?.endsWith('Z') ? data_hora : `${data_hora}Z`
             const duracao = duracao_minutos || 60
 
             // Opcional: verificar disponibilidade novamente se a data/hora mudou,
-            // mas para simplificar, permitimos a ediÃ§Ã£o por ser uma aÃ§Ã£o do consultor
+            // mas para simplificar, permitimos a edição por ser uma ação do consultor
 
             const agendamentoAtualizado = {
                 nome,
@@ -288,7 +288,7 @@ class ComercialController {
     }
 
     /**
-     * Cria sessÃ£o de checkout do Stripe e retorna o link
+     * Cria sessão de checkout do Stripe e retorna o link
      */
     async createAgendamentoStripe(req: any, res: any) {
         console.log('========== CREATE STRIPE CHECKOUT DEBUG ==========')
@@ -297,7 +297,7 @@ class ComercialController {
             const telefoneNormalizado = normalizePhone(telefone)
 
             if (!nome || !email || !telefoneNormalizado || !data_hora || !produto_id || !produto_nome || !valor) {
-                return res.status(400).json({ message: 'Campos obrigatÃ³rios ausentes' })
+                return res.status(400).json({ message: 'Campos obrigatórios ausentes' })
             }
 
             const dataHoraIso = data_hora?.endsWith('Z') ? data_hora : `${data_hora}Z`
@@ -305,10 +305,10 @@ class ComercialController {
             const disponibilidade = await this.verificarDisponibilidade(dataHoraIso, duracao)
 
             if (!disponibilidade.disponivel) {
-                return res.status(409).json({ message: 'HorÃ¡rio indisponÃ­vel' })
+                return res.status(409).json({ message: 'Horário indisponível' })
             }
 
-            // 0. Verificar se o serviÃ§o requer delegaÃ§Ã£o jurÃ­dica
+            // 0. Verificar se o serviço requer delegação jurídica
             const catalogoServico = await AdmRepository.getServiceById(produto_id)
             const requerDelegacao = catalogoServico?.requer_delegacao_juridico || false
 
@@ -373,16 +373,16 @@ class ComercialController {
             const agendamento = await ComercialRepository.getAgendamentoById(id)
 
             if (!agendamento) {
-                return res.status(404).json({ message: 'Agendamento nÃ£o encontrado' })
+                return res.status(404).json({ message: 'Agendamento não encontrado' })
             }
 
             if (agendamento.status !== 'agendado') {
-                return res.status(400).json({ message: 'Este agendamento jÃ¡ foi processado ou cancelado.' })
+                return res.status(400).json({ message: 'Este agendamento já foi processado ou cancelado.' })
             }
 
-            // Assume o valor salvo no banco ou o que veio na criaÃ§Ã£o
+            // Assume o valor salvo no banco ou o que veio na criação
             const valor = agendamento.valor || 0
-            const isEuro = agendamento.is_euro !== false // Default true se nÃ£o especificado
+            const isEuro = agendamento.is_euro !== false // Default true se não especificado
 
             let checkoutUrl = ''
 
@@ -429,7 +429,7 @@ class ComercialController {
     }
 
     /**
-     * Processa o webhook do Stripe para confirmar agendamento apÃ³s o pagamento
+     * Processa o webhook do Stripe para confirmar agendamento após o pagamento
      */
     async handleStripeWebhook(req: any, res: any) {
         const sig = req.headers['stripe-signature']
@@ -438,10 +438,10 @@ class ComercialController {
         let event
 
         try {
-            // req.body deve ser o RAW body para validaÃ§Ã£o da assinatura
+            // req.body deve ser o RAW body para validação da assinatura
             event = StripeService.validateWebhookSignature(req.body, sig)
         } catch (err: any) {
-            console.error('Erro na validaÃ§Ã£o do Webhook Stripe:', err.message)
+            console.error('Erro na validacao do Webhook Stripe:', err.message)
             return res.status(400).send(`Webhook Error: ${err.message}`)
         }
 
@@ -456,7 +456,7 @@ class ComercialController {
                         console.log('========== STRIPE WEBHOOK AGENDAMENTO DEBUG ==========')
                         console.log('Metadata recebido do Stripe:', metadata)
 
-                        const status = 'aprovado'; // Pagamento confirmado para o cliente
+                        const status = 'confirmado'; // Pagamento confirmado, encontro vai acontecer
                         const agendamentoId = metadata.agendamento_id;
 
                         if (agendamentoId) {
@@ -464,7 +464,7 @@ class ComercialController {
                             const currentAgendamento = await ComercialRepository.getAgendamentoById(agendamentoId);
                             
                             if (currentAgendamento?.status === 'cancelado') {
-                                console.log('Agendamento já está cancelado. Ignorando atualização de status de pagamento.');
+                                console.log('Agendamento ja esta cancelado. Ignorando atualizacao de status de pagamento.');
                             } else {
                                 await ComercialRepository.updateAgendamentoStatus(agendamentoId, status)
                                 
@@ -474,15 +474,21 @@ class ComercialController {
                                     try {
                                         console.log('Gerando Google Meet link via Composio...');
                                         const ComposioService = (await import('../services/ComposioService')).default;
+                                        
+                                        const superAdminId = await (await import('../utils/calendarHelpers')).getSuperAdminId();
+                                        const calendarUserId = superAdminId || refreshedAgendamento.usuario_id || 'default';
+                                        console.log(`[GoogleMeet] Usando userId: ${calendarUserId} (superAdmin: ${superAdminId || 'nao encontrado'})`);
+
                                         // O createCalendarEvent criará a reunião e a migration adicionará o meet_link no db futuramente (Task 2 Frontend precisa dele)
                                         const eventResult = await ComposioService.createCalendarEvent(
-                                            refreshedAgendamento.usuario_id || 'default',
+                                            calendarUserId,
                                             {
                                                 summary: `Consultoria - ${refreshedAgendamento.nome}`,
                                                 description: `Consultoria confirmada.\nTelefone: ${refreshedAgendamento.telefone}\nEmail: ${refreshedAgendamento.email}`,
                                                 startTime: new Date(refreshedAgendamento.data_hora),
                                                 endTime: new Date(new Date(refreshedAgendamento.data_hora).getTime() + (refreshedAgendamento.duracao_minutos || 60) * 60000),
-                                                attendees: [refreshedAgendamento.email]
+                                                attendees: [refreshedAgendamento.email],
+                                                location: 'Google Meet'
                                             }
                                         );
 
@@ -497,7 +503,7 @@ class ComercialController {
                             }
                         } else {
                             // Fallback caso não tenha o ID (legado ou erro)
-                            console.log('ID não encontrado no metadata, criando novo agendamento...')
+                            console.log('ID nao encontrado no metadata, criando novo agendamento...')
                             const agendamento = {
                                 nome: metadata.nome,
                                 email: metadata.email,
@@ -523,7 +529,7 @@ class ComercialController {
                 else if (metadata && metadata.tipo === 'orcamento') {
                     try {
                         const documentoIds = metadata.documentoIds?.split(',') || []
-                        console.log('Pagamento Stripe confirmado para orÃ§amentos:', documentoIds)
+                        console.log('Pagamento Stripe confirmado para orcamentos:', documentoIds)
 
                         const TraducoesRepository = (await import('../repositories/TraducoesRepository')).default
 
@@ -533,16 +539,16 @@ class ComercialController {
                                 await TraducoesRepository.aprovarOrcamento(orcamento.id)
                             }
                         }
-                        console.log('OrÃ§amentos aprovados com sucesso via Webhook Stripe')
+                        console.log('Orcamentos aprovados com sucesso via Webhook Stripe')
                     } catch (error: any) {
-                        console.error('Erro ao aprovar orÃ§amentos via Webhook Stripe:', error)
-                        return res.status(500).json({ message: 'Erro ao processar aprovaÃ§Ã£o de orÃ§amentos' })
+                        console.error('Erro ao aprovar orcamentos via Webhook Stripe:', error)
+                        return res.status(500).json({ message: 'Erro ao processar aprovação de orçamentos' })
                     }
                 }
                 break
             }
             default:
-                console.log(`Evento Stripe nÃ£o processado: ${event.type}`)
+                console.log(`Evento Stripe nao processado: ${event.type}`)
         }
 
         // Return a 200 response to acknowledge receipt of the event
@@ -560,13 +566,13 @@ class ComercialController {
         const inicioIso = inicio.toISOString()
         const fimIso = fim.toISOString()
 
-        // Busca agendamentos conflitantes no repository (intervalo fechado no inÃ­cio, aberto no fim)
+        // Busca agendamentos conflitantes no repository (intervalo fechado no início, aberto no fim)
         const agendamentos = await ComercialRepository.getAgendamentosByIntervalo(
             inicioIso,
             fimIso
         )
 
-        // Se encontrou algum agendamento, o horÃ¡rio estÃ¡ ocupado
+        // Se encontrou algum agendamento, o horário está ocupado
         const disponivel = agendamentos.length === 0
 
         console.log('Disponibilidade:', disponivel, 'Conflitos:', agendamentos.length)
@@ -582,7 +588,7 @@ class ComercialController {
             const { data_hora, duracao_minutos } = req.query
 
             if (!data_hora) {
-                return res.status(400).json({ message: 'data_hora Ã© obrigatÃ³rio' })
+                return res.status(400).json({ message: 'data_hora é obrigatório' })
             }
 
             const dataHoraIso = (data_hora as string)?.endsWith('Z')
@@ -610,19 +616,19 @@ class ComercialController {
             const { usuarioId } = req.params
 
             if (!usuarioId) {
-                return res.status(400).json({ message: 'usuarioId Ã© obrigatÃ³rio' })
+                return res.status(400).json({ message: 'usuarioId é obrigatório' })
             }
 
             const agendamentos = await ComercialRepository.getAgendamentosByUsuario(usuarioId)
 
-            // Buscar informaÃ§Ãµes do catÃ¡logo para cada agendamento
+            // Buscar informações do catálogo para cada agendamento
             const enrichedAgendamentos = await Promise.all(agendamentos.map(async (agendamento: any) => {
                 if (agendamento.produto_id) {
                     try {
                         const serviceInfo = await AdmRepository.getServiceById(agendamento.produto_id)
                         return { ...agendamento, produto: serviceInfo }
                     } catch (e) {
-                        console.error(`Erro ao buscar serviÃ§o ${agendamento.produto_id}:`, e)
+                        console.error(`Erro ao buscar servico ${agendamento.produto_id}:`, e)
                     }
                 }
                 return agendamento
@@ -631,9 +637,9 @@ class ComercialController {
             return res.status(200).json(enrichedAgendamentos)
 
         } catch (error: any) {
-            console.error('Erro ao buscar agendamentos do usuÃ¡rio:', error)
+            console.error('Erro ao buscar agendamentos do usuario:', error)
             return res.status(500).json({
-                message: 'Erro ao buscar agendamentos do usuÃ¡rio',
+                message: 'Erro ao buscar agendamentos do usuário',
                 error: error.message
             })
         }
@@ -644,19 +650,19 @@ class ComercialController {
             const { data } = req.params
 
             if (!data) {
-                return res.status(400).json({ message: 'data Ã© obrigatÃ³rio' })
+                return res.status(400).json({ message: 'data é obrigatório' })
             }
 
             const agendamentos = await ComercialRepository.getAgendamentosByData(data)
 
-            // Buscar informaÃ§Ãµes do catÃ¡logo para cada agendamento
+            // Buscar informações do catálogo para cada agendamento
             const enrichedAgendamentos = await Promise.all(agendamentos.map(async (agendamento: any) => {
                 if (agendamento.produto_id) {
                     try {
                         const serviceInfo = await AdmRepository.getServiceById(agendamento.produto_id)
                         return { ...agendamento, produto: serviceInfo }
                     } catch (e) {
-                        console.error(`Erro ao buscar serviÃ§o ${agendamento.produto_id}:`, e)
+                        console.error(`Erro ao buscar servico ${agendamento.produto_id}:`, e)
                     }
                 }
                 return agendamento
@@ -678,19 +684,19 @@ class ComercialController {
             const { clienteId } = req.params
 
             if (!clienteId) {
-                return res.status(400).json({ message: 'clienteId Ã© obrigatÃ³rio' })
+                return res.status(400).json({ message: 'clienteId é obrigatório' })
             }
 
             const agendamentos = await ComercialRepository.getAgendamentosByCliente(clienteId)
 
-            // Buscar informaÃ§Ãµes do catÃ¡logo para cada agendamento
+            // Buscar informações do catálogo para cada agendamento
             const enrichedAgendamentos = await Promise.all(agendamentos.map(async (agendamento: any) => {
                 if (agendamento.produto_id) {
                     try {
                         const serviceInfo = await AdmRepository.getServiceById(agendamento.produto_id)
                         return { ...agendamento, produto: serviceInfo }
                     } catch (e) {
-                        console.error(`Erro ao buscar serviÃ§o ${agendamento.produto_id}:`, e)
+                        console.error(`Erro ao buscar servico ${agendamento.produto_id}:`, e)
                     }
                 }
                 return agendamento
@@ -725,7 +731,7 @@ class ComercialController {
                     const metadata = payment.metadata
                     console.log('Metadata recuperado:', metadata)
 
-                    const status = 'aprovado';
+                    const status = 'confirmado';
                     const agendamentoId = metadata.agendamento_id;
 
                     if (agendamentoId) {
@@ -733,7 +739,7 @@ class ComercialController {
                         const currentAgendamento = await ComercialRepository.getAgendamentoById(agendamentoId);
                         
                         if (currentAgendamento?.status === 'cancelado') {
-                            console.log('Agendamento já está cancelado. Ignorando atualização de status de pagamento Mercado Pago.');
+                            console.log('Agendamento ja esta cancelado. Ignorando atualizacao de status de pagamento Mercado Pago.');
                         } else {
                             await ComercialRepository.updateAgendamentoStatus(agendamentoId, status)
                             
@@ -743,14 +749,20 @@ class ComercialController {
                                 try {
                                     console.log('Gerando Google Meet link via Composio...');
                                     const ComposioService = (await import('../services/ComposioService')).default;
+
+                                    const superAdminId = await (await import('../utils/calendarHelpers')).getSuperAdminId();
+                                    const calendarUserId = superAdminId || refreshedAgendamento.usuario_id || 'default';
+                                    console.log(`[GoogleMeet] Usando userId: ${calendarUserId} (superAdmin: ${superAdminId || 'nao encontrado'})`);
+
                                     const eventResult = await ComposioService.createCalendarEvent(
-                                        refreshedAgendamento.usuario_id || 'default',
+                                        calendarUserId,
                                         {
                                             summary: `Consultoria - ${refreshedAgendamento.nome}`,
                                             description: `Consultoria confirmada.\nTelefone: ${refreshedAgendamento.telefone}\nEmail: ${refreshedAgendamento.email}`,
                                             startTime: new Date(refreshedAgendamento.data_hora),
                                             endTime: new Date(new Date(refreshedAgendamento.data_hora).getTime() + (refreshedAgendamento.duracao_minutos || 60) * 60000),
-                                            attendees: [refreshedAgendamento.email]
+                                            attendees: [refreshedAgendamento.email],
+                                            location: 'Google Meet'
                                         }
                                     );
 
@@ -791,9 +803,9 @@ class ComercialController {
     }
 
     /**
-     * ConfirmaÃ§Ã£o manual de PIX por parte do comercial.
-     * Agora apenas marca como 'aguardando_verificacao' â€” a confirmaÃ§Ã£o real
-     * e o envio de SMTP sÃ£o feitos pelo setor financeiro (FinanceiroController).
+     * Confirmação manual de PIX por parte do comercial.
+     * Agora apenas marca como 'aguardando_verificacao' â€” a confirmação real
+     * e o envio de SMTP são feitos pelo setor financeiro (FinanceiroController).
      */
     async confirmarPix(req: any, res: any) {
         try {
@@ -802,20 +814,20 @@ class ComercialController {
             // 1. Get agendamento
             const agendamento = await ComercialRepository.getAgendamentoById(id);
             if (!agendamento) {
-                return res.status(404).json({ message: 'Agendamento nÃ£o encontrado' });
+                return res.status(404).json({ message: 'Agendamento não encontrado' });
             }
 
-            // 2. Verifica se jÃ¡ estÃ¡ confirmado
-            if (agendamento.status === 'confirmado' || agendamento.status === 'aprovado') {
-                return res.status(400).json({ message: 'Este agendamento jÃ¡ estÃ¡ confirmado.' });
+            // 2. Verifica se já está confirmado
+            if (agendamento.status === 'confirmado') {
+                return res.status(400).json({ message: 'Este agendamento já está confirmado.' });
             }
 
             // 3. Verifica se tem comprovante
             if (!agendamento.comprovante_url) {
-                return res.status(400).json({ message: 'Ã‰ necessÃ¡rio enviar o comprovante antes de confirmar.' });
+                return res.status(400).json({ message: 'Ã‰ necessário enviar o comprovante antes de confirmar.' });
             }
 
-            // 4. Update status para aguardando_verificacao (financeiro irÃ¡ aprovar/recusar)
+            // 4. Update status para aguardando_verificacao (financeiro irá aprovar/recusar)
             await ComercialRepository.updateAgendamentoStatus(id, 'aguardando_verificacao');
 
             // 5. Garantir que pagamento_status esteja como 'pendente' para o financeiro
@@ -830,7 +842,7 @@ class ComercialController {
 
             return res.status(200).json({
                 success: true,
-                message: 'Comprovante enviado para verificaÃ§Ã£o pelo setor financeiro.'
+                message: 'Comprovante enviado para verificação pelo setor financeiro.'
             });
 
         } catch (error: any) {
@@ -840,7 +852,7 @@ class ComercialController {
     }
 
     /**
-     * Buscar um agendamento especÃ­fico por ID
+     * Buscar um agendamento específico por ID
      */
     async getAgendamentoById(req: any, res: any) {
         try {
@@ -849,20 +861,20 @@ class ComercialController {
             const data = await ComercialRepository.getAgendamentoById(id)
 
             if (!data) {
-                return res.status(404).json({ message: 'Agendamento nÃ£o encontrado' })
+                return res.status(404).json({ message: 'Agendamento não encontrado' })
             }
 
-            // Enriquecer com dados do catÃ¡logo
+            // Enriquecer com dados do catálogo
             if (data.produto_id) {
                 try {
                     const serviceInfo = await AdmRepository.getServiceById(data.produto_id)
                     data.produto = serviceInfo
                 } catch (e) {
-                    console.error(`Erro ao buscar serviÃ§o ${data.produto_id}:`, e)
+                    console.error(`Erro ao buscar servico ${data.produto_id}:`, e)
                 }
             }
 
-            // Enriquecer com dados do formulÃ¡rio
+            // Enriquecer com dados do formulário
             let formulario_preenchido = false
             try {
                 const { data: formEnviado } = await supabase
@@ -875,7 +887,7 @@ class ComercialController {
                     formulario_preenchido = true
                 }
             } catch (err) {
-                console.warn('Erro ao verificar formulÃ¡rio preenchido:', err)
+                console.warn('Erro ao verificar formulario preenchido:', err)
             }
 
             return res.status(200).json({
@@ -889,7 +901,7 @@ class ComercialController {
     }
 
     /**
-     * Verifica se o formulÃ¡rio foi preenchido pelo cliente (Lead -> Cadastro)
+     * Verifica se o formulário foi preenchido pelo cliente (Lead -> Cadastro)
      */
     async verificarStatusFormulario(req: any, res: any) {
         try {
@@ -898,10 +910,10 @@ class ComercialController {
             // 1. Get agendamento
             const agendamento = await ComercialRepository.getAgendamentoById(id);
             if (!agendamento) {
-                return res.status(404).json({ message: 'Agendamento nÃ£o encontrado' });
+                return res.status(404).json({ message: 'Agendamento não encontrado' });
             }
 
-            // 2. Verifica se o cliente jÃ¡ virou user_id
+            // 2. Verifica se o cliente já virou user_id
             if (agendamento.cliente_id) {
                 const { data: cliente, error } = await supabase
                     .from('clientes')
@@ -914,7 +926,7 @@ class ComercialController {
                 }
             }
 
-            // Alternativa: ver se jÃ¡ existe email atrelado Ã  tabela clientes que virou user_id
+            // Alternativa: ver se já existe email atrelado à tabela clientes que virou user_id
             if (agendamento.email) {
                 const { data: clientePorEmail, error: errEmail } = await supabase
                     .from('clientes')
@@ -930,7 +942,7 @@ class ComercialController {
             return res.status(200).json({ preenchido: false });
 
         } catch (error: any) {
-            console.error('Erro ao verificar status do formulÃ¡rio:', error);
+            console.error('Erro ao verificar status do formulario:', error);
             return res.status(500).json({ preenchido: false, error: error.message });
         }
     }
@@ -958,15 +970,15 @@ class ComercialController {
 
             const agendamento = await ComercialRepository.getAgendamentoById(id)
             if (!agendamento) {
-                return res.status(404).json({ message: 'Agendamento nÃ£o encontrado' })
+                return res.status(404).json({ message: 'Agendamento não encontrado' })
             }
 
             if (agendamento.status === 'cancelado') {
-                return res.status(400).json({ message: 'Este agendamento jÃ¡ estÃ¡ cancelado.' })
+                return res.status(400).json({ message: 'Este agendamento já está cancelado.' })
             }
 
             if (agendamento.status === 'realizado') {
-                return res.status(400).json({ message: 'NÃ£o Ã© possÃ­vel cancelar um agendamento jÃ¡ realizado.' })
+                return res.status(400).json({ message: 'Não é possível cancelar um agendamento já realizado.' })
             }
 
             await ComercialRepository.updateAgendamentoStatus(id, 'cancelado')
@@ -993,17 +1005,17 @@ class ComercialController {
             const { cliente_id, servico_id, usuario_id, subservico_id, subservico_nome } = req.body
 
             if (!cliente_id || !servico_id) {
-                return res.status(400).json({ message: 'cliente_id e servico_id sÃ£o obrigatÃ³rios' })
+                return res.status(400).json({ message: 'cliente_id e servico_id são obrigatórios' })
             }
 
             const servico = await AdmRepository.getServiceById(servico_id)
             if (!servico) {
-                return res.status(404).json({ message: 'ServiÃ§o nÃ£o encontrado' })
+                return res.status(404).json({ message: 'Serviço não encontrado' })
             }
 
             const servicoTipo = servico.tipo || 'agendavel'
             if (servicoTipo !== 'fixo') {
-                return res.status(400).json({ message: 'ServiÃ§o nÃ£o Ã© do tipo fixo' })
+                return res.status(400).json({ message: 'Serviço não é do tipo fixo' })
             }
 
             const { data: cliente, error: clienteError } = await supabase
@@ -1013,8 +1025,8 @@ class ComercialController {
                 .single()
 
             if (clienteError || !cliente) {
-                console.error('[ComercialController] Cliente nÃ£o encontrado:', clienteError)
-                return res.status(404).json({ message: 'Cliente nÃ£o encontrado' })
+                console.error('[ComercialController] Cliente nao encontrado:', clienteError)
+                return res.status(404).json({ message: 'Cliente não encontrado' })
             }
 
             const ultimoContratoMesmoServico = await ContratoServicoRepository.getUltimoContratoComDados(cliente_id, servico_id)
@@ -1338,7 +1350,7 @@ class ComercialController {
     }
     /**
      * PUT /comercial/contratos/:id/draft
-     * Atualiza o rascunho do formulÃ¡rio.
+     * Atualiza o rascunho do formulário.
      */
     async updateContratoDraft(req: any, res: any) {
         try {
@@ -1347,7 +1359,7 @@ class ComercialController {
 
             const contrato = await ContratoServicoRepository.getContratoById(id)
             if (!contrato) {
-                return res.status(404).json({ message: 'Contrato nÃ£o encontrado' })
+                return res.status(404).json({ message: 'Contrato não encontrado' })
             }
             if (!contrato.is_draft) {
                 return res.status(400).json({ message: 'Este contrato ja foi finalizado e enviado.' })
@@ -1396,11 +1408,24 @@ class ComercialController {
         try {
             const contrato = await ContratoServicoRepository.getContratoById(id)
             if (!contrato) {
-                return res.status(404).json({ message: 'Contrato nÃ£o encontrado' })
+                return res.status(404).json({ message: 'Contrato não encontrado' })
             }
 
-            const PdfService = (await import('../services/PdfService')).default
-            const pdfUrl = await PdfService.gerarContratoAssessoria(id, contrato.draft_dados)
+            const HtmlPdfService = (await import('../services/HtmlPdfService')).default
+            const pdfBuffer = await HtmlPdfService.gerarContratoAssessoria(id, contrato.draft_dados)
+            
+            let pdfUrl = null;
+            if (pdfBuffer) {
+                const { supabase } = await import('../config/SupabaseClient');
+                const supabasePath = `contratos-pending/${id}_${Date.now()}.pdf`;
+                const { error: uploadError } = await supabase.storage.from('contratos').upload(supabasePath, pdfBuffer, { contentType: 'application/pdf' });
+                if (!uploadError) {
+                    const { data: urlData } = supabase.storage.from('contratos').getPublicUrl(supabasePath);
+                    pdfUrl = urlData.publicUrl;
+                } else {
+                    console.error('[ComercialController] Erro no upload para Supabase:', uploadError);
+                }
+            }
 
             if (!pdfUrl) {
                 const mensagemErro = 'Falha ao gerar o PDF do contrato.'
@@ -1447,7 +1472,7 @@ class ComercialController {
                     })
                 }
             } catch (updateError) {
-                console.error('[ComercialController] Erro ao registrar falha de geraÃ§Ã£o:', updateError)
+                console.error('[ComercialController] Erro ao registrar falha de geracao:', updateError)
             }
 
             return res.status(500).json({ message: 'Erro ao gerar PDF', error: error.message })
@@ -1464,12 +1489,12 @@ class ComercialController {
 
             const contrato = await ContratoServicoRepository.getContratoById(id)
             if (!contrato) {
-                return res.status(404).json({ message: 'Contrato nÃ£o encontrado' })
+                return res.status(404).json({ message: 'Contrato não encontrado' })
             }
 
             const emailDestino = String(email || contrato.cliente_email || '').trim().toLowerCase()
             if (!emailDestino) {
-                return res.status(400).json({ message: 'O e-mail do cliente Ã© obrigatÃ³rio para enviar o contrato.' })
+                return res.status(400).json({ message: 'O e-mail do cliente é obrigatório para enviar o contrato.' })
             }
 
             const erroGeracaoAtivo = contrato?.draft_dados?.__erroGeracao?.ativo === true

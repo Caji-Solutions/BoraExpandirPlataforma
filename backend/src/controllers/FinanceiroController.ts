@@ -30,7 +30,7 @@ class FinanceiroController {
 
     /**
      * GET /financeiro/comprovantes/pendentes
-     * Lista todos os agendamentos com comprovante enviado aguardando verificaÃ§Ã£o
+     * Lista todos os agendamentos com comprovante enviado aguardando verificação
      */
     async getComprovantesPendentes(_req: any, res: any) {
         try {
@@ -55,7 +55,7 @@ class FinanceiroController {
                 .order('atualizado_em', { ascending: true })
 
             if (errorOrc) {
-                console.error('[FinanceiroController] Erro ao buscar comprovantes de traduções:', errorOrc)
+                console.error('[FinanceiroController] Erro ao buscar comprovantes de traducoes:', errorOrc)
             }
 
             // Buscar nomes dos tradutores (perfis) em massa
@@ -146,7 +146,7 @@ class FinanceiroController {
 
     /**
      * POST /financeiro/comprovante/:id/aprovar
-     * Aprova o comprovante de pagamento e dispara o fluxo de confirmaÃ§Ã£o (SMTP + setup de conta)
+     * Aprova o comprovante de pagamento e dispara o fluxo de confirmação (SMTP + setup de conta)
      */
     async aprovarComprovante(req: any, res: any) {
         try {
@@ -156,20 +156,20 @@ class FinanceiroController {
             // 1. Buscar agendamento
             const agendamento = await ComercialRepository.getAgendamentoById(id)
             if (!agendamento) {
-                return res.status(404).json({ message: 'Agendamento nÃ£o encontrado' })
+                return res.status(404).json({ message: 'Agendamento não encontrado' })
             }
 
             // 2. Verificar se tem comprovante
             if (!agendamento.comprovante_url) {
-                return res.status(400).json({ message: 'Este agendamento nÃ£o possui comprovante enviado.' })
+                return res.status(400).json({ message: 'Este agendamento não possui comprovante enviado.' })
             }
 
-            // 3. Verificar se jÃ¡ foi processado
+            // 3. Verificar se já foi processado
             if (agendamento.pagamento_status === 'aprovado') {
-                return res.status(400).json({ message: 'Este comprovante jÃ¡ foi aprovado.' })
+                return res.status(400).json({ message: 'Este comprovante já foi aprovado.' })
             }
 
-            // 4. Verificar conflito de horÃ¡rio
+            // 4. Verificar conflito de horário
             let conflitoHorario = false
             try {
                 const inicio = new Date(agendamento.data_hora)
@@ -179,19 +179,19 @@ class FinanceiroController {
                     .from('agendamentos')
                     .select('id')
                     .neq('id', id)
-                    .in('status', ['agendado', 'confirmado', 'aprovado', 'realizado'])
+                    .in('status', ['agendado', 'confirmado', 'realizado'])
                     .gte('data_hora', inicio.toISOString())
                     .lt('data_hora', fim.toISOString())
                     
                 if (conflitos && conflitos.length > 0) {
                     conflitoHorario = true
-                    console.log(`[FinanceiroController] Conflito de horÃ¡rio detectado ao aprovar agendamento: ${id}`)
+                    console.log(`[FinanceiroController] Conflito de horario detectado ao aprovar agendamento: ${id}`)
                 }
             } catch (err) {
                 console.error('[FinanceiroController] Erro ao verificar conflito:', err)
             }
 
-            // 5. Atualizar pagamento_status para aprovado e tambÃ©m a flag de conflito
+            // 5. Atualizar pagamento_status para aprovado e também a flag de conflito
             const { error: updateError } = await supabase
                 .from('agendamentos')
                 .update({
@@ -229,7 +229,7 @@ class FinanceiroController {
                 }
             }
 
-            // 5. Verificar se o formulÃ¡rio jÃ¡ foi preenchido (via formularios_cliente)
+            // 5. Verificar se o formulário já foi preenchido (via formularios_cliente)
             let formularioPreenchido = false
             const { data: formData } = await supabase
                 .from('formularios_cliente')
@@ -241,12 +241,12 @@ class FinanceiroController {
                 formularioPreenchido = true
             }
 
-            // 6. SÃ³ marca 'confirmado' se pagamento E formulÃ¡rio estiverem OK
+            // 6. Só marca 'confirmado' se pagamento E formulário estiverem OK
             const novoStatus = formularioPreenchido ? 'confirmado' : 'agendado'
             await ComercialRepository.updateAgendamentoStatus(id, novoStatus)
-            console.log(`[FinanceiroController] Status do agendamento atualizado para: ${novoStatus} (formulÃ¡rio: ${formularioPreenchido ? 'sim' : 'nÃ£o'})`)
+            console.log(`[FinanceiroController] Status do agendamento atualizado para: ${novoStatus} (formulario: ${formularioPreenchido ? 'sim' : 'nao'})`)
 
-            // 7. Se formulÃ¡rio ainda nÃ£o preenchido, enviar email com link do formulÃ¡rio
+            // 7. Se formulário ainda não preenchido, enviar email com link do formulário
             if (!agendamento.email) {
                 return res.status(200).json({
                     success: true,
@@ -270,18 +270,18 @@ class FinanceiroController {
                         formularioLink,
                         email: agendamento.email
                     })
-                    console.log(`[FinanceiroController] Email com link do formulÃ¡rio enviado para ${agendamento.email}`)
+                    console.log(`[FinanceiroController] Email com link do formulario enviado para ${agendamento.email}`)
 
                     return res.status(200).json({
                         success: true,
-                        message: 'Comprovante aprovado e email com formulÃ¡rio enviado com sucesso!',
+                        message: 'Comprovante aprovado e email com formulário enviado com sucesso!',
                         formulario_link: formularioLink
                     })
                 } catch (emailError: any) {
                     console.error('[FinanceiroController] Erro ao enviar email:', emailError)
                     return res.status(200).json({
                         success: true,
-                        message: 'Comprovante aprovado, mas houve um erro ao enviar o email com formulÃ¡rio.',
+                        message: 'Comprovante aprovado, mas houve um erro ao enviar o email com formulário.',
                         warning: emailError.message
                     })
                 }
@@ -310,12 +310,12 @@ class FinanceiroController {
             // 1. Buscar agendamento
             const agendamento = await ComercialRepository.getAgendamentoById(id)
             if (!agendamento) {
-                return res.status(404).json({ message: 'Agendamento nÃ£o encontrado' })
+                return res.status(404).json({ message: 'Agendamento não encontrado' })
             }
 
             // 2. Verificar se tem comprovante
             if (!agendamento.comprovante_url) {
-                return res.status(400).json({ message: 'Este agendamento nÃ£o possui comprovante enviado.' })
+                return res.status(400).json({ message: 'Este agendamento não possui comprovante enviado.' })
             }
 
             // 3. Atualizar pagamento_status para recusado + nota
@@ -323,7 +323,7 @@ class FinanceiroController {
                 .from('agendamentos')
                 .update({
                     pagamento_status: 'recusado',
-                    pagamento_nota_recusa: nota || 'Comprovante recusado sem observaÃ§Ã£o.',
+                    pagamento_nota_recusa: nota || 'Comprovante recusado sem observação.',
                     pagamento_verificado_por: verificado_por || null,
                     pagamento_verificado_em: new Date().toISOString()
                 })
@@ -487,7 +487,7 @@ class FinanceiroController {
             })
 
         } catch (error: any) {
-            console.error('[FinanceiroController] Erro ao aprovar comprovante de tradução:', error)
+            console.error('[FinanceiroController] Erro ao aprovar comprovante de traducao:', error)
 
             return res.status(500).json({ message: 'Erro ao aprovar comprovante', error: error.message })
         }
@@ -568,7 +568,7 @@ class FinanceiroController {
                 .eq('id', id)
 
             if (updateError) {
-                console.error('[FinanceiroController] Erro ao recusar comprovante de tradução:', updateError)
+                console.error('[FinanceiroController] Erro ao recusar comprovante de traducao:', updateError)
                 return res.status(500).json({ message: 'Erro ao recusar comprovante' })
             }
 
@@ -584,7 +584,7 @@ class FinanceiroController {
             })
 
         } catch (error: any) {
-            console.error('[FinanceiroController] Erro ao recusar comprovante de tradução:', error)
+            console.error('[FinanceiroController] Erro ao recusar comprovante de traducao:', error)
 
             return res.status(500).json({ message: 'Erro ao recusar comprovante', error: error.message })
         }

@@ -40,7 +40,7 @@ cliente.get('/clientesbyparceiro/:parceiroId', ClienteController.getByParceiro.b
 cliente.get('/clientes', ClienteController.getAllClientes.bind(ClienteController))
 cliente.get('/credentials/:email', ClienteController.getClienteCredentials.bind(ClienteController))
 
-// Contratos de serviÃ§os fixos
+// Contratos de serviços fixos
 cliente.get('/contratos', ClienteController.getContratos.bind(ClienteController))
 cliente.post('/contratos/:id/upload', upload.single('file'), ClienteController.uploadContratoAssinado.bind(ClienteController))
 cliente.post('/contratos/:id/comprovante', upload.single('file'), ClienteController.uploadComprovanteContrato.bind(ClienteController))

@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contrato de Prestação de Serviços de Assessoria de Imigração</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap');
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  :root {
+    --red: #cc0000;
+    --black: #000000;
+    --yellow-hl: #ffff00;
+    --page-width: 210mm;
+    --page-padding: 25mm 20mm 20mm 20mm;
+  }
+
+  body {
+    background: #d0d0d0;
+    font-family: 'Courier Prime', 'Courier New', Courier, monospace;
+    font-size: 11pt;
+    color: #000;
+    padding: 20px 0;
+  }
+
+  .page {
+    background: #fff;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto 20px auto;
+    padding: 20mm 20mm 25mm 20mm;
+    position: relative;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  }
+
+  /* Red top bar */
+  .page::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 8px;
+    background: var(--red);
+  }
+
+  /* Red bottom bar */
+  .page::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 8px;
+    background: var(--red);
+  }
+
+  /* Watermark */
+  .watermark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.07;
+    width: 80%;
+  }
+
+  .watermark-bora {
+    font-family: 'Courier Prime', monospace;
+    font-size: 72pt;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: #000;
+    display: block;
+    line-height: 1;
+  }
+
+  .watermark-expandir {
+    font-family: 'Courier Prime', monospace;
+    font-size: 48pt;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    color: #000;
+    display: block;
+    line-height: 1.2;
+  }
+
+  .watermark-sub {
+    font-family: 'Courier Prime', monospace;
+    font-size: 13pt;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: #000;
+    display: block;
+    margin-top: 8px;
+  }
+
+  .page-content {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Page number */
+  .page-number {
+    position: absolute;
+    bottom: 12mm;
+    right: 20mm;
+    font-size: 10pt;
+    color: #000;
+  }
+
+  /* Title */
+  h1.contract-title {
+    font-family: 'Courier Prime', monospace;
+    font-size: 11pt;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 24pt;
+    text-decoration: underline;
+  }
+
+  /* Section headings */
+  h2.section-title {
+    font-family: 'Courier Prime', monospace;
+    font-size: 11pt;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 18pt 0 10pt 0;
+  }
+
+  h3.sub-section {
+    font-family: 'Courier Prime', monospace;
+    font-size: 11pt;
+    font-weight: 700;
+    text-decoration: underline;
+    margin: 10pt 0 6pt 0;
+  }
+
+  /* Paragraph / clause */
+  p, .clause {
+    font-family: 'Courier Prime', monospace;
+    font-size: 10.5pt;
+    line-height: 1.6;
+    text-align: justify;
+    margin-bottom: 10pt;
+  }
+
+  .clause-label {
+    font-weight: 700;
+    font-style: normal;
+  }
+
+  .bold {
+    font-weight: 700;
+  }
+
+  .underline {
+    text-decoration: underline;
+  }
+
+  .highlight {
+    background-color: var(--yellow-hl);
+    padding: 0 1px;
+  }
+
+  .highlight-bold {
+    background-color: var(--yellow-hl);
+    font-weight: 700;
+    padding: 0 1px;
+  }
+
+  /* Bullet list item with red dot */
+  .bullet-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8pt;
+    margin-bottom: 8pt;
+    font-family: 'Courier Prime', monospace;
+    font-size: 10.5pt;
+    line-height: 1.6;
+  }
+
+  .bullet-dot {
+    color: var(--red);
+    font-size: 16pt;
+    line-height: 1.1;
+    flex-shrink: 0;
+  }
+
+  .bullet-text {
+    background-color: var(--yellow-hl);
+    font-weight: 700;
+    padding: 0 2px;
+  }
+
+  /* Letter items (a, b, c...) */
+  .letter-item {
+    font-family: 'Courier Prime', monospace;
+    font-size: 10.5pt;
+    line-height: 1.6;
+    text-align: justify;
+    margin-bottom: 6pt;
+    padding-left: 0;
+  }
+
+  .letter-item .item-label {
+    font-weight: 700;
+  }
+
+  /* Roman numeral items */
+  .roman-item {
+    font-family: 'Courier Prime', monospace;
+    font-size: 10.5pt;
+    line-height: 1.6;
+    text-align: justify;
+    margin-bottom: 8pt;
+  }
+
+  .roman-item h4 {
+    font-weight: 700;
+    font-size: 10.5pt;
+    margin-bottom: 4pt;
+  }
+
+  /* Paragraph special */
+  .parag {
+    font-family: 'Courier Prime', monospace;
+    font-size: 10.5pt;
+    line-height: 1.6;
+    text-align: justify;
+    margin-bottom: 10pt;
+  }
+
+  .parag-label {
+    font-weight: 700;
+  }
+
+  /* Signature block */
+  .signature-block {
+    margin-top: 20pt;
+    font-family: 'Courier Prime', monospace;
+    font-size: 10.5pt;
+    line-height: 1.8;
+  }
+
+  .signature-block p {
+    text-align: left;
+    margin-bottom: 4pt;
+  }
+
+  /* Not included section */
+  .not-included-title {
+    font-family: 'Courier Prime', monospace;
+    font-size: 10.5pt;
+    font-weight: 700;
+    text-decoration: underline;
+    margin: 10pt 0 6pt 0;
+  }
+
+  /* Print styles */
+  @media print {
+    body {
+      background: none;
+      padding: 0;
+    }
+    .page {
+      box-shadow: none;
+      margin: 0;
+      page-break-after: always;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- PAGE 1 -->
+<div class="page">
+  <div class="watermark">
+    <span class="watermark-bora">BORA</span>
+    <span class="watermark-expandir">EXPANDIR</span>
+    <span class="watermark-sub">AGÊNCIA DE VIAGENS E ASSESSORIA DE IMIGRAÇÃO</span>
+  </div>
+  <div class="page-content">
+    <h1 class="contract-title">CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE ASSESSORIA DE IMIGRAÇÃO</h1>
+
+    <p class="clause">
+      <span class="clause-label bold">CONTRATANTE:</span>&nbsp;
+      <span class="highlight-bold">{{NOME}}</span>,&nbsp;
+      <span class="highlight">{{nacionalidade}}</span>,&nbsp;
+      <span class="highlight">{{estado civil}}</span>,&nbsp;
+      <span class="highlight">{{profissão}}</span>,
+      portador(a) do(s) documento(s) de identificação:&nbsp;<span class="highlight">{{nome do(s) documento(s) e número(s)}}</span>,&nbsp;residente e domiciliado(a) à&nbsp;<span class="highlight">{{endereço completo}}</span>,&nbsp;endereço eletrônico:
+      <span class="highlight">{{<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7d05050505053d0505050505531e1210">[email&#160;protected]</a>}}</span>,&nbsp;telefone:&nbsp;<span class="highlight">{{ +XX (XX) XXXX-XXXX}}</span>.
+    </p>
+
+    <p class="clause">
+      <span class="clause-label bold">CONTRATADA</span>: <span class="bold">BORA EXPANDIR LTDA,</span> pessoa jurídica de direito privado, inscrita sob o
+      CNPJ nº 55.218.947/0001-65 , endereço profissional situado à Av. Presidente Vargas,
+      1527 – EF-79, Jardim Irajá, CEP: 14020-277 Ribeirão Preto/SP, email:
+      <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="9ffcf0f1ebfeebf0dffdf0edfefae7effef1fbf6edb1fcf0f2b1fded">[email&#160;protected]</a>, telefone: (+34) 600 71 86 93.
+    </p>
+
+    <p class="clause">
+      As partes acima qualificadas têm entre si justo e acertado o presente Contrato de
+      Prestação de Serviços de Assessoria em Imigração, que será regido pelas seguintes
+      cláusulas e condições:
+    </p>
+
+    <h2 class="section-title">DO OBJETO DO CONTRATO</h2>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 1ª.</span> O presente contrato tem por <span class="bold">objeto</span>:
+    </p>
+
+    <p class="clause">Prestação de serviços de assessoria no processo de solicitação de:</p>
+
+    <div class="bullet-item">
+      <span class="bullet-dot">●</span>
+      <span class="bullet-text">{{TIPO DE SERVIÇO}}</span>
+    </div>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 2ª.</span> A <span class="bold">CONTRATADA</span> prestará os serviços contratados com autonomia, liberdade
+      de horário, sem subordinação, sem pessoalidade e sem exclusividade perante o(a)
+      <span class="bold">CONTRATANTE</span>.
+    </p>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 3ª.</span>&nbsp;&nbsp;&nbsp;Os serviços prestados serão todos oferecidos e realizados,
+      <span class="bold underline">exclusivamente</span>, à distância,&nbsp; por meios virtuais e remotos.
+    </p>
+  </div>
+  <div class="page-number">1</div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="page">
+  <div class="watermark">
+    <span class="watermark-bora">BORA</span>
+    <span class="watermark-expandir">EXPANDIR</span>
+    <span class="watermark-sub">AGÊNCIA DE VIAGENS E ASSESSORIA DE IMIGRAÇÃO</span>
+  </div>
+  <div class="page-content">
+    <h2 class="section-title">DOS SERVIÇOS</h2>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 4ª.</span> Os serviços inclusos na Assessoria são:
+    </p>
+
+    <h3 class="sub-section">Etapa 1 – Revisão e Preparação de Documentos:</h3>
+
+    <p class="letter-item">
+      <span class="item-label">a)</span> 1 Videoconferência individual de até 50 minutos&nbsp; para orientações sobre dados e
+      documentos necessários, passo a passo do procedimento e esclarecimentos de dúvidas;
+    </p>
+    <p class="letter-item">
+      <span class="item-label">b)</span> Envio de checklist de todos os documentos necessários para o procedimento conforme
+      a legislação vigente;
+    </p>
+    <p class="letter-item">
+      <span class="item-label">c)</span> Atendimento através do whatsapp&nbsp; para esclarecimento de dúvidas relacionadas ao
+      procedimento objeto do contrato descrito na&nbsp;<span class="bold">Cláusula 1ª</span>;
+    </p>
+    <p class="letter-item">
+      <span class="item-label">d)</span> Revisão de todos os documentos necessários para o pedido.
+    </p>
+
+    <h3 class="sub-section">Etapa 2 – Preenchimento, Submissão do Pedido e Acompanhamento do Processo:</h3>
+
+    <p class="letter-item">
+      <span class="item-label">e)</span> Envio de modelos para assinatura dos formulários oficiais e declarações requeridas
+      – se aplicável;
+    </p>
+    <p class="letter-item">
+      <span class="item-label">f)</span> Preenchimento da guia e orientação para pagamento da taxa – se aplicável;
+    </p>
+    <p class="letter-item">
+      <span class="item-label">g)</span> Agendamento da cita no cartório, Agendamento da cita no Consulado, Agendamento de
+      cita na Extranjería <span class="bold underline">OU</span> Submissão eletrônica do pedido às autoridades competentes – se
+      aplicável;
+    </p>
+    <p class="letter-item">
+      <span class="item-label">h)</span> Acompanhamento do processo administrativo, incluindo monitoramento de prazos e
+      resposta a eventuais solicitações das autoridades espanholas – se aplicável;
+    </p>
+    <p class="letter-item">
+      <span class="item-label">i)</span>&nbsp;&nbsp;Envio da decisão final – se aplicável.
+    </p>
+
+    <h2 class="section-title">DA RESPONSABILIDADE</h2>
+  </div>
+  <div class="page-number">2</div>
+</div>
+
+<!-- PAGE 3 -->
+<div class="page">
+  <div class="watermark">
+    <span class="watermark-bora">BORA</span>
+    <span class="watermark-expandir">EXPANDIR</span>
+    <span class="watermark-sub">AGÊNCIA DE VIAGENS E ASSESSORIA DE IMIGRAÇÃO</span>
+  </div>
+  <div class="page-content">
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 5ª.</span> A <span class="bold">CONTRATADA</span> compromete-se a prestar os serviços contratados com
+      diligência, zelo e boa-fé, aplicando seus conhecimentos técnicos e jurídicos com base
+      na legislação vigente, nas normas administrativas aplicáveis e nas orientações
+      atualizadas dos órgãos públicos competentes.
+    </p>
+
+    <p class="clause">
+      A atuação da <span class="bold">CONTRATADA</span> é pautada no dever de meio, e não no dever de resultado. Isso
+      significa que a <span class="bold">CONTRATADA</span> se obriga a empregar os melhores esforços e técnicas
+      profissionais para a realização do serviço contratado, mas não pode garantir a
+      aprovação do pedido, nem assegurar decisão favorável por parte das autoridades
+      espanholas, uma vez que tais decisões dependem de fatores externos e alheios ao seu
+      controle, incluindo a análise subjetiva dos órgãos públicos envolvidos.
+    </p>
+
+    <p class="clause">
+      Fica, portanto, expressamente reconhecido pelo <span class="bold">CONTRATANTE</span> que <span class="bold underline">não há nenhuma
+      garantia de resultado</span>, sendo responsabilidade da <span class="bold">CONTRATADA</span> a adequada execução dos
+      procedimentos dentro do escopo contratado, e não o desfecho da solicitação perante os
+      órgãos administrativos.
+    </p>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 6ª.</span> A <span class="bold">CONTRATADA</span> não será responsabilizado acaso resultem danos por não
+      tomar conhecimento de informações e documentos substanciais para a sua atividade ou
+      em decorrência da impossibilidade de contato com o(a)&nbsp;<span class="bold">CONTRATANTE</span>, que deverá manter
+      atualizadas quaisquer informações relevantes para a demanda, bem como as informações
+      cadastrais fornecidas por aquele.
+    </p>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 7ª.</span> É obrigação do(a)&nbsp;<span class="bold">CONTRATANTE</span>, sempre que solicitado, entregar,
+      fornecer ou disponibilizar à <span class="bold">CONTRATADA</span> todos os documentos necessários, provas,
+      informações e subsídios, em tempo hábil, para que este possa cumprir o objeto do
+      presente contrato. Qualquer omissão ou negligência por parte do(a)&nbsp;<span class="bold">CONTRATANTE</span> será
+      de sua inteira responsabilidade, caso advenha algum prejuízo a seus interesses.
+    </p>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 8ª.</span> O(A) <span class="bold">CONTRATANTE</span> declara estar ciente de que seu pedido está sujeito a
+      prazos legais e/ou regulamentares específicos, cabendo-lhe a responsabilidade de
+      providenciar toda a documentação necessária dentro dos prazos indicados pela equipe
+      da <span class="bold">CONTRATADA</span>. Uma vez recebida a documentação <span class="bold">COMPLETA</span> e <span class="bold">ADEQUADA (apostiladas e
+      traduzidas)</span>, a <span class="bold">CONTRATADA</span> terá o prazo de <span class="bold">72h (setenta e duas) horas úteis para
+      protocolar o pedido correspondente</span>, bem como para responder eventuais notificações
+      recebidas durante o trâmite do processo. O não cumprimento dos prazos por parte do(a)
+    </p>
+  </div>
+  <div class="page-number">3</div>
+</div>
+
+<!-- PAGE 4 -->
+<div class="page">
+  <div class="watermark">
+    <span class="watermark-bora">BORA</span>
+    <span class="watermark-expandir">EXPANDIR</span>
+    <span class="watermark-sub">AGÊNCIA DE VIAGENS E ASSESSORIA DE IMIGRAÇÃO</span>
+  </div>
+  <div class="page-content">
+
+    <p class="clause">
+      <span class="bold">CONTRATANTE</span> poderá inviabilizar o protocolo ou a continuidade do procedimento, sem
+      que isso gere qualquer responsabilidade à <span class="bold">CONTRATADA</span>.
+    </p>
+
+    <h2 class="section-title">DO PAGAMENTO</h2>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 9ª.</span> Na assinatura do presente contrato, o(a) <span class="bold">CONTRATANTE</span> está contratando
+      os serviços descritos na Cláusula 1ª, em favor da(s) pessoa(s) cujo(s) dados mínimos
+      de identificação e preço individual do serviço constam abaixo:
+    </p>
+
+    <div class="bullet-item" style="margin-left: 0;">
+      <span class="bullet-text" style="background-color: var(--yellow-hl); font-weight:700;">{{Titulares, dependentes, valor pavão por pessoa}}</span>
+    </div>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 10ª.</span>&nbsp;&nbsp;&nbsp;Portanto, como contraprestação aos serviços prestados, o(a)
+      <span class="bold">CONTRATANTE</span> pagará à <span class="bold">CONTRATADA</span> o <span class="bold">valor total</span> de <span class="bold">€&nbsp;<span class="highlight-bold">{{VALOR PAVÃO TOTAL (valor pavão total por extenso)}}</span></span> ou seu equivalente em reais na data do pagamento.
+    </p>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 11ª.</span>&nbsp;&nbsp;Em razão de uma <span class="bold">condição especial oferecida pelo programa Bora
+      Expandir</span>, as partes acordam que o valor total dos serviços será de <span class="bold">€&nbsp;<span class="highlight-bold">{{VALOR TOTAL COM DESCONTO (valor total com desconto por extenso)}}</span></span> ou seu equivalente em reais na
+      data do pagamento, já considerando um desconto de <span class="bold">€&nbsp;<span class="highlight-bold">{{VALOR TOTAL CONSULTORIA (valor total da consultoria por extenso)}}</span></span> referente ao valor(es) pago(s) da(s)
+      consultoria(s). As partes acordam que o valor total dos serviços será pago nas
+      seguintes condições:
+    </p>
+
+    <div style="margin-bottom: 10pt;">
+      <span class="highlight-bold">{{FORMA DE PAGAMENTO}}</span>
+    </div>
+
+    <h2 class="section-title">DA INADIMPLÊNCIA, RESCISÃO CONTRATUAL</h2>
+    <h2 class="section-title" style="margin-top: 0;">E CONSEQUÊNCIAS FINANCEIRAS</h2>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 12ª.</span>&nbsp;&nbsp;&nbsp;Caso&nbsp;&nbsp; ocorra inadimplência ou desistência/rescisão por parte do
+      <span class="bold">CONTRATANTE</span>, <span class="bold">o valor promocional descrito na Cláusula 11ª, será automaticamente
+      desconsiderado</span>, e a <span class="bold">CONTRATADA</span> se reserva o direito de cobrar o valor total original
+      descrito na <span class="bold">Cláusula 10ª</span>, com aplicação de <span class="bold">juros de mora de 1% ao mês, multa
+      contratual de 2%</span> sobre o montante total inadimplido, e demais encargos legais
+      cabíveis, conforme legislação vigente, devidamente atualizados pelo IGPM.
+    </p>
+  </div>
+  <div class="page-number">4</div>
+</div>
+
+<!-- PAGE 5 -->
+<div class="page">
+  <div class="watermark">
+    <span class="watermark-bora">BORA</span>
+    <span class="watermark-expandir">EXPANDIR</span>
+    <span class="watermark-sub">AGÊNCIA DE VIAGENS E ASSESSORIA DE IMIGRAÇÃO</span>
+  </div>
+  <div class="page-content">
+
+    <p class="parag">
+      <span class="parag-label">Parágrafo Primeiro.</span> Caso a mora seja superior a 30 (trinta) dias, se houver a
+      liberalidade do(a) <span class="bold">CONTRATANTE,</span> este contrato será rescindido de pleno direito,
+      independentemente de qualquer medida judicial ou extrajudicial, considerando-se
+      vencidas as demais obrigações vincendas, que serão exigidas de imediato.
+    </p>
+
+    <p class="parag">
+      <span class="parag-label">Parágrafo Segundo.</span> Havendo a necessidade de propor-se ação judicial para cobrança
+      dos honorários aqui estabelecidos, o valor principal será atualizado monetariamente
+      pelo IGPM, com acréscimo de juros de 1% ao mês, multa de 2% sobre o valor a ser
+      executado sem prejuízo dos honorários sucumbenciais que vierem a ser fixados pelo
+      juízo competente.
+    </p>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 13ª.</span> As partes estabelecem que a execução dos serviços descritos na
+      <span class="bold">Cláusula 2ª. Etapa 2</span> somente iniciará após a quitação dos valores pactuados no
+      presente contrato, ficando o(a) <span class="bold">CONTRATANTE</span> ciente de que <span class="bold">eventual atraso no
+      pagamento poderá impedir o protocolo em tempo hábil</span>, assumindo integralmente os
+      riscos de perda de prazos e consequências administrativas decorrentes da mora, <span class="bold underline">sem
+      que isso gere responsabilidade à CONTRATADA</span>, além das sanções por mora descritas na
+      cláusula anterior.
+    </p>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 14ª.</span>&nbsp;&nbsp;Este contrato poderá ser rescindido, a qualquer tempo, por qualquer
+      das partes, mediante aviso prévio de 30 (trinta) dias, por escrito e com comprovante
+      de entrega, <span class="bold">observadas as condições estabelecidas nas cláusulas seguintes quanto às
+      consequências financeiras da rescisão.</span>
+    </p>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 15ª.</span>&nbsp;&nbsp;&nbsp;Na hipótese de rescisão antecipada por iniciativa do(a)&nbsp;<span class="bold">CONTRATANTE</span>,
+      <span class="bold">após a assinatura deste contrato</span>, será devida à <span class="bold">CONTRATADA</span> uma <span class="bold">multa de 20% (vinte
+      por cento)</span> <span class="bold underline">sobre o valor total original contratado, conforme descrito na Cláusula
+      10ª, desconsiderando qualquer desconto concedido por condição especial mencionada na
+      Cláusula 11ª</span>, em razão dos custos operacionais assumidos pela <span class="bold">CONTRATADA</span>.
+    </p>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 16ª.</span>&nbsp;&nbsp;Sem prejuízo da multa rescisória prevista na cláusula anterior, as
+      partes ajustam que, na hipótese de rescisão antecipada por iniciativa do(a)
+      CONTRATANTE, após a assinatura deste contrato, serão devidos, além da multa,
+      <span class="bold">honorários proporcionais aos serviços já prestados</span>, calculados com base nas etapas
+      descritas na Cláusula 2ª, da seguinte forma:
+    </p>
+
+    <p class="roman-item">
+      <span style="font-weight:700;">I – Antes da realização da videoconferência individual inicial (Etapa 1, alínea
+      "a")</span>
+    </p>
+  </div>
+  <div class="page-number">5</div>
+</div>
+
+<!-- PAGE 6 -->
+<div class="page">
+  <div class="watermark">
+    <span class="watermark-bora">BORA</span>
+    <span class="watermark-expandir">EXPANDIR</span>
+    <span class="watermark-sub">AGÊNCIA DE VIAGENS E ASSESSORIA DE IMIGRAÇÃO</span>
+  </div>
+  <div class="page-content">
+
+    <p class="clause">
+      Caso a rescisão ocorra após a assinatura do contrato, mas antes da realização da
+      primeira videoconferência individual de orientação, serão devidos apenas os valores
+      referentes à multa rescisória de 20% (vinte por cento) sobre o valor total contratado,
+      não havendo cobrança de honorários proporcionais.
+    </p>
+
+    <div class="roman-item">
+      <h4>II – 25% (vinte e cinco por cento)</h4>
+      <p class="clause" style="margin-bottom:4pt;">Devidos quando já tiverem sido realizadas, no mínimo:</p>
+      <p class="letter-item">a) a reunião inicial individual de orientação; e</p>
+      <p class="letter-item">b) o envio do checklist de documentos ao(à) <span class="bold">CONTRATANTE</span>.</p>
+    </div>
+
+    <div class="roman-item">
+      <h4>III – 50% (cinquenta por cento)</h4>
+      <p class="clause" style="margin-bottom:4pt;">Devidos quando, além do previsto no inciso anterior, a <span class="bold">CONTRATADA</span> já tiver prestado:</p>
+      <p class="letter-item">a) orientações pelo WhatsApp relativas ao procedimento contratado; e</p>
+      <p class="letter-item">b) análise/revisão de documentos enviados pelo(à) <span class="bold">CONTRATANTE</span>.</p>
+    </div>
+
+    <div class="roman-item">
+      <h4>IV – 75% (setenta e cinco por cento)</h4>
+      <p class="clause" style="margin-bottom:4pt;">Devidos quando, além das etapas anteriores, a <span class="bold">CONTRATADA</span> já tiver realizado o envio
+      dos formulários e/ou modelos oficiais preenchidos (requerimentos, formulários de
+      autorização, guias, minutas de declarações, etc.) para conferência, assinatura ou uso
+      pelo(à) <span class="bold">CONTRATANTE</span>.</p>
+    </div>
+
+    <div class="roman-item">
+      <h4>V – 100% (cem por cento)</h4>
+      <p class="clause" style="margin-bottom:4pt;">Devidos quando já tiver sido realizado o ato principal do procedimento, assim
+      considerado:</p>
+      <p class="letter-item">a) o agendamento da cita no Consulado ou na Extranjería, conforme o caso; ou</p>
+      <p class="letter-item">b) o protocolo/submissão eletrônica do pedido perante a autoridade competente.</p>
+    </div>
+
+    <p class="parag">
+      <span class="parag-label">Parágrafo primeiro.</span> Caso, na data da rescisão, o valor já pago pelo(à) <span class="bold">CONTRATANTE</span>
+      seja inferior ao percentual devido conforme os incisos acima, o(a) <span class="bold">CONTRATANTE</span> deverá
+      complementar a diferença. Se o valor já pago for superior ao percentual devido, a
+    </p>
+  </div>
+  <div class="page-number">6</div>
+</div>
+
+<!-- PAGE 7 -->
+<div class="page">
+  <div class="watermark">
+    <span class="watermark-bora">BORA</span>
+    <span class="watermark-expandir">EXPANDIR</span>
+    <span class="watermark-sub">AGÊNCIA DE VIAGENS E ASSESSORIA DE IMIGRAÇÃO</span>
+  </div>
+  <div class="page-content">
+
+    <p class="clause">
+      <span class="bold">CONTRATADA</span> se compromete a devolver o excedente, descontada a multa rescisória
+      prevista na cláusula específica.
+    </p>
+
+    <p class="parag">
+      <span class="parag-label">Parágrafo segundo.</span> As partes reconhecem que a presente cláusula tem por finalidade
+      conferir objetividade e transparência ao cálculo dos honorários proporcionais em caso
+      de rescisão, evitando discussões subjetivas sobre o valor devido, e refletindo o
+      efetivo grau de avanço do procedimento e a carga de trabalho já despendida pela
+      <span class="bold">CONTRATADA</span>.
+    </p>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 17ª.</span> Na hipótese de rescisão antecipada por iniciativa da <span class="bold">CONTRATADA</span>, esta
+      se compromete a realizar a <span class="bold">devolução proporcional dos valores eventualmente pagos
+      pelo(a)&nbsp;<span class="bold">CONTRATANTE</span></span>, considerando os serviços que ainda não tenham sido prestados,
+      ou a <span class="bold">cobrar apenas os honorários proporcionais aos serviços já executados</span>, conforme
+      o estágio de desenvolvimento da assessoria. A <span class="bold">CONTRATADA</span> também se compromete a
+      notificar o(a)&nbsp;<span class="bold">CONTRATANTE</span> por escrito, com antecedência mínima de 30 (trinta) dias,
+      salvo em situações excepcionais devidamente justificadas, tais como inadimplemento ou
+      conduta incompatível com os princípios da boa-fé contratual.
+    </p>
+
+    <h2 class="section-title">DAS ALTERAÇÕES LEGAIS E DE CRITÉRIOS ADMINISTRATIVOS</h2>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 18ª.</span> A <span class="bold">CONTRATADA</span> prestará os serviços com base na legislação,
+      regulamentação e entendimentos administrativos <span class="bold">vigentes à época da execução de cada
+      etapa do procedimento</span>, não podendo garantir a manutenção futura desses entendimentos
+      por parte das autoridades competentes (Extranjería, Consulados, órgãos espanhóis ou
+      brasileiros, cartórios, etc.).
+    </p>
+
+    <p class="parag">
+      <span class="parag-label">Parágrafo primeiro.</span> O(a) <span class="bold">CONTRATANTE</span> declara estar ciente de que, <span class="bold">no curso do
+      procedimento</span>, podem ocorrer alterações legislativas, regulamentares, mudanças de
+      critérios internos das autoridades, exigência de novos documentos, formatos ou
+      requisitos adicionais, bem como interpretações mais restritivas por parte dos órgãos
+      responsáveis, fatos estes <span class="bold">totalmente alheios à vontade e ao controle da CONTRATADA</span>.
+    </p>
+
+    <p class="parag">
+      <span class="parag-label">Parágrafo segundo.</span> Nessa hipótese, a <span class="bold">CONTRATADA</span> compromete-se a <span class="bold">informar o(a)
+      CONTRATANTE</span> quando houver algum tipo de alteração na lei e a <span class="bold">orientar quanto às</span>
+    </p>
+  </div>
+  <div class="page-number">7</div>
+</div>
+
+<!-- PAGE 8 -->
+<div class="page">
+  <div class="watermark">
+    <span class="watermark-bora">BORA</span>
+    <span class="watermark-expandir">EXPANDIR</span>
+    <span class="watermark-sub">AGÊNCIA DE VIAGENS E ASSESSORIA DE IMIGRAÇÃO</span>
+  </div>
+  <div class="page-content">
+
+    <p class="clause">
+      <span class="bold">novas exigências</span> e eventuais ajustes necessários, dentro dos limites do serviço
+      contratado.
+    </p>
+
+    <p class="parag">
+      <span class="parag-label">Parágrafo terceiro.</span> Caso, em razão de alteração legal, mudança de entendimento
+      prático da autoridade ou exigência superveniente, o(a) <span class="bold">CONTRATANTE <span class="underline">deixe de cumprir
+      os requisitos necessários</span></span> para a continuidade ou conclusão do procedimento, ainda
+      que por fato alheio à sua vontade, tal circunstância <span class="bold">não caracterizará falha na
+      prestação de serviços pela CONTRATADA</span>, nem configurará justa causa para isenção das
+      condições financeiras contratadas.
+    </p>
+
+    <p class="parag">
+      <span class="parag-label">Parágrafo quarto.</span> Nesses casos, se o(a) <span class="bold">CONTRATANTE</span> optar por <span class="bold">rescindir o contrato</span>
+      ou se o procedimento se tornar inviável em função dessas mudanças supervenientes,
+      <span class="bold">aplicar-se-ão as mesmas regras de rescisão e de honorários proporcionais</span> previstas
+      neste instrumento, descritas na <span class="bold">Cláusula 12ª. a 16ª</span>.
+    </p>
+
+    <h2 class="section-title">DURAÇÃO DO CONTRATO</h2>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 19ª.</span>&nbsp;&nbsp;&nbsp;Este contrato entra em vigor na data de sua assinatura e permanecerá
+      vigente até o integral cumprimento das obrigações assumidas por ambas as partes.
+    </p>
+
+    <h2 class="section-title">LIMITAÇÕES DOS SERVIÇOS</h2>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 20ª.</span> Os serviços prestados no presente contrato incluem <span class="bold underline">todos </span>os serviços
+      descritos na <span class="bold">Cláusula 4ª</span>.
+    </p>
+
+    <p class="not-included-title">NÃO ESTÃO INCLUÍDOS:</p>
+
+    <p class="letter-item">
+      <span class="item-label">a)</span> <span class="bold">Recursos administrativos</span>, como recurso de alçada contra decisão negativa;
+    </p>
+    <p class="letter-item">
+      <span class="item-label">b)</span> <span class="bold">Medidas judiciais</span> (processos/ações judiciais), caso o pedido seja indeferido ou
+      exija atuação judicial;
+    </p>
+    <p class="letter-item">
+      <span class="item-label">c)</span> Assessoria jurídica para <span class="bold">outros temas não incluídos</span> no procedimento contratado
+      conforme <span class="bold">Cláusula 4ª.</span>, como visto de entrada, questões fiscais/tributárias,
+      trabalhistas, modificações, prorrogações ou similares;
+    </p>
+  </div>
+  <div class="page-number">8</div>
+</div>
+
+<!-- PAGE 9 -->
+<div class="page">
+  <div class="watermark">
+    <span class="watermark-bora">BORA</span>
+    <span class="watermark-expandir">EXPANDIR</span>
+    <span class="watermark-sub">AGÊNCIA DE VIAGENS E ASSESSORIA DE IMIGRAÇÃO</span>
+  </div>
+  <div class="page-content">
+
+    <p class="letter-item">
+      <span class="item-label">d)</span> <span class="bold">Custos externos</span>, como: taxas governamentais, certidões, envio de documentos e
+      demais despesas cartoriais/administrativas.
+    </p>
+    <p class="letter-item">
+      <span class="item-label">e)</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="bold">Passagens, custos com deslocamentos, alojamentos,</span> etc.
+    </p>
+    <p class="letter-item">
+      <span class="item-label">f)</span>&nbsp;&nbsp;&nbsp;<span class="bold">Apostilamento e tradução juramentada:</span> documentos estrangeiros que serão
+      utilizados em procedimentos na Espanha <span class="bold underline">DEVEM</span> ser <span class="bold">apostilados/legalizados no país de
+      emissão</span> e <span class="bold">traduzidos para o espanhol&nbsp;&nbsp;por tradutor juramentado na Espanha</span>.
+    </p>
+    <p class="letter-item">
+      <span class="item-label">g)</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="bold">Valor do curso</span>, matrícula, inscrição,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mensalidades e afins.
+    </p>
+    <p class="letter-item">
+      <span class="item-label">h)</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="bold">Seguro-saúde</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;exigido&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;para&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;o&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;procedimento.
+    </p>
+    <p class="letter-item">
+      <span class="item-label">i)</span> Certificados, reconhecimentos, homologações, equivalências.
+    </p>
+    <p class="letter-item">
+      <span class="item-label">j)</span> Exigências específicas do Consulado/Extranjería no decorrer do processo
+    </p>
+    <p class="letter-item">
+      <span class="item-label">k)</span> <span class="bold">E quaisquer outros investimentos/gastos/despesas necessários</span> para o procedimento
+      contratado ou para o procedimento imigratório.
+    </p>
+
+    <h2 class="section-title">PROTEÇÃO DE DADOS</h2>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 21ª.</span>&nbsp;&nbsp;&nbsp;A <span class="bold">CONTRATADA</span> compromete-se a tratar todas as informações e documentos
+      do(a)&nbsp;&nbsp;&nbsp;<span class="bold">CONTRATANTE</span> de forma confidencial e em conformidade com a Lei Geral de
+      Proteção de Dados (LGPD) e o Regulamento Geral de Proteção de Dados da União Europeia
+      (GDPR).
+    </p>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 22ª.</span>&nbsp;&nbsp;&nbsp;Os dados do <span class="bold">CONTRATANTE</span> serão utilizados exclusivamente para a
+      prestação dos serviços contratados e armazenados pelo tempo necessário ao cumprimento
+      das obrigações legais.
+    </p>
+
+    <h2 class="section-title">DO FORO</h2>
+
+    <p class="clause">
+      <span class="clause-label">Cláusula 20ª.</span> Para dirimir quaisquer controvérsias oriundas deste contrato, as
+      partes elegem o foro da comarca de Ribeirão Preto-SP.
+    </p>
+  </div>
+  <div class="page-number">9</div>
+</div>
+
+<!-- PAGE 10 -->
+<div class="page">
+  <div class="watermark">
+    <span class="watermark-bora">BORA</span>
+    <span class="watermark-expandir">EXPANDIR</span>
+    <span class="watermark-sub">AGÊNCIA DE VIAGENS E ASSESSORIA DE IMIGRAÇÃO</span>
+  </div>
+  <div class="page-content">
+
+    <p class="clause">Por estarem assim justos e contratados, firmam digitalmente o presente instrumento.</p>
+
+    <div class="signature-block">
+      <p>&nbsp;</p>
+      <p>Ribeirão Preto, <span class="highlight">{{data}}</span>.</p>
+      <p>&nbsp;</p>
+      <p>&nbsp;</p>
+
+      <!-- BLOCO CONTRATANTE -->
+      <p><span class="bold">CONTRATANTE:</span> <span class="highlight-bold">{{NOME}}</span></p>
+      <p><span class="bold">Documento de Identificação:</span> <span class="highlight">{{nome do(s) documento(s) e número(s)}}</span></p>
+      <p>&nbsp;</p>
+      <p>[[ASSINATURA_CLIENTE]]</p>
+      <p>&nbsp;</p>
+      <p>&nbsp;</p>
+
+      <!-- BLOCO CONTRATADA -->
+      <p><span class="bold">CONTRATADA:</span> BORA EXPANDIR LTDA</p>
+      <p><span class="bold">CNPJ:</span> 55.218.947/0001-65</p>
+      <p><span class="bold">Sócio Administrador Responsável:</span> FERNANDA APARECIDA JESUS BORGES MEIRELLES</p>
+      <p><span class="bold">CPF:</span> 402.097.918-96</p>
+      <p>&nbsp;</p>
+      <p>[[ASSINATURA_EMPRESA]]</p>
+    </div>
+
+  </div>
+  <div class="page-number">10</div>
+</div>
+
+</body>
+</html>

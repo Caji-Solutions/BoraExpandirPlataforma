@@ -9,7 +9,7 @@ export async function getAllClientes(): Promise<Cliente[]> {
         throw new Error('Erro ao buscar clientes');
     }
     const result = await response.json();
-    // Garantir que os dados batem com a interface (fallback para campos obrigatÃ³rios)
+    // Garantir que os dados batem com a interface (fallback para campos obrigatórios)
     return (result.data || []).map((c: any) => ({
         ...c,
         telefone: formatPhoneDisplay(c.whatsapp || c.telefone || ''),
@@ -32,7 +32,7 @@ export async function getClienteCredentials(email: string): Promise<any> {
 export async function getAgendamentosByUsuario(usuarioId: string): Promise<any[]> {
     const response = await fetch(`${API_BASE_URL}/comercial/agendamentos/usuario/${usuarioId}`);
     if (!response.ok) {
-        throw new Error('Erro ao buscar agendamentos do usuÃ¡rio');
+        throw new Error('Erro ao buscar agendamentos do usuário');
     }
     const result = await response.json();
     return Array.isArray(result) ? result : (result.data || []);
@@ -186,7 +186,7 @@ export async function uploadComprovanteContrato(id: string, file: File): Promise
 }
 
 
-// Novos mÃ©todos para o fluxo Draft / Assessoria
+// Novos métodos para o fluxo Draft / Assessoria
 export async function updateContratoDraft(id: string, payload: { etapa_fluxo: number; draft_dados: any }): Promise<any> {
     const response = await fetch(`${API_BASE_URL}/comercial/contratos/${id}/draft`, {
         method: 'PUT',

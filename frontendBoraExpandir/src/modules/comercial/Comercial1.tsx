@@ -175,7 +175,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
           setExchangeRate(data.rates.BRL)
         })
         .catch(err => {
-          console.error("Erro ao buscar cotação", err)
+          console.error("Erro ao buscar cotacao", err)
           setExchangeRate(6.27) // Fallback seguro
         })
     }
@@ -251,7 +251,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
         }
       } catch (err) {
-        console.error('Erro ao carregar agendamento para edição', err)
+        console.error('Erro ao carregar agendamento para edicao', err)
       } finally {
         setLoadingEdit(false)
       }
@@ -544,7 +544,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const carregarAgendamentosDoDia = async (dataIso: string) => {
     const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || ''
     if (!backendUrl) {
-      console.error('VITE_BACKEND_URL não configurado; não foi possível buscar disponibilidade')
+      console.error('VITE_BACKEND_URL nao configurado; nao foi possivel buscar disponibilidade')
       setAgendamentosDia([])
       return
     }
@@ -639,7 +639,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
     setAgendamentoPayload(payload)
 
-    console.log('DEBUG AGENDAMENTO: Iniciando processo de finalização. Payload gerado:', {
+    console.log('DEBUG AGENDAMENTO: Iniciando processo de finalizacao. Payload gerado:', {
       nome: agendamentoPreview.cliente.nome,
       email: emailFinal,
       telefone: agendamentoPreview.cliente.telefone,
@@ -653,7 +653,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     if (isPaidFromContrato) {
       const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || ''
       if (!backendUrl) {
-        error('Backend nÃ£o configurado para criar agendamento.')
+        error('Backend não configurado para criar agendamento.')
         return
       }
       try {
@@ -665,13 +665,13 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
         if (response.status === 409) {
           const body = await response.json().catch(() => ({}))
-          error(body?.message || 'Este horÃ¡rio nÃ£o estÃ¡ mais disponÃ­vel.')
+          error(body?.message || 'Este horário não está mais disponível.')
           return
         }
 
         if (!response.ok) {
           const body = await response.json().catch(() => ({}))
-          error(body?.message || 'NÃ£o foi possÃ­vel criar o agendamento.')
+          error(body?.message || 'Não foi possível criar o agendamento.')
           return
         }
 
@@ -705,7 +705,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
     // Se não houver backend, cria localmente
     if (!backendUrl) {
-      console.warn('VITE_BACKEND_URL não configurado; criando lead localmente')
+      console.warn('VITE_BACKEND_URL nao configurado; criando lead localmente')
       const cliente: Cliente = {
         ...novoCliente,
         id: Date.now().toString(),

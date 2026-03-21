@@ -121,8 +121,7 @@ export interface Agendamento {
   cliente: Cliente
   cliente_id?: string
   duracao_minutos: number
-  produto: string // O nome do produto (substituiu o ID)
-  status: 'pendente' | 'agendado' | 'confirmado' | 'realizado' | 'cancelado' | 'aguardando_verificacao' | 'aprovado'
+  status: 'agendado' | 'confirmado' | 'realizado' | 'cancelado' | 'aguardando_verificacao'
   cliente_is_user?: boolean
   observacoes?: string
   comprovante_url?: string | null

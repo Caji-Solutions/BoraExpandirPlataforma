@@ -5,7 +5,7 @@ import ComercialController from '../controllers/ComercialController'
 
 const comercial = Router()
 
-// ConfiguraÃ§Ã£o do multer para armazenar em memÃ³ria (buffer)
+// Configuração do multer para armazenar em memória (buffer)
 const storage = multer.memoryStorage()
 const upload = multer({
   storage,
@@ -25,7 +25,7 @@ const upload = multer({
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true)
     } else {
-      cb(new Error('Tipo de arquivo nÃ£o permitido. Use PDF, JPG, PNG ou DOC.'))
+      cb(new Error('Tipo de arquivo não permitido. Use PDF, JPG, PNG ou DOC.'))
     }
   }
 })
@@ -46,7 +46,7 @@ comercial.get('/agendamento/:id', ComercialController.getAgendamentoById.bind(Co
 comercial.put('/agendamento/:id', ComercialController.updateAgendamento.bind(ComercialController))
 comercial.post('/agendamento/:id/cancelar', ComercialController.cancelarAgendamento.bind(ComercialController))
 
-// Contratos de serviÃ§os fixos
+// Contratos de serviços fixos
 comercial.post('/contratos', ComercialController.createContratoServico.bind(ComercialController))
 comercial.get('/contratos', ComercialController.getContratosServicos.bind(ComercialController))
 comercial.get('/contratos/:id', ComercialController.getContratoServicoById.bind(ComercialController))
