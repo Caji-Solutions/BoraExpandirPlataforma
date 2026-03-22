@@ -4,6 +4,7 @@ import request from 'supertest';
 import comercialRoutes from '../../routes/comercial';
 import ComercialController from '../ComercialController';
 import ContratoServicoRepository from '../../repositories/ContratoServicoRepository';
+import ComercialRepository from '../../repositories/ComercialRepository';
 import AdmRepository from '../../repositories/AdmRepository';
 import DNAService from '../../services/DNAService';
 
@@ -16,9 +17,18 @@ vi.mock('../../services/EmailService');
 vi.mock('../../services/NotificationService');
 vi.mock('../../services/StripeService');
 vi.mock('../../services/MercadoPagoService');
-vi.mock('../../services/ComposioService');
+vi.mock('../../services/ComposioService', () => ({
+    default: {
+        createCalendarEvent: vi.fn().mockResolvedValue({ success: false }),
+        deleteCalendarEvent: vi.fn(),
+        updateCalendarEvent: vi.fn()
+    }
+}));
 vi.mock('../../services/AutentiqueService');
 vi.mock('../../services/HtmlPdfService');
+vi.mock('../../utils/calendarHelpers', () => ({
+    getSuperAdminId: vi.fn().mockResolvedValue('super-admin-id')
+}));
 
 vi.mock('../../config/SupabaseClient', () => ({
     supabase: {
@@ -187,5 +197,81 @@ describe('ComercialController - Drafts', () => {
             expect(ContratoServicoRepository.updateContrato).not.toHaveBeenCalled();
             expect(DNAService.mergeDNA).not.toHaveBeenCalled();
         });
+    });
+});
+
+describe('ComercialController - cancelarAgendamento com meet_link', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('deve cancelar agendamento e logar intencao de deletar evento quando meet_link existe', async () => {
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        (ComercialRepository.getAgendamentoById as any).mockResolvedValue({
+            id: 'ag-001',
+            status: 'agendado',
+            meet_link: 'https://meet.google.com/zzz-yyy-xxx'
+        });
+        (ComercialRepository.updateAgendamentoStatus as any).mockResolvedValue(true);
+
+        const res = await request(app)
+            .post('/api/comercial/agendamento/ag-001/cancelar')
+            .send({});
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(ComercialRepository.updateAgendamentoStatus).toHaveBeenCalledWith('ag-001', 'cancelado');
+
+        await new Promise(process.nextTick);
+
+        const meetLogCalled = consoleSpy.mock.calls.some(args =>
+            args.some(a => typeof a === 'string' && a.includes('meet.google.com'))
+        );
+        expect(meetLogCalled).toBe(true);
+
+        consoleSpy.mockRestore();
+    });
+
+    it('nao deve logar meet_link quando agendamento nao possui link', async () => {
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        (ComercialRepository.getAgendamentoById as any).mockResolvedValue({
+            id: 'ag-002',
+            status: 'agendado',
+            meet_link: null
+        });
+        (ComercialRepository.updateAgendamentoStatus as any).mockResolvedValue(true);
+
+        const res = await request(app)
+            .post('/api/comercial/agendamento/ag-002/cancelar')
+            .send({});
+
+        expect(res.status).toBe(200);
+        expect(ComercialRepository.updateAgendamentoStatus).toHaveBeenCalledWith('ag-002', 'cancelado');
+
+        await new Promise(process.nextTick);
+
+        const meetLogCalled = consoleSpy.mock.calls.some(args =>
+            args.some(a => typeof a === 'string' && a.includes('meet_link') || a.includes('meet.google.com'))
+        );
+        expect(meetLogCalled).toBe(false);
+
+        consoleSpy.mockRestore();
+    });
+
+    it('deve retornar 400 ao tentar cancelar agendamento ja cancelado', async () => {
+        (ComercialRepository.getAgendamentoById as any).mockResolvedValue({
+            id: 'ag-003',
+            status: 'cancelado',
+            meet_link: null
+        });
+
+        const res = await request(app)
+            .post('/api/comercial/agendamento/ag-003/cancelar')
+            .send({});
+
+        expect(res.status).toBe(400);
+        expect(ComercialRepository.updateAgendamentoStatus).not.toHaveBeenCalled();
     });
 });

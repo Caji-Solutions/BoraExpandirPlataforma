@@ -241,8 +241,11 @@ class FinanceiroController {
                 formularioPreenchido = true
             }
 
-            // 6. Só marca 'confirmado' se pagamento E formulário estiverem OK
-            const novoStatus = formularioPreenchido ? 'confirmado' : 'agendado'
+            // 6. Só marca 'confirmado' se pagamento E formulário estiverem OK, e se NÃO houver conflito
+            let novoStatus = formularioPreenchido ? 'confirmado' : 'agendado'
+            if (conflitoHorario) {
+                novoStatus = 'Conflito'
+            }
             await ComercialRepository.updateAgendamentoStatus(id, novoStatus)
             console.log(`[FinanceiroController] Status do agendamento atualizado para: ${novoStatus} (formulario: ${formularioPreenchido ? 'sim' : 'nao'})`)
 

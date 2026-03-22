@@ -271,7 +271,8 @@ export function AgendamentoEditPage() {
             setAgendamento((prev: any) => ({
                 ...prev,
                 comprovante_url: 'enviado',
-                pagamento_status: 'em_analise'
+                pagamento_status: 'em_analise',
+                status: 'aguardando_verificacao'
             }))
             
             setComprovanteFile(null)

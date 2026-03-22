@@ -169,7 +169,22 @@ class ComercialController {
             const agendamentoAntigo = await ComercialRepository.getAgendamentoById(id);
             const dataMudou = agendamentoAntigo && agendamentoAntigo.data_hora !== dataHoraIso;
 
-            const agendamentoAtualizado = {
+            const inicio = new Date(dataHoraIso);
+            const fim = new Date(inicio.getTime() + duracao * 60000);
+
+            // Supabase query is used directly as we need to exclude the current id
+            const SupabaseClient = (await import('../config/SupabaseClient')).supabase;
+            const { data: conflitos } = await SupabaseClient
+                .from('agendamentos')
+                .select('id')
+                .neq('id', id)
+                .in('status', ['agendado', 'confirmado', 'realizado', 'Conflito'])
+                .gte('data_hora', inicio.toISOString())
+                .lt('data_hora', fim.toISOString());
+
+            const isConflito = conflitos && conflitos.length > 0;
+
+            const agendamentoAtualizado: any = {
                 nome,
                 email,
                 telefone: telefoneNormalizado,
@@ -180,7 +195,16 @@ class ComercialController {
                 duracao_minutos: duracao,
                 usuario_id: usuario_id || null,
                 cliente_id: cliente_id || null,
-                metodo_pagamento: metodo_pagamento || 'pix'
+                metodo_pagamento: metodo_pagamento || 'pix',
+                conflito_horario: isConflito
+            }
+
+            if (agendamentoAntigo) {
+                if (isConflito) {
+                    agendamentoAtualizado.status = 'Conflito';
+                } else if (agendamentoAntigo.status === 'Conflito') {
+                    agendamentoAtualizado.status = agendamentoAntigo.pagamento_status === 'aprovado' ? 'confirmado' : 'agendado';
+                }
             }
 
             const updatedData = await ComercialRepository.updateAgendamentoFull(id, agendamentoAtualizado)

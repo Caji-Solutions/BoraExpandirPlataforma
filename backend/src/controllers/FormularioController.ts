@@ -401,14 +401,20 @@ class FormularioController {
 
             // Atualizar agendamento com link do comprovante e marcar como pendente de verificação
             if (agendamento_id) {
-                await supabase
+                const { error: updateError } = await supabase
                     .from('agendamentos')
                     .update({
                         comprovante_url: urlData.publicUrl,
                         comprovante_upload_em: new Date().toISOString(),
-                        pagamento_status: 'em_analise'
+                        pagamento_status: 'em_analise',
+                        status: 'aguardando_verificacao'
                     })
                     .eq('id', agendamento_id)
+
+                if (updateError) {
+                    console.error('[FormularioController] Erro ao atualizar BD do agendamento:', updateError)
+                    return res.status(500).json({ message: 'Erro ao salvar informações no banco de dados. Contate o suporte.' })
+                }
             }
 
             console.log('[FormularioController] Comprovante salvo:', urlData.publicUrl)

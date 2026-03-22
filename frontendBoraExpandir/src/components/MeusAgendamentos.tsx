@@ -218,6 +218,12 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
         return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-none">Agendado</Badge>;
       case 'cancelado':
         return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-none">Cancelado</Badge>;
+      case 'aguardando_verificacao':
+        return <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100 border-none">Aguardando Verificação</Badge>;
+      case 'realizado':
+        return <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100 border-none">Realizado</Badge>;
+      case 'conflito':
+        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none">Conflito</Badge>;
       default:
         return <Badge variant="outline">{status || 'N/A'}</Badge>;
     }

@@ -26,6 +26,10 @@ const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destruc
 		variant: 'warning',
 		label: 'Aguardando Verif.',
 	},
+	Conflito: {
+		variant: 'warning',
+		label: 'Conflito',
+	},
 }
 
 const getStatusConfig = (status: string) =>

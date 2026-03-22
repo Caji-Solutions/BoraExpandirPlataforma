@@ -128,6 +128,9 @@ export interface Agendamento {
   pagamento_status?: 'pendente' | 'em_analise' | 'aprovado' | 'recusado' | null
   pagamento_nota_recusa?: string | null
   conflito_horario?: boolean
+  produto?: string
+  produto_id?: string
+  produto_nome?: string
   created_at: string
   updated_at: string
 }
