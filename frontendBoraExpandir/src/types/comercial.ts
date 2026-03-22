@@ -121,7 +121,7 @@ export interface Agendamento {
   cliente: Cliente
   cliente_id?: string
   duracao_minutos: number
-  status: 'agendado' | 'confirmado' | 'realizado' | 'cancelado' | 'aguardando_verificacao'
+  status: 'agendado' | 'confirmado' | 'realizado' | 'cancelado' | 'aguardando_verificacao' | 'Conflito'
   cliente_is_user?: boolean
   observacoes?: string
   comprovante_url?: string | null

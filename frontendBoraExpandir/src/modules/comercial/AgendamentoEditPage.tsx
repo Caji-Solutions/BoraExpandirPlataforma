@@ -7,6 +7,7 @@ import { CalendarPicker } from '../../components/ui/CalendarPicker'
 import { catalogService, Service } from '../adm/services/catalogService'
 import comercialService from './services/comercialService'
 import juridicoService from '../juridico/services/juridicoService'
+import { parseBackendDate, formatDataHora } from '../../utils/dateUtils'
 
 const HORARIOS_DISPONIVEIS = [
     '08:00', '09:00', '10:00', '11:00',
@@ -22,11 +23,11 @@ interface ConflictPopup {
 }
 
 function getDirectlyOccupiedSlots(ag: any, allSlots: string[], dateIso: string): string[] {
-    const inicio = new Date(ag.data_hora)
+    const inicio = parseBackendDate(ag.data_hora)
     const fim = new Date(inicio.getTime() + (ag.duracao_minutos || 60) * 60000)
 
     return allSlots.filter(hora => {
-        const slotTime = new Date(`${dateIso}T${hora}:00Z`)
+        const slotTime = new Date(`${dateIso}T${hora}:00`)
         return slotTime >= inicio && slotTime < fim
     })
 }
@@ -98,8 +99,8 @@ export function AgendamentoEditPage() {
                 setAgendamento(data)
 
                 if (data.data_hora) {
-                    const dt = new Date(data.data_hora)
-                    setDataSelecionada(new Date(dt.getTime() + dt.getTimezoneOffset() * 60000))
+                    const dt = parseBackendDate(data.data_hora)
+                    setDataSelecionada(dt)
                     setHoraSelecionada(data.data_hora.includes('T') ? data.data_hora.split('T')[1].substring(0, 5) : '')
                 }
             } catch (err: any) {
@@ -147,13 +148,13 @@ export function AgendamentoEditPage() {
         if (!dataSelecionada) return true
         const dataIso = getDateIso()
 
-        const inicioNovo = new Date(`${dataIso}T${hora}:00Z`)
+        const inicioNovo = new Date(`${dataIso}T${hora}:00`)
         const duracaoNovo = agendamento?.duracao_minutos || 60
         const fimNovo = new Date(inicioNovo.getTime() + duracaoNovo * 60000)
 
         return agendamentosDia.every((ag) => {
             if (ag.id === id) return true
-            const inicioExistente = new Date(ag.data_hora)
+            const inicioExistente = parseBackendDate(ag.data_hora)
             const duracaoExistente = ag.duracao_minutos || 60
             const fimExistente = new Date(inicioExistente.getTime() + duracaoExistente * 60000)
             return !(inicioExistente < fimNovo && inicioNovo < fimExistente)
@@ -171,13 +172,13 @@ export function AgendamentoEditPage() {
         const x = rect.left - (parentRect?.left || 0) + rect.width / 2
         const y = rect.top - (parentRect?.top || 0) + rect.height + 10
 
-        const inicioNovo = new Date(`${dataIso}T${hora}:00Z`)
+        const inicioNovo = new Date(`${dataIso}T${hora}:00`)
         const duracaoNovo = agendamento?.duracao_minutos || 60
         const fimNovo = new Date(inicioNovo.getTime() + duracaoNovo * 60000)
 
         const conflito = agendamentosDia.find((ag) => {
             if (ag.id === id) return false
-            const inicioExistente = new Date(ag.data_hora)
+            const inicioExistente = parseBackendDate(ag.data_hora)
             const duracaoExistente = ag.duracao_minutos || 60
             const fimExistente = new Date(inicioExistente.getTime() + duracaoExistente * 60000)
             return inicioExistente < fimNovo && inicioNovo < fimExistente
@@ -318,10 +319,9 @@ export function AgendamentoEditPage() {
     const produtoDetalhe = produtos.find(p => p.id === agendamento.produto_id)
     const nomeProduto = produtoDetalhe?.name || agendamento.produto_nome || agendamento.produto_id || 'Não especificado'
 
-    const formatDataHora = (dataHora: string) => {
+    const formatDataHoraDisplay = (dataHora: string) => {
         try {
-            const dt = new Date(dataHora)
-            return `${dt.toLocaleDateString('pt-BR')} às ${dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+            return formatDataHora(dataHora);
         } catch { return dataHora }
     }
 
@@ -363,10 +363,10 @@ export function AgendamentoEditPage() {
                             Atenção: Conflito de Horário!
                         </div>
                         <p className="text-sm text-amber-800 dark:text-amber-300">
-                            Após a confirmação do pagamento, verificamos que o horário selecionado (<strong>{formatDataHora(agendamento.data_hora)}</strong>) 
+                            Após a confirmação do pagamento, verificamos que o horário selecionado (<strong>{formatDataHoraDisplay(agendamento.data_hora)}</strong>) 
                             já foi ocupado por outro cliente que teve o pagamento confirmado primeiro. 
                             <br/><br/>
-                            <strong>Ação Necessária:</strong> Selecione um novo horário disponível abaixo para realocar este cliente. Ao salvar o novo horário, o agendamento será ativado instantaneamente no novo slot.
+                            <strong>Ação Necessária:</strong> Selecione um novo horário disponível abaixo para realocar este cliente. Não será necessário confirmar o pagamento novamente.
                         </p>
                     </div>
                 )}
@@ -668,7 +668,7 @@ export function AgendamentoEditPage() {
                                     Horário Atual
                                 </h3>
                                 <p className="text-gray-600 dark:text-gray-400 text-sm">
-                                    {formatDataHora(agendamento.data_hora)}
+                                    {formatDataHoraDisplay(agendamento.data_hora)}
                                 </p>
                             </div>
                             <Clock className="w-8 h-8 text-emerald-600 opacity-50" />
@@ -779,7 +779,7 @@ export function AgendamentoEditPage() {
                                     </div>
                                     <div>
                                         <span className="text-gray-500 dark:text-gray-400 text-xs">Horário</span>
-                                        <p className="font-medium text-gray-900 dark:text-white">{formatDataHora(conflictPopup.agendamento.data_hora)}</p>
+                                        <p className="font-medium text-gray-900 dark:text-white">{formatDataHoraDisplay(conflictPopup.agendamento.data_hora)}</p>
                                     </div>
                                     <div>
                                         <span className="text-gray-500 dark:text-gray-400 text-xs">Duração</span>

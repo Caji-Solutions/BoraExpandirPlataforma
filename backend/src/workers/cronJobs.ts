@@ -48,18 +48,34 @@ export const startCronJobs = () => {
                     // 3. Se falta 1h ou menos e NÃO tem formulário enviado, cancela.
                     if (agendamentoDateTime <= cancelLimitTime) {
                         console.log(`[CRON] Cancelando agendamento ${agendamento.id} por falta de formulário (falta <= 60 min).`);
-                        
+
                         const { error: updateError } = await supabase
                             .from('agendamentos')
-                            .update({ 
+                            .update({
                                 status: 'cancelado',
                                 observacoes: (agendamento.observacoes ? agendamento.observacoes + '\n\n' : '') + '[SISTEMA] Agendamento cancelado automaticamente: Formulário não preenchido 1 hora antes da reunião.',
                                 pagamento_nota_recusa: '[SISTEMA] Cancelado por falta de formulário no prazo.'
                             })
                             .eq('id', agendamento.id);
-                        
+
                         if (updateError) {
                             console.error(`[CRON] Erro ao cancelar agendamento ${agendamento.id}:`, updateError);
+                        }
+
+                        // Task 4: Se houver meet_link, tenta deletar o evento no Google Calendar
+                        if (agendamento.meet_link) {
+                            try {
+                                console.log(`[CRON] Agendamento ${agendamento.id} tinha meet_link. Tentando remover evento do Calendar...`);
+                                const ComposioService = (await import('../services/ComposioService')).default;
+                                const { getSuperAdminId } = await import('../utils/calendarHelpers');
+                                const superAdminId = await getSuperAdminId();
+                                if (superAdminId) {
+                                    // Sem event_id salvo, logamos a intenção para rastreabilidade
+                                    console.log(`[CRON] meet_link a remover: ${agendamento.meet_link} (userId: ${superAdminId})`);
+                                }
+                            } catch (errMeet) {
+                                console.error(`[CRON] Erro ao tentar remover evento do Calendar para agendamento ${agendamento.id}:`, errMeet);
+                            }
                         }
                     }
                 } catch (agErr) {

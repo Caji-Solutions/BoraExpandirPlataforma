@@ -173,7 +173,7 @@ class ComercialRepository {
         const { data: agendamentos, error } = await supabase
             .from('agendamentos')
             .select('*')
-            .in('status', ['agendado', 'confirmado', 'realizado'])
+            .in('status', ['agendado', 'confirmado', 'realizado', 'Conflito'])
             .gte('data_hora', data_hora_inicio)
             .lt('data_hora', data_hora_fim)
 
@@ -191,7 +191,7 @@ class ComercialRepository {
         const { data: agendamentos, error } = await supabase
             .from('agendamentos')
             .select('*')
-            .in('status', ['agendado', 'confirmado', 'realizado'])
+            .in('status', ['agendado', 'confirmado', 'realizado', 'Conflito'])
             .gte('data_hora', `${data}T00:00:00`)
             .lt('data_hora', `${data}T23:59:59`)
             .order('data_hora', { ascending: true })

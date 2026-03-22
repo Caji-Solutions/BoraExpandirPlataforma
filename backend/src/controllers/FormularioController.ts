@@ -24,40 +24,34 @@ class FormularioController {
         try {
             const {
                 agendamento_id,
-                // Dados pessoais
+                // Step 1 - Identificação
                 nome_completo,
+                parceiro_indicador,
                 email,
                 whatsapp,
-                data_nascimento,
+                // Step 1 - Pessoais
                 nacionalidade,
-                estado_civil,
-                // Documentos
-                cpf,
-                passaporte,
-                // Situação atual
-                pais_residencia,
-                tem_filhos,
-                quantidade_filhos,
-                idades_filhos,
-                // Profissional
-                profissao,
-                escolaridade,
-                experiencia_exterior,
-                empresa_exterior,
-                // Imigração
-                objetivo_imigracao,
-                pais_destino,
-                prazo_mudanca,
-                ja_tem_visto,
-                tipo_visto,
-                pretende_trabalhar,
-                area_trabalho,
-                // Financeiro
-                renda_mensal,
-                possui_reserva,
-                // Observações
-                observacoes,
-                como_conheceu
+                esteve_europa_6meses,
+                cidade_pais_residencia,
+                // Step 2 - Familiar e Documentos
+                estado_civil,              // string[]
+                filhos_qtd_idades,
+                familiares_espanha,
+                possui_cnh_categoria_ano,
+                proposta_trabalho_espanha,
+                visto_ue,
+                trabalho_destacado_ue,
+                filhos_nacionalidade_europeia,
+                pretende_autonomo,         // string[]
+                // Step 3 - Educação e Trabalho
+                disposto_estudar,
+                pretende_trabalhar_espanha, // string[]
+                escolaridade,              // string[]
+                area_formacao,
+                situacao_profissional,     // string[]
+                profissao_online_presencial,
+                tipo_visto_planejado,
+                duvidas_consultoria,
             } = req.body
 
             // Validação básica
@@ -119,7 +113,6 @@ class FormularioController {
                     email,
                     role: 'cliente',
                     password_hash,
-                    cpf: cpf || null,
                     telefone: whatsapp
                 })
                 
@@ -186,33 +179,33 @@ class FormularioController {
             const formularioData = {
                 cliente_id: clienteId,
                 agendamento_id: agendamento_id || null,
+                // Step 1
                 nome_completo,
+                parceiro_indicador: parceiro_indicador || null,
                 email,
                 whatsapp,
-                data_nascimento: data_nascimento || null,
                 nacionalidade: nacionalidade || null,
+                esteve_europa_6meses: esteve_europa_6meses || null,
+                cidade_pais_residencia: cidade_pais_residencia || null,
+                // Step 2
                 estado_civil: estado_civil || null,
-                cpf: cpf || null,
-                passaporte: passaporte || null,
-                pais_residencia: pais_residencia || null,
-                tem_filhos: tem_filhos || false,
-                quantidade_filhos: quantidade_filhos || 0,
-                idades_filhos: idades_filhos || null,
-                profissao: profissao || null,
+                filhos_qtd_idades: filhos_qtd_idades || null,
+                familiares_espanha: familiares_espanha || null,
+                possui_cnh_categoria_ano: possui_cnh_categoria_ano || null,
+                proposta_trabalho_espanha: proposta_trabalho_espanha || null,
+                visto_ue: visto_ue || null,
+                trabalho_destacado_ue: trabalho_destacado_ue || null,
+                filhos_nacionalidade_europeia: filhos_nacionalidade_europeia || null,
+                pretende_autonomo: pretende_autonomo || null,
+                // Step 3
+                disposto_estudar: disposto_estudar || null,
+                pretende_trabalhar_espanha: pretende_trabalhar_espanha || null,
                 escolaridade: escolaridade || null,
-                experiencia_exterior: experiencia_exterior || null,
-                empresa_exterior: empresa_exterior || null,
-                objetivo_imigracao: objetivo_imigracao || null,
-                pais_destino: pais_destino || null,
-                prazo_mudanca: prazo_mudanca || null,
-                ja_tem_visto: ja_tem_visto || false,
-                tipo_visto: tipo_visto || null,
-                pretende_trabalhar: pretende_trabalhar || null,
-                area_trabalho: area_trabalho || null,
-                renda_mensal: renda_mensal || null,
-                possui_reserva: possui_reserva || null,
-                observacoes: observacoes || null,
-                como_conheceu: como_conheceu || null
+                area_formacao: area_formacao || null,
+                situacao_profissional: situacao_profissional || null,
+                profissao_online_presencial: profissao_online_presencial || null,
+                tipo_visto_planejado: tipo_visto_planejado || null,
+                duvidas_consultoria: duvidas_consultoria || null,
             }
 
             // Tenta salvar o formulário — se a tabela não existir, apenas loga
@@ -247,10 +240,41 @@ class FormularioController {
                         cliente_id: clienteId
                     })
                     .eq('id', agendamento_id)
+
                 if (agUpdateError) {
                     console.error('[FormularioController] Erro ao atualizar agendamento:', agUpdateError)
-                } else {
-                    console.log(`[FormularioController] Agendamento atualizado para: ${isPago ? 'confirmado' : 'pendente'}, ID: ${agendamento_id}`)
+                    throw agUpdateError
+                }
+
+                console.log(`[FormularioController] Agendamento atualizado para: ${isPago ? 'confirmado' : 'pendente'}, ID: ${agendamento_id}`)
+
+                // Se status virou 'confirmado', gera link do Meet
+                if (isPago && !agendamentoAtual?.meet_link) {
+                    try {
+                        console.log(`[GoogleMeet] Agendamento ${agendamento_id} confirmado via Formulario. Gerando link...`)
+                        const ComposioService = (await import('../services/ComposioService')).default
+                        const { getSuperAdminId } = await import('../utils/calendarHelpers')
+                        const superAdminId = await getSuperAdminId()
+                        const calendarUserId = superAdminId || 'default'
+                        const eventResult = await ComposioService.createCalendarEvent(
+                            calendarUserId,
+                            {
+                                summary: `Consultoria - ${agendamentoAtual.nome}`,
+                                description: `Consultoria confirmada via Form.\nTelefone: ${agendamentoAtual.telefone}\nEmail: ${agendamentoAtual.email}`,
+                                startTime: new Date(agendamentoAtual.data_hora),
+                                endTime: new Date(new Date(agendamentoAtual.data_hora).getTime() + (agendamentoAtual.duracao_minutos || 60) * 60000),
+                                attendees: [agendamentoAtual.email],
+                                location: 'Google Meet'
+                            }
+                        )
+                        if (eventResult.success && eventResult.eventLink) {
+                            const { default: ComercialRepository } = await import('../repositories/ComercialRepository')
+                            await ComercialRepository.updateMeetLink(agendamento_id, eventResult.eventLink)
+                            console.log('[GoogleMeet] Link salvo:', eventResult.eventLink)
+                        }
+                    } catch (errMeet) {
+                        console.error('[GoogleMeet] Erro ao gerar link via Form:', errMeet)
+                    }
                 }
             } else {
                 // Se não há agendamento, assumimos que pode liberar o email

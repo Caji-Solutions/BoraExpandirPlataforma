@@ -32,13 +32,10 @@ const upload = multer({
 
 
 comercial.post('/agendamento', ComercialController.createAgendamento.bind(ComercialController))
-comercial.post('/agendamento/mercadopago', ComercialController.createAgendamentoMercadoPago.bind(ComercialController))
-comercial.post('/agendamento/stripe', ComercialController.createAgendamentoStripe.bind(ComercialController))
 comercial.get('/disponibilidade', ComercialController.checkDisponibilidade.bind(ComercialController))
 comercial.get('/agendamentos/usuario/:usuarioId', ComercialController.getAgendamentosByUsuario.bind(ComercialController))
 comercial.get('/agendamentos/:data', ComercialController.getAgendamentosByData.bind(ComercialController))
 comercial.get('/agendamentos/cliente/:clienteId', ComercialController.getAgendamentosByCliente.bind(ComercialController))
-comercial.post('/agendamento/:id/checkout', ComercialController.regenerateCheckout.bind(ComercialController))
 comercial.get('/agendamentos', ComercialController.getAllAgendamentos.bind(ComercialController))
 comercial.post('/agendamento/:id/confirmar-pix', ComercialController.confirmarPix.bind(ComercialController))
 comercial.get('/agendamento/:id/status-formulario', ComercialController.verificarStatusFormulario.bind(ComercialController))

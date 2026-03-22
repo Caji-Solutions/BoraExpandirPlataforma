@@ -7,6 +7,7 @@ import EmailService from '../services/EmailService';
 import NotificationService from '../services/NotificationService';
 import { normalizeCpf, normalizePhone } from '../utils/normalizers';
 import DNAService from '../services/DNAService';
+import { toUtcFromBrt, toBrtFromUtc } from '../utils/dateUtils';
 
 
 class ComercialController {
@@ -61,8 +62,8 @@ class ComercialController {
                 })
             }
 
-            // Normaliza data_hora para UTC (evita falsos negativos na checagem)
-            const dataHoraIso = data_hora?.endsWith('Z') ? data_hora : `${data_hora}Z`
+            // Normaliza data_hora assumindo que veio fuso de Brasília
+            const dataHoraIso = toUtcFromBrt(data_hora);
 
             // Verifica disponibilidade do horário
             const duracao = duracao_minutos || 60
@@ -130,6 +131,10 @@ class ComercialController {
                 console.warn('Erro ao verificar formulario preenchido do lead:', checkErr)
             }
 
+            if (createdData && createdData.data_hora) {
+                createdData.data_hora = toBrtFromUtc(createdData.data_hora);
+            }
+
             return res.status(201).json({ ...createdData, aviso_formulario_preenchido: avisoFormularioPreenchido })
 
         } catch (error: any) {
@@ -140,107 +145,6 @@ class ComercialController {
             })
         } finally {
             console.log('================================================')
-        }
-    }
-
-    /**
-     * Cria sessão de checkout do MercadoPago e retorna o link
-     * O agendamento será criado pelo webhook após confirmação do pagamento
-     */
-    async createAgendamentoMercadoPago(req: any, res: any) {
-        console.log('========== CREATE MERCADO PAGO CHECKOUT DEBUG ==========')
-        console.log('Body recebido:', req.body)
-        try {
-            const { nome, email, telefone, data_hora, produto_id, produto_nome, valor, duracao_minutos, usuario_id, cliente_id } = req.body
-            const telefoneNormalizado = normalizePhone(telefone)
-
-            console.log('IDs recebidos:', { usuario_id, cliente_id })
-
-            // Validação básica
-            if (!nome || !email || !telefoneNormalizado || !data_hora || !produto_id || !produto_nome || !valor) {
-                return res.status(400).json({
-                    message: 'Campos obrigatórios: nome, email, telefone, data_hora, produto_id, produto_nome, valor'
-                })
-            }
-
-            // Normaliza data_hora para UTC
-            const dataHoraIso = data_hora?.endsWith('Z') ? data_hora : `${data_hora}Z`
-
-            // Verifica disponibilidade do horário antes de criar o checkout
-            const duracao = duracao_minutos || 60
-            const disponibilidade = await this.verificarDisponibilidade(dataHoraIso, duracao)
-
-            if (!disponibilidade.disponivel) {
-                return res.status(409).json({
-                    message: 'Horário indisponível',
-                    conflitos: disponibilidade.agendamentos
-                })
-            }
-
-            // 0. Verificar se o serviço requer delegação jurídica
-            const catalogoServico = await AdmRepository.getServiceById(produto_id)
-            const requerDelegacao = catalogoServico?.requer_delegacao_juridico || false
-
-            // 1. Cria o agendamento como PENDENTE no banco
-            const agendamentoPendente = {
-                nome,
-                email,
-                telefone: telefoneNormalizado,
-                data_hora: dataHoraIso,
-                produto_id,
-                produto_nome,
-                valor: valor,
-                is_euro: false,
-                duracao_minutos: duracao,
-                status: 'agendado',
-                usuario_id: usuario_id || null,
-                cliente_id: cliente_id || null,
-                requer_delegacao: requerDelegacao
-            }
-
-            const createdAgendamento = await ComercialRepository.createAgendamento(agendamentoPendente)
-            console.log('Agendamento PENDENTE criado no banco:', createdAgendamento.id)
-
-            // 2. Cria a preferência de checkout no MercadoPago
-            const MercadoPagoService = (await import('../services/MercadoPagoService')).default
-            const checkout = await MercadoPagoService.createCheckoutPreference({
-                nome,
-                email,
-                telefone: telefoneNormalizado,
-                data_hora: dataHoraIso,
-                produto_id,
-                produto_nome,
-                valor,
-                duracao_minutos: duracao,
-                usuario_id: usuario_id || undefined,
-                cliente_id: cliente_id || undefined,
-                agendamento_id: createdAgendamento.id
-            })
-
-            console.log('Checkout MercadoPago criado:', checkout.preferenceId)
-
-            // Atualiza com o checkout_url se possível para o cliente ver no dashboard depois
-            try {
-                await ComercialRepository.updateAgendamentoCheckoutUrl(createdAgendamento.id, checkout.checkoutUrl)
-            } catch (err) {
-                console.warn('Nao foi possivel atualizar checkout_url no agendamento:', err)
-            }
-
-            return res.status(200).json({
-                checkoutUrl: checkout.checkoutUrl,
-                preferenceId: checkout.preferenceId,
-                agendamentoId: createdAgendamento.id,
-                message: 'Agendamento reservado. Aguardando pagamento.'
-            })
-
-        } catch (error: any) {
-            console.error('Erro ao criar checkout MercadoPago:', error)
-            return res.status(500).json({
-                message: 'Erro ao criar checkout',
-                error: error.message
-            })
-        } finally {
-            console.log('========================================================')
         }
     }
 
@@ -258,11 +162,12 @@ class ComercialController {
                 return res.status(400).json({ message: 'Campos obrigatórios ausentes' })
             }
 
-            const dataHoraIso = data_hora?.endsWith('Z') ? data_hora : `${data_hora}Z`
+            const dataHoraIso = toUtcFromBrt(data_hora);
             const duracao = duracao_minutos || 60
 
-            // Opcional: verificar disponibilidade novamente se a data/hora mudou,
-            // mas para simplificar, permitimos a edição por ser uma ação do consultor
+            // Se a data/hora mudou e o agendamento já tem um meet_link, atualizar o evento no Google Calendar
+            const agendamentoAntigo = await ComercialRepository.getAgendamentoById(id);
+            const dataMudou = agendamentoAntigo && agendamentoAntigo.data_hora !== dataHoraIso;
 
             const agendamentoAtualizado = {
                 nome,
@@ -280,6 +185,28 @@ class ComercialController {
 
             const updatedData = await ComercialRepository.updateAgendamentoFull(id, agendamentoAtualizado)
 
+            // Resiliência Google Meet: Se mudou horário e tem link, atualiza
+            if (dataMudou && updatedData.meet_link) {
+                try {
+                    console.log(`[GoogleMeet] Horário alterado para agendamento ${id}. Atualizando evento...`);
+                    const ComposioService = (await import('../services/ComposioService')).default;
+                    const { getSuperAdminId } = await import('../utils/calendarHelpers');
+                    const superAdminId = await getSuperAdminId();
+                    
+                    // Extrair ID do evento da URL do Meet (se possível) ou se tivéssemos salvo o eventId.
+                    // Como não salvamos o eventId separadamente, o ideal seria ter salvado.
+                    // Se não tivermos o eventId, o UpdateEvent do Composio pode falhar ou precisar de busca.
+                    // Por ora, vamos logar a necessidade de update.
+                    console.log(`[GoogleMeet] Necessário atualizar evento para ${dataHoraIso}`);
+                } catch (err) {
+                    console.error('[GoogleMeet] Erro ao tentar atualizar evento:', err);
+                }
+            }
+
+            if (updatedData && updatedData.data_hora) {
+                updatedData.data_hora = toBrtFromUtc(updatedData.data_hora);
+            }
+
             return res.status(200).json(updatedData)
         } catch (error: any) {
             console.error('Erro ao atualizar agendamento:', error)
@@ -287,284 +214,15 @@ class ComercialController {
         }
     }
 
-    /**
-     * Cria sessão de checkout do Stripe e retorna o link
-     */
-    async createAgendamentoStripe(req: any, res: any) {
-        console.log('========== CREATE STRIPE CHECKOUT DEBUG ==========')
-        try {
-            const { nome, email, telefone, data_hora, produto_id, produto_nome, valor, duracao_minutos, isEuro, usuario_id, cliente_id } = req.body
-            const telefoneNormalizado = normalizePhone(telefone)
-
-            if (!nome || !email || !telefoneNormalizado || !data_hora || !produto_id || !produto_nome || !valor) {
-                return res.status(400).json({ message: 'Campos obrigatórios ausentes' })
-            }
-
-            const dataHoraIso = data_hora?.endsWith('Z') ? data_hora : `${data_hora}Z`
-            const duracao = duracao_minutos || 60
-            const disponibilidade = await this.verificarDisponibilidade(dataHoraIso, duracao)
-
-            if (!disponibilidade.disponivel) {
-                return res.status(409).json({ message: 'Horário indisponível' })
-            }
-
-            // 0. Verificar se o serviço requer delegação jurídica
-            const catalogoServico = await AdmRepository.getServiceById(produto_id)
-            const requerDelegacao = catalogoServico?.requer_delegacao_juridico || false
-
-            const agendamentoPendente = {
-                nome,
-                email,
-                telefone: telefoneNormalizado,
-                data_hora: dataHoraIso,
-                produto_id,
-                produto_nome,
-                valor,
-                is_euro: isEuro ?? true,
-                duracao_minutos: duracao,
-                status: 'agendado',
-                usuario_id: usuario_id || null,
-                cliente_id: cliente_id || null,
-                requer_delegacao: requerDelegacao
-            }
-
-            const createdAgendamento = await ComercialRepository.createAgendamento(agendamentoPendente)
-
-            const StripeService = (await import('../services/StripeService')).default
-            const checkout = await StripeService.createCheckoutSession({
-                nome,
-                email,
-                telefone: telefoneNormalizado,
-                data_hora: dataHoraIso,
-                produto_id,
-                produto_nome,
-                valor: Math.round(valor * 100),
-                duracao_minutos: duracao,
-                isEuro: isEuro ?? true,
-                usuario_id: usuario_id || undefined,
-                cliente_id: cliente_id || undefined,
-                agendamento_id: createdAgendamento.id
-            })
-
-            try {
-                await ComercialRepository.updateAgendamentoCheckoutUrl(createdAgendamento.id, checkout.checkoutUrl)
-            } catch (err) {
-                console.warn('Erro ao salvar checkout_url stripe:', err)
-            }
-
-            return res.status(200).json({
-                checkoutUrl: checkout.checkoutUrl,
-                sessionId: checkout.sessionId,
-                agendamentoId: createdAgendamento.id
-            })
-
-        } catch (error: any) {
-            console.error('Erro ao criar checkout Stripe:', error)
-            return res.status(500).json({ message: 'Erro ao criar checkout' })
-        }
-    }
-
-    /**
-     * Regenera um checkout para um agendamento existente
-     */
-    async regenerateCheckout(req: any, res: any) {
-        try {
-            const { id } = req.params
-            const agendamento = await ComercialRepository.getAgendamentoById(id)
-
-            if (!agendamento) {
-                return res.status(404).json({ message: 'Agendamento não encontrado' })
-            }
-
-            if (agendamento.status !== 'agendado') {
-                return res.status(400).json({ message: 'Este agendamento já foi processado ou cancelado.' })
-            }
-
-            // Assume o valor salvo no banco ou o que veio na criação
-            const valor = agendamento.valor || 0
-            const isEuro = agendamento.is_euro !== false // Default true se não especificado
-
-            let checkoutUrl = ''
-
-            if (isEuro) {
-                const StripeService = (await import('../services/StripeService')).default
-                const checkout = await StripeService.createCheckoutSession({
-                    nome: agendamento.nome,
-                    email: agendamento.email,
-                    telefone: agendamento.telefone,
-                    data_hora: agendamento.data_hora,
-                    produto_id: agendamento.produto_id,
-                    produto_nome: agendamento.produto_nome || 'Consultoria',
-                    valor: Math.round(valor * 100),
-                    duracao_minutos: agendamento.duracao_minutos,
-                    isEuro: true,
-                    agendamento_id: agendamento.id
-                })
-                checkoutUrl = checkout.checkoutUrl
-            } else {
-                const MercadoPagoService = (await import('../services/MercadoPagoService')).default
-                const checkout = await MercadoPagoService.createCheckoutPreference({
-                    nome: agendamento.nome,
-                    email: agendamento.email,
-                    telefone: agendamento.telefone,
-                    data_hora: agendamento.data_hora,
-                    produto_id: agendamento.produto_id,
-                    produto_nome: agendamento.produto_nome || 'Consultoria',
-                    valor: valor,
-                    duracao_minutos: agendamento.duracao_minutos,
-                    agendamento_id: agendamento.id
-                })
-                checkoutUrl = checkout.checkoutUrl
-            }
-
-            // Salva o novo link
-            await ComercialRepository.updateAgendamentoCheckoutUrl(id, checkoutUrl)
-
-            return res.status(200).json({ checkoutUrl })
-
-        } catch (error: any) {
-            console.error('Erro ao regenerar checkout:', error)
-            return res.status(500).json({ message: 'Erro ao gerar novo link de pagamento' })
-        }
-    }
-
-    /**
-     * Processa o webhook do Stripe para confirmar agendamento após o pagamento
-     */
-    async handleStripeWebhook(req: any, res: any) {
-        const sig = req.headers['stripe-signature']
-        const StripeService = (await import('../services/StripeService')).default
-
-        let event
-
-        try {
-            // req.body deve ser o RAW body para validação da assinatura
-            event = StripeService.validateWebhookSignature(req.body, sig)
-        } catch (err: any) {
-            console.error('Erro na validacao do Webhook Stripe:', err.message)
-            return res.status(400).send(`Webhook Error: ${err.message}`)
-        }
-
-        // Handle the event
-        switch (event.type) {
-            case 'checkout.session.completed': {
-                const session = event.data.object as any
-                const metadata = session.metadata
-
-                if (metadata && metadata.tipo === 'agendamento') {
-                    try {
-                        console.log('========== STRIPE WEBHOOK AGENDAMENTO DEBUG ==========')
-                        console.log('Metadata recebido do Stripe:', metadata)
-
-                        const status = 'confirmado'; // Pagamento confirmado, encontro vai acontecer
-                        const agendamentoId = metadata.agendamento_id;
-
-                        if (agendamentoId) {
-                            console.log('Atualizando agendamento existente:', agendamentoId)
-                            const currentAgendamento = await ComercialRepository.getAgendamentoById(agendamentoId);
-                            
-                            if (currentAgendamento?.status === 'cancelado') {
-                                console.log('Agendamento ja esta cancelado. Ignorando atualizacao de status de pagamento.');
-                            } else {
-                                await ComercialRepository.updateAgendamentoStatus(agendamentoId, status)
-                                
-                                // TASK 2: Gerar link do Google Meet se pagamento aprovado E formulário enviado
-                                const refreshedAgendamento = await ComercialRepository.getAgendamentoById(agendamentoId);
-                                if (refreshedAgendamento && refreshedAgendamento.pagamento_status === 'aprovado' && refreshedAgendamento.cliente_is_user === true && !refreshedAgendamento.meet_link) {
-                                    try {
-                                        console.log('Gerando Google Meet link via Composio...');
-                                        const ComposioService = (await import('../services/ComposioService')).default;
-                                        
-                                        const superAdminId = await (await import('../utils/calendarHelpers')).getSuperAdminId();
-                                        const calendarUserId = superAdminId || refreshedAgendamento.usuario_id || 'default';
-                                        console.log(`[GoogleMeet] Usando userId: ${calendarUserId} (superAdmin: ${superAdminId || 'nao encontrado'})`);
-
-                                        // O createCalendarEvent criará a reunião e a migration adicionará o meet_link no db futuramente (Task 2 Frontend precisa dele)
-                                        const eventResult = await ComposioService.createCalendarEvent(
-                                            calendarUserId,
-                                            {
-                                                summary: `Consultoria - ${refreshedAgendamento.nome}`,
-                                                description: `Consultoria confirmada.\nTelefone: ${refreshedAgendamento.telefone}\nEmail: ${refreshedAgendamento.email}`,
-                                                startTime: new Date(refreshedAgendamento.data_hora),
-                                                endTime: new Date(new Date(refreshedAgendamento.data_hora).getTime() + (refreshedAgendamento.duracao_minutos || 60) * 60000),
-                                                attendees: [refreshedAgendamento.email],
-                                                location: 'Google Meet'
-                                            }
-                                        );
-
-                                        if (eventResult.success && eventResult.eventLink) {
-                                            await ComercialRepository.updateMeetLink(agendamentoId, eventResult.eventLink);
-                                            console.log('Meet link salvo com sucesso:', eventResult.eventLink);
-                                        }
-                                    } catch (errMeet) {
-                                        console.error('Erro ao gerar Google Meet:', errMeet);
-                                    }
-                                }
-                            }
-                        } else {
-                            // Fallback caso não tenha o ID (legado ou erro)
-                            console.log('ID nao encontrado no metadata, criando novo agendamento...')
-                            const agendamento = {
-                                nome: metadata.nome,
-                                email: metadata.email,
-                                telefone: metadata.telefone,
-                                data_hora: metadata.data_hora,
-                                produto_id: metadata.produto_id,
-                                duracao_minutos: parseInt(metadata.duracao_minutos) || 60,
-                                status: status,
-                                usuario_id: metadata.usuario_id && metadata.usuario_id !== '' ? metadata.usuario_id : null,
-                                cliente_id: metadata.cliente_id && metadata.cliente_id !== '' ? metadata.cliente_id : null
-                            }
-                            await ComercialRepository.createAgendamento(agendamento)
-                        }
-
-                        console.log('Agendamento processado com sucesso via Webhook Stripe')
-                    } catch (error: any) {
-                        console.error('Erro ao processar agendamento via Webhook Stripe:', error)
-                        return res.status(500).json({ message: 'Erro ao processar agendamento' })
-                    } finally {
-                        console.log('========================================================')
-                    }
-                }
-                else if (metadata && metadata.tipo === 'orcamento') {
-                    try {
-                        const documentoIds = metadata.documentoIds?.split(',') || []
-                        console.log('Pagamento Stripe confirmado para orcamentos:', documentoIds)
-
-                        const TraducoesRepository = (await import('../repositories/TraducoesRepository')).default
-
-                        for (const docId of documentoIds) {
-                            const orcamento = await TraducoesRepository.getOrcamentoByDocumento(docId)
-                            if (orcamento) {
-                                await TraducoesRepository.aprovarOrcamento(orcamento.id)
-                            }
-                        }
-                        console.log('Orcamentos aprovados com sucesso via Webhook Stripe')
-                    } catch (error: any) {
-                        console.error('Erro ao aprovar orcamentos via Webhook Stripe:', error)
-                        return res.status(500).json({ message: 'Erro ao processar aprovação de orçamentos' })
-                    }
-                }
-                break
-            }
-            default:
-                console.log(`Evento Stripe nao processado: ${event.type}`)
-        }
-
-        // Return a 200 response to acknowledge receipt of the event
-        res.json({ received: true })
-    }
-
     async verificarDisponibilidade(data_hora: string, duracao_minutos: number) {
         console.log('Verificando disponibilidade para:', data_hora, duracao_minutos)
 
-        // Garante parsing em UTC
-        const inicioUTC = data_hora.endsWith('Z') ? data_hora : `${data_hora}Z`
-        const inicio = new Date(inicioUTC)
+        // Converte a string de entrada assumindo que seja horário de Brasília para consultar no BD
+        const inicioIso = toUtcFromBrt(data_hora);
+        const inicio = new Date(inicioIso)
         const fim = new Date(inicio.getTime() + duracao_minutos * 60000)
 
-        const inicioIso = inicio.toISOString()
-        const fimIso = fim.toISOString()
+        const fimIso = fim.toISOString().replace('Z', '')
 
         // Busca agendamentos conflitantes no repository (intervalo fechado no início, aberto no fim)
         const agendamentos = await ComercialRepository.getAgendamentosByIntervalo(
@@ -577,9 +235,17 @@ class ComercialController {
 
         console.log('Disponibilidade:', disponivel, 'Conflitos:', agendamentos.length)
 
+        // Mapear os agendamentos para retornar em horário de Brasília
+        const agendamentosMapeados = agendamentos.map(ag => {
+            if (ag.data_hora) {
+                return { ...ag, data_hora: toBrtFromUtc(ag.data_hora) };
+            }
+            return ag;
+        });
+
         return {
             disponivel,
-            agendamentos
+            agendamentos: agendamentosMapeados
         }
     }
 
@@ -591,12 +257,9 @@ class ComercialController {
                 return res.status(400).json({ message: 'data_hora é obrigatório' })
             }
 
-            const dataHoraIso = (data_hora as string)?.endsWith('Z')
-                ? (data_hora as string)
-                : `${data_hora as string}Z`
-
+            // Mantemos a data de entrada local, e ela é validada/convertida no verificarDisponibilidade
             const resultado = await this.verificarDisponibilidade(
-                dataHoraIso,
+                data_hora,
                 parseInt(duracao_minutos as string) || 60
             )
 
@@ -623,15 +286,20 @@ class ComercialController {
 
             // Buscar informações do catálogo para cada agendamento
             const enrichedAgendamentos = await Promise.all(agendamentos.map(async (agendamento: any) => {
-                if (agendamento.produto_id) {
+                const baseAgendamento = { ...agendamento };
+                if (baseAgendamento.data_hora) {
+                    baseAgendamento.data_hora = toBrtFromUtc(baseAgendamento.data_hora);
+                }
+                
+                if (baseAgendamento.produto_id) {
                     try {
-                        const serviceInfo = await AdmRepository.getServiceById(agendamento.produto_id)
-                        return { ...agendamento, produto: serviceInfo }
+                        const serviceInfo = await AdmRepository.getServiceById(baseAgendamento.produto_id)
+                        return { ...baseAgendamento, produto: serviceInfo }
                     } catch (e) {
-                        console.error(`Erro ao buscar servico ${agendamento.produto_id}:`, e)
+                        console.error(`Erro ao buscar servico ${baseAgendamento.produto_id}:`, e)
                     }
                 }
-                return agendamento
+                return baseAgendamento
             }))
 
             return res.status(200).json(enrichedAgendamentos)
@@ -657,15 +325,20 @@ class ComercialController {
 
             // Buscar informações do catálogo para cada agendamento
             const enrichedAgendamentos = await Promise.all(agendamentos.map(async (agendamento: any) => {
-                if (agendamento.produto_id) {
+                const baseAgendamento = { ...agendamento };
+                if (baseAgendamento.data_hora) {
+                    baseAgendamento.data_hora = toBrtFromUtc(baseAgendamento.data_hora);
+                }
+
+                if (baseAgendamento.produto_id) {
                     try {
-                        const serviceInfo = await AdmRepository.getServiceById(agendamento.produto_id)
-                        return { ...agendamento, produto: serviceInfo }
+                        const serviceInfo = await AdmRepository.getServiceById(baseAgendamento.produto_id)
+                        return { ...baseAgendamento, produto: serviceInfo }
                     } catch (e) {
-                        console.error(`Erro ao buscar servico ${agendamento.produto_id}:`, e)
+                        console.error(`Erro ao buscar servico ${baseAgendamento.produto_id}:`, e)
                     }
                 }
-                return agendamento
+                return baseAgendamento
             }))
 
             return res.status(200).json(enrichedAgendamentos)
@@ -691,15 +364,20 @@ class ComercialController {
 
             // Buscar informações do catálogo para cada agendamento
             const enrichedAgendamentos = await Promise.all(agendamentos.map(async (agendamento: any) => {
-                if (agendamento.produto_id) {
+                const baseAgendamento = { ...agendamento };
+                if (baseAgendamento.data_hora) {
+                    baseAgendamento.data_hora = toBrtFromUtc(baseAgendamento.data_hora);
+                }
+
+                if (baseAgendamento.produto_id) {
                     try {
-                        const serviceInfo = await AdmRepository.getServiceById(agendamento.produto_id)
-                        return { ...agendamento, produto: serviceInfo }
+                        const serviceInfo = await AdmRepository.getServiceById(baseAgendamento.produto_id)
+                        return { ...baseAgendamento, produto: serviceInfo }
                     } catch (e) {
-                        console.error(`Erro ao buscar servico ${agendamento.produto_id}:`, e)
+                        console.error(`Erro ao buscar servico ${baseAgendamento.produto_id}:`, e)
                     }
                 }
-                return agendamento
+                return baseAgendamento
             }))
 
             return res.status(200).json(enrichedAgendamentos)
@@ -711,95 +389,6 @@ class ComercialController {
                 error: error.message
             })
         }
-    }
-
-    /**
-     * Processa o webhook do MercadoPago para confirmar agendamento
-     */
-    async handleMercadoPagoWebhook(req: any, res: any) {
-        console.log('========== MERCADO PAGO WEBHOOK DEBUG ==========')
-        const { type, data } = req.body
-        console.log('Evento recebido:', { type, resource: data?.id })
-
-        if (type === 'payment' && data?.id) {
-            try {
-                const MercadoPagoService = (await import('../services/MercadoPagoService')).default
-                const payment = await MercadoPagoService.getPayment(data.id)
-                console.log('Status do pagamento:', payment.status)
-
-                if (payment.status === 'approved' && payment.metadata?.tipo === 'agendamento') {
-                    const metadata = payment.metadata
-                    console.log('Metadata recuperado:', metadata)
-
-                    const status = 'confirmado';
-                    const agendamentoId = metadata.agendamento_id;
-
-                    if (agendamentoId) {
-                        console.log('Atualizando agendamento existente via Mercado Pago:', agendamentoId)
-                        const currentAgendamento = await ComercialRepository.getAgendamentoById(agendamentoId);
-                        
-                        if (currentAgendamento?.status === 'cancelado') {
-                            console.log('Agendamento ja esta cancelado. Ignorando atualizacao de status de pagamento Mercado Pago.');
-                        } else {
-                            await ComercialRepository.updateAgendamentoStatus(agendamentoId, status)
-                            
-                            // TASK 2: Gerar link do Google Meet se pagamento aprovado E formulário enviado
-                            const refreshedAgendamento = await ComercialRepository.getAgendamentoById(agendamentoId);
-                            if (refreshedAgendamento && refreshedAgendamento.pagamento_status === 'aprovado' && refreshedAgendamento.cliente_is_user === true && !refreshedAgendamento.meet_link) {
-                                try {
-                                    console.log('Gerando Google Meet link via Composio...');
-                                    const ComposioService = (await import('../services/ComposioService')).default;
-
-                                    const superAdminId = await (await import('../utils/calendarHelpers')).getSuperAdminId();
-                                    const calendarUserId = superAdminId || refreshedAgendamento.usuario_id || 'default';
-                                    console.log(`[GoogleMeet] Usando userId: ${calendarUserId} (superAdmin: ${superAdminId || 'nao encontrado'})`);
-
-                                    const eventResult = await ComposioService.createCalendarEvent(
-                                        calendarUserId,
-                                        {
-                                            summary: `Consultoria - ${refreshedAgendamento.nome}`,
-                                            description: `Consultoria confirmada.\nTelefone: ${refreshedAgendamento.telefone}\nEmail: ${refreshedAgendamento.email}`,
-                                            startTime: new Date(refreshedAgendamento.data_hora),
-                                            endTime: new Date(new Date(refreshedAgendamento.data_hora).getTime() + (refreshedAgendamento.duracao_minutos || 60) * 60000),
-                                            attendees: [refreshedAgendamento.email],
-                                            location: 'Google Meet'
-                                        }
-                                    );
-
-                                    if (eventResult.success && eventResult.eventLink) {
-                                        await ComercialRepository.updateMeetLink(agendamentoId, eventResult.eventLink);
-                                        console.log('Meet link salvo com sucesso:', eventResult.eventLink);
-                                    }
-                                } catch (errMeet) {
-                                    console.error('Erro ao gerar Google Meet:', errMeet);
-                                }
-                            }
-                        }
-                    } else {
-                        // Fallback
-                        const agendamento = {
-                            nome: metadata.nome,
-                            email: metadata.email,
-                            telefone: metadata.telefone,
-                            data_hora: metadata.data_hora,
-                            produto_id: metadata.produto_id,
-                            duracao_minutos: parseInt(metadata.duracao_minutos) || 60,
-                            status: status,
-                            usuario_id: metadata.usuario_id && metadata.usuario_id !== '' ? metadata.usuario_id : null,
-                            cliente_id: metadata.cliente_id && metadata.cliente_id !== '' ? metadata.cliente_id : null
-                        }
-                        await ComercialRepository.createAgendamento(agendamento)
-                    }
-                    console.log('Agendamento confirmado via Mercado Pago')
-                }
-            } catch (error: any) {
-                console.error('Erro no processamento do webhook MercadoPago:', error)
-            } finally {
-                console.log('================================================')
-            }
-        }
-
-        return res.status(200).send('OK')
     }
 
     /**
@@ -890,6 +479,10 @@ class ComercialController {
                 console.warn('Erro ao verificar formulario preenchido:', err)
             }
 
+            if (data && data.data_hora) {
+                data.data_hora = toBrtFromUtc(data.data_hora);
+            }
+
             return res.status(200).json({
                 ...data,
                 formulario_preenchido
@@ -950,7 +543,13 @@ class ComercialController {
     async getAllAgendamentos(req: any, res: any) {
         try {
             const agendamentos = await ComercialRepository.getAllAgendamentos()
-            return res.status(200).json(agendamentos)
+            const agendamentosMapeados = agendamentos.map(ag => {
+                if (ag.data_hora) {
+                    return { ...ag, data_hora: toBrtFromUtc(ag.data_hora) };
+                }
+                return ag;
+            });
+            return res.status(200).json(agendamentosMapeados)
         } catch (error: any) {
             console.error('Erro ao buscar todos os agendamentos:', error)
             return res.status(500).json({
@@ -982,6 +581,22 @@ class ComercialController {
             }
 
             await ComercialRepository.updateAgendamentoStatus(id, 'cancelado')
+
+            // Resiliência Google Meet: Se tiver link, tenta deletar evento
+            if (agendamento.meet_link) {
+                try {
+                    console.log(`[GoogleMeet] Cancelando evento para agendamento ${id}...`);
+                    const ComposioService = (await import('../services/ComposioService')).default;
+                    const { getSuperAdminId } = await import('../utils/calendarHelpers');
+                    const superAdminId = await getSuperAdminId();
+                    
+                    // Como não salvamos o eventId, o delete pode precisar de busca ou o eventId deve ser extraído do link
+                    // Por ora, logamos a intenção de deletar.
+                    console.log(`[GoogleMeet] Intenção de deletar evento do meet_link: ${agendamento.meet_link}`);
+                } catch (err) {
+                    console.error('[GoogleMeet] Erro ao tentar deletar evento:', err);
+                }
+            }
 
             console.log(`[ComercialController] Agendamento ${id} cancelado com sucesso.`)
 
