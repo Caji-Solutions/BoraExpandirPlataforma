@@ -1,36 +1,70 @@
-import { useState } from "react";
-import { FileText, CheckCircle, XCircle, Clock } from "lucide-react";
+import { useState, useEffect } from "react";
+import { FileText, CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
 import { Badge } from '../../../components/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { DocumentViewer } from "./DocumentViewer";
 import { ReviewActions } from "./ReviewActions";
+import { getFormulariosWithStatus } from "../services/juridicoService";
 
-// Dados mockados - Em produção viriam do Supabase
-const mockDocuments = [
-  { id: "1", name: "Passaporte", status: "approved" as const, filePath: "joao-silva/passaporte.pdf" },
-  { id: "2", name: "Antecedentes Criminais", status: "pending" as const, filePath: "joao-silva/antecedentes.pdf" },
-  { id: "3", name: "Contrato de Trabalho", status: "rejected" as const, filePath: "joao-silva/contrato.pdf" },
-  { id: "4", name: "Comprovante de Residência", status: "pending" as const, filePath: "joao-silva/residencia.pdf" },
-];
+interface ReviewDocument {
+  id: string;
+  name: string;
+  status: "approved" | "pending" | "rejected";
+  fileUrl: string;
+  responseId: string | null;
+  hasResponse: boolean;
+}
 
 interface ReviewPanelProps {
   clientName: string;
   visaType: string;
+  clienteId: string;
 }
 
-export function ReviewPanel({ clientName, visaType }: ReviewPanelProps) {
-  const [selectedDoc, setSelectedDoc] = useState(mockDocuments[1]); // Começa com doc pendente
-  const [documents, setDocuments] = useState(mockDocuments);
+export function ReviewPanel({ clientName, visaType, clienteId }: ReviewPanelProps) {
+  const [documents, setDocuments] = useState<ReviewDocument[]>([]);
+  const [selectedDoc, setSelectedDoc] = useState<ReviewDocument | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleStatusChange = (docId: string, newStatus: "approved" | "rejected", isApostilled?: boolean) => {
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getFormulariosWithStatus(clienteId);
+        const mapped: ReviewDocument[] = data.map((f: any) => ({
+          id: f.id,
+          name: f.name,
+          status: f.responseStatus === 'aprovado' ? 'approved'
+                : f.responseStatus === 'rejeitado' ? 'rejected'
+                : 'pending',
+          fileUrl: f.response?.downloadUrl || '',
+          responseId: f.response?.id || null,
+          hasResponse: f.status === 'received',
+        }));
+        setDocuments(mapped);
+        const firstPending = mapped.find(d => d.status === 'pending' && d.hasResponse);
+        setSelectedDoc(firstPending || mapped[0] || null);
+      } catch (err: any) {
+        setError(err.message || 'Erro ao carregar documentos');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (clienteId) fetchDocuments();
+  }, [clienteId]);
+
+  const handleStatusChange = (docId: string, newStatus: "approved" | "rejected") => {
     setDocuments(prev =>
-      prev.map(doc => (doc.id === docId ? { ...doc, status: newStatus, isApostilled } : doc))
+      prev.map(doc => (doc.id === docId ? { ...doc, status: newStatus } : doc))
     );
 
     // Auto-seleciona o próximo documento pendente
     const nextPending = documents.find(
-      doc => doc.id !== docId && doc.status === "pending"
+      doc => doc.id !== docId && doc.status === "pending" && doc.hasResponse
     );
     if (nextPending) {
       setTimeout(() => setSelectedDoc(nextPending), 300);
@@ -56,6 +90,33 @@ export function ReviewPanel({ clientName, visaType }: ReviewPanelProps) {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center text-destructive">
+        <p>{error}</p>
+      </div>
+    );
+  }
+
+  if (!selectedDoc) {
+    return (
+      <div className="p-8 text-center text-muted-foreground">
+        <p>Nenhum documento encontrado para este cliente.</p>
+      </div>
+    );
+  }
+
+  // Captura como const para narrowing dentro de closures
+  const currentDoc: ReviewDocument = selectedDoc;
+
   return (
     <div className="p-8 space-y-6">
       {/* Header */}
@@ -66,7 +127,7 @@ export function ReviewPanel({ clientName, visaType }: ReviewPanelProps) {
 
       {/* Split Screen */}
       <div className="grid grid-cols-1 lg:grid-cols-[400px,1fr] gap-6 h-[calc(100vh-200px)]">
-        {/* Painel Esquerdo - Checklist (30%) */}
+        {/* Painel Esquerdo - Checklist */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Checklist de Documentos</CardTitle>
@@ -81,16 +142,18 @@ export function ReviewPanel({ clientName, visaType }: ReviewPanelProps) {
                   <button
                     key={doc.id}
                     onClick={() => setSelectedDoc(doc)}
-                    className={`w-full text-left p-3 rounded-lg border transition-all ${selectedDoc.id === doc.id
+                    className={`w-full text-left p-3 rounded-lg border transition-all ${currentDoc.id === doc.id
                       ? "border-primary bg-primary/5 shadow-sm"
                       : "border-border hover:bg-accent/50"
                       }`}
                   >
                     <div className="flex items-start gap-3">
-                      {getStatusIcon(doc.status)}
+                      {getStatusIcon(doc.hasResponse ? doc.status : 'waiting')}
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm">{doc.name}</p>
-                        <div className="mt-2">{getStatusBadge(doc.status)}</div>
+                        <div className="mt-2">
+                          {doc.hasResponse ? getStatusBadge(doc.status) : <Badge variant="secondary">Aguardando envio</Badge>}
+                        </div>
                       </div>
                     </div>
                   </button>
@@ -100,26 +163,33 @@ export function ReviewPanel({ clientName, visaType }: ReviewPanelProps) {
           </CardContent>
         </Card>
 
-        {/* Painel Direito - Visualizador (70%) */}
+        {/* Painel Direito - Visualizador */}
         <div className="flex flex-col gap-4">
           <Card className="flex-1">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-primary" />
-                <CardTitle className="text-base">Visualizando: {selectedDoc.name}.pdf</CardTitle>
+                <CardTitle className="text-base">Visualizando: {currentDoc.name}</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
-              <DocumentViewer filePath={selectedDoc.filePath} />
+              <DocumentViewer fileUrl={currentDoc.fileUrl} />
             </CardContent>
           </Card>
 
           {/* Ações de Revisão */}
-          <ReviewActions
-            docId={selectedDoc.id}
-            currentStatus={selectedDoc.status}
-            onStatusChange={(newStatus, isApostilled) => handleStatusChange(selectedDoc.id, newStatus, isApostilled)}
-          />
+          {currentDoc.hasResponse ? (
+            <ReviewActions
+              docId={currentDoc.id}
+              responseId={currentDoc.responseId}
+              currentStatus={currentDoc.status}
+              onStatusChange={(newStatus) => handleStatusChange(currentDoc.id, newStatus)}
+            />
+          ) : (
+            <div className="p-4 text-center text-sm text-muted-foreground border rounded-lg">
+              Aguardando o cliente enviar este documento.
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -62,8 +62,8 @@ export default function AgendamentosPage({ agendamentos, onRefresh }: Agendament
 				if (!search.trim()) return true
 				const term = search.toLowerCase()
 				return (
-					a.cliente?.nome.toLowerCase().includes(term) ||
-					a.produto.toLowerCase().includes(term) ||
+					(a.cliente?.nome || '').toLowerCase().includes(term) ||
+					(a.produto || '').toLowerCase().includes(term) ||
 					a.data.includes(term)
 				)
 			})

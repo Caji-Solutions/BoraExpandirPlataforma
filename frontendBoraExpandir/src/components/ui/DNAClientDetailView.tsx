@@ -31,11 +31,13 @@ import { useAuth } from '../../contexts/AuthContext'
 export function DNAClientDetailView({
     client,
     onBack,
-    initialTab
+    initialTab,
+    initialArea
 }: {
     client: ClientDNAData
     onBack: () => void
     initialTab?: 'timeline' | 'formularios' | 'contrato_comprovantes' | 'notas'
+    initialArea?: 'todos' | 'juridico' | 'comercial' | 'administrativo'
 }) {
     const { activeProfile } = useAuth()
     const navigate = useNavigate()
@@ -51,7 +53,7 @@ export function DNAClientDetailView({
     const [members, setMembers] = useState<any[]>([])
     const [loadingMembers, setLoadingMembers] = useState(false)
     const [selectedRequerimentoId, setSelectedRequerimentoId] = useState<string | undefined>(undefined)
-    const [areaFilter, setAreaFilter] = useState<'todos' | 'juridico' | 'comercial' | 'administrativo'>('todos')
+    const [areaFilter, setAreaFilter] = useState<'todos' | 'juridico' | 'comercial' | 'administrativo'>(initialArea || 'todos')
     const [activeTab, setActiveTab] = useState<'timeline' | 'formularios' | 'contrato_comprovantes' | 'notas'>(initialTab || 'timeline')
     const [agendamentos, setAgendamentos] = useState<any[]>([])
     const [loadingAgendamentos, setLoadingAgendamentos] = useState(false)
@@ -748,9 +750,9 @@ export function DNAClientDetailView({
                                                                     )}>
                                                                         {note.area}
                                                                     </span>
-                                                                    {note.type === 'process' && note.stageId && (
+                                                                    {note.type === 'process' && (note as any).stageId && (
                                                                         <span className="text-[9px] bg-muted px-2 py-0.5 rounded-md text-muted-foreground font-bold uppercase">
-                                                                            Etapa: {note.stageId}
+                                                                            Etapa: {(note as any).stageId}
                                                                         </span>
                                                                     )}
                                                                 </div>

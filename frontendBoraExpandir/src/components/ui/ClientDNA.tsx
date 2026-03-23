@@ -97,6 +97,7 @@ export function ClientDNAPage() {
     const [searchParams] = useSearchParams()
     const queryClienteId = searchParams.get('clienteId')
     const queryTab = searchParams.get('tab') as 'timeline' | 'formularios' | 'contrato_comprovantes' | 'notas' | null
+    const queryArea = searchParams.get('area') as 'todos' | 'juridico' | 'comercial' | 'administrativo' | null
     const [view, setView] = useState<DNAView>('list')
     const [selectedClient, setSelectedClient] = useState<ClientDNAData | null>(null)
     const [clientes, setClientes] = useState<ClientDNAData[]>([])
@@ -220,6 +221,7 @@ export function ClientDNAPage() {
                     client={selectedClient!}
                     onBack={handleBackToList}
                     initialTab={queryTab || undefined}
+                    initialArea={queryArea || undefined}
                 />
             )
     }
