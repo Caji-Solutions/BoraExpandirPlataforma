@@ -1,187 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { DollarSign, TrendingUp, Calendar, Award, Filter, X, User, Bot } from 'lucide-react'
 import { Badge } from '../../components/ui/Badge'
 import { TimeRangeFilter, filterByTimeRange, type TimeRange } from '../../components/ui/TimeRangeFilter'
 import { SortControl, sortData, type SortDirection, type SortOption } from '../../components/ui/SortControl'
 import { calcularComissao, getLabelOrigem, type OrigemVenda } from '../../services/comissaoService'
+import { useAuth } from '../../contexts/AuthContext'
 
-// Mock data - substituir por dados reais do backend
-// Dados distribuídos nos últimos 6 meses para testar filtros
-// O campo origem_venda determina o percentual de comissão:
-// - 'propria': venda prospectada pelo funcionário = 12%
-// - 'bot': venda que veio do bot e foi concluída = 8%
-const mockVendas = [
-  // Mês atual
-  {
-    id: '1',
-    cliente_nome: 'João Silva',
-    servico: 'Consultoria Jurídica - Contrato Comercial',
-    valor_servico: 5000.00,
-    origem_venda: 'propria' as OrigemVenda,
-    status: 'pago',
-    data_venda: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    data_pagamento: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '2',
-    cliente_nome: 'Maria Santos',
-    servico: 'Parecer Jurídico - Propriedade Intelectual',
-    valor_servico: 3500.00,
-    origem_venda: 'bot' as OrigemVenda,
-    status: 'pendente',
-    data_venda: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    data_pagamento: null,
-    created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '3',
-    cliente_nome: 'Carlos Oliveira',
-    servico: 'Assessoria Contratual - M&A',
-    valor_servico: 15000.00,
-    origem_venda: 'propria' as OrigemVenda,
-    status: 'pago',
-    data_venda: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-    data_pagamento: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '4',
-    cliente_nome: 'Ana Costa',
-    servico: 'Consultoria - Direito Trabalhista',
-    valor_servico: 4000.00,
-    origem_venda: 'bot' as OrigemVenda,
-    status: 'processando',
-    data_venda: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    data_pagamento: null,
-    created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '5',
-    cliente_nome: 'Pedro Almeida',
-    servico: 'Análise de Conformidade - LGPD',
-    valor_servico: 6000.00,
-    origem_venda: 'propria' as OrigemVenda,
-    status: 'pago',
-    data_venda: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-    data_pagamento: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  // Mês passado
-  {
-    id: '6',
-    cliente_nome: 'Fernanda Lima',
-    servico: 'Contrato de Prestação de Serviços',
-    valor_servico: 7500.00,
-    origem_venda: 'bot' as OrigemVenda,
-    status: 'pago',
-    data_venda: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString(),
-    data_pagamento: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '7',
-    cliente_nome: 'Roberto Souza',
-    servico: 'Consultoria Empresarial',
-    valor_servico: 8000.00,
-    origem_venda: 'propria' as OrigemVenda,
-    status: 'pago',
-    data_venda: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString(),
-    data_pagamento: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '8',
-    cliente_nome: 'Juliana Martins',
-    servico: 'Revisão Contratual',
-    valor_servico: 2500.00,
-    origem_venda: 'bot' as OrigemVenda,
-    status: 'cancelado',
-    data_venda: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
-    data_pagamento: null,
-    created_at: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  // 2-3 meses atrás
-  {
-    id: '9',
-    cliente_nome: 'Marcos Pereira',
-    servico: 'Assessoria Jurídica - Licitações',
-    valor_servico: 12000.00,
-    origem_venda: 'propria' as OrigemVenda,
-    status: 'pago',
-    data_venda: new Date(Date.now() - 65 * 24 * 60 * 60 * 1000).toISOString(),
-    data_pagamento: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date(Date.now() - 65 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '10',
-    cliente_nome: 'Luciana Rodrigues',
-    servico: 'Consultoria Tributária',
-    valor_servico: 9000.00,
-    origem_venda: 'bot' as OrigemVenda,
-    status: 'pago',
-    data_venda: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000).toISOString(),
-    data_pagamento: new Date(Date.now() - 70 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '11',
-    cliente_nome: 'Ricardo Gomes',
-    servico: 'Due Diligence',
-    valor_servico: 18000.00,
-    origem_venda: 'propria' as OrigemVenda,
-    status: 'pago',
-    data_venda: new Date(Date.now() - 85 * 24 * 60 * 60 * 1000).toISOString(),
-    data_pagamento: new Date(Date.now() - 80 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date(Date.now() - 85 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  // 4-5 meses atrás
-  {
-    id: '12',
-    cliente_nome: 'Beatriz Fernandes',
-    servico: 'Contrato de Locação Comercial',
-    valor_servico: 3000.00,
-    origem_venda: 'bot' as OrigemVenda,
-    status: 'pago',
-    data_venda: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString(),
-    data_pagamento: new Date(Date.now() - 115 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '13',
-    cliente_nome: 'Gustavo Alves',
-    servico: 'Consultoria em Compliance',
-    valor_servico: 10000.00,
-    origem_venda: 'propria' as OrigemVenda,
-    status: 'pago',
-    data_venda: new Date(Date.now() - 135 * 24 * 60 * 60 * 1000).toISOString(),
-    data_pagamento: new Date(Date.now() - 130 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date(Date.now() - 135 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '14',
-    cliente_nome: 'Patricia Mendes',
-    servico: 'Assessoria em Fusões',
-    valor_servico: 25000.00,
-    origem_venda: 'propria' as OrigemVenda,
-    status: 'pago',
-    data_venda: new Date(Date.now() - 150 * 24 * 60 * 60 * 1000).toISOString(),
-    data_pagamento: new Date(Date.now() - 145 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date(Date.now() - 150 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  // 6 meses atrás
-  {
-    id: '15',
-    cliente_nome: 'Eduardo Santos',
-    servico: 'Consultoria Jurídica - Startups',
-    valor_servico: 5500.00,
-    origem_venda: 'bot' as OrigemVenda,
-    status: 'pago',
-    data_venda: new Date(Date.now() - 170 * 24 * 60 * 60 * 1000).toISOString(),
-    data_pagamento: new Date(Date.now() - 165 * 24 * 60 * 60 * 1000).toISOString(),
-    created_at: new Date(Date.now() - 170 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-]
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL
 
 const statusConfig = {
   pago: { variant: 'success' as const, label: 'Pago' },
@@ -197,15 +22,87 @@ const sortOptions: SortOption[] = [
   { value: 'status', label: 'Status' },
 ]
 
+function mapAgendamentoStatus(agendamento: any): string {
+  if (agendamento.status === 'cancelado') return 'cancelado'
+  if (agendamento.pagamento_status === 'aprovado') return 'pago'
+  if (agendamento.pagamento_status === 'em_analise') return 'processando'
+  return 'pendente'
+}
+
+function mapContratoStatus(contrato: any): string {
+  if (contrato.pagamento_status === 'aprovado') return 'pago'
+  if (contrato.pagamento_status === 'em_analise') return 'processando'
+  return 'pendente'
+}
+
 export default function Ganhos() {
+  const { activeProfile } = useAuth()
+  const [vendas, setVendas] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState<TimeRange>('current_month')
   const [sortBy, setSortBy] = useState('data_venda')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [showFilters, setShowFilters] = useState(false)
 
+  useEffect(() => {
+    if (!activeProfile?.id) return
+
+    const fetchVendas = async () => {
+      setLoading(true)
+      try {
+        const [agendamentosRes, contratosRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/comercial/agendamentos/usuario/${activeProfile.id}`),
+          fetch(`${API_BASE_URL}/comercial/contratos?usuarioId=${activeProfile.id}&isDraft=false`),
+        ])
+
+        const agendamentosData = agendamentosRes.ok ? await agendamentosRes.json() : []
+        const contratosResult = contratosRes.ok ? await contratosRes.json() : { data: [] }
+
+        const agendamentos: any[] = Array.isArray(agendamentosData) ? agendamentosData : []
+        const contratos: any[] = contratosResult.data || []
+
+        const vendasDeAgendamentos = agendamentos
+          .filter((a: any) => a.valor && Number(a.valor) > 0)
+          .map((a: any) => ({
+            id: a.id,
+            cliente_nome: a.cliente?.nome || a.nome || 'Cliente',
+            servico: a.produto_nome || 'Serviço',
+            valor_servico: Number(a.valor) || 0,
+            origem_venda: 'propria' as OrigemVenda,
+            status: mapAgendamentoStatus(a),
+            data_venda: a.data_hora || a.created_at,
+            data_pagamento: a.pagamento_verificado_em || null,
+            created_at: a.created_at,
+          }))
+
+        const vendasDeContratos = contratos
+          .filter((c: any) => Number(c.servico_valor || c.servico?.valor) > 0)
+          .map((c: any) => ({
+            id: c.id,
+            cliente_nome: c.cliente_nome || c.cliente?.nome || 'Cliente',
+            servico: c.servico_nome || c.servico?.nome || 'Serviço',
+            valor_servico: Number(c.servico_valor || c.servico?.valor) || 0,
+            origem_venda: 'propria' as OrigemVenda,
+            status: mapContratoStatus(c),
+            data_venda: c.criado_em,
+            data_pagamento: c.pagamento_aprovado_em || null,
+            created_at: c.criado_em,
+          }))
+
+        setVendas([...vendasDeAgendamentos, ...vendasDeContratos])
+      } catch (err) {
+        console.error('Erro ao buscar ganhos:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchVendas()
+  }, [activeProfile?.id])
+
   // Transforma vendas em comissões calculadas automaticamente
   const comissoesComCalculo = useMemo(() => {
-    return mockVendas.map(venda => {
+    return vendas.map(venda => {
       const { percentual, valorComissao } = calcularComissao(venda.valor_servico, venda.origem_venda)
       return {
         ...venda,
@@ -214,13 +111,10 @@ export default function Ganhos() {
         origem_label: getLabelOrigem(venda.origem_venda)
       }
     })
-  }, [])
+  }, [vendas])
 
   const filteredComissoes = useMemo(() => {
-    // Filter by time range
     let filtered = filterByTimeRange(comissoesComCalculo, timeRange)
-
-    // Sort
     return sortData(filtered, sortBy, sortDirection)
   }, [comissoesComCalculo, timeRange, sortBy, sortDirection])
 
@@ -253,7 +147,7 @@ export default function Ganhos() {
             Acompanhe suas comissões e ganhos por vendas realizadas
           </p>
         </div>
-        
+
         <button
           onClick={() => setShowFilters(!showFilters)}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-colors whitespace-nowrap ${
@@ -363,88 +257,98 @@ export default function Ganhos() {
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Histórico de Comissões</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-neutral-700/50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Cliente
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Serviço
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Origem
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Valor Venda
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Comissão
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Data Venda
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-neutral-700">
-              {filteredComissoes.map((comissao) => {
-                const statusInfo = statusConfig[comissao.status as keyof typeof statusConfig]
-                return (
-                  <tr key={comissao.id} className="hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                      {comissao.cliente_nome}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {comissao.servico}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        {comissao.origem_venda === 'propria' ? (
-                          <User className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                        ) : (
-                          <Bot className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        )}
-                        <span className={`text-sm font-medium ${
-                          comissao.origem_venda === 'propria' 
-                            ? 'text-emerald-600 dark:text-emerald-400' 
-                            : 'text-blue-600 dark:text-blue-400'
-                        }`}>
-                          {comissao.origem_label}
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-gray-500 dark:text-gray-400">
+              Carregando...
+            </div>
+          ) : filteredComissoes.length === 0 ? (
+            <div className="flex items-center justify-center py-16 text-gray-500 dark:text-gray-400">
+              Nenhuma comissão encontrada no período selecionado.
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-neutral-700/50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Cliente
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Serviço
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Origem
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Valor Venda
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Comissão
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Data Venda
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-neutral-700">
+                {filteredComissoes.map((comissao) => {
+                  const statusInfo = statusConfig[comissao.status as keyof typeof statusConfig]
+                  return (
+                    <tr key={comissao.id} className="hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                        {comissao.cliente_nome}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                        {comissao.servico}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          {comissao.origem_venda === 'propria' ? (
+                            <User className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                          ) : (
+                            <Bot className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          )}
+                          <span className={`text-sm font-medium ${
+                            comissao.origem_venda === 'propria'
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : 'text-blue-600 dark:text-blue-400'
+                          }`}>
+                            {comissao.origem_label}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium">
+                        R$ {comissao.valor_servico.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                        R$ {comissao.valor_comissao.toFixed(2)}
+                        <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                          ({comissao.percentual_comissao}%)
                         </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium">
-                      R$ {comissao.valor_servico.toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                      R$ {comissao.valor_comissao.toFixed(2)}
-                      <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
-                        ({comissao.percentual_comissao}%)
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge variant={statusInfo.variant}>
-                        {statusInfo.label}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                      {new Date(comissao.data_venda).toLocaleDateString('pt-BR')}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge variant={statusInfo.variant}>
+                          {statusInfo.label}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                        {new Date(comissao.data_venda).toLocaleDateString('pt-BR')}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
       {/* Contador */}
-      {filteredComissoes.length > 0 && (
+      {!loading && filteredComissoes.length > 0 && (
         <div className="text-sm text-gray-600 dark:text-gray-400">
-          Exibindo {filteredComissoes.length} de {mockVendas.length} comissões
+          Exibindo {filteredComissoes.length} de {vendas.length} comissões
         </div>
       )}
     </div>

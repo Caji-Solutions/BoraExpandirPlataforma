@@ -16,7 +16,7 @@ class ContratoServicoRepository {
     return data
   }
 
-  async getContratos(filters?: { clienteId?: string; isDraft?: boolean }) {
+  async getContratos(filters?: { clienteId?: string; isDraft?: boolean; usuarioId?: string }) {
     let query = supabase
       .from('contratos_servicos')
       .select(`
@@ -32,6 +32,10 @@ class ContratoServicoRepository {
 
     if (filters?.isDraft !== undefined) {
       query = query.eq('is_draft', filters.isDraft)
+    }
+
+    if (filters?.usuarioId) {
+      query = query.eq('usuario_id', filters.usuarioId)
     }
 
     const { data, error } = await query

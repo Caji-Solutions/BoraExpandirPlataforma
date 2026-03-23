@@ -3,15 +3,17 @@ import { CheckCircle, XCircle } from "lucide-react";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { Checkbox } from "./ui/checkbox";
+import { updateFormularioClienteStatus } from "../services/juridicoService";
 
 interface ReviewActionsProps {
   docId: string;
+  responseId: string | null;
   currentStatus: "approved" | "pending" | "rejected";
-  onStatusChange: (status: "approved" | "rejected", isApostilled?: boolean) => void;
+  onStatusChange: (status: "approved" | "rejected") => void;
 }
 
 export function ReviewActions({
-  docId,
+  responseId,
   currentStatus,
   onStatusChange,
 }: ReviewActionsProps) {
@@ -20,6 +22,14 @@ export function ReviewActions({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isApostilled, setIsApostilled] = useState(false);
   const [message, setMessage] = useState<null | { type: "success" | "error"; title: string; description?: string }>(null);
+
+  // Reset state when doc changes
+  useEffect(() => {
+    setIsRejecting(false);
+    setReason("");
+    setIsApostilled(false);
+    setMessage(null);
+  }, [docId]);
 
   // Auto-clear transient messages
   useEffect(() => {
@@ -30,18 +40,21 @@ export function ReviewActions({
   }, [message]);
 
   const handleApprove = async () => {
+    if (!responseId) return;
     setIsProcessing(true);
-
-    // Simula atualização no backend
-    setTimeout(() => {
-      onStatusChange("approved", isApostilled);
+    try {
+      await updateFormularioClienteStatus(responseId, 'aprovado');
+      onStatusChange("approved");
       setMessage({
         type: "success",
         title: "Documento aprovado com sucesso!",
         description: "Avançando para o próximo documento...",
       });
+    } catch (err: any) {
+      setMessage({ type: "error", title: "Erro ao aprovar", description: err.message });
+    } finally {
       setIsProcessing(false);
-    }, 500);
+    }
   };
 
   const handleReject = async () => {
@@ -49,11 +62,10 @@ export function ReviewActions({
       setMessage({ type: "error", title: "Motivo obrigatório", description: "Indique o motivo da rejeição." });
       return;
     }
-
+    if (!responseId) return;
     setIsProcessing(true);
-
-    // Simula atualização no backend
-    setTimeout(() => {
+    try {
+      await updateFormularioClienteStatus(responseId, 'rejeitado', reason);
       onStatusChange("rejected");
       setMessage({
         type: "error",
@@ -62,8 +74,11 @@ export function ReviewActions({
       });
       setIsRejecting(false);
       setReason("");
+    } catch (err: any) {
+      setMessage({ type: "error", title: "Erro ao rejeitar", description: err.message });
+    } finally {
       setIsProcessing(false);
-    }, 500);
+    }
   };
 
   // Se já foi aprovado ou rejeitado, mostra status apenas
@@ -172,7 +187,7 @@ export function ReviewActions({
         <Button
           className="bg-success hover:bg-success/90 text-success-foreground gap-2 shadow-md"
           onClick={handleApprove}
-          disabled={isProcessing}
+          disabled={isProcessing || !responseId}
         >
           <CheckCircle className="h-4 w-4" />
           Aprovar Documento

@@ -1103,13 +1103,14 @@ class ComercialController {
     async getContratosServicos(req: any, res: any) {
         try {
             const clienteId = (req.query?.cliente_id || req.query?.clienteId) as string | undefined
+            const usuarioId = (req.query?.usuario_id || req.query?.usuarioId) as string | undefined
             const isDraftRaw = req.query?.isDraft
             const isDraft =
                 isDraftRaw === 'true' ? true
                     : isDraftRaw === 'false' ? false
                         : undefined
 
-            const contratos = await ContratoServicoRepository.getContratos({ clienteId, isDraft })
+            const contratos = await ContratoServicoRepository.getContratos({ clienteId, isDraft, usuarioId })
             return res.status(200).json({ data: contratos })
         } catch (error: any) {
             console.error('[ComercialController] Erro ao listar contratos:', error)
