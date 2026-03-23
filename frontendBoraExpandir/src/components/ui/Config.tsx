@@ -1,12 +1,22 @@
 import { useState, useEffect, useRef } from 'react'
 import { User, Mail, Phone, Fingerprint, Save, Loader2, Edit2, X, Camera } from 'lucide-react'
 import { Client, Document } from '../../modules/cliente/types'
+import { TimezoneSelector } from '../../modules/cliente/components/TimezoneSelector'
 
 interface ConfigProps {
   onClose?: () => void
   client?: Client
   documents?: Document[]
   onRefresh?: () => Promise<void>
+}
+
+function isNonBrazilian(phone?: string): boolean {
+  if (!phone) return false
+  const digits = phone.replace(/\D/g, '')
+  if (digits.startsWith('55') && digits.length <= 13) return false
+  if (phone.startsWith('+55')) return false
+  if (!phone.startsWith('+') && !phone.startsWith('00')) return false
+  return true
 }
 
 export function Config({ onClose, client, documents = [], onRefresh }: ConfigProps) {
@@ -312,6 +322,13 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
               </p>
             </div>
           </div>
+        )}
+
+        {client && (
+          <TimezoneSelector
+            clienteId={client.id}
+            isNonBrazilian={isNonBrazilian(client.phone)}
+          />
         )}
       </div>
 

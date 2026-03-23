@@ -72,6 +72,9 @@ cliente.patch('/notificacoes/:notificacaoId/status', ClienteController.updateNot
 cliente.post('/:clienteId/notificacoes/read-all', ClienteController.markAllNotificacoesAsRead.bind(ClienteController))
 cliente.get('/:clienteId/requerimentos', ClienteController.getRequerimentosByCliente.bind(ClienteController))
 
+// Fuso horário
+cliente.post('/timezone', ClienteController.saveTimezone.bind(ClienteController))
+
 // Notas de Lead
 cliente.post('/lead-notas', ClienteController.createLeadNote.bind(ClienteController))
 cliente.get('/lead-notas/:leadId', ClienteController.getLeadNotes.bind(ClienteController))

@@ -77,15 +77,7 @@ export default function AgendamentosPage({ agendamentos, onRefresh }: Agendament
 					<h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">Meus Agendamentos</h1>
 					<p className="text-gray-600 dark:text-gray-400">Visualize e gerencie todos os agendamentos</p>
 				</div>
-				<div className="flex gap-2">
-					<button
-						onClick={() => navigate('/comercial/agendamento')}
-						className="px-4 py-2.5 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors"
-					>
-						Novo agendamento
-					</button>
 				</div>
-			</div>
 
 			<div className="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-4 mb-4">
 				<div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">

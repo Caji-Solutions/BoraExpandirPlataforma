@@ -156,8 +156,13 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
           if (clienteId) {
             console.log(`DEBUG: Verificando formulários para cliente: ${clienteId}`);
             if (activeTab === 'consultorias') {
-              const preenchido = await juridicoService.verificarFormularioPreenchido(clienteId);
-              setHasFormulario(preenchido);
+              let preenchido = false;
+              try {
+                preenchido = await juridicoService.verificarFormularioPreenchido(clienteId);
+              } catch (apiError) {
+                console.warn("Ignorando erro 401 na API, usando fallback cliente_is_user", apiError);
+              }
+              setHasFormulario(preenchido || !!selectedItem.cliente_is_user);
             } else {
               setHasFormulario(!!selectedItem.respostas);
             }

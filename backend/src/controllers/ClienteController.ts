@@ -1623,6 +1623,50 @@ class ClienteController {
       return res.status(500).json({ message: 'Erro ao deletar nota do lead', error: error.message })
     }
   }
+  // POST /cliente/timezone
+  // Salva a preferência de fuso horário do cliente no perfil_unificado.data
+  async saveTimezone(req: any, res: any) {
+    try {
+      const { clienteId, timezone } = req.body
+
+      if (!clienteId || !timezone) {
+        return res.status(400).json({ message: 'clienteId e timezone são obrigatórios' })
+      }
+
+      const { data: perfil, error: fetchError } = await supabase
+        .from('perfil_unificado')
+        .select('data')
+        .eq('cliente_id', clienteId)
+        .single()
+
+      if (fetchError || !perfil) {
+        const { error: insertError } = await supabase
+          .from('perfil_unificado')
+          .insert([{ cliente_id: clienteId, data: { timezone_preference: timezone } }])
+
+        if (insertError) {
+          console.error('[ClienteController] Erro ao criar perfil_unificado para timezone:', insertError)
+          return res.status(500).json({ message: 'Erro ao salvar fuso horário' })
+        }
+      } else {
+        const updatedData = { ...(perfil.data || {}), timezone_preference: timezone }
+        const { error: updateError } = await supabase
+          .from('perfil_unificado')
+          .update({ data: updatedData })
+          .eq('cliente_id', clienteId)
+
+        if (updateError) {
+          console.error('[ClienteController] Erro ao atualizar timezone:', updateError)
+          return res.status(500).json({ message: 'Erro ao salvar fuso horário' })
+        }
+      }
+
+      return res.status(200).json({ success: true, timezone })
+    } catch (error: any) {
+      console.error('[ClienteController] Erro ao salvar timezone:', error)
+      return res.status(500).json({ message: 'Erro ao salvar fuso horário', error: error.message })
+    }
+  }
 }
 
 export default new ClienteController()

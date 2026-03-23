@@ -10,7 +10,8 @@ const PIX_CNPJ = '55.218.947/0001-65'
 const _inputClass = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
 const _labelClass = "block text-sm font-semibold text-gray-300 mb-1.5"
 
-function YesNoQuestion({ label, yesLabel = "Sim", noLabel = "Não", value, onYes, onNo, children }: any) {
+function YesNoQuestion({ label, yesLabel = "Sim", noLabel = "Não", value, onYes, onNo, children, showChildrenOnBoth = false }: any) {
+    const showChildren = showChildrenOnBoth ? value !== null : value === 'yes'
     return (
         <div className="space-y-3">
             <label className={_labelClass}>{label} *</label>
@@ -24,7 +25,7 @@ function YesNoQuestion({ label, yesLabel = "Sim", noLabel = "Não", value, onYes
                     {noLabel}
                 </button>
             </div>
-            {value !== null && children && (
+            {showChildren && children && (
                 <div className="mt-2 animate-in fade-in slide-in-from-top-2 duration-200">
                     {children}
                 </div>
@@ -103,6 +104,22 @@ export default function FormularioConsultoria() {
     )
     const [semFilhosEuropeus, setSemFilhosEuropeus] = useState(
         formData.filhos_nacionalidade_europeia.toLowerCase().includes('nao tenho')
+    )
+    const [cnhAnswer, setCnhAnswer] = useState<'yes' | 'no' | null>(
+        formData.possui_cnh_categoria_ano.toLowerCase().includes('não possuo') ? 'no' :
+        formData.possui_cnh_categoria_ano ? 'yes' : null
+    )
+    const [propostaTrabalhoAnswer, setPropostaTrabalhoAnswer] = useState<'yes' | 'no' | null>(
+        formData.proposta_trabalho_espanha.toLowerCase() === 'não' ? 'no' :
+        formData.proposta_trabalho_espanha ? 'yes' : null
+    )
+    const [trabalhoDestacadoAnswer, setTrabalhoDestacadoAnswer] = useState<'yes' | 'no' | null>(
+        formData.trabalho_destacado_ue.toLowerCase() === 'não' ? 'no' :
+        formData.trabalho_destacado_ue ? 'yes' : null
+    )
+    const [tipoVistoAnswer, setTipoVistoAnswer] = useState<'yes' | 'no' | null>(
+        formData.tipo_visto_planejado.toLowerCase().includes('ainda não sei') ? 'no' :
+        formData.tipo_visto_planejado ? 'yes' : null
     )
 
     // ========== Verificação de seções completas ==========
@@ -871,6 +888,7 @@ export default function FormularioConsultoria() {
                                 yesLabel="Já estou na Espanha"
                                 noLabel="Ainda no Brasil"
                                 value={residenciaAnswer}
+                                showChildrenOnBoth
                                 onYes={() => {
                                     setResidenciaAnswer('yes')
                                     setFormData(prev => ({ ...prev, cidade_pais_residencia: '' }))
@@ -973,14 +991,46 @@ export default function FormularioConsultoria() {
                                     </div>
                                 )}
                             </div>
-                            <div>
-                                <label className={labelClass}>Você possui CNH? Se sim, informe qual a categoria e qual ano você obteve. *</label>
-                                <input name="possui_cnh_categoria_ano" value={formData.possui_cnh_categoria_ano} onChange={handleChange} className={inputClass} placeholder="Ex: Categoria B, 2015 / Não possuo" />
-                            </div>
-                            <div>
-                                <label className={labelClass}>Você já tem uma proposta de trabalho na Espanha? Se sim, qual o tipo de contrato, salário e cargo? *</label>
-                                <textarea name="proposta_trabalho_espanha" value={formData.proposta_trabalho_espanha} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: Sim, contrato CLT, 2000€/mês, cargo de Engenheiro / Não" />
-                            </div>
+                            <YesNoQuestion
+                                label="Você possui CNH? Se sim, informe qual a categoria e qual ano você obteve."
+                                value={cnhAnswer}
+                                onYes={() => {
+                                    setCnhAnswer('yes')
+                                    setFormData(prev => ({ ...prev, possui_cnh_categoria_ano: '' }))
+                                }}
+                                onNo={() => {
+                                    setCnhAnswer('no')
+                                    setFormData(prev => ({ ...prev, possui_cnh_categoria_ano: 'Não possuo' }))
+                                }}
+                            >
+                                <input
+                                    name="possui_cnh_categoria_ano"
+                                    value={formData.possui_cnh_categoria_ano}
+                                    onChange={handleChange}
+                                    className={inputClass}
+                                    placeholder="Ex: Categoria B, 2015"
+                                />
+                            </YesNoQuestion>
+                            <YesNoQuestion
+                                label="Você já tem uma proposta de trabalho na Espanha? Se sim, qual o tipo de contrato, salário e cargo?"
+                                value={propostaTrabalhoAnswer}
+                                onYes={() => {
+                                    setPropostaTrabalhoAnswer('yes')
+                                    setFormData(prev => ({ ...prev, proposta_trabalho_espanha: '' }))
+                                }}
+                                onNo={() => {
+                                    setPropostaTrabalhoAnswer('no')
+                                    setFormData(prev => ({ ...prev, proposta_trabalho_espanha: 'Não' }))
+                                }}
+                            >
+                                <textarea
+                                    name="proposta_trabalho_espanha"
+                                    value={formData.proposta_trabalho_espanha}
+                                    onChange={handleChange}
+                                    className={inputClass + ' min-h-[80px]'}
+                                    placeholder="Ex: Contrato CLT, 2000€/mês, cargo de Engenheiro"
+                                />
+                            </YesNoQuestion>
                             <div>
                                 <label className={labelClass}>Você tem algum tipo de visto, residência ou nacionalidade de outro país da União Europeia? *</label>
                                 <div className="flex items-center gap-3 mb-2">
@@ -1005,10 +1055,26 @@ export default function FormularioConsultoria() {
                                     </div>
                                 )}
                             </div>
-                            <div>
-                                <label className={labelClass}>Você trabalha na Espanha como destacado/transladado por uma empresa de outro país da União Europeia? *</label>
-                                <input name="trabalho_destacado_ue" value={formData.trabalho_destacado_ue} onChange={handleChange} className={inputClass} placeholder="Ex: Sim, empresa portuguesa prestando serviço na Espanha / Não" />
-                            </div>
+                            <YesNoQuestion
+                                label="Você trabalha na Espanha como destacado/transladado por uma empresa de outro país da União Europeia?"
+                                value={trabalhoDestacadoAnswer}
+                                onYes={() => {
+                                    setTrabalhoDestacadoAnswer('yes')
+                                    setFormData(prev => ({ ...prev, trabalho_destacado_ue: '' }))
+                                }}
+                                onNo={() => {
+                                    setTrabalhoDestacadoAnswer('no')
+                                    setFormData(prev => ({ ...prev, trabalho_destacado_ue: 'Não' }))
+                                }}
+                            >
+                                <input
+                                    name="trabalho_destacado_ue"
+                                    value={formData.trabalho_destacado_ue}
+                                    onChange={handleChange}
+                                    className={inputClass}
+                                    placeholder="Ex: Empresa portuguesa prestando serviço na Espanha"
+                                />
+                            </YesNoQuestion>
                             <div>
                                 <label className={labelClass}>Você tem algum filho menor de idade que tem nacionalidade europeia? *</label>
                                 <div className="flex items-center gap-3 mb-2">
@@ -1175,10 +1241,26 @@ export default function FormularioConsultoria() {
                                 <label className={labelClass}>Qual sua profissão? Você trabalha Online ou Presencial? *</label>
                                 <textarea name="profissao_online_presencial" value={formData.profissao_online_presencial} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: Desenvolvedor Frontend, trabalho 100% remoto" />
                             </div>
-                            <div>
-                                <label className={labelClass}>Você já tem ideia do tipo de visto ou residência que pretende solicitar? Se sim, qual? *</label>
-                                <textarea name="tipo_visto_planejado" value={formData.tipo_visto_planejado} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: Visto de trabalho por conta alheia / Ainda não sei" />
-                            </div>
+                            <YesNoQuestion
+                                label="Você já tem ideia do tipo de visto ou residência que pretende solicitar? Se sim, qual?"
+                                value={tipoVistoAnswer}
+                                onYes={() => {
+                                    setTipoVistoAnswer('yes')
+                                    setFormData(prev => ({ ...prev, tipo_visto_planejado: '' }))
+                                }}
+                                onNo={() => {
+                                    setTipoVistoAnswer('no')
+                                    setFormData(prev => ({ ...prev, tipo_visto_planejado: 'Ainda não sei' }))
+                                }}
+                            >
+                                <textarea
+                                    name="tipo_visto_planejado"
+                                    value={formData.tipo_visto_planejado}
+                                    onChange={handleChange}
+                                    className={inputClass + ' min-h-[80px]'}
+                                    placeholder="Ex: Visto de trabalho por conta alheia"
+                                />
+                            </YesNoQuestion>
                             <div>
                                 <label className={labelClass}>Como podemos te ajudar na Consultoria? Deixe aqui as dúvidas que você deseja resolver. *</label>
                                 <textarea name="duvidas_consultoria" value={formData.duvidas_consultoria} onChange={handleChange} className={inputClass + ' min-h-[120px]'} placeholder="Descreva aqui as principais dúvidas que deseja resolver na consultoria..." />

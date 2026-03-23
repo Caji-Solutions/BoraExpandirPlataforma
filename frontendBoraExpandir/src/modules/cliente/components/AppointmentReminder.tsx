@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Calendar, Clock, MapPin, CheckCircle, XCircle, Target, CreditCard } from 'lucide-react'
 import { Button } from './ui/button'
 import { clienteService } from '../services/clienteService'
+import { getClientTimezone } from './TimezoneSelector'
 
 interface AppointmentReminderProps {
   appointmentDate: string // ISO string format
@@ -30,15 +31,30 @@ export function AppointmentReminder({
 
   const formatDate = (dateStr: string) => {
     try {
-      const date = new Date(dateStr)
-      return date.toLocaleDateString('pt-BR', {
+      const tz = getClientTimezone()
+      return new Intl.DateTimeFormat('pt-BR', {
+        timeZone: tz,
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric'
-      })
+      }).format(new Date(dateStr))
     } catch (e) {
       return dateStr
+    }
+  }
+
+  const formatTime = (timeStr: string) => {
+    try {
+      const tz = getClientTimezone()
+      const date = new Date(`1970-01-01T${timeStr}:00`)
+      return new Intl.DateTimeFormat('pt-BR', {
+        timeZone: tz,
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(date)
+    } catch {
+      return timeStr
     }
   }
 
@@ -93,7 +109,7 @@ export function AppointmentReminder({
                 {formatDate(appointmentDate)}
               </p>
               <p className="text-sm text-gray-700 dark:text-gray-300">
-                {appointmentTime} ({location})
+                {formatTime(appointmentTime)} ({location})
               </p>
             </div>
           </div>

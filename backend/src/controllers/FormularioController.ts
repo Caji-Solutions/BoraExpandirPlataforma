@@ -208,13 +208,32 @@ class FormularioController {
                 duvidas_consultoria: duvidas_consultoria || null,
             }
 
-            // Tenta salvar o formulário — se a tabela não existir, apenas loga
-            try {
-                await supabase
+            // Salvar formulário em formularios_cliente (registro de rastreamento)
+            // IMPORTANTE: Supabase não lança exceções — o erro retorna como objeto { error }
+            // A existência deste registro é o que determina cliente_is_user no ComercialRepository
+            const { error: formularioInsertError } = await supabase
+                .from('formularios_cliente')
+                .insert([formularioData])
+
+            if (formularioInsertError) {
+                console.error('[FormularioController] Erro ao inserir em formularios_cliente:', formularioInsertError)
+                // Fallback: inserir apenas os campos essenciais de rastreamento
+                const { error: fallbackError } = await supabase
                     .from('formularios_cliente')
-                    .insert([formularioData])
-            } catch (formError) {
-                console.warn('[FormularioController] Tabela formularios_cliente pode não existir. Dados serão salvos no metadata do cliente.')
+                    .insert([{
+                        cliente_id: clienteId,
+                        agendamento_id: agendamento_id || null,
+                        nome_completo,
+                        email,
+                        whatsapp,
+                    }])
+                if (fallbackError) {
+                    console.error('[FormularioController] Fallback de formularios_cliente também falhou:', fallbackError)
+                } else {
+                    console.log('[FormularioController] formularios_cliente registrado via fallback para agendamento:', agendamento_id)
+                }
+            } else {
+                console.log('[FormularioController] formularios_cliente inserido com sucesso para agendamento:', agendamento_id)
             }
 
             // Atualiza o DNA Centralizado do Cliente com Prioridade Máxima
@@ -237,8 +256,7 @@ class FormularioController {
                     .from('agendamentos')
                     .update({
                         status: isPago ? 'confirmado' : 'agendado',
-                        cliente_id: clienteId,
-                        cliente_is_user: true
+                        cliente_id: clienteId
                     })
                     .eq('id', agendamento_id)
 
@@ -336,8 +354,11 @@ class FormularioController {
                     .select('pagamento_status, comprovante_url')
                     .eq('id', agendamento_id)
                     .single()
-                pagamentoStatus = agendamentoFinal?.pagamento_status || null
+                // Se o agendamento foi confirmado (isPago), garantir que o status retornado seja 'aprovado'
+                pagamentoStatus = isPago ? 'aprovado' : (agendamentoFinal?.pagamento_status || null)
                 comprovanteUrl = agendamentoFinal?.comprovante_url || null
+            } else if (isPago) {
+                pagamentoStatus = 'aprovado'
             }
 
             return res.status(201).json({

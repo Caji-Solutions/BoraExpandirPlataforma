@@ -92,10 +92,11 @@ class ComposioService {
       console.log('✅ Evento criado com sucesso!');
       console.log('📦 Resposta completa:', JSON.stringify(response, null, 2));
 
-      // A resposta do Composio tem estrutura: { data: Record<string, unknown>, error, successful }
+      // A resposta do Composio tem estrutura: { data: { response_data: {...} }, error, successful }
       const data = response?.data as Record<string, unknown>;
-      const eventId = data?.id || data?.event_id || data?.eventId;
-      const eventLink = data?.htmlLink || data?.html_link;
+      const responseData = (data?.response_data as Record<string, unknown>) || data;
+      const eventId = responseData?.id || responseData?.event_id || responseData?.eventId;
+      const eventLink = responseData?.hangoutLink || responseData?.htmlLink || responseData?.html_link;
 
       console.log('🔍 EventId extraído:', eventId);
       console.log('🔗 EventLink extraído:', eventLink);
@@ -178,12 +179,13 @@ class ComposioService {
 
       console.log('✅ Evento atualizado com sucesso:', response);
 
-      const data = response?.data || response;
+      const rawData = response?.data || response;
+      const data = (rawData?.response_data as Record<string, unknown>) || rawData;
 
       return {
         success: true,
         eventId: data?.id as string,
-        eventLink: (data?.htmlLink || data?.html_link) as string,
+        eventLink: (data?.hangoutLink || data?.htmlLink || data?.html_link) as string,
       };
     } catch (error: any) {
       console.error('❌ Erro ao atualizar evento:', error);

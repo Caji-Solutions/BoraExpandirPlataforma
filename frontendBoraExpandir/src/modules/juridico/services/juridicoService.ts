@@ -683,7 +683,12 @@ export async function getProfileById(profileId: string): Promise<any> {
  * Verifica se o cliente já preencheu o formulário
  */
 export async function verificarFormularioPreenchido(clienteId: string): Promise<boolean> {
-  const response = await fetch(`${API_BASE_URL}/juridico/formulario-preenchido/${clienteId}`);
+  const token = localStorage.getItem('auth_token');
+  const response = await fetch(`${API_BASE_URL}/juridico/formulario-preenchido/${clienteId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
   if (!response.ok) {
     throw new Error('Erro ao verificar formulário');
   }
