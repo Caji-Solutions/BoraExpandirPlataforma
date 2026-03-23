@@ -65,6 +65,11 @@ class ComercialController {
             // Normaliza data_hora assumindo que veio fuso de Brasília
             const dataHoraIso = toUtcFromBrt(data_hora);
 
+            const diaSemana = new Date(dataHoraIso).getDay()
+            if (diaSemana === 0 || diaSemana === 6) {
+                return res.status(400).json({ message: 'Agendamentos nao sao permitidos em fins de semana.' })
+            }
+
             // Verifica disponibilidade do horário
             const duracao = duracao_minutos || 60
             const disponibilidade = await this.verificarDisponibilidade(dataHoraIso, duracao)
@@ -243,6 +248,12 @@ class ComercialController {
 
         // Converte a string de entrada assumindo que seja horário de Brasília para consultar no BD
         const inicioIso = toUtcFromBrt(data_hora);
+
+        const diaSemanaDisp = new Date(inicioIso).getDay()
+        if (diaSemanaDisp === 0 || diaSemanaDisp === 6) {
+            return { disponivel: false, agendamentos: [], motivo: 'fim_de_semana' }
+        }
+
         const inicio = new Date(inicioIso)
         const fim = new Date(inicio.getTime() + duracao_minutos * 60000)
 

@@ -679,6 +679,33 @@ export async function getProfileById(profileId: string): Promise<any> {
   return result.data;
 }
 
+/**
+ * Verifica se o cliente já preencheu o formulário
+ */
+export async function verificarFormularioPreenchido(clienteId: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/juridico/formulario-preenchido/${clienteId}`);
+  if (!response.ok) {
+    throw new Error('Erro ao verificar formulário');
+  }
+  const result = await response.json();
+  return result.preenchido === true;
+}
+
+/**
+ * Registra pedido de reagendamento
+ */
+export async function pedidoReagendamento(agendamentoId: string, mensagem: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/juridico/agendamentos/pedido-reagendamento`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ agendamentoId, mensagem }),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Erro ao registrar pedido de reagendamento');
+  }
+}
+
 export async function getAllSubservices(): Promise<any[]> {
   const response = await fetch(`${API_BASE_URL}/juridico/subservicos`);
   if (!response.ok) {
@@ -760,4 +787,6 @@ export default {
     requestApostille,
     getProfileById,
     getAllSubservices,
+    verificarFormularioPreenchido,
+    pedidoReagendamento,
 };

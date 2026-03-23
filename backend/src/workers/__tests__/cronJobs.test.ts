@@ -142,6 +142,23 @@ describe('cronJobs - cancelamento automatico de agendamentos', () => {
         expect(updates.length).toBe(0);
     });
 
+    it('deve poupar agendamento com pagamento_status=aprovado mesmo sem formulario (Task 006)', async () => {
+        const { getUpdateCalls } = buildSupabaseMock([{
+            id: 'ag-005',
+            status: 'agendado',
+            cliente_is_user: false,
+            data_hora: pastDate,
+            meet_link: null,
+            pagamento_status: 'aprovado',
+            observacoes: null
+        }]);
+
+        await loadAndRunCron();
+
+        const updates = getUpdateCalls();
+        expect(updates.length).toBe(0);
+    });
+
     it('deve logar intencao de deletar evento ao cancelar agendamento com meet_link', async () => {
         const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 

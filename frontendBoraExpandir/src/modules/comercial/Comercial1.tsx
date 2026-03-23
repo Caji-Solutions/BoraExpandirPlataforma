@@ -871,6 +871,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                     selectedDate={dataSelecionada || undefined}
                     disabledDates={[]}
                     disablePastDates={true}
+                    disableWeekends={true}
                     minDate={(() => {
                       // Impede agendamento para o dia atual, apenas dia seguinte em diante
                       const tomorrow = new Date()

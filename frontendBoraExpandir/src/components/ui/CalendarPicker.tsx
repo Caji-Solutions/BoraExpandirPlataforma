@@ -9,6 +9,7 @@ interface CalendarPickerProps {
   disablePastDates?: boolean
   minDate?: Date
   occupancyData?: Record<string, number> // key: YYYY-MM-DD, value: 0-1 (percentage)
+  disableWeekends?: boolean
 }
 
 const dayNames = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"]
@@ -19,7 +20,8 @@ export function CalendarPicker({
   disabledDates = [],
   disablePastDates = false,
   minDate,
-  occupancyData
+  occupancyData,
+  disableWeekends = false
 }: CalendarPickerProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
 
@@ -85,6 +87,11 @@ export function CalendarPicker({
 
     // Verificar se é uma data passada (ou anterior a minDate)
     if (isPastDate(day)) return true
+
+    if (disableWeekends) {
+      const dayOfWeek = date.getDay()
+      if (dayOfWeek === 0 || dayOfWeek === 6) return true
+    }
 
     // Verificar se está na lista de datas desabilitadas
     return disabledDates.some(

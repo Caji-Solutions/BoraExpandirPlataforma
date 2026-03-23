@@ -1,5 +1,8 @@
 import JuridicoRepository from '../repositories/JuridicoRepository'
 import AdmRepository from '../repositories/AdmRepository'
+import { supabase } from '../config/SupabaseClient'
+import NotificationService from '../services/NotificationService'
+import ComercialRepository from '../repositories/ComercialRepository'
 
 class JuridicoController {
 
@@ -990,10 +993,66 @@ class JuridicoController {
             })
         } catch (error: any) {
             console.error('Erro ao buscar agendamentos do responsável:', error)
-            return res.status(500).json({ 
-                message: 'Erro ao buscar agendamentos do responsável', 
-                error: error.message 
+            return res.status(500).json({
+                message: 'Erro ao buscar agendamentos do responsável',
+                error: error.message
             })
+        }
+    }
+
+    // GET /juridico/formulario-preenchido/:clienteId
+    async verificarFormularioPreenchido(req: any, res: any) {
+        try {
+            const { clienteId } = req.params
+            if (!clienteId) {
+                return res.status(400).json({ message: 'clienteId é obrigatório' })
+            }
+            const { data, error } = await supabase
+                .from('formularios_cliente')
+                .select('id')
+                .eq('cliente_id', clienteId)
+                .not('agendamento_id', 'is', null)
+                .limit(1)
+            if (error) throw error
+            return res.status(200).json({ preenchido: data && data.length > 0 })
+        } catch (error: any) {
+            console.error('Erro ao verificar formulário preenchido:', error)
+            return res.status(500).json({ message: 'Erro ao verificar formulário', error: error.message })
+        }
+    }
+
+    // POST /juridico/agendamentos/pedido-reagendamento
+    async pedidoReagendamento(req: any, res: any) {
+        try {
+            const { agendamentoId, mensagem } = req.body
+            if (!agendamentoId || !mensagem) {
+                return res.status(400).json({ message: 'agendamentoId e mensagem são obrigatórios' })
+            }
+            const agendamento = await ComercialRepository.getAgendamentoById(agendamentoId)
+            if (!agendamento) {
+                return res.status(404).json({ message: 'Agendamento não encontrado' })
+            }
+            const { error } = await supabase
+                .from('agendamentos')
+                .update({
+                    pedido_reagendamento: true,
+                    mensagem_reagendamento: mensagem,
+                    status: 'reagendar'
+                })
+                .eq('id', agendamentoId)
+            if (error) throw error
+            if (agendamento.cliente_id) {
+                await NotificationService.createNotification({
+                    clienteId: agendamento.cliente_id,
+                    titulo: 'Pedido de Reagendamento',
+                    mensagem: mensagem,
+                    tipo: 'agendamento'
+                })
+            }
+            return res.status(200).json({ success: true })
+        } catch (error: any) {
+            console.error('Erro ao registrar pedido de reagendamento:', error)
+            return res.status(500).json({ message: 'Erro ao registrar pedido de reagendamento', error: error.message })
         }
     }
 }

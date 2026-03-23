@@ -298,12 +298,12 @@
 
     <p class="clause">
       <span class="clause-label bold">CONTRATANTE:</span>&nbsp;
-      <span class="highlight-bold">{{NOME}}</span>,&nbsp;
+      <span class="highlight-bold">{{nome}}</span>,&nbsp;
       <span class="highlight">{{nacionalidade}}</span>,&nbsp;
-      <span class="highlight">{{estado civil}}</span>,&nbsp;
-      <span class="highlight">{{profissão}}</span>,
-      portador(a) do(s) documento(s) de identificação:&nbsp;<span class="highlight">{{nome do(s) documento(s) e número(s)}}</span>,&nbsp;residente e domiciliado(a) à&nbsp;<span class="highlight">{{endereço completo}}</span>,&nbsp;endereço eletrônico:
-      <span class="highlight">{{<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7d05050505053d0505050505531e1210">[email&#160;protected]</a>}}</span>,&nbsp;telefone:&nbsp;<span class="highlight">{{ +XX (XX) XXXX-XXXX}}</span>.
+      <span class="highlight">{{estado_civil}}</span>,&nbsp;
+      <span class="highlight">{{profissao}}</span>,
+      portador(a) do(s) documento(s) de identificação:&nbsp;<span class="highlight">{{documento}}</span>,&nbsp;residente e domiciliado(a) à&nbsp;<span class="highlight">{{endereco}}</span>,&nbsp;endereço eletrônico:
+      <span class="highlight">{{email}}</span>,&nbsp;telefone:&nbsp;<span class="highlight">{{telefone}}</span>.
     </p>
 
     <p class="clause">
@@ -329,7 +329,7 @@
 
     <div class="bullet-item">
       <span class="bullet-dot">●</span>
-      <span class="bullet-text">{{TIPO DE SERVIÇO}}</span>
+      <span class="bullet-text">{{tipo_servico}}</span>
     </div>
 
     <p class="clause">
@@ -489,26 +489,49 @@
     </p>
 
     <div class="bullet-item" style="margin-left: 0;">
-      <span class="bullet-text" style="background-color: var(--yellow-hl); font-weight:700;">{{Titulares, dependentes, valor pavão por pessoa}}</span>
+      <span class="bullet-text" style="background-color: var(--yellow-hl); font-weight:700;">{{descricao_pessoas}}</span>
     </div>
 
     <p class="clause">
       <span class="clause-label">Cláusula 10ª.</span>&nbsp;&nbsp;&nbsp;Portanto, como contraprestação aos serviços prestados, o(a)
-      <span class="bold">CONTRATANTE</span> pagará à <span class="bold">CONTRATADA</span> o <span class="bold">valor total</span> de <span class="bold">€&nbsp;<span class="highlight-bold">{{VALOR PAVÃO TOTAL (valor pavão total por extenso)}}</span></span> ou seu equivalente em reais na data do pagamento.
+      <span class="bold">CONTRATANTE</span> pagará à <span class="bold">CONTRATADA</span> o <span class="bold">valor total</span> de <span class="bold">€&nbsp;<span class="highlight-bold">{{valor_pavao}}</span></span> ou seu equivalente em reais na data do pagamento.
     </p>
 
     <p class="clause">
       <span class="clause-label">Cláusula 11ª.</span>&nbsp;&nbsp;Em razão de uma <span class="bold">condição especial oferecida pelo programa Bora
-      Expandir</span>, as partes acordam que o valor total dos serviços será de <span class="bold">€&nbsp;<span class="highlight-bold">{{VALOR TOTAL COM DESCONTO (valor total com desconto por extenso)}}</span></span> ou seu equivalente em reais na
-      data do pagamento, já considerando um desconto de <span class="bold">€&nbsp;<span class="highlight-bold">{{VALOR TOTAL CONSULTORIA (valor total da consultoria por extenso)}}</span></span> referente ao valor(es) pago(s) da(s)
+      Expandir</span>, as partes acordam que o valor total dos serviços será de <span class="bold">€&nbsp;<span class="highlight-bold">{{valor_desconto}}</span></span> ou seu equivalente em reais na
+      data do pagamento, já considerando um desconto de <span class="bold">€&nbsp;<span class="highlight-bold">{{valor_consultoria}}</span></span> referente ao valor(es) pago(s) da(s)
       consultoria(s). As partes acordam que o valor total dos serviços será pago nas
       seguintes condições:
     </p>
 
     <div style="margin-bottom: 10pt;">
-      <span class="highlight-bold">{{FORMA DE PAGAMENTO}}</span>
+      <span class="highlight-bold">{{forma_pagamento}}</span>
     </div>
 
+    
+    {{#if pendencias}}
+    <h2 class="section-title">PENDÊNCIAS</h2>
+    <p class="clause">As pessoas a seguir possuem pendências financeiras no contrato:</p>
+    <table style="width:100%; border-collapse:collapse; font-family:'Courier Prime',monospace; font-size:10.5pt; margin-bottom:10pt;">
+      <thead>
+        <tr style="background:#f5f5f5;">
+          <th style="border:1px solid #ccc; padding:6pt 8pt; text-align:left; font-weight:700;">Nome</th>
+          <th style="border:1px solid #ccc; padding:6pt 8pt; text-align:left; font-weight:700;">Víncuio/Parentesco</th>
+          <th style="border:1px solid #ccc; padding:6pt 8pt; text-align:right; font-weight:700;">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each pendencias}}
+        <tr>
+          <td style="border:1px solid #ccc; padding:6pt 8pt;">{{this.nome}}</td>
+          <td style="border:1px solid #ccc; padding:6pt 8pt;">{{this.parentesco}}</td>
+          <td style="border:1px solid #ccc; padding:6pt 8pt; text-align:right;">R$ {{this.valor}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+    {{/if}}
     <h2 class="section-title">DA INADIMPLÊNCIA, RESCISÃO CONTRATUAL</h2>
     <h2 class="section-title" style="margin-top: 0;">E CONSEQUÊNCIAS FINANCEIRAS</h2>
 
@@ -846,8 +869,8 @@
       <p>&nbsp;</p>
 
       <!-- BLOCO CONTRATANTE -->
-      <p><span class="bold">CONTRATANTE:</span> <span class="highlight-bold">{{NOME}}</span></p>
-      <p><span class="bold">Documento de Identificação:</span> <span class="highlight">{{nome do(s) documento(s) e número(s)}}</span></p>
+      <p><span class="bold">CONTRATANTE:</span> <span class="highlight-bold">{{nome}}</span></p>
+      <p><span class="bold">Documento de Identificação:</span> <span class="highlight">{{documento}}</span></p>
       <p>&nbsp;</p>
       <p>[[ASSINATURA_CLIENTE]]</p>
       <p>&nbsp;</p>

@@ -45,6 +45,12 @@ export const startCronJobs = () => {
                         continue;
                     }
 
+                    // 2b. Se o pagamento já foi aprovado, NUNCA cancela automaticamente.
+                    if (agendamento.pagamento_status === 'aprovado') {
+                        console.log(`[CRON] Poupando agendamento ${agendamento.id}: Pagamento ja aprovado.`);
+                        continue;
+                    }
+
                     // 3. Se falta 1h ou menos e NÃO tem formulário enviado, cancela.
                     if (agendamentoDateTime <= cancelLimitTime) {
                         console.log(`[CRON] Cancelando agendamento ${agendamento.id} por falta de formulário (falta <= 60 min).`);

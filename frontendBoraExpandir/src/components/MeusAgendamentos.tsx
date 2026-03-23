@@ -1,15 +1,17 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  Calendar, 
+import {
+  Calendar,
   Briefcase,
-  AlertCircle, 
-  Clock, 
-  User, 
+  AlertCircle,
+  Clock,
+  User,
   X,
   CreditCard,
   Copy,
-  Video
+  Video,
+  CalendarClock,
+  FileText
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
@@ -19,6 +21,7 @@ import { Badge } from "./ui/Badge";
 import { formatDate } from "../modules/cliente/lib/utils";
 import { CalendarPicker } from "./ui/CalendarPicker";
 import { parseBackendDate, formatDataHora, formatHoraOnly } from "../utils/dateUtils";
+import { PedidoReagendamentoModal } from "../modules/juridico/components/PedidoReagendamentoModal";
 
 type TabType = 'consultorias' | 'assessorias';
 
@@ -51,6 +54,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
   // Checks de Segurança
   const [hasFormulario, setHasFormulario] = useState<boolean | null>(null);
   const [checkingSecurity, setCheckingSecurity] = useState(false);
+  const [isReagendamentoOpen, setIsReagendamentoOpen] = useState(false);
   const [cachedProfiles, setCachedProfiles] = useState<Record<string, string>>({});
   const [servicosCatalogo, setServicosCatalogo] = useState<Service[]>([]);
 
@@ -152,7 +156,8 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
           if (clienteId) {
             console.log(`DEBUG: Verificando formulários para cliente: ${clienteId}`);
             if (activeTab === 'consultorias') {
-              setHasFormulario(!!selectedItem.cliente_is_user);
+              const preenchido = await juridicoService.verificarFormularioPreenchido(clienteId);
+              setHasFormulario(preenchido);
             } else {
               setHasFormulario(!!selectedItem.respostas);
             }
@@ -329,6 +334,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
               selectedDate={dataSelecionada}
               disabledDates={[]}
               disablePastDates={false}
+              disableWeekends={true}
               occupancyData={occupancyData}
             />
           </div>
@@ -642,6 +648,25 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                     )}
                   </div>
 
+                  {/* Botao Formulario do Cliente */}
+                  {activeTab === 'consultorias' && !checkingSecurity && (
+                    <div className="mt-4">
+                      {hasFormulario === true ? (
+                        <button
+                          onClick={() => navigate(`/juridico/dna?clienteId=${selectedItem.cliente_id}&tab=formularios`)}
+                          className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+                        >
+                          <FileText className="h-4 w-4" />
+                          Ver Formulario do Cliente
+                        </button>
+                      ) : hasFormulario === false ? (
+                        <div className="w-full px-4 py-2.5 bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-gray-400 font-semibold rounded-xl text-center text-sm">
+                          Formulario ainda nao preenchido
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+
                   {/* Alertas de Segurança */}
                   <div className="mt-4 space-y-3">
                     {/* Conferência de Pagamento */}
@@ -717,15 +742,37 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                     </div>
                   )}
                </div>
-               <button 
-                 onClick={() => setSelectedItem(null)}
-                 className="px-6 py-2.5 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors"
-               >
-                 Fechar
-               </button>
+               <div className="flex flex-col gap-2 w-full sm:w-auto">
+                 <button
+                   onClick={() => setIsReagendamentoOpen(true)}
+                   className="w-full px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+                 >
+                   <CalendarClock className="h-4 w-4" />
+                   Pedido de Reagendamento
+                 </button>
+                 <button
+                   onClick={() => setSelectedItem(null)}
+                   className="w-full px-6 py-2.5 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors"
+                 >
+                   Fechar
+                 </button>
+               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {selectedItem && (
+        <PedidoReagendamentoModal
+          isOpen={isReagendamentoOpen}
+          onClose={() => setIsReagendamentoOpen(false)}
+          agendamento={selectedItem}
+          onSucesso={() => {
+            setIsReagendamentoOpen(false);
+            setSelectedItem(null);
+            fetchData();
+          }}
+        />
       )}
     </div>
   );

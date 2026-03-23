@@ -30,6 +30,10 @@ const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destruc
 		variant: 'warning',
 		label: 'Conflito',
 	},
+	reagendar: {
+		variant: 'warning',
+		label: 'Reagendar',
+	},
 }
 
 const getStatusConfig = (status: string) =>
@@ -117,6 +121,7 @@ export default function AgendamentosPage({ agendamentos, onRefresh }: Agendament
 							<option value="realizado">Realizados</option>
 							<option value="cancelado">Cancelados</option>
 							<option value="aguardando_verificacao">Aguardando Verificação</option>
+					<option value="reagendar">Reagendar</option>
 						</select>
 					</div>
 				</div>
@@ -158,6 +163,8 @@ export default function AgendamentosPage({ agendamentos, onRefresh }: Agendament
 													? 'bg-red-100 dark:bg-red-900/30 border-l-4 border-l-red-600'
 													: isCancelled
 													? 'bg-gray-50 dark:bg-neutral-800/40 border-l-4 border-l-gray-400 dark:border-l-neutral-600'
+													: agendamento.status === 'reagendar'
+													? 'bg-amber-50 dark:bg-amber-900/10 border-l-4 border-l-amber-400'
 													: agendamento.conflito_horario
 													? 'bg-amber-50 dark:bg-amber-900/10 border-l-4 border-l-amber-400'
 													: ''
@@ -227,13 +234,13 @@ export default function AgendamentosPage({ agendamentos, onRefresh }: Agendament
 
 											{/* Coluna Formulário */}
 											<td className="px-6 py-4 align-middle text-center">
-												{isCancelled ? (
-													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-														<span className="w-2 h-2 rounded-full bg-red-500" /> Recusado
-													</span>
-												) : agendamento.cliente_is_user ? (
+												{agendamento.cliente_is_user ? (
 													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
 														<span className="w-2 h-2 rounded-full bg-emerald-500" /> Preenchido
+													</span>
+												) : isCancelled ? (
+													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+														<span className="w-2 h-2 rounded-full bg-red-500" /> Recusado
 													</span>
 												) : (
 													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">

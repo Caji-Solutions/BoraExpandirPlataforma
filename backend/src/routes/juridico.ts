@@ -92,6 +92,8 @@ juridico.get('/cliente/:clienteId', JuridicoController.getClienteComResponsavel.
 juridico.post('/atribuir-responsavel', JuridicoController.atribuirResponsavel.bind(JuridicoController))
 juridico.get('/agendamentos/delegacao', JuridicoController.getAgendamentosDelegacao.bind(JuridicoController))
 juridico.post('/atribuir-responsavel-agendamento', JuridicoController.atribuirResponsavelAgendamento.bind(JuridicoController))
+juridico.get('/formulario-preenchido/:clienteId', JuridicoController.verificarFormularioPreenchido.bind(JuridicoController))
+juridico.post('/agendamentos/pedido-reagendamento', JuridicoController.pedidoReagendamento.bind(JuridicoController))
 
 
 

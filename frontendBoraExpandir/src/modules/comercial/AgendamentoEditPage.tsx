@@ -356,6 +356,19 @@ export function AgendamentoEditPage() {
                     </div>
                 </div>
 
+                {/* ═══ BANNER DE PEDIDO DE REAGENDAMENTO ═══ */}
+                {agendamento.pedido_reagendamento && (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-400 dark:border-amber-600/50 rounded-2xl shadow-sm mb-6 px-6 py-4 animate-in fade-in duration-300">
+                        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold text-base mb-2">
+                            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                            Pedido de Reagendamento pelo Juridico
+                        </div>
+                        <p className="text-sm text-amber-800 dark:text-amber-300">
+                            <strong>Mensagem:</strong> {agendamento.mensagem_reagendamento}
+                        </p>
+                    </div>
+                )}
+
                 {/* ═══ BANNER DE CONFLITO ═══ */}
                 {agendamento.conflito_horario && (
                     <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-300 dark:border-amber-700/50 rounded-2xl shadow-sm mb-6 px-6 py-4 animate-in fade-in duration-300">
@@ -682,6 +695,7 @@ export function AgendamentoEditPage() {
                             <CalendarPicker
                                 selectedDate={dataSelecionada}
                                 onDateSelect={setDataSelecionada}
+                                disableWeekends={true}
                                 minDate={(() => {
                                     const tomorrow = new Date()
                                     tomorrow.setDate(tomorrow.getDate() + 1)

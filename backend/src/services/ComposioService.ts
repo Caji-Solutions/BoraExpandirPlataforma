@@ -298,6 +298,57 @@ class ComposioService {
       return false;
     }
   }
+
+  /**
+   * Obtém detalhes da conexão do Google Calendar do usuário
+   * @param userId - ID do usuário
+   */
+  async getConnectionDetails(userId: string): Promise<any> {
+    try {
+      const session = await this.composio.create(userId, {
+        toolkits: ['googlecalendar'],
+      });
+      const toolkits = await session.toolkits();
+      const googleCalendar = toolkits.items.find(
+        (toolkit) => toolkit.slug === 'googlecalendar'
+      );
+      
+      if (googleCalendar?.connection?.isActive) {
+        return {
+          isConnected: true,
+          connectionId: (googleCalendar.connection as any).connectedAccountId || (googleCalendar.connection as any).id,
+          account: googleCalendar.connection
+        };
+      }
+      return { isConnected: false };
+    } catch (error) {
+      console.error('❌ Erro ao buscar detalhes da conexão:', error);
+      return { isConnected: false };
+    }
+  }
+
+  /**
+   * Desconecta/remover a conta do Google Calendar para o usuário
+   * @param userId - ID do usuário
+   */
+  async disconnectCalendar(userId: string): Promise<boolean> {
+    try {
+      console.log('🔌 Desconectando o Google Calendar para userId:', userId);
+      const details = await this.getConnectionDetails(userId);
+      
+      if (details.isConnected && details.connectionId) {
+        await this.composio.connectedAccounts.delete(details.connectionId as string);
+        console.log('✅ Conexão removida com sucesso!');
+        return true;
+      }
+      
+      console.log('⚠️ Nenhuma conexão ativa encontrada para remover.');
+      return false;
+    } catch (error) {
+      console.error('❌ Erro ao desconectar Google Calendar:', error);
+      return false;
+    }
+  }
 }
 
 export default new ComposioService();

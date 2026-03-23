@@ -7,6 +7,32 @@ type PagamentoStatus = 'pendente' | 'aprovado' | 'em_analise' | 'recusado' | nul
 
 const PIX_CNPJ = '55.218.947/0001-65'
 
+const _inputClass = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+const _labelClass = "block text-sm font-semibold text-gray-300 mb-1.5"
+
+function YesNoQuestion({ label, yesLabel = "Sim", noLabel = "Não", value, onYes, onNo, children }: any) {
+    return (
+        <div className="space-y-3">
+            <label className={_labelClass}>{label} *</label>
+            <div className="flex gap-3">
+                <button type="button" onClick={onYes}
+                    className={`flex-1 py-3 rounded-xl font-bold transition-all ${value === "yes" ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" : "bg-white/10 text-gray-300 hover:bg-white/15 border border-white/10"}`}>
+                    {yesLabel}
+                </button>
+                <button type="button" onClick={onNo}
+                    className={`flex-1 py-3 rounded-xl font-bold transition-all ${value === "no" ? "bg-red-500/80 text-white shadow-lg shadow-red-500/25" : "bg-white/10 text-gray-300 hover:bg-white/15 border border-white/10"}`}>
+                    {noLabel}
+                </button>
+            </div>
+            {value !== null && children && (
+                <div className="mt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {children}
+                </div>
+            )}
+        </div>
+    )
+}
+
 export default function FormularioConsultoria() {
     const { agendamentoId } = useParams<{ agendamentoId: string }>()
     const [step, setStep] = useState<FormStep>(agendamentoId ? 'loading' : 'form')
@@ -57,6 +83,27 @@ export default function FormularioConsultoria() {
         tipo_visto_planejado: '',
         duvidas_consultoria: '',
     })
+
+    // Estados auxiliares para campos condicionais
+    const [europeAnswer, setEuropeAnswer] = useState<'yes' | 'no' | null>(
+        formData.esteve_europa_6meses?.toLowerCase().startsWith('nao') ? 'no' :
+        formData.esteve_europa_6meses ? 'yes' : null
+    )
+    const [residenciaAnswer, setResidenciaAnswer] = useState<'yes' | 'no' | null>(
+        formData.cidade_pais_residencia ? 'yes' : null
+    )
+    const [semFilhos, setSemFilhos] = useState(
+        formData.filhos_qtd_idades.toLowerCase().includes('nao tenho')
+    )
+    const [semFamiliaresEspanha, setSemFamiliaresEspanha] = useState(
+        formData.familiares_espanha.toLowerCase().includes('nao tenho')
+    )
+    const [semVistoUe, setSemVistoUe] = useState(
+        formData.visto_ue.toLowerCase().includes('nao tenho')
+    )
+    const [semFilhosEuropeus, setSemFilhosEuropeus] = useState(
+        formData.filhos_nacionalidade_europeia.toLowerCase().includes('nao tenho')
+    )
 
     // ========== Verificação de seções completas ==========
     const isStep1Complete = useCallback(() => {
@@ -799,14 +846,48 @@ export default function FormularioConsultoria() {
                                 <label className={labelClass}>Qual sua nacionalidade? *</label>
                                 <textarea name="nacionalidade" value={formData.nacionalidade} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: Brasileira" />
                             </div>
-                            <div>
-                                <label className={labelClass}>Você esteve na EUROPA nos últimos 6 meses? Se sim, quais as datas que esteve aqui? *</label>
-                                <input name="esteve_europa_6meses" value={formData.esteve_europa_6meses} onChange={handleChange} className={inputClass} placeholder="Ex: Não / Sim, de Março/2024 a Abril/2024" />
-                            </div>
-                            <div>
-                                <label className={labelClass}>Qual cidade e país reside hoje? Se já estiver na Espanha informe a data que entrou aqui: *</label>
-                                <textarea name="cidade_pais_residencia" value={formData.cidade_pais_residencia} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: São Paulo, Brasil — ou — Madrid, Espanha (entrou em 15/03/2024)" />
-                            </div>
+                            <YesNoQuestion
+                                label="Você esteve na EUROPA nos últimos 6 meses? Se sim, quais as datas?"
+                                value={europeAnswer}
+                                onYes={() => {
+                                    setEuropeAnswer('yes')
+                                    setFormData(prev => ({ ...prev, esteve_europa_6meses: '' }))
+                                }}
+                                onNo={() => {
+                                    setEuropeAnswer('no')
+                                    setFormData(prev => ({ ...prev, esteve_europa_6meses: 'Não' }))
+                                }}
+                            >
+                                <textarea
+                                    name="esteve_europa_6meses"
+                                    value={formData.esteve_europa_6meses}
+                                    onChange={handleChange}
+                                    className={inputClass + ' min-h-[80px]'}
+                                    placeholder="Informe as datas (Ex: Março/2024 a Abril/2024)"
+                                />
+                            </YesNoQuestion>
+                            <YesNoQuestion
+                                label="Qual cidade e país reside hoje?"
+                                yesLabel="Já estou na Espanha"
+                                noLabel="Ainda no Brasil"
+                                value={residenciaAnswer}
+                                onYes={() => {
+                                    setResidenciaAnswer('yes')
+                                    setFormData(prev => ({ ...prev, cidade_pais_residencia: '' }))
+                                }}
+                                onNo={() => {
+                                    setResidenciaAnswer('no')
+                                    setFormData(prev => ({ ...prev, cidade_pais_residencia: '' }))
+                                }}
+                            >
+                                <textarea
+                                    name="cidade_pais_residencia"
+                                    value={formData.cidade_pais_residencia}
+                                    onChange={handleChange}
+                                    className={inputClass + ' min-h-[80px]'}
+                                    placeholder={residenciaAnswer === 'yes' ? "Ex: Madrid, Espanha (entrou em 15/03/2024)" : "Ex: São Paulo, Brasil"}
+                                />
+                            </YesNoQuestion>
                         </div>
 
                         {/* Navegação */}
@@ -823,27 +904,22 @@ export default function FormularioConsultoria() {
                     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                         {/* Estado Civil */}
                         <div className="space-y-3 p-6 bg-white/[0.03] rounded-2xl border border-white/5">
-                            <h2 className="text-lg font-bold text-white flex items-center gap-2">💍 Qual seu estado civil? *</h2>
-                            {[
-                                'Solteiro(a)',
-                                'Namorando',
-                                'Noivo(a)',
-                                'Casado(a)',
-                                'Amasiado(mora junto e não fez registro de união estável)',
-                                'União Estável(mora junto e fez escritura de união estável no cartório)',
-                                'Divorciado(separou e já se divorciou no papel)',
-                                'Separado(separou mas não se divorciou no papel)',
-                            ].map(opcao => (
-                                <label key={opcao} className="flex items-start gap-3 cursor-pointer group">
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.estado_civil.includes(opcao)}
-                                        onChange={() => handleCheckboxChange('estado_civil', opcao)}
-                                        className="mt-0.5 w-4 h-4 accent-blue-500 flex-shrink-0"
-                                    />
-                                    <span className="text-gray-300 text-sm group-hover:text-white transition-colors">{opcao}</span>
-                                </label>
-                            ))}
+                            <label className={labelClass}>💍 Qual seu estado civil? *</label>
+                            <select
+                                value={formData.estado_civil[0] || ''}
+                                onChange={e => setFormData(prev => ({ ...prev, estado_civil: [e.target.value] }))}
+                                className={inputClass + ' cursor-pointer appearance-none'}
+                            >
+                                <option value="">Selecione...</option>
+                                <option value="Solteiro(a)">Solteiro(a)</option>
+                                <option value="Namorando">Namorando</option>
+                                <option value="Noivo(a)">Noivo(a)</option>
+                                <option value="Casado(a)">Casado(a)</option>
+                                <option value="Amasiado">Amasiado (sem registro)</option>
+                                <option value="União Estável">União Estável (com registro em cartório)</option>
+                                <option value="Divorciado(a)">Divorciado(a)</option>
+                                <option value="Separado(a)">Separado(a) (sem divórcio)</option>
+                            </select>
                         </div>
 
                         {/* Família e Documentos */}
@@ -851,11 +927,51 @@ export default function FormularioConsultoria() {
                             <h2 className="text-lg font-bold text-white flex items-center gap-2">👨‍👩‍👧 Família e Documentos</h2>
                             <div>
                                 <label className={labelClass}>Possui filhos? Se sim, quantos e idade? *</label>
-                                <textarea name="filhos_qtd_idades" value={formData.filhos_qtd_idades} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: 2 filhos, 5 e 8 anos / Não tenho filhos" />
+                                <div className="flex items-center gap-3 mb-2">
+                                    <input
+                                        type="checkbox"
+                                        id="sem_filhos"
+                                        checked={semFilhos}
+                                        onChange={e => {
+                                            setSemFilhos(e.target.checked)
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                filhos_qtd_idades: e.target.checked ? 'Não tenho filhos' : ''
+                                            }))
+                                        }}
+                                        className="w-4 h-4 accent-blue-500"
+                                    />
+                                    <label htmlFor="sem_filhos" className="text-sm font-medium text-gray-300 cursor-pointer">Não tenho filhos</label>
+                                </div>
+                                {!semFilhos && (
+                                    <div className="animate-in fade-in duration-200">
+                                        <textarea name="filhos_qtd_idades" value={formData.filhos_qtd_idades} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: 2 filhos, 5 e 8 anos" />
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <label className={labelClass}>Possui familiares que mora na Espanha? Se sim qual o grau de parentesco e qual tipo de residência eles possuem aqui? *</label>
-                                <textarea name="familiares_espanha" value={formData.familiares_espanha} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: Irmão com residência permanente / Não tenho" />
+                                <div className="flex items-center gap-3 mb-2">
+                                    <input
+                                        type="checkbox"
+                                        id="sem_familiares_espanha"
+                                        checked={semFamiliaresEspanha}
+                                        onChange={e => {
+                                            setSemFamiliaresEspanha(e.target.checked)
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                familiares_espanha: e.target.checked ? 'Não tenho familiares na Espanha' : ''
+                                            }))
+                                        }}
+                                        className="w-4 h-4 accent-blue-500"
+                                    />
+                                    <label htmlFor="sem_familiares_espanha" className="text-sm font-medium text-gray-300 cursor-pointer">Não tenho familiares na Espanha</label>
+                                </div>
+                                {!semFamiliaresEspanha && (
+                                    <div className="animate-in fade-in duration-200">
+                                        <textarea name="familiares_espanha" value={formData.familiares_espanha} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: Irmão com residência permanente" />
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <label className={labelClass}>Você possui CNH? Se sim, informe qual a categoria e qual ano você obteve. *</label>
@@ -867,7 +983,27 @@ export default function FormularioConsultoria() {
                             </div>
                             <div>
                                 <label className={labelClass}>Você tem algum tipo de visto, residência ou nacionalidade de outro país da União Europeia? *</label>
-                                <textarea name="visto_ue" value={formData.visto_ue} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: Tenho residência portuguesa / Não tenho" />
+                                <div className="flex items-center gap-3 mb-2">
+                                    <input
+                                        type="checkbox"
+                                        id="sem_visto_ue"
+                                        checked={semVistoUe}
+                                        onChange={e => {
+                                            setSemVistoUe(e.target.checked)
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                visto_ue: e.target.checked ? 'Não tenho' : ''
+                                            }))
+                                        }}
+                                        className="w-4 h-4 accent-blue-500"
+                                    />
+                                    <label htmlFor="sem_visto_ue" className="text-sm font-medium text-gray-300 cursor-pointer">Não tenho</label>
+                                </div>
+                                {!semVistoUe && (
+                                    <div className="animate-in fade-in duration-200">
+                                        <textarea name="visto_ue" value={formData.visto_ue} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: Tenho residência portuguesa" />
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <label className={labelClass}>Você trabalha na Espanha como destacado/transladado por uma empresa de outro país da União Europeia? *</label>
@@ -875,7 +1011,27 @@ export default function FormularioConsultoria() {
                             </div>
                             <div>
                                 <label className={labelClass}>Você tem algum filho menor de idade que tem nacionalidade europeia? *</label>
-                                <textarea name="filhos_nacionalidade_europeia" value={formData.filhos_nacionalidade_europeia} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: Sim, filho de 7 anos com passaporte espanhol / Não" />
+                                <div className="flex items-center gap-3 mb-2">
+                                    <input
+                                        type="checkbox"
+                                        id="sem_filhos_europeus"
+                                        checked={semFilhosEuropeus}
+                                        onChange={e => {
+                                            setSemFilhosEuropeus(e.target.checked)
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                filhos_nacionalidade_europeia: e.target.checked ? 'Não tenho' : ''
+                                            }))
+                                        }}
+                                        className="w-4 h-4 accent-blue-500"
+                                    />
+                                    <label htmlFor="sem_filhos_europeus" className="text-sm font-medium text-gray-300 cursor-pointer">Não tenho</label>
+                                </div>
+                                {!semFilhosEuropeus && (
+                                    <div className="animate-in fade-in duration-200">
+                                        <textarea name="filhos_nacionalidade_europeia" value={formData.filhos_nacionalidade_europeia} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: Sim, filho de 7 anos com passaporte espanhol" />
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -919,23 +1075,26 @@ export default function FormularioConsultoria() {
                         {/* Disposto a estudar */}
                         <div className="space-y-3 p-6 bg-white/[0.03] rounded-2xl border border-white/5">
                             <h2 className="text-lg font-bold text-white flex items-center gap-2">📚 Você está disposto(a) a estudar na Espanha? *</h2>
-                            {[
-                                'Sim',
-                                'Apenas se esse for o único jeito de ficar regular',
-                                'Não. De jeito nenhum',
-                            ].map(opcao => (
-                                <label key={opcao} className="flex items-center gap-3 cursor-pointer group">
-                                    <input
-                                        type="radio"
-                                        name="disposto_estudar"
-                                        value={opcao}
-                                        checked={formData.disposto_estudar === opcao}
-                                        onChange={handleChange}
-                                        className="w-4 h-4 accent-blue-500"
-                                    />
-                                    <span className="text-gray-300 text-sm group-hover:text-white transition-colors">{opcao}</span>
-                                </label>
-                            ))}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                {[
+                                    { value: 'Sim', label: 'Sim' },
+                                    { value: 'Apenas se esse for o único jeito de ficar regular', label: 'Apenas se for o único jeito' },
+                                    { value: 'Não. De jeito nenhum', label: 'Não' },
+                                ].map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => setFormData(prev => ({ ...prev, disposto_estudar: opt.value }))}
+                                        className={`py-3 px-4 rounded-xl font-medium text-sm text-center transition-all ${
+                                            formData.disposto_estudar === opt.value
+                                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                                : 'bg-white/5 text-gray-300 hover:bg-white/10 border border-white/10'
+                                        }`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
                         {/* Pretende trabalhar */}

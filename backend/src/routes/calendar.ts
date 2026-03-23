@@ -7,6 +7,7 @@ const router = Router();
 router.get('/connect', CalendarController.getConnectionUrl);
 router.get('/status', CalendarController.getConnectionStatus);
 router.get('/callback', CalendarController.handleCallback);
+router.delete('/disconnect', CalendarController.disconnect);
 
 // Rotas de eventos
 router.post('/events', CalendarController.createEvent);

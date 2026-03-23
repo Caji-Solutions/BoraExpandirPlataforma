@@ -227,7 +227,7 @@ class FormularioController {
             if (agendamento_id) {
                 const { data: agendamentoAtual } = await supabase
                     .from('agendamentos')
-                    .select('status, comprovante_url, pagamento_status')
+                    .select('status, comprovante_url, pagamento_status, meet_link, nome, telefone, email, data_hora, duracao_minutos')
                     .eq('id', agendamento_id)
                     .single()
 
@@ -237,7 +237,8 @@ class FormularioController {
                     .from('agendamentos')
                     .update({
                         status: isPago ? 'confirmado' : 'agendado',
-                        cliente_id: clienteId
+                        cliente_id: clienteId,
+                        cliente_is_user: true
                     })
                     .eq('id', agendamento_id)
 
@@ -259,11 +260,11 @@ class FormularioController {
                         const eventResult = await ComposioService.createCalendarEvent(
                             calendarUserId,
                             {
-                                summary: `Consultoria - ${agendamentoAtual.nome}`,
-                                description: `Consultoria confirmada via Form.\nTelefone: ${agendamentoAtual.telefone}\nEmail: ${agendamentoAtual.email}`,
-                                startTime: new Date(agendamentoAtual.data_hora),
-                                endTime: new Date(new Date(agendamentoAtual.data_hora).getTime() + (agendamentoAtual.duracao_minutos || 60) * 60000),
-                                attendees: [agendamentoAtual.email],
+                                summary: `Consultoria - ${nome_completo}`,
+                                description: `Consultoria confirmada via Form.\nTelefone: ${whatsapp}\nEmail: ${email}`,
+                                startTime: new Date(agendamentoInfo.data_hora),
+                                endTime: new Date(new Date(agendamentoInfo.data_hora).getTime() + ((agendamentoAtual as any).duracao_minutos || 60) * 60000),
+                                attendees: [email],
                                 location: 'Google Meet'
                             }
                         )
