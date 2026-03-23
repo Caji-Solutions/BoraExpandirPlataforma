@@ -271,6 +271,71 @@ describe('FormularioController - submitConsultoria - status do agendamento', () 
         );
     });
 
+    it('deve executar fallback de formularios_cliente quando insert principal falha', async () => {
+        let formularioInsertCount = 0;
+
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'formularios_cliente') {
+                formularioInsertCount++;
+                if (formularioInsertCount === 1) {
+                    // Primeiro insert falha (payload completo)
+                    return { insert: vi.fn().mockResolvedValue({ error: { message: 'column does not exist' } }) };
+                }
+                // Segundo insert (fallback com campos essenciais) - sucesso
+                return { insert: vi.fn().mockResolvedValue({ error: null }) };
+            }
+
+            // Reutiliza o mock padrao para outras tabelas
+            if (table === 'agendamentos') {
+                const single = vi.fn().mockResolvedValue({
+                    data: { status: 'agendado', data_hora: FUTURE_DATE },
+                    error: null
+                });
+                const eq = vi.fn().mockReturnValue({ single });
+                const select = vi.fn().mockReturnValue({ eq });
+                const update = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+                return { select, update };
+            }
+
+            if (table === 'profiles') {
+                const maybeSingle = vi.fn().mockResolvedValue({ data: null });
+                const ilike = vi.fn().mockReturnValue({ maybeSingle });
+                const select = vi.fn().mockReturnValue({ ilike });
+                const upsert = vi.fn().mockResolvedValue({ error: null });
+                return { select, upsert };
+            }
+
+            if (table === 'clientes') {
+                const maybeSingle = vi.fn().mockResolvedValue({ data: { id: 'cliente-001' } });
+                const or = vi.fn().mockReturnValue({ maybeSingle });
+                const single = vi.fn().mockResolvedValue({ data: { status: 'LEAD' }, error: null });
+                const eqSingle = vi.fn().mockReturnValue({ single });
+                const select = vi.fn().mockImplementation((col: string) => {
+                    if (col === 'status') return { eq: eqSingle };
+                    return { or };
+                });
+                const eqUpdate = vi.fn().mockResolvedValue({ error: null });
+                const update = vi.fn().mockReturnValue({ eq: eqUpdate });
+                const insertSingle = vi.fn().mockResolvedValue({ data: { id: 'cliente-novo' }, error: null });
+                const insertSelect = vi.fn().mockReturnValue({ single: insertSingle });
+                const insert = vi.fn().mockReturnValue({ select: insertSelect });
+                return { select, or, update, insert };
+            }
+
+            const single = vi.fn().mockResolvedValue({ data: null, error: null });
+            const eq = vi.fn().mockReturnValue({ single });
+            const select = vi.fn().mockReturnValue({ eq });
+            return { select };
+        });
+
+        await FormularioController.submitConsultoria(req, res);
+
+        // O fluxo deve completar com 201 mesmo com fallback
+        expect(res.status).toHaveBeenCalledWith(201);
+        // Dois inserts em formularios_cliente devem ter sido tentados
+        expect(formularioInsertCount).toBe(2);
+    });
+
     it('deve retornar 403 se agendamento estiver cancelado', async () => {
         (supabase.from as any).mockImplementation((table: string) => {
             if (table === 'agendamentos') {
