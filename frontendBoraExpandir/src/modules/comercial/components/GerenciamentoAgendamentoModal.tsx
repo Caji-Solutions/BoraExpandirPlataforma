@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { X, FileText, CheckCircle, AlertCircle, Upload } from 'lucide-react'
+import { X, FileText, CheckCircle, AlertCircle, Upload, Fingerprint } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import type { Agendamento } from '../../../types/comercial'
 import { Badge } from '../../../components/ui/Badge'
 import { useToast } from '../../../components/ui/Toast'
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function GerenciamentoAgendamentoModal({ agendamento, onClose, onAtualizado }: Props) {
+    const navigate = useNavigate()
     const { success, error: toastError, info } = useToast()
 
     // Status Local
@@ -105,10 +107,21 @@ export function GerenciamentoAgendamentoModal({ agendamento, onClose, onAtualiza
                         <div className="h-16 w-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center text-2xl font-bold">
                             {agendamento.cliente?.nome.charAt(0).toUpperCase()}
                         </div>
-                        <div>
+                        <div className="flex-1">
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{agendamento.cliente?.nome}</h3>
                             <p className="text-gray-600 dark:text-gray-400">{agendamento.produto} - {agendamento.data} às {agendamento.hora}</p>
                         </div>
+                        <button
+                            onClick={() => {
+                                const currentArea = window.location.pathname.split('/')[1] || 'comercial';
+                                const targetId = agendamento.cliente_id || agendamento.cliente?.id;
+                                navigate(`/${currentArea}/dna?clienteId=${targetId}&area=${currentArea}`);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all border border-blue-100 dark:border-blue-800"
+                        >
+                            <Fingerprint className="h-4 w-4" />
+                            DNA do Cliente
+                        </button>
                     </div>
 
                     {/* Status de Verificação do Pagamento */}

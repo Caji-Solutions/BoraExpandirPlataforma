@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   Calendar,
   Briefcase,
   AlertCircle,
+  CheckSquare,
   Clock,
   User,
   X,
@@ -11,7 +13,8 @@ import {
   Copy,
   Video,
   CalendarClock,
-  FileText
+  FileText,
+  Fingerprint
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
@@ -441,325 +444,275 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
         </div>
       </div>
 
-      {/* Popup / Modal de Detalhes */}
-      {selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-neutral-800 rounded-2xl border border-gray-200 dark:border-neutral-700 shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Header */}
-            <div className="p-5 border-b border-gray-100 dark:border-neutral-700 flex justify-between items-center bg-gray-50/50 dark:bg-neutral-800/50">
-               <div>
-                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">Detalhes do Agendamento</h2>
-                 <p className="text-sm text-gray-500 mt-0.5">ID: {selectedItem.id}</p>
-               </div>
-               <button 
-                 onClick={() => setSelectedItem(null)}
-                 className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-full transition-colors"
-               >
-                 <X className="h-5 w-5" />
-               </button>
-            </div>
-            
-            {/* Body */}
-            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-               <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-semibold tracking-wider mb-1">Serviço / Produto</p>
-                    <p className="text-lg font-bold text-gray-900 dark:text-white">
-                      {activeTab === 'consultorias' 
-                        ? (selectedItem.produto?.nome || selectedItem.produto_nome || 'Consultoria') 
-                        : (selectedItem.produto?.nome || selectedItem.servico_nome || 'Assessoria Jurídica')}
-                    </p>
-                  </div>
-                  <div>
-                    {getStatusBadge(activeTab === 'consultorias' ? selectedItem.status : 'confirmado')}
-                  </div>
-               </div>
+      {/* Popup / Modal de Detalhes com Portal */}
+      {selectedItem && createPortal(
+        <div className="fixed inset-0 z-[1000] w-screen h-screen bg-black/20 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-500">
+          <div className="bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md rounded-[3rem] border border-gray-100 dark:border-neutral-800 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col max-h-[90vh]">
+            <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-neutral-800">
+              {/* Header */}
+              <div className="sticky top-0 z-30 p-8 pt-12 pb-8 border-b border-gray-100/30 dark:border-neutral-800/30 flex justify-between items-start bg-white/40 dark:bg-neutral-900/40 backdrop-blur-2xl">
+                 <div>
+                   <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Detalhes do Agendamento</h2>
+                   <div className="flex items-center gap-4 mt-2 overflow-hidden">
+                     <p className="text-[10px] font-mono text-gray-400 uppercase tracking-[0.1em] opacity-80 border-r border-gray-100 dark:border-neutral-800 pr-4">
+                       ID: {selectedItem.id}
+                     </p>
+                     <button 
+                       onClick={() => {
+                         const currentArea = window.location.pathname.split('/')[1] || 'juridico';
+                         // Resolvemos para o ID unificado se disponível, fallback para o ID do item
+                         const targetId = selectedItem.cliente_id || selectedItem.id;
+                         navigate(`/${currentArea}/dna?clienteId=${targetId}&area=${currentArea}`);
+                       }}
+                       className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400 flex items-center gap-2 hover:text-blue-700 transition-colors group"
+                     >
+                       <Fingerprint className="h-4 w-4 transition-transform group-hover:scale-110" />
+                       DNA do Cliente
+                     </button>
+                   </div>
+                 </div>
+                 <button 
+                   onClick={() => setSelectedItem(null)}
+                   className="p-2.5 text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-2xl transition-all duration-200"
+                 >
+                   <X className="h-6 w-6" />
+                 </button>
+              </div>
+              
+              {/* Body */}
+              <div className="p-8 pt-6 space-y-10">
+                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-gray-400 uppercase font-bold tracking-[0.2em]">Serviço / Produto</p>
+                      <p className="text-2xl font-black text-blue-600 dark:text-blue-400 tracking-tight">
+                        {activeTab === 'consultorias' 
+                          ? (selectedItem.produto?.nome || selectedItem.produto_nome || 'Consultoria') 
+                          : (selectedItem.produto?.nome || selectedItem.servico_nome || 'Assessoria Jurídica')}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0">
+                      {getStatusBadge(activeTab === 'consultorias' ? selectedItem.status : 'confirmado')}
+                    </div>
+                 </div>
 
-               <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 dark:bg-neutral-900/50 p-3 rounded-xl border border-gray-100 dark:border-neutral-800">
-                    <p className="text-xs text-gray-500 uppercase font-semibold mb-1 flex items-center gap-1.5"><Calendar className="h-3 w-3"/> Data</p>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                       {selectedItem.data_hora || selectedItem.criado_em ? parseBackendDate(selectedItem.data_hora || selectedItem.criado_em).toLocaleDateString('pt-BR') : '—'}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 dark:bg-neutral-900/50 p-3 rounded-xl border border-gray-100 dark:border-neutral-800">
-                    <p className="text-xs text-gray-500 uppercase font-semibold mb-1 flex items-center gap-1.5"><Briefcase className="h-3 w-3"/> Serviço</p>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {selectedItem.produto?.nome || servicosCatalogo.find(s => s.id === selectedItem.produto_id)?.name || selectedItem.produto_id || 'Consultoria Jurídica'}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 dark:bg-neutral-900/50 p-3 rounded-xl border border-gray-100 dark:border-neutral-800">
-                    <p className="text-xs text-gray-500 uppercase font-semibold mb-1 flex items-center gap-1.5"><Clock className="h-3 w-3"/> Horário</p>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                       {(() => {
-                          const timeValue = selectedItem.data_hora || selectedItem.criado_em;
-                          if (!timeValue) return '—';
-                          
-                          // Agora a data chega no formato local via backend dateUtils
-                          const normalizedDate = parseBackendDate(timeValue);
-                          
-                          return formatHoraOnly(normalizedDate);
-                       })()}
-                       <span className="text-xs text-gray-500 ml-1">({selectedItem.duracao_minutos || 60}m)</span>
-                    </p>
-                  </div>
-                  {selectedItem.meet_link && (
-                    <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-xl border border-emerald-100 dark:border-emerald-800/30 flex flex-col justify-center">
-                      <p className="text-xs text-emerald-600 dark:text-emerald-400 uppercase font-bold mb-1 flex items-center gap-1.5"><Video className="h-3.5 w-3.5"/> Google Meet</p>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="bg-gray-50/50 dark:bg-neutral-800/30 p-5 rounded-3xl border border-gray-100/50 dark:border-neutral-800/50 transition-all hover:border-blue-200 dark:hover:border-blue-900/50 group">
+                      <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-2 flex items-center gap-2">
+                        <Calendar className="h-3.5 w-3.5 text-blue-500" /> Data
+                      </p>
+                      <p className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                         {selectedItem.data_hora || selectedItem.criado_em ? parseBackendDate(selectedItem.data_hora || selectedItem.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
+                      </p>
+                    </div>
+                    
+                    <div className="bg-gray-50/50 dark:bg-neutral-800/30 p-5 rounded-3xl border border-gray-100/50 dark:border-neutral-800/50 transition-all hover:border-blue-200 dark:hover:border-blue-900/50 group">
+                      <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-2 flex items-center gap-2">
+                        <Clock className="h-3.5 w-3.5 text-blue-500" /> Horário
+                      </p>
+                      <p className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                         {(() => {
+                            const timeValue = selectedItem.data_hora || selectedItem.criado_em;
+                            if (!timeValue) return '—';
+                            const normalizedDate = parseBackendDate(timeValue);
+                            return formatHoraOnly(normalizedDate);
+                         })()}
+                         <span className="text-xs text-gray-400 ml-2 font-medium">({selectedItem.duracao_minutos || 40}m)</span>
+                      </p>
+                    </div>
+                 </div>
+
+                 {selectedItem.meet_link && (
+                    <div className="bg-emerald-500/10 dark:bg-emerald-500/5 p-6 rounded-[2rem] border border-emerald-500/20 dark:border-emerald-500/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-emerald-500 rounded-2xl shadow-lg shadow-emerald-500/20">
+                          <Video className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase font-black tracking-widest mb-0.5">Google Meet</p>
+                          <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">Reunião por Videoconferência</p>
+                        </div>
+                      </div>
                       <a 
                         href={selectedItem.meet_link} 
                         target="_blank" 
                         rel="noreferrer"
-                        className="text-sm font-bold text-emerald-700 dark:text-emerald-300 hover:underline flex items-center gap-1"
+                        className="w-full sm:w-auto px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-emerald-500/20 text-center text-sm"
                       >
-                        Entrar na Reunião
+                        Entrar Agora
                       </a>
                     </div>
-                  )}
-               </div>
+                 )}
 
-               {/* Seção Condicional: Informações de Assessoria (Chamada) */}
-               {activeTab === 'assessorias' && selectedItem.respostas && (
-                 <div className="pt-4 border-t border-gray-100 dark:border-neutral-700">
-                    <p className="text-xs text-gray-500 uppercase font-semibold tracking-wider mb-3">Informações da Chamada</p>
-                    <div className="space-y-4">
-                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100/50 dark:border-blue-900/30">
-                             <p className="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase mb-1">Processos Ativos?</p>
-                             <p className="text-sm font-medium">{selectedItem.respostas.proc_ativos ? 'Sim' : 'Não'}</p>
-                          </div>
-                          <div className="p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100/50 dark:border-blue-900/30">
-                             <p className="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase mb-1">Possui Dependentes?</p>
-                             <p className="text-sm font-medium">{selectedItem.respostas.possui_dependentes ? 'Sim' : 'Não'}</p>
-                          </div>
-                       </div>
-                       
-                       {selectedItem.respostas.proc_tipos && (
-                         <div className="p-3 bg-gray-50 dark:bg-neutral-900/50 rounded-xl border border-gray-100 dark:border-neutral-800">
-                           <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Tipos de Processos</p>
-                           <p className="text-sm">{selectedItem.respostas.proc_tipos}</p>
+                 {/* Seção Condicional: Informações de Assessoria (Chamada) */}
+                 {activeTab === 'assessorias' && selectedItem.respostas && (
+                   <div className="space-y-4 pt-4">
+                      <p className="text-[10px] text-gray-400 uppercase font-black tracking-[0.2em]">Informações da Chamada</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                         <div className="p-4 bg-blue-50/30 dark:bg-blue-900/10 rounded-2xl border border-blue-100/50 dark:border-blue-900/20">
+                            <p className="text-[9px] text-blue-500 font-bold uppercase mb-1">Processos Ativos?</p>
+                            <p className="text-sm font-bold">{selectedItem.respostas.proc_ativos ? 'Sim' : 'Não'}</p>
                          </div>
-                       )}
+                         <div className="p-4 bg-blue-50/30 dark:bg-blue-900/10 rounded-2xl border border-blue-100/50 dark:border-blue-900/20">
+                            <p className="text-[9px] text-blue-500 font-bold uppercase mb-1">Possui Dependentes?</p>
+                            <p className="text-sm font-bold">{selectedItem.respostas.possui_dependentes ? 'Sim' : 'Não'}</p>
+                         </div>
+                      </div>
+                      {selectedItem.respostas.proc_tipos && (
+                        <div className="p-4 bg-gray-50/50 dark:bg-neutral-800/30 rounded-2xl border border-gray-100/50 dark:border-neutral-800/30">
+                          <p className="text-[9px] text-gray-400 font-bold uppercase mb-1">Tipos de Processos</p>
+                          <p className="text-sm font-medium">{selectedItem.respostas.proc_tipos}</p>
+                        </div>
+                      )}
+                   </div>
+                 )}
 
-                       {selectedItem.respostas.possui_dependentes && (
-                          <div className="p-3 bg-gray-50 dark:bg-neutral-900/50 rounded-xl border border-gray-100 dark:border-neutral-800">
-                            <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Qtd. Dependentes / Processos Dep.</p>
-                            <p className="text-sm font-medium">
-                              {selectedItem.respostas.dep_qtd || 0} dependente(s) {selectedItem.respostas.dep_processos ? '(Algum possui processo)' : '(Nenhum possui processo)'}
-                            </p>
-                          </div>
-                       )}
-                    </div>
-                 </div>
-               )}
-
-               <div className="pt-4 border-t border-gray-100 dark:border-neutral-700">
-                  <p className="text-xs text-gray-500 uppercase font-semibold tracking-wider mb-3">Dados do Cliente</p>
-                  <div className="space-y-3">
-                    <div>
-                      <span className="text-xs text-gray-400 block mb-0.5">Nome</span>
-                      <p className="font-medium text-gray-900 dark:text-white">
-                         {activeTab === 'consultorias' ? selectedItem.nome : (selectedItem.clientes?.nome || '—')}
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="overflow-hidden">
-                        <span className="text-xs text-gray-400 block mb-0.5">E-mail</span>
-                        <p className="font-medium text-gray-900 dark:text-white truncate" title={selectedItem.email || selectedItem.clientes?.email}>
-                           {selectedItem.email || selectedItem.clientes?.email || '—'}
+                 <div className="space-y-6 pt-4">
+                    <p className="text-[10px] text-gray-400 uppercase font-black tracking-[0.2em]">Dados do Cliente</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                      <div className="group">
+                        <span className="text-[10px] text-gray-400 font-bold block mb-1.5 group-hover:text-blue-500 transition-colors">Nome Completo</span>
+                        <p className="text-lg font-bold text-gray-900 dark:text-white">
+                           {activeTab === 'consultorias' ? selectedItem.nome : (selectedItem.clientes?.nome || '—')}
                         </p>
                       </div>
-                      <div>
-                        <span className="text-xs text-gray-400 block mb-0.5">Telefone</span>
-                        <p className="font-medium text-gray-900 dark:text-white">
+                      <div className="group">
+                        <span className="text-[10px] text-gray-400 font-bold block mb-1.5 group-hover:text-blue-500 transition-colors">Telefone / WhatsApp</span>
+                        <p className="text-lg font-bold text-gray-900 dark:text-white">
                            {selectedItem.telefone || selectedItem.clientes?.whatsapp || selectedItem.clientes?.telefone || '—'}
                         </p>
                       </div>
+                      <div className="sm:col-span-2 group">
+                        <span className="text-[10px] text-gray-400 font-bold block mb-1.5 group-hover:text-blue-500 transition-colors">E-mail de Contato</span>
+                        <p className="text-lg font-bold text-gray-900 dark:text-white truncate">
+                           {selectedItem.email || selectedItem.clientes?.email || '—'}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-               </div>
+                 </div>
 
-               {selectedItem.observacoes && (
-                 <div className="pt-4 border-t border-gray-100 dark:border-neutral-700">
-                    <p className="text-xs text-gray-500 uppercase font-semibold tracking-wider mb-2">Observações / Notas</p>
-                    <div className="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-700/30 p-3 rounded-xl">
-                      <p className="text-sm text-yellow-800 dark:text-yellow-500 italic">
+                 {selectedItem.observacoes && (
+                    <div className="p-6 bg-amber-500/5 dark:bg-amber-500/5 border border-amber-500/20 rounded-[2rem] relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <FileText className="h-12 w-12 text-amber-500" />
+                      </div>
+                      <p className="text-[10px] text-amber-600 dark:text-amber-400 uppercase font-black tracking-widest mb-3">Notas do Agendamento</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 font-medium leading-relaxed italic">
                         "{selectedItem.observacoes}"
                       </p>
                     </div>
+                 )}
+
+                 <div className="space-y-4 pt-4">
+                    <p className="text-[10px] text-gray-400 uppercase font-black tracking-[0.2em]">Responsáveis</p>
+                    <div className="bg-gray-50/50 dark:bg-neutral-800/30 p-5 rounded-3xl border border-gray-100/50 dark:border-neutral-800/50 flex items-center gap-4">
+                       <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-gray-200 to-gray-300 dark:from-neutral-700 dark:to-neutral-800 flex items-center justify-center font-bold text-gray-500">
+                         <User className="h-6 w-6" />
+                       </div>
+                       <div>
+                         <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-0.5">Criado Por</p>
+                         <p className="font-bold text-gray-900 dark:text-white">
+                           {(() => {
+                              const creatorId = selectedItem.usuario_id || selectedItem.responsavel_id;
+                              const user = usuariosSistema.find(u => u.id === creatorId);
+                              if (user?.full_name) return user.full_name;
+                              if (activeProfile?.id === creatorId) return activeProfile?.full_name;
+                              if (cachedProfiles[creatorId]) return cachedProfiles[creatorId];
+                              return creatorId ? 'Equipe Interna' : 'Sistema Automático';
+                            })()}
+                         </p>
+                       </div>
+                    </div>
                  </div>
-               )}
 
-               <div className="pt-4 border-t border-gray-100 dark:border-neutral-700">
-                    <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider block mb-1">Agendado / Criado Por</span>
-                    <div className="bg-gray-50 dark:bg-neutral-800/50 p-3 rounded-xl border border-gray-100 dark:border-neutral-800">
-                       <p className="font-medium text-gray-900 dark:text-white">
-                         {(() => {
-                            const creatorId = selectedItem.usuario_id || selectedItem.responsavel_id;
-                            const user = usuariosSistema.find(u => u.id === creatorId);
-                            if (user?.full_name) return user.full_name;
-                            if (activeProfile?.id === creatorId) return activeProfile?.full_name;
-                            if (cachedProfiles[creatorId]) return cachedProfiles[creatorId];
-                            if (creatorId && checkingSecurity) return '...';
-                            return creatorId ? 'Não identificado' : 'Sistema';
-                          })()}
-                       </p>
-                       <p className="text-xs text-gray-500 truncate mt-0.5">
-                         {(() => {
-                           const creatorId = selectedItem.usuario_id || selectedItem.responsavel_id;
-                           const user = usuariosSistema.find(u => u.id === creatorId);
-                           if (user?.email) return user.email;
-                           if (activeProfile?.id === creatorId) return activeProfile?.email;
-                           return '';
-                         })()}
-                       </p>
-                    </div>
-               </div>
-               
-               <div className="pt-4 border-t border-gray-100 dark:border-neutral-700">
-                  <div className="grid grid-cols-2 gap-4">
-                    {(selectedItem.valor || selectedItem.pagamento_status) && (
-                      <div>
-                        <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider block mb-1">Pagamento (Valor)</span>
-                        <p className="text-sm font-medium flex items-center gap-1 text-gray-900 dark:text-white">
-                           <CreditCard className="h-3.5 w-3.5 text-gray-400"/>
-                           {selectedItem.metodo_pagamento || selectedItem.pagamento_status || '—'} 
-                           {selectedItem.valor && (
-                             <span className="text-emerald-600 dark:text-emerald-400 ml-1 font-bold">R$ {Number(selectedItem.valor).toFixed(2)}</span>
-                           )}
-                        </p>
-                      </div>
-                    )}
-                    {selectedItem.meet_link && (
-                      <div className="flex flex-col">
-                        <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider block mb-1 flex-shrink-0">Google Meet (Link)</span>
-                        <div className="flex items-center gap-2 mt-1 min-w-0">
-                          <a href={selectedItem.meet_link} target="_blank" rel="noreferrer" className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 truncate max-w-[150px] sm:max-w-[200px]" title={selectedItem.meet_link}>
-                            {selectedItem.meet_link}
-                          </a>
-                          <button onClick={() => { 
-                            navigator.clipboard.writeText(selectedItem.meet_link); 
-                            toast.success('Link do Google Meet copiado!');
-                          }} className="p-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 rounded-md transition-colors flex-shrink-0" title="Copiar link">
-                            <Copy className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
-                          </button>
+                 {/* Segurança e Status */}
+                 <div className="space-y-4 pt-4">
+                    <p className="text-[10px] text-gray-400 uppercase font-black tracking-[0.2em]">Conferência de Segurança</p>
+                    <div className="grid grid-cols-1 gap-3">
+                        <div className={`p-5 rounded-3xl border flex items-center gap-4 transition-all ${
+                          selectedItem.pagamento_status === 'aprovado' 
+                            ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-700 dark:text-emerald-400' 
+                            : 'bg-amber-500/5 border-amber-500/20 text-amber-700 dark:text-amber-400'
+                        }`}>
+                          <div className={`p-2 rounded-xl scale-110 ${selectedItem.pagamento_status === 'aprovado' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
+                            {selectedItem.pagamento_status === 'aprovado' ? <CheckSquare className="h-4 w-4" /> : <CreditCard className="h-4 w-4" />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-black">Pagamento: {selectedItem.pagamento_status === 'aprovado' ? 'Confirmado' : 'Aguardando'}</p>
+                            <p className="text-xs opacity-70 font-medium">
+                              {selectedItem.pagamento_status === 'aprovado' 
+                                ? 'Fluxo financeiro validado com sucesso.' 
+                                : 'A liberação automática aguarda processamento bancário.'}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Botao Formulario do Cliente */}
-                  {activeTab === 'consultorias' && !checkingSecurity && (
-                    <div className="mt-4">
-                      {hasFormulario === true ? (
-                        <button
-                          onClick={() => navigate(`/juridico/dna?clienteId=${selectedItem.cliente_id}&tab=formularios`)}
-                          className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+                        <div className={`p-5 rounded-3xl border flex items-center gap-4 transition-all ${
+                          checkingSecurity ? 'bg-gray-50 dark:bg-neutral-800/50 border-gray-100 animate-pulse' :
+                          hasFormulario 
+                            ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-700 dark:text-emerald-400' 
+                            : 'bg-rose-500/5 border-rose-500/20 text-rose-700 dark:text-rose-400'
+                        }`}>
+                          <div className={`p-2 rounded-xl scale-110 ${hasFormulario ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                            {hasFormulario ? <FileText className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-black">Formulário Legal: {hasFormulario ? 'Preenchido' : 'Pendente'}</p>
+                            <p className="text-xs opacity-70 font-medium">
+                              {hasFormulario 
+                                ? 'Dados do cliente carregados para o atendimento.' 
+                                : 'Necessário preenchimento para iniciar a consultoria.'}
+                            </p>
+                          </div>
+                        </div>
+                    </div>
+                 </div>
+              </div>
+
+              {/* Footer Sticky com Blur */}
+              <div className="sticky bottom-0 z-30 p-8 pt-6 border-t border-gray-100/50 dark:border-neutral-800/50 bg-white/60 dark:bg-neutral-900/60 backdrop-blur-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <div className="w-full sm:w-auto">
+                    {activeTab === 'consultorias' && (
+                      <div className="flex flex-col gap-2">
+                        <button 
+                          onClick={() => navigate(`/juridico/assessoria?clienteId=${selectedItem.cliente_id}`)}
+                          disabled={selectedItem.pagamento_status !== 'aprovado' || !hasFormulario}
+                          className={`px-10 py-4 font-black rounded-2xl transition-all shadow-xl flex items-center justify-center gap-3 text-base ${
+                            selectedItem.pagamento_status === 'aprovado' && hasFormulario
+                              ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20'
+                              : 'bg-gray-100 dark:bg-neutral-800 text-gray-400 cursor-not-allowed shadow-none'
+                          }`}
                         >
-                          <FileText className="h-4 w-4" />
-                          Ver Formulario do Cliente
+                          <Briefcase className="h-5 w-5" />
+                          Iniciar Atendimento
                         </button>
-                      ) : hasFormulario === false ? (
-                        <div className="w-full px-4 py-2.5 bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-gray-400 font-semibold rounded-xl text-center text-sm">
-                          Formulario ainda nao preenchido
-                        </div>
-                      ) : null}
-                    </div>
-                  )}
-
-                  {/* Alertas de Segurança */}
-                  <div className="mt-4 space-y-3">
-                    {/* Conferência de Pagamento */}
-                    <div className={`p-3 rounded-xl border flex items-center gap-3 ${
-                      selectedItem.pagamento_status === 'aprovado' 
-                        ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800 text-emerald-700' 
-                        : 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800 text-amber-700'
-                    }`}>
-                      {selectedItem.pagamento_status === 'aprovado' ? (
-                        <Badge className="bg-emerald-500 text-white border-none rounded-full h-5 w-5 p-0 flex items-center justify-center">✓</Badge>
-                      ) : (
-                        <AlertCircle className="h-5 w-5 text-amber-500" />
-                      )}
-                      <div>
-                        <p className="text-sm font-bold">Pagamento: {selectedItem.pagamento_status === 'aprovado' ? 'Confirmado' : 'Pendente'}</p>
-                        <p className="text-xs opacity-80">
-                          {selectedItem.pagamento_status === 'aprovado' 
-                            ? 'O pagamento deste agendamento já foi verificado.' 
-                            : 'O agendamento ainda não consta como pago no sistema.'}
-                        </p>
+                        {(selectedItem.pagamento_status !== 'aprovado' || !hasFormulario) && (
+                          <p className="text-[9px] text-rose-500 font-black text-center uppercase tracking-widest mt-1">
+                            Bloqueado: Requer Pagamento e Formulário
+                          </p>
+                        )}
                       </div>
-                    </div>
-
-                    {/* Conferência de Formulário Legal */}
-                    <div className={`p-3 rounded-xl border flex items-center gap-3 ${
-                      checkingSecurity ? 'bg-gray-50 border-gray-100 animate-pulse' :
-                      hasFormulario 
-                        ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800 text-emerald-700' 
-                        : 'bg-rose-50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-800 text-rose-700'
-                    }`}>
-                      {checkingSecurity ? (
-                        <div className="h-5 w-5 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin" />
-                      ) : hasFormulario ? (
-                        <Badge className="bg-emerald-500 text-white border-none rounded-full h-5 w-5 p-0 flex items-center justify-center">✓</Badge>
-                      ) : (
-                        <AlertCircle className="h-5 w-5 text-rose-500" />
-                      )}
-                      <div>
-                        <p className="text-sm font-bold">{activeTab === 'consultorias' ? 'Formulário de Agendamento' : 'Formulário de Assessoria'}: {hasFormulario ? 'Encontrado' : 'Não Encontrado'}</p>
-                        <p className="text-xs opacity-80">
-                          {hasFormulario 
-                            ? 'O formulário inicial foi preenchido corretamente pelo cliente.' 
-                            : 'Atenção: O formulário inicial deste atendimento ainda não foi preenchido.'}
-                        </p>
-                      </div>
-                    </div>
+                    )}
                   </div>
-               </div>
-            </div>
-
-            {/* Footer */}
-            <div className="p-4 border-t border-gray-100 dark:border-neutral-700 bg-gray-50/80 dark:bg-neutral-900/50 flex flex-col sm:flex-row justify-between gap-3">
-                <div>
-                  {activeTab === 'consultorias' && (
-                    <div className="flex flex-col gap-1 w-full sm:w-auto">
-                      <button 
-                        onClick={() => navigate(`/juridico/assessoria?clienteId=${selectedItem.cliente_id}`)}
-                        disabled={selectedItem.pagamento_status !== 'aprovado' || !hasFormulario}
-                        className={`px-6 py-2.5 font-bold rounded-lg transition-all shadow-md flex items-center justify-center gap-2 ${
-                          selectedItem.pagamento_status === 'aprovado' && hasFormulario
-                            ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
-                        }`}
-                      >
-                        <Briefcase className="h-4 w-4" />
-                        Iniciar Consultoria
-                      </button>
-                      {(selectedItem.pagamento_status !== 'aprovado' || !hasFormulario) && (
-                        <p className="text-[10px] text-rose-500 font-bold text-center mt-1">
-                          Requer Pagamento Aprovado e Formulário Legal
-                        </p>
-                      )}
-                    </div>
-                  )}
-               </div>
-               <div className="flex flex-col gap-2 w-full sm:w-auto">
-                 <button
-                   onClick={() => setIsReagendamentoOpen(true)}
-                   className="w-full px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
-                 >
-                   <CalendarClock className="h-4 w-4" />
-                   Pedido de Reagendamento
-                 </button>
-                 <button
-                   onClick={() => setSelectedItem(null)}
-                   className="w-full px-6 py-2.5 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors"
-                 >
-                   Fechar
-                 </button>
-               </div>
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <button
+                      onClick={() => setIsReagendamentoOpen(true)}
+                      className="flex-1 sm:flex-none px-6 py-4 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-500 font-bold rounded-2xl transition-all flex items-center justify-center gap-2 text-sm border border-amber-500/20"
+                    >
+                      <CalendarClock className="h-4 w-4" />
+                      Reagendar
+                    </button>
+                    <button
+                      onClick={() => setSelectedItem(null)}
+                      className="flex-1 sm:flex-none px-8 py-4 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-gray-300 font-bold rounded-2xl hover:bg-gray-200 dark:hover:bg-neutral-700 transition-all text-sm"
+                    >
+                      Fechar
+                    </button>
+                  </div>
             </div>
           </div>
         </div>
+        </div>,
+        document.body
       )}
 
       {selectedItem && (
