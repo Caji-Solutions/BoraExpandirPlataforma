@@ -44,7 +44,7 @@ export default function DeliveryModal({ item, onClose, onSubmit }: DeliveryModal
       setRevisada(false)
       onClose()
     } catch (error) {
-      console.error('Erro ao enviar tradução:', error)
+      console.error('Erro ao enviar traducao:', error)
       alert('Erro ao enviar tradução. Tente novamente.')
     } finally {
       setUploading(false)

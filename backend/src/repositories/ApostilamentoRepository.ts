@@ -17,7 +17,7 @@ class ApostilamentoRepository {
       .maybeSingle();
 
     if (existingAp) {
-      console.log(`[ApostilamentoRepository.create] Apostilamento já existe para doc: ${params.documentoId}. Verificando orçamento...`);
+      console.log(`[ApostilamentoRepository.create] Apostilamento ja existe para doc: ${params.documentoId}. Verificando orcamento...`);
       const { data: existingOrc } = await supabase
         .from('orcamentos')
         .select('*')
@@ -26,7 +26,7 @@ class ApostilamentoRepository {
         .maybeSingle();
       
       if (existingOrc) {
-        console.log(`[ApostilamentoRepository.create] Retornando orçamento existente: ${existingOrc.id}`);
+        console.log(`[ApostilamentoRepository.create] Retornando orcamento existente: ${existingOrc.id}`);
         return {
           ...existingAp,
           orcamentoId: existingOrc.id,
@@ -50,7 +50,7 @@ class ApostilamentoRepository {
       .single();
 
     if (apError) {
-      console.error('Erro ao criar apostilamento no repositório:', apError);
+      console.error('Erro ao criar apostilamento no repositorio:', apError);
       throw apError;
     }
 
@@ -78,7 +78,7 @@ class ApostilamentoRepository {
       .single();
 
     if (orcError) {
-      console.error('Erro ao criar orçamento para apostilamento:', orcError);
+      console.error('Erro ao criar orcamento para apostilamento:', orcError);
       throw orcError;
     }
 
@@ -102,7 +102,7 @@ class ApostilamentoRepository {
     contentType: string
     nomeOriginal: string
   }) {
-    console.log(`[ApostilamentoRepository.submitComprovante] Iniciando para orçamentos: ${dados.orcamentoIds.join(', ')}`);
+    console.log(`[ApostilamentoRepository.submitComprovante] Iniciando para orcamentos: ${dados.orcamentoIds.join(', ')}`);
     console.log(`[ApostilamentoRepository.submitComprovante] Path: ${dados.filePath}`);
     
     // 1. Upload comprovante to Supabase Storage
@@ -126,7 +126,7 @@ class ApostilamentoRepository {
       .getPublicUrl(dados.filePath)
 
     const publicUrl = urlData?.publicUrl || ''
-    console.log(`[ApostilamentoRepository.submitComprovante] URL pública gerada: ${publicUrl}`);
+    console.log(`[ApostilamentoRepository.submitComprovante] URL publica gerada: ${publicUrl}`);
 
     // 3. Update all orcamentos with comprovante_url and change status to 'pendente_verificacao'
     const { data: orcamentos, error: updateError } = await supabase
@@ -142,7 +142,7 @@ class ApostilamentoRepository {
       .select()
 
     if (updateError) {
-      console.error('Erro ao atualizar orçamentos (apostila) com comprovante:', updateError)
+      console.error('Erro ao atualizar orcamentos (apostila) com comprovante:', updateError)
       throw updateError
     }
 

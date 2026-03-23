@@ -138,7 +138,7 @@ export function FamilyFolderCard({
   // Buscar formulários já enviados no carregamento
   const fetchSentForms = useCallback(async () => {
     try {
-      console.log('[DEBUG] Buscando formulários enviados para o cliente:', member.clienteId || member.id)
+      console.log('[DEBUG] Buscando formularios enviados para o cliente:', member.clienteId || member.id)
       const responses = await clienteService.getFormularioResponses(member.clienteId || member.id)
       
       // Filtrar pelas respostas que pertencem especificamente a este membro
@@ -155,7 +155,7 @@ export function FamilyFolderCard({
       const ids = new Set<string>(memberResponses.map((r: any) => r.formulario_juridico_id as string))
       setSentFormularioIds(ids)
     } catch (error) {
-      console.error('Erro ao buscar formulários enviados:', error)
+      console.error('Erro ao buscar formularios enviados:', error)
     }
   }, [member.id, member.clienteId, member.isTitular])
 
@@ -435,7 +435,7 @@ export function FamilyFolderCard({
       }
 
       const result = await response.json()
-      console.log('Formulário assinado enviado com sucesso:', result)
+      console.log('Formulario assinado enviado com sucesso:', result)
       
       // Atualizar lista de formulários enviados
       await fetchSentForms()
@@ -443,7 +443,7 @@ export function FamilyFolderCard({
       // Show success (you could add a toast notification here)
       alert('Formulário assinado enviado com sucesso!')
     } catch (error: any) {
-      console.error('Erro ao enviar formulário:', error)
+      console.error('Erro ao enviar formulario:', error)
       setUploadError(error.message || 'Erro ao enviar formulário assinado')
       alert(error.message || 'Erro ao enviar formulário assinado')
     } finally {
@@ -461,7 +461,7 @@ export function FamilyFolderCard({
       setRequestedSuccessfully(true)
 
     } catch (error: any) {
-      console.error('Erro ao solicitar tradução:', error)
+      console.error('Erro ao solicitar traducao:', error)
       alert(error.message || 'Erro ao solicitar tradução')
     } finally {
       setIsRequestingQuote(false)

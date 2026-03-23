@@ -384,7 +384,7 @@ class FinanceiroController {
     /**
 
      * GET /financeiro/contratos/comprovantes/pendentes
-     * Lista contratos com comprovante enviado aguardando verificaÃƒÂ§ÃƒÂ£o
+     * Lista contratos com comprovante enviado aguardando verificação
      */
     async getComprovantesContratosPendentes(_req: any, res: any) {
         try {
@@ -424,15 +424,15 @@ class FinanceiroController {
 
             const contrato = await ContratoServicoRepository.getContratoById(id)
             if (!contrato) {
-                return res.status(404).json({ message: 'Contrato nÃƒÂ£o encontrado' })
+                return res.status(404).json({ message: 'Contrato não encontrado' })
             }
 
             if (!contrato.pagamento_comprovante_url) {
-                return res.status(400).json({ message: 'Este contrato nÃƒÂ£o possui comprovante enviado.' })
+                return res.status(400).json({ message: 'Este contrato não possui comprovante enviado.' })
             }
 
             if (contrato.pagamento_status === 'aprovado') {
-                return res.status(400).json({ message: 'Este comprovante jÃƒÂ¡ foi aprovado.' })
+                return res.status(400).json({ message: 'Este comprovante já foi aprovado.' })
             }
 
             const updated = await ContratoServicoRepository.updateContrato(id, {
@@ -537,16 +537,16 @@ class FinanceiroController {
 
             const contrato = await ContratoServicoRepository.getContratoById(id)
             if (!contrato) {
-                return res.status(404).json({ message: 'Contrato nÃƒÂ£o encontrado' })
+                return res.status(404).json({ message: 'Contrato não encontrado' })
             }
 
             if (!contrato.pagamento_comprovante_url) {
-                return res.status(400).json({ message: 'Este contrato nÃƒÂ£o possui comprovante enviado.' })
+                return res.status(400).json({ message: 'Este contrato não possui comprovante enviado.' })
             }
 
             const updated = await ContratoServicoRepository.updateContrato(id, {
                 pagamento_status: 'recusado',
-                pagamento_nota_recusa: nota || 'Comprovante recusado sem observaÃƒÂ§ÃƒÂ£o.',
+                pagamento_nota_recusa: nota || 'Comprovante recusado sem observação.',
                 pagamento_verificado_por: verificado_por || null,
                 pagamento_verificado_em: new Date().toISOString(),
                 atualizado_em: new Date().toISOString()

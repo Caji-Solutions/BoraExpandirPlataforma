@@ -137,7 +137,7 @@ export function FamilyFolders({
 
                 setMembers(familyMembers)
             } catch (error) {
-                console.error('Erro ao buscar dados da família:', error)
+                console.error('Erro ao buscar dados da familia:', error)
             }
         }
 

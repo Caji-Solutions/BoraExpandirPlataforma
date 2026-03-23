@@ -36,7 +36,7 @@ class NotificationService {
             criado_em: new Date().toISOString()
         }
 
-        console.log('NotificationService: Criando notificação...', notificationData)
+        console.log('NotificationService: Criando notificacao...', notificationData)
 
         const { data, error } = await supabase
             .from('notificacoes')
@@ -45,7 +45,7 @@ class NotificationService {
             .single()
 
         if (error) {
-            console.error('NotificationService: Erro ao criar notificação:', error)
+            console.error('NotificationService: Erro ao criar notificacao:', error)
             throw error
         }
 
@@ -63,7 +63,7 @@ class NotificationService {
             .order('criado_em', { ascending: false })
 
         if (error) {
-            console.error('NotificationService: Erro ao buscar notificações:', error)
+            console.error('NotificationService: Erro ao buscar notificacoes:', error)
             throw error
         }
 

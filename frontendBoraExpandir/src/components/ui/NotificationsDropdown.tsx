@@ -92,7 +92,7 @@ export function NotificationsDropdown() {
       
       setNotificacoes(mapped)
     } catch (error) {
-      console.error('Erro ao buscar notificações no dropdown:', error)
+      console.error('Erro ao buscar notificacoes no dropdown:', error)
     } finally {
       setIsLoading(false)
     }

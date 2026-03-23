@@ -690,7 +690,7 @@ export default function Comercial() {
   const toast = useToast()
 
   const handleShowGeracaoContrato = () => {
-    console.log('Iniciando criação de contrato...')
+    console.log('Iniciando criacao de contrato...')
     console.log(toast.info('hahahah', 10))
     toast.info('Iniciando criação de contrato...', 10)
     setShowGeracaoContrato(true)

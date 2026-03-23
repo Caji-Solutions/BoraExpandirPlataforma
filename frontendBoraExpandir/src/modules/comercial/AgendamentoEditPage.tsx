@@ -130,7 +130,7 @@ export function AgendamentoEditPage() {
                     setAgendamentosDia(data || [])
                 }
             } catch (e) {
-                console.error('Erro ao buscar ocupação do dia', e)
+                console.error('Erro ao buscar ocupacao do dia', e)
             }
         }
         fetchDia()

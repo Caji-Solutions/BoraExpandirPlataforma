@@ -20,7 +20,7 @@ class JuridicoController {
                 data: funcionarios
             })
         } catch (error: any) {
-            console.error('Erro ao buscar funcionários do jurídico:', error)
+            console.error('Erro ao buscar funcionarios do juridico:', error)
             return res.status(500).json({ 
                 message: 'Erro ao buscar funcionários do jurídico', 
                 error: error.message 
@@ -48,7 +48,7 @@ class JuridicoController {
                 data: funcionario
             })
         } catch (error: any) {
-            console.error('Erro ao buscar funcionário:', error)
+            console.error('Erro ao buscar funcionario:', error)
             return res.status(500).json({ 
                 message: 'Erro ao buscar funcionário', 
                 error: error.message 
@@ -90,7 +90,7 @@ class JuridicoController {
                 total: processos.length
             })
         } catch (error: any) {
-            console.error('Erro ao buscar processos sem responsável:', error)
+            console.error('Erro ao buscar processos sem responsavel:', error)
             return res.status(500).json({ 
                 message: 'Erro ao buscar processos sem responsável', 
                 error: error.message 
@@ -115,7 +115,7 @@ class JuridicoController {
                 total: processos.length
             })
         } catch (error: any) {
-            console.error('Erro ao buscar processos do responsável:', error)
+            console.error('Erro ao buscar processos do responsavel:', error)
             return res.status(500).json({ 
                 message: 'Erro ao buscar processos do responsável', 
                 error: error.message 
@@ -151,7 +151,7 @@ class JuridicoController {
                 data: processo
             })
         } catch (error: any) {
-            console.error('Erro ao atribuir responsável jurídico:', error)
+            console.error('Erro ao atribuir responsavel juridico:', error)
             return res.status(500).json({ 
                 message: 'Erro ao atribuir responsável jurídico', 
                 error: error.message 
@@ -170,7 +170,7 @@ class JuridicoController {
                 total: agendamentos.length
             })
         } catch (error: any) {
-            console.error('Erro ao buscar agendamentos para delegação:', error)
+            console.error('Erro ao buscar agendamentos para delegacao:', error)
             return res.status(500).json({ 
                 message: 'Erro ao buscar agendamentos para delegação', 
                 error: error.message 
@@ -205,7 +205,7 @@ class JuridicoController {
                 data: agendamento
             })
         } catch (error: any) {
-            console.error('Erro ao atribuir responsável ao agendamento:', error)
+            console.error('Erro ao atribuir responsavel ao agendamento:', error)
             return res.status(500).json({ 
                 message: 'Erro ao atribuir responsável ao agendamento', 
                 error: error.message 
@@ -224,7 +224,7 @@ class JuridicoController {
                 total: clientes.length
             })
         } catch (error: any) {
-            console.error('Erro ao buscar clientes sem responsável:', error)
+            console.error('Erro ao buscar clientes sem responsavel:', error)
             return res.status(500).json({ 
                 message: 'Erro ao buscar clientes sem responsável', 
                 error: error.message 
@@ -249,7 +249,7 @@ class JuridicoController {
                 total: clientes.length
             })
         } catch (error: any) {
-            console.error('Erro ao buscar clientes do responsável:', error)
+            console.error('Erro ao buscar clientes do responsavel:', error)
             return res.status(500).json({ 
                 message: 'Erro ao buscar clientes do responsável', 
                 error: error.message 
@@ -316,7 +316,7 @@ class JuridicoController {
                 data: subservicos
             });
         } catch (error: any) {
-            console.error('Erro ao buscar subserviços:', error);
+            console.error('Erro ao buscar subservicos:', error);
             return res.status(500).json({
                 message: 'Erro ao buscar subserviços',
                 error: error.message
@@ -338,7 +338,7 @@ class JuridicoController {
                 data: estatisticas
             })
         } catch (error: any) {
-            console.error('Erro ao buscar estatísticas:', error)
+            console.error('Erro ao buscar estatisticas:', error)
             return res.status(500).json({ 
                 message: 'Erro ao buscar estatísticas', 
                 error: error.message 
@@ -421,7 +421,7 @@ class JuridicoController {
                 }
             })
         } catch (error: any) {
-            console.error('Erro ao upload de formulário jurídico:', error)
+            console.error('Erro ao upload de formulario juridico:', error)
             return res.status(500).json({
                 message: 'Erro ao enviar documento para o cliente',
                 error: error.message
@@ -445,7 +445,7 @@ class JuridicoController {
                 data: formularios
             })
         } catch (error: any) {
-            console.error('Erro ao buscar formulários jurídico:', error)
+            console.error('Erro ao buscar formularios juridico:', error)
             return res.status(500).json({
                 message: 'Erro ao buscar documentos do jurídico',
                 error: error.message
@@ -468,7 +468,7 @@ class JuridicoController {
                 message: 'Documento deletado com sucesso'
             })
         } catch (error: any) {
-            console.error('Erro ao deletar formulário jurídico:', error)
+            console.error('Erro ao deletar formulario juridico:', error)
             return res.status(500).json({
                 message: 'Erro ao deletar documento',
                 error: error.message
@@ -492,7 +492,7 @@ class JuridicoController {
                 data: formularios
             })
         } catch (error: any) {
-            console.error('Erro ao buscar formulários com status:', error)
+            console.error('Erro ao buscar formularios com status:', error)
             return res.status(500).json({
                 message: 'Erro ao buscar formulários com status',
                 error: error.message
@@ -537,7 +537,7 @@ class JuridicoController {
                 data: formulario
             })
         } catch (error: any) {
-            console.error('Erro ao atualizar status do formulário cliente:', error)
+            console.error('Erro ao atualizar status do formulario cliente:', error)
             return res.status(500).json({
                 message: 'Erro ao atualizar status do formulário',
                 error: error.message
@@ -587,7 +587,7 @@ class JuridicoController {
                 data: nota
             })
         } catch (error: any) {
-            console.error('[JuridicoController] Erro fatal ao criar nota jurídica:', error)
+            console.error('[JuridicoController] Erro fatal ao criar nota juridica:', error)
             return res.status(500).json({
                 message: 'Erro ao criar nota jurídica',
                 error: error.message
@@ -611,7 +611,7 @@ class JuridicoController {
                 data: notas
             })
         } catch (error: any) {
-            console.error('Erro ao buscar notas jurídicas:', error)
+            console.error('Erro ao buscar notas juridicas:', error)
             return res.status(500).json({
                 message: 'Erro ao buscar notas jurídicas',
                 error: error.message
@@ -648,7 +648,7 @@ class JuridicoController {
                 message: 'Nota jurídica deletada com sucesso'
             })
         } catch (error: any) {
-            console.error('Erro ao deletar nota jurídica:', error)
+            console.error('Erro ao deletar nota juridica:', error)
             return res.status(500).json({
                 message: 'Erro ao deletar nota jurídica',
                 error: error.message
@@ -897,7 +897,7 @@ class JuridicoController {
                 data: assessoria
             })
         } catch (error: any) {
-            console.error('Erro ao criar assessoria jurídica no controller:', error)
+            console.error('Erro ao criar assessoria juridica no controller:', error)
             return res.status(500).json({
                 message: 'Erro ao criar assessoria jurídica',
                 error: error.message
@@ -966,7 +966,7 @@ class JuridicoController {
                 total: assessorias.length
             })
         } catch (error: any) {
-            console.error('Erro ao buscar assessorias do responsável:', error)
+            console.error('Erro ao buscar assessorias do responsavel:', error)
             return res.status(500).json({ 
                 message: 'Erro ao buscar assessorias do responsável', 
                 error: error.message 
@@ -992,7 +992,7 @@ class JuridicoController {
                 total: agendamentos.length
             })
         } catch (error: any) {
-            console.error('Erro ao buscar agendamentos do responsável:', error)
+            console.error('Erro ao buscar agendamentos do responsavel:', error)
             return res.status(500).json({
                 message: 'Erro ao buscar agendamentos do responsável',
                 error: error.message
@@ -1016,7 +1016,7 @@ class JuridicoController {
             if (error) throw error
             return res.status(200).json({ preenchido: data && data.length > 0 })
         } catch (error: any) {
-            console.error('Erro ao verificar formulário preenchido:', error)
+            console.error('Erro ao verificar formulario preenchido:', error)
             return res.status(500).json({ message: 'Erro ao verificar formulário', error: error.message })
         }
     }

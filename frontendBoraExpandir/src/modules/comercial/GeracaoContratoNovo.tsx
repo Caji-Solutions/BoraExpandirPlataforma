@@ -120,9 +120,9 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
     }
 
     setLoading(true)
-    console.log('Iniciando a geração do contrato...');
-    console.log('Dados do contrato antes da geração:', contrato);
-    console.log('Etapa atual antes da geração:', etapa);
+    console.log('Iniciando a geracao do contrato...');
+    console.log('Dados do contrato antes da geracao:', contrato);
+    console.log('Etapa atual antes da geracao:', etapa);
     
     try {
       await new Promise(resolve => setTimeout(resolve, 1500))
@@ -156,7 +156,7 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
       console.log('Erro ao gerar contrato:');
     } finally {
       setLoading(false)
-      console.log('Geração do contrato concluída.');
+      console.log('Geracao do contrato concluida.');
     }
   }
 

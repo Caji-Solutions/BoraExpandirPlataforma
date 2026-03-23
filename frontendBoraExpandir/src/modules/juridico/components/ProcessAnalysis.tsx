@@ -221,7 +221,7 @@ export function ProcessAnalysis({
           ...deps.map((d: any) => ({ id: d.id, name: d.nome_completo || d.name, type: d.parentesco || 'Dependente' }))
         ]);
       } catch (e) {
-        console.error('Erro ao buscar membros da família:', e);
+        console.error('Erro ao buscar membros da familia:', e);
       }
     };
     fetchFamily();
@@ -236,7 +236,7 @@ export function ProcessAnalysis({
           const data = await getFormulariosWithStatus(clienteId, membroId);
           setFormularios(data);
         } catch (error) {
-          console.error('Erro ao buscar formulários:', error);
+          console.error('Erro ao buscar formularios:', error);
         } finally {
           setFormulariosLoading(false);
         }
@@ -1052,7 +1052,7 @@ export function ProcessAnalysis({
                               : f
                           ));
                         } catch (error) {
-                          console.error('Erro ao aprovar formulário:', error);
+                          console.error('Erro ao aprovar formulario:', error);
                         } finally {
                           setIsUpdatingFormStatus(false);
                         }
@@ -1167,7 +1167,7 @@ export function ProcessAnalysis({
             ));
             setFormRejectModalOpen(false);
           } catch (error) {
-            console.error('Erro ao rejeitar formulário:', error);
+            console.error('Erro ao rejeitar formulario:', error);
           } finally {
             setIsUpdatingFormStatus(false);
           }

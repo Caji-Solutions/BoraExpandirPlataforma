@@ -18,7 +18,7 @@ export const authMiddleware = async (req: any, res: Response, next: NextFunction
             .single()
 
         if (error || !profile) {
-            console.error('[authMiddleware] Token inválido ou expirado:', token)
+            console.error('[authMiddleware] Token invalido ou expirado:', token)
             return res.status(401).json({ error: 'Token inválido ou expirado' })
         }
 

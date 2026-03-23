@@ -31,7 +31,7 @@ export default function Parceiro({ client }: ParceiroProps) {
         const data = await parceiroService.getMetrics(client.id);
         setMetrics(data);
       } catch (error) {
-        console.error('Erro ao buscar métricas:', error);
+        console.error('Erro ao buscar metricas:', error);
       } finally {
         setIsLoading(false);
       }

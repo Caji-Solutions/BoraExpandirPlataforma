@@ -108,7 +108,7 @@ export default function DelegacaoFila() {
       console.log('--- DEBUG DELEGACAO FILA ---');
       console.log('Processos:', processosData);
       console.log('Agendamentos:', agendamentosData);
-      console.log('Funcionários:', funcionariosData);
+      console.log('Funcionarios:', funcionariosData);
       console.log('----------------------------');
 
       const processosMarcados = processosData.map(p => ({ ...p, _tipoFila: 'processo' }));

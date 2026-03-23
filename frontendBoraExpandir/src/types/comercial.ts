@@ -87,7 +87,7 @@ export interface RequerimentoFormData {
 export interface AssinaturaDigital {
   id: string
   contrato_id: string
-  assinado_por: string // nome do signatÃ¡rio
+  assinado_por: string // nome do signatário
   tipo: 'cliente' | 'empresa'
   ip_assinatura: string
   data_assinatura: string

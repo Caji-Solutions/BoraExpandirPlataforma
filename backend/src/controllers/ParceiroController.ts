@@ -82,7 +82,7 @@ class ParceiroController {
             const metrics = await ParceiroRepository.getMetrics(id);
             return res.status(200).json(metrics);
         } catch (error: any) {
-            console.error('Erro ao buscar métricas do parceiro:', error);
+            console.error('Erro ao buscar metricas do parceiro:', error);
             return res.status(500).json({ message: 'Erro ao buscar métricas do parceiro', error: error.message });
         }
     }

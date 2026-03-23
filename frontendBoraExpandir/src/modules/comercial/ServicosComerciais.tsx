@@ -35,7 +35,7 @@ export default function ServicosComerciais() {
         const catalog = await catalogService.getCatalogServices()
         setServices(catalog || [])
       } catch (err) {
-        console.error('Erro ao carregar serviços:', err)
+        console.error('Erro ao carregar servicos:', err)
         toast.error('Erro ao carregar serviços')
       } finally {
         setLoading(false)

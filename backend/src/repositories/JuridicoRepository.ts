@@ -63,7 +63,7 @@ class JuridicoRepository {
             .order('full_name', { ascending: true })
 
         if (error) {
-            console.error('Erro ao buscar funcionários do jurídico:', error)
+            console.error('Erro ao buscar funcionarios do juridico:', error)
             throw error
         }
 
@@ -80,7 +80,7 @@ class JuridicoRepository {
 
         if (error) {
             if (error.code === 'PGRST116') return null // Not found
-            console.error('Erro ao buscar funcionário:', error)
+            console.error('Erro ao buscar funcionario:', error)
             throw error
         }
 
@@ -171,7 +171,7 @@ class JuridicoRepository {
             .order('criado_em', { ascending: false })
 
         if (error) {
-            console.error('Erro ao buscar processos sem responsável:', error)
+            console.error('Erro ao buscar processos sem responsavel:', error)
             throw error
         }
 
@@ -199,7 +199,7 @@ class JuridicoRepository {
             .order('criado_em', { ascending: false })
 
         if (error) {
-            console.error('Erro ao buscar processos do responsável:', error)
+            console.error('Erro ao buscar processos do responsavel:', error)
             throw error
         }
 
@@ -220,7 +220,7 @@ class JuridicoRepository {
             .single()
 
         if (error) {
-            console.error('Erro ao atribuir responsável jurídico:', error)
+            console.error('Erro ao atribuir responsavel juridico:', error)
             throw error
         }
 
@@ -240,7 +240,7 @@ class JuridicoRepository {
             .single()
 
         if (error) {
-            console.error('Erro ao atribuir responsável jurídico ao agendamento:', error)
+            console.error('Erro ao atribuir responsavel juridico ao agendamento:', error)
             throw error
         }
 
@@ -268,7 +268,7 @@ class JuridicoRepository {
             .order('data_hora', { ascending: true })
 
         if (error) {
-            console.error('Erro ao buscar agendamentos para delegação:', error)
+            console.error('Erro ao buscar agendamentos para delegacao:', error)
             throw error
         }
 
@@ -345,7 +345,7 @@ class JuridicoRepository {
             .order('data_hora', { ascending: true })
 
         if (error) {
-            console.error('Erro ao buscar agendamentos do responsável:', error)
+            console.error('Erro ao buscar agendamentos do responsavel:', error)
             throw error
         }
 
@@ -407,7 +407,7 @@ class JuridicoRepository {
             .eq('responsavel_id', responsavelId)
 
         if (error) {
-            console.error('Erro ao buscar clientes do responsável via processos:', error)
+            console.error('Erro ao buscar clientes do responsavel via processos:', error)
             throw error
         }
 
@@ -436,7 +436,7 @@ class JuridicoRepository {
             .is('responsavel_id', null)
 
         if (error) {
-            console.error('Erro ao buscar clientes sem responsável via processos:', error)
+            console.error('Erro ao buscar clientes sem responsavel via processos:', error)
             throw error
         }
 
@@ -649,7 +649,7 @@ class JuridicoRepository {
             .single()
 
         if (error) {
-            console.error('Erro ao criar formulário jurídico:', error)
+            console.error('Erro ao criar formulario juridico:', error)
             throw error
         }
 
@@ -661,7 +661,7 @@ class JuridicoRepository {
                 titulo: 'Novo Documento Disponível',
                 mensagem: `O jurídico enviou um novo documento para você: ${params.nomeOriginal}. Você pode visualizá-lo em sua central.`,
                 tipo: 'info'
-            }).catch(e => console.error('Erro ao notificar envio de formulário:', e))
+            }).catch(e => console.error('Erro ao notificar envio de formulario:', e))
         }
 
         return data
@@ -676,7 +676,7 @@ class JuridicoRepository {
             .order('criado_em', { ascending: false })
 
         if (error) {
-            console.error('Erro ao buscar formulários jurídico:', error)
+            console.error('Erro ao buscar formularios juridico:', error)
             throw error
         }
 
@@ -702,7 +702,7 @@ class JuridicoRepository {
             .single()
 
         if (fetchError) {
-            console.error('Erro ao buscar formulário jurídico para deletar:', fetchError)
+            console.error('Erro ao buscar formulario juridico para deletar:', fetchError)
             throw fetchError
         }
 
@@ -722,7 +722,7 @@ class JuridicoRepository {
             .eq('id', formularioId)
 
         if (deleteError) {
-            console.error('Erro ao deletar formulário jurídico:', deleteError)
+            console.error('Erro ao deletar formulario juridico:', deleteError)
             throw deleteError
         }
     }
@@ -743,7 +743,7 @@ class JuridicoRepository {
         const { data: formularios, error } = await query
 
         if (error) {
-            console.error('Erro ao buscar formulários jurídico:', error)
+            console.error('Erro ao buscar formularios juridico:', error)
             throw error
         }
 
@@ -760,7 +760,7 @@ class JuridicoRepository {
             .in('formulario_juridico_id', formularioIds)
 
         if (respostasError) {
-            console.error('Erro ao buscar respostas de formulários:', respostasError)
+            console.error('Erro ao buscar respostas de formularios:', respostasError)
             // Continue without responses if there's an error
         }
 
@@ -826,7 +826,7 @@ class JuridicoRepository {
             .single()
 
         if (error) {
-            console.error('Erro ao atualizar status do formulário cliente:', error)
+            console.error('Erro ao atualizar status do formulario cliente:', error)
             throw error
         }
 
@@ -898,7 +898,7 @@ class JuridicoRepository {
             .order('created_at', { ascending: false })
 
         if (error) {
-            console.error('Erro ao buscar notas jurídicas:', error)
+            console.error('Erro ao buscar notas juridicas:', error)
             throw error
         }
 
@@ -914,7 +914,7 @@ class JuridicoRepository {
             .single()
 
         if (error && error.code !== 'PGRST116') { // Ignorar erro de "não encontrado" que o single() retorna
-            console.error('Erro ao buscar nota jurídica por ID:', error)
+            console.error('Erro ao buscar nota juridica por ID:', error)
             throw error
         }
         return data || null
@@ -928,7 +928,7 @@ class JuridicoRepository {
             .eq('id', noteId)
 
         if (error) {
-            console.error('Erro ao deletar nota jurídica:', error)
+            console.error('Erro ao deletar nota juridica:', error)
             throw error
         }
     }
@@ -949,7 +949,7 @@ class JuridicoRepository {
         const dependenteId = params.membroId === params.clienteId ? null : (params.membroId || null);
 
         // 1. Verificar se o documento já existe
-        console.log('Verificando se já existe um documento deste tipo para o cliente/processo...')
+        console.log('Verificando se ja existe um documento deste tipo para o cliente/processo...')
         let query = supabase
             .from('documentos')
             .select('*')
@@ -971,7 +971,7 @@ class JuridicoRepository {
         const { data: existingDoc, error: findError } = await query.maybeSingle()
 
         if (findError) {
-            console.error('Erro ao buscar documento existente NO REPOSITORIO (não crítico):', findError)
+            console.error('Erro ao buscar documento existente NO REPOSITORIO (nao critico):', findError)
         }
 
         let doc;
@@ -1026,7 +1026,7 @@ class JuridicoRepository {
 
         // 2. Criar notificação se solicitado
         if (params.notificar === true || (params.notificar as any) === 'true') {
-            console.log('Notificar é true, tentando criar notificação via NotificationService...')
+            console.log('Notificar e true, tentando criar notificacao via NotificationService...')
             
             await NotificationService.createNotification({
                 clienteId: params.clienteId,
@@ -1035,10 +1035,10 @@ class JuridicoRepository {
                 mensagem: `A equipe jurídica solicitou o seguinte documento: ${params.tipo}. Por favor, realize o envio o quanto antes.`,
                 prazo: params.prazo || 7
             }).catch(error => {
-                console.error('Erro ao criar notificação via Service:', error)
+                console.error('Erro ao criar notificacao via Service:', error)
             })
         } else {
-            console.log('Notificar está desmarcado ou não é true/boolean.')
+            console.log('Notificar esta desmarcado ou nao e true/boolean.')
         }
         
         console.log('=====================================================')
@@ -1066,7 +1066,7 @@ class JuridicoRepository {
             .single()
 
         if (error) {
-            console.error('Erro ao solicitar requerimento no repositório:', error)
+            console.error('Erro ao solicitar requerimento no repositorio:', error)
             throw error
         }
 
@@ -1088,7 +1088,7 @@ class JuridicoRepository {
 
         // 3. Criar solicitações de documentos acopladas
         if (params.documentosAcoplados && params.documentosAcoplados.length > 0) {
-            console.log(`Criando ${params.documentosAcoplados.length} solicitações acopladas...`)
+            console.log(`Criando ${params.documentosAcoplados.length} solicitacoes acopladas...`)
             for (const docRequest of params.documentosAcoplados) {
                 await this.solicitarDocumento({
                     clienteId: params.clienteId,
@@ -1098,13 +1098,13 @@ class JuridicoRepository {
                     requerimentoId: requirementId,
                     notificar: false, // Evitar spam de notificações se já notificamos o requerimento
                     criadorId: params.criadorId
-                }).catch(e => console.error('Erro ao criar solicitação acoplada:', e))
+                }).catch(e => console.error('Erro ao criar solicitacao acoplada:', e))
             }
         }
 
         // 4. Fazer upload de arquivos físicos e criar registros em documentos
         if (params.files && params.files.length > 0) {
-            console.log(`Fazendo upload de ${params.files.length} arquivos físicos...`)
+            console.log(`Fazendo upload de ${params.files.length} arquivos fisicos...`)
             for (const file of params.files) {
                 try {
                     const timestamp = Date.now()
@@ -1138,7 +1138,7 @@ class JuridicoRepository {
                             atualizado_em: new Date().toISOString()
                         }])
                 } catch (e) {
-                    console.error('Erro ao processar arquivo físico do requerimento:', e)
+                    console.error('Erro ao processar arquivo fisico do requerimento:', e)
                 }
             }
         }
@@ -1234,7 +1234,7 @@ class JuridicoRepository {
             .single()
 
         if (error) {
-            console.error('Erro ao atualizar processo no repositório:', error)
+            console.error('Erro ao atualizar processo no repositorio:', error)
             throw error
         }
 
@@ -1266,7 +1266,7 @@ class JuridicoRepository {
             .single()
 
         if (error) {
-            console.error('Erro ao criar assessoria jurídica no repositório:', error)
+            console.error('Erro ao criar assessoria juridica no repositorio:', error)
             throw error
         }
 
@@ -1302,7 +1302,7 @@ class JuridicoRepository {
             .maybeSingle()
 
         if (error) {
-            console.error('Erro ao buscar última assessoria:', error)
+            console.error('Erro ao buscar ultima assessoria:', error)
             throw error
         }
 
@@ -1320,7 +1320,7 @@ class JuridicoRepository {
             .order('criado_em', { ascending: false })
 
         if (error) {
-            console.error('Erro ao buscar assessorias por responsável:', error)
+            console.error('Erro ao buscar assessorias por responsavel:', error)
             throw error
         }
 

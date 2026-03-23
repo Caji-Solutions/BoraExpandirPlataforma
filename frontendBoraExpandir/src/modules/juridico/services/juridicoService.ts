@@ -715,7 +715,7 @@ export async function getAllSubservices(): Promise<any[]> {
   const response = await fetch(`${API_BASE_URL}/juridico/subservicos`);
   if (!response.ok) {
     const errorBody = await response.text();
-    console.error('Erro ao buscar subserviços:', errorBody);
+    console.error('Erro ao buscar subservicos:', errorBody);
     throw new Error('Falha ao buscar subserviços');
   }
   const result = await response.json();

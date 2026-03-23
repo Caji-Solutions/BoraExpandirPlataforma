@@ -121,7 +121,7 @@ export function ComprovantesPage() {
                 const data = await catalogService.getCatalogServices()
                 setServices(data)
             } catch (err) {
-                console.error('Erro ao carregar serviços', err)
+                console.error('Erro ao carregar servicos', err)
             }
         }
         loadServices()

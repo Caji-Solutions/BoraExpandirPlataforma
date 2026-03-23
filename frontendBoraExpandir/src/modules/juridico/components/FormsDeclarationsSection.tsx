@@ -94,7 +94,7 @@ export function FormsDeclarationsSection({
                     setForms(formsWithNames)
                 }
             } catch (error) {
-                console.error('Erro ao buscar formulários:', error)
+                console.error('Erro ao buscar formularios:', error)
             } finally {
                 setIsLoading(false)
             }
@@ -183,7 +183,7 @@ export function FormsDeclarationsSection({
                 setForms(prev => prev.filter(f => f.id !== formId))
             }
         } catch (error) {
-            console.error('Erro ao deletar formulário:', error)
+            console.error('Erro ao deletar formulario:', error)
         }
     }
 

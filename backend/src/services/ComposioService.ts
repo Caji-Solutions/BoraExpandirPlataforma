@@ -98,8 +98,8 @@ class ComposioService {
       const eventId = responseData?.id || responseData?.event_id || responseData?.eventId;
       const eventLink = responseData?.hangoutLink || responseData?.htmlLink || responseData?.html_link;
 
-      console.log('🔍 EventId extraído:', eventId);
-      console.log('🔗 EventLink extraído:', eventLink);
+      console.log('🔍 EventId extraido:', eventId);
+      console.log('🔗 EventLink extraido:', eventLink);
 
       return {
         success: true,
@@ -263,7 +263,7 @@ class ComposioService {
 
       return connectionRequest.redirectUrl || '';
     } catch (error: any) {
-      console.error('❌ Erro ao gerar URL de conexão:', error);
+      console.error('❌ Erro ao gerar URL de conexao:', error);
       throw new Error('Não foi possível gerar URL de autenticação');
     }
   }
@@ -274,7 +274,7 @@ class ComposioService {
    */
   async isConnected(userId: string): Promise<boolean> {
     try {
-      console.log('🔍 Verificando conexão para userId:', userId);
+      console.log('🔍 Verificando conexao para userId:', userId);
       
       const session = await this.composio.create(userId, {
         toolkits: ['googlecalendar'],
@@ -296,7 +296,7 @@ class ComposioService {
 
       return googleCalendar?.connection?.isActive || false;
     } catch (error) {
-      console.error('❌ Erro ao verificar conexão:', error);
+      console.error('❌ Erro ao verificar conexao:', error);
       return false;
     }
   }
@@ -324,7 +324,7 @@ class ComposioService {
       }
       return { isConnected: false };
     } catch (error) {
-      console.error('❌ Erro ao buscar detalhes da conexão:', error);
+      console.error('❌ Erro ao buscar detalhes da conexao:', error);
       return { isConnected: false };
     }
   }
@@ -340,11 +340,11 @@ class ComposioService {
       
       if (details.isConnected && details.connectionId) {
         await this.composio.connectedAccounts.delete(details.connectionId as string);
-        console.log('✅ Conexão removida com sucesso!');
+        console.log('✅ Conexao removida com sucesso!');
         return true;
       }
       
-      console.log('⚠️ Nenhuma conexão ativa encontrada para remover.');
+      console.log('⚠️ Nenhuma conexao ativa encontrada para remover.');
       return false;
     } catch (error) {
       console.error('❌ Erro ao desconectar Google Calendar:', error);

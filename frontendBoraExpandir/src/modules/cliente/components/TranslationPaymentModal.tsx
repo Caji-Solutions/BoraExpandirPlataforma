@@ -67,7 +67,7 @@ export function TranslationQuoteModal({
       }
       
     } catch (err: any) {
-      console.error('Erro ao inicializar fluxo de tradução:', err)
+      console.error('Erro ao inicializar fluxo de traducao:', err)
       setError('Não foi possível carregar os detalhes.')
     } finally {
       setIsLoading(false)
@@ -123,7 +123,7 @@ export function TranslationQuoteModal({
         if (onPaymentSuccess) onPaymentSuccess()
       }
     } catch (err: any) {
-      console.error('Erro no fluxo de tradução:', err)
+      console.error('Erro no fluxo de traducao:', err)
       setError(err.message || 'Erro ao processar sua solicitação.')
     } finally {
       setIsProcessing(false)

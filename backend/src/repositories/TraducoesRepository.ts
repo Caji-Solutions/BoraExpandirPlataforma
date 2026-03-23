@@ -44,7 +44,7 @@ class TraducoesRepository {
     }
 
     if (orcamentosRes.error) {
-      console.error('Erro ao buscar orçamentos dos documentos:', orcamentosRes.error)
+      console.error('Erro ao buscar orcamentos dos documentos:', orcamentosRes.error)
     }
 
     if (dependentesRes.error) {
@@ -102,7 +102,7 @@ class TraducoesRepository {
       .single()
 
     if (orcError) {
-      console.error('Erro ao salvar orçamento:', orcError)
+      console.error('Erro ao salvar orcamento:', orcError)
       throw orcError
     }
 
@@ -126,7 +126,7 @@ class TraducoesRepository {
       .single()
 
     if (error && error.code !== 'PGRST116') { // PGRST116 is "No rows found"
-      console.error('Erro ao buscar orçamento por documento:', error)
+      console.error('Erro ao buscar orcamento por documento:', error)
       throw error
     }
 
@@ -151,7 +151,7 @@ class TraducoesRepository {
       .single()
 
     if (orcError) {
-      console.error('Erro ao aprovar orçamento pelo ADM:', orcError)
+      console.error('Erro ao aprovar orcamento pelo ADM:', orcError)
       throw orcError
     }
 
@@ -162,7 +162,7 @@ class TraducoesRepository {
       .eq('id', dados.documentoId)
 
     if (docError) {
-      console.error('Erro ao liberar orçamento para o cliente:', docError)
+      console.error('Erro ao liberar orcamento para o cliente:', docError)
       throw docError
     }
 
@@ -180,7 +180,7 @@ class TraducoesRepository {
       .select('documento_id, observacoes')
 
     if (orcError) {
-      console.error('Erro ao aprovar orçamentos:', orcError)
+      console.error('Erro ao aprovar orcamentos:', orcError)
       throw orcError
     }
 
@@ -323,7 +323,7 @@ class TraducoesRepository {
       })
 
     if (uploadError) {
-      console.error('Erro ao fazer upload da tradução:', uploadError)
+      console.error('Erro ao fazer upload da traducao:', uploadError)
       throw uploadError
     }
 
@@ -350,7 +350,7 @@ class TraducoesRepository {
       .single()
 
     if (updateError) {
-      console.error('Erro ao atualizar documento com tradução:', updateError)
+      console.error('Erro ao atualizar documento com traducao:', updateError)
       throw updateError
     }
 
@@ -401,7 +401,7 @@ class TraducoesRepository {
       .single()
 
     if (updateError) {
-      console.error('Erro ao atualizar orçamento com comprovante:', updateError)
+      console.error('Erro ao atualizar orcamento com comprovante:', updateError)
       throw updateError
     }
 

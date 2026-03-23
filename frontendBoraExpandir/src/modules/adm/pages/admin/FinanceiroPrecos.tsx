@@ -62,7 +62,7 @@ export default function FinanceiroPrecos() {
       })
       setEditingMarkups(initialMarkups)
     } catch (error) {
-      console.error('Erro ao buscar orçamentos:', error)
+      console.error('Erro ao buscar orcamentos:', error)
     } finally {
       setLoading(false)
     }
@@ -105,7 +105,7 @@ export default function FinanceiroPrecos() {
       alert('Orçamento liberado!')
       fetchData()
     } catch (error) {
-      console.error('Erro ao aprovar orçamento:', error)
+      console.error('Erro ao aprovar orcamento:', error)
       alert('Erro ao aprovar.')
     }
   }

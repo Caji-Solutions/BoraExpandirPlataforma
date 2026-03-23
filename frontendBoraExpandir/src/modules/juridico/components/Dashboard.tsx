@@ -57,7 +57,7 @@ export function Dashboard() {
         setProcesses(procData);
         setStats(statsData);
       } catch (err) {
-        console.error("Erro ao buscar dados do dashboard jurídico:", err);
+        console.error("Erro ao buscar dados do dashboard juridico:", err);
       } finally {
         setLoading(false);
       }

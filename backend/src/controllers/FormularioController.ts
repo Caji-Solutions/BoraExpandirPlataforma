@@ -82,7 +82,7 @@ class FormularioController {
                 return res.status(403).json({ message: 'O formulário deve ser enviado com pelo menos 1 hora de antecedência. O agendamento expirou/foi cancelado.' })
             }
 
-            console.log('[FormularioController] Processando formulário de consultoria para:', nome_completo)
+            console.log('[FormularioController] Processando formulario de consultoria para:', nome_completo)
 
             // 1. Gerar senha aleatória para o cliente
             const senhaGerada = generatePassword()
@@ -228,7 +228,7 @@ class FormularioController {
                         whatsapp,
                     }])
                 if (fallbackError) {
-                    console.error('[FormularioController] Fallback de formularios_cliente também falhou:', fallbackError)
+                    console.error('[FormularioController] Fallback de formularios_cliente tambem falhou:', fallbackError)
                 } else {
                     console.log('[FormularioController] formularios_cliente registrado via fallback para agendamento:', agendamento_id)
                 }
@@ -316,7 +316,7 @@ class FormularioController {
                     if (clienteUpdateError) {
                         console.error('[FormularioController] Erro ao converter lead em cliente:', clienteUpdateError)
                     } else {
-                        console.log(`[FormularioController] Lead convertido em cliente após pagamento e formulário: ${clienteId}`)
+                        console.log(`[FormularioController] Lead convertido em cliente apos pagamento e formulario: ${clienteId}`)
                     }
                 }
             }
@@ -340,10 +340,10 @@ class FormularioController {
                     console.error('[FormularioController] Erro ao enviar email', err)
                 }
             } else {
-                console.log('[FormularioController] Formulário submetido. Aguardando confirmação do pagamento pelo Comercial.')
+                console.log('[FormularioController] Formulario submetido. Aguardando confirmacao do pagamento pelo Comercial.')
             }
 
-            console.log('[FormularioController] Formulário processado com sucesso para:', nome_completo)
+            console.log('[FormularioController] Formulario processado com sucesso para:', nome_completo)
 
             // Recuperar status atualizado do pagamento (se houver agendamento)
             let pagamentoStatus: string | null = null

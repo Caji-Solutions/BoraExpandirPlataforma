@@ -87,7 +87,7 @@ export function FormsDeclarationsCard({
                     setForms(data.data || [])
                 }
             } catch (error) {
-                console.error('Erro ao buscar formulários:', error)
+                console.error('Erro ao buscar formularios:', error)
             } finally {
                 setIsLoading(false)
             }
@@ -116,7 +116,7 @@ export function FormsDeclarationsCard({
 
                 setSentFormsMap(responsesMap)
             } catch (error) {
-                console.error('Erro ao buscar formulários enviados:', error)
+                console.error('Erro ao buscar formularios enviados:', error)
             }
         }
 
@@ -192,7 +192,7 @@ export function FormsDeclarationsCard({
             setShowConfirmModal(false)
             setPendingUpload(null)
         } catch (error: any) {
-            console.error('Erro no upload do formulário:', error)
+            console.error('Erro no upload do formulario:', error)
             setUploadError(error.message || 'Falha ao enviar o arquivo. Tente novamente.')
         } finally {
             setIsUploadingFile(false)

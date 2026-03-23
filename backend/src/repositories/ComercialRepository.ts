@@ -84,7 +84,7 @@ class ComercialRepository {
                     .single()
 
                 if (service?.requer_delegacao_juridico) {
-                    console.log(`Serviço "${service.nome}" requer delegação jurídica. Verificando processo...`)
+                    console.log(`Servico "${service.nome}" requer delegacao juridica. Verificando processo...`)
 
                     const JuridicoRepository = (await import('./JuridicoRepository')).default
                     const existingProcess = await JuridicoRepository.getProcessoByClienteId(data.cliente_id)
@@ -100,11 +100,11 @@ class ComercialRepository {
                         })
                         console.log('Processo vago criado com sucesso.')
                     } else {
-                        console.log('Processo já existente para este cliente.')
+                        console.log('Processo ja existente para este cliente.')
                     }
                 }
             } catch (err) {
-                console.error('Erro ao processar delegação jurídica automática:', err)
+                console.error('Erro ao processar delegacao juridica automatica:', err)
             }
         }
 
@@ -120,7 +120,7 @@ class ComercialRepository {
                     dataPrazo: data.data_hora // O "prazo" da notificação é a própria data do agendamento
                 })
             } catch (notifError) {
-                console.error('Erro ao criar notificação de agendamento aprovado:', notifError)
+                console.error('Erro ao criar notificacao de agendamento aprovado:', notifError)
             }
         }
 
@@ -128,7 +128,7 @@ class ComercialRepository {
     }
 
     async getAgendamentosByUsuario(usuarioId: string) {
-        console.log('Buscando agendamentos para o usuário:', usuarioId)
+        console.log('Buscando agendamentos para o usuario:', usuarioId)
 
         const { data: agendamentos, error } = await supabase
             .from('agendamentos')
@@ -137,7 +137,7 @@ class ComercialRepository {
             .order('data_hora', { ascending: true })
 
         if (error) {
-            console.error('Erro ao buscar agendamentos por usuário:', error)
+            console.error('Erro ao buscar agendamentos por usuario:', error)
             throw error
         }
 
@@ -168,7 +168,7 @@ class ComercialRepository {
     }
 
     async getAgendamentosByIntervalo(data_hora_inicio: string, data_hora_fim: string) {
-        console.log('Buscando agendamentos no intervalo:', data_hora_inicio, 'até', data_hora_fim)
+        console.log('Buscando agendamentos no intervalo:', data_hora_inicio, 'ate', data_hora_fim)
 
         const { data: agendamentos, error } = await supabase
             .from('agendamentos')

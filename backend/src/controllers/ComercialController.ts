@@ -217,7 +217,7 @@ class ComercialController {
             // Resiliência Google Meet: Se mudou horário e tem link, atualiza
             if (dataMudou && updatedData.meet_link) {
                 try {
-                    console.log(`[GoogleMeet] Horário alterado para agendamento ${id}. Atualizando evento...`);
+                    console.log(`[GoogleMeet] Horario alterado para agendamento ${id}. Atualizando evento...`);
                     const ComposioService = (await import('../services/ComposioService')).default;
                     const { getSuperAdminId } = await import('../utils/calendarHelpers');
                     const superAdminId = await getSuperAdminId();
@@ -226,7 +226,7 @@ class ComercialController {
                     // Como não salvamos o eventId separadamente, o ideal seria ter salvado.
                     // Se não tivermos o eventId, o UpdateEvent do Composio pode falhar ou precisar de busca.
                     // Por ora, vamos logar a necessidade de update.
-                    console.log(`[GoogleMeet] Necessário atualizar evento para ${dataHoraIso}`);
+                    console.log(`[GoogleMeet] Necessario atualizar evento para ${dataHoraIso}`);
                 } catch (err) {
                     console.error('[GoogleMeet] Erro ao tentar atualizar evento:', err);
                 }
@@ -627,7 +627,7 @@ class ComercialController {
                     
                     // Como não salvamos o eventId, o delete pode precisar de busca ou o eventId deve ser extraído do link
                     // Por ora, logamos a intenção de deletar.
-                    console.log(`[GoogleMeet] Intenção de deletar evento do meet_link: ${agendamento.meet_link}`);
+                    console.log(`[GoogleMeet] Intencao de deletar evento do meet_link: ${agendamento.meet_link}`);
                 } catch (err) {
                     console.error('[GoogleMeet] Erro ao tentar deletar evento:', err);
                 }
@@ -648,7 +648,7 @@ class ComercialController {
 
     /**
      * POST /comercial/contratos
-     * Cria contrato para serviÃƒÂ§o fixo e envia email com PDF mock
+     * Cria contrato para serviço fixo e envia email com PDF mock
      */
     async createContratoServico(req: any, res: any) {
         try {
@@ -793,7 +793,7 @@ class ComercialController {
             const file = req.file
 
             if (!file) {
-                return res.status(400).json({ message: 'Arquivo do contrato ÃƒÂ© obrigatÃƒÂ³rio' })
+                return res.status(400).json({ message: 'Arquivo do contrato é obrigatório' })
             }
 
             await ContratoServicoRepository.getContratoById(id)
@@ -849,7 +849,7 @@ class ComercialController {
 
             const contrato = await ContratoServicoRepository.getContratoById(id)
             if (!contrato?.contrato_assinado_url) {
-                return res.status(400).json({ message: 'Contrato assinado nÃƒÂ£o encontrado' })
+                return res.status(400).json({ message: 'Contrato assinado não encontrado' })
             }
 
             const updated = await ContratoServicoRepository.updateContrato(id, {
@@ -884,7 +884,7 @@ class ComercialController {
 
             const updated = await ContratoServicoRepository.updateContrato(id, {
                 assinatura_status: 'recusado',
-                assinatura_recusa_nota: nota || 'Contrato recusado sem observaÃƒÂ§ÃƒÂ£o.',
+                assinatura_recusa_nota: nota || 'Contrato recusado sem observação.',
                 assinatura_recusado_em: new Date().toISOString(),
                 atualizado_em: new Date().toISOString()
             })
@@ -912,16 +912,16 @@ class ComercialController {
             const file = req.file
 
             if (!file) {
-                return res.status(400).json({ message: 'Arquivo do comprovante ÃƒÂ© obrigatÃƒÂ³rio' })
+                return res.status(400).json({ message: 'Arquivo do comprovante é obrigatório' })
             }
 
             const contrato = await ContratoServicoRepository.getContratoById(id)
             if (!contrato) {
-                return res.status(404).json({ message: 'Contrato nÃƒÂ£o encontrado' })
+                return res.status(404).json({ message: 'Contrato não encontrado' })
             }
 
             if (contrato.assinatura_status !== 'aprovado') {
-                return res.status(400).json({ message: 'Contrato ainda nÃƒÂ£o aprovado' })
+                return res.status(400).json({ message: 'Contrato ainda não aprovado' })
             }
 
             if (!['pendente', 'recusado'].includes(contrato.pagamento_status)) {

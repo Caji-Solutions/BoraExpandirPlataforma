@@ -481,7 +481,7 @@ class ClienteRepository {
         const { data, error } = await query
 
         if (error) {
-            console.error('Erro ao buscar formulários:', error)
+            console.error('Erro ao buscar formularios:', error)
             throw error
         }
 
@@ -542,7 +542,7 @@ class ClienteRepository {
             .single()
 
         if (error) {
-            console.error('Erro ao criar formulário:', error)
+            console.error('Erro ao criar formulario:', error)
             throw error
         }
 
@@ -559,7 +559,7 @@ class ClienteRepository {
             .single()
 
         if (fetchError) {
-            console.error('Erro ao buscar formulário para deletar:', fetchError)
+            console.error('Erro ao buscar formulario para deletar:', fetchError)
             throw fetchError
         }
 
@@ -581,7 +581,7 @@ class ClienteRepository {
             .eq('id', formularioId)
 
         if (deleteError) {
-            console.error('Erro ao deletar formulário:', deleteError)
+            console.error('Erro ao deletar formulario:', deleteError)
             throw deleteError
         }
     }
@@ -603,7 +603,7 @@ class ClienteRepository {
             })
 
         if (error) {
-            console.error('Erro ao fazer upload de resposta de formulário:', error)
+            console.error('Erro ao fazer upload de resposta de formulario:', error)
             throw error
         }
 
@@ -646,7 +646,7 @@ class ClienteRepository {
             .single()
 
         if (error) {
-            console.error('Erro ao criar resposta de formulário:', error)
+            console.error('Erro ao criar resposta de formulario:', error)
             throw error
         }
 
@@ -661,7 +661,7 @@ class ClienteRepository {
             .order('created_at', { ascending: false })
 
         if (error) {
-            console.error('Erro ao buscar respostas de formulário:', error)
+            console.error('Erro ao buscar respostas de formulario:', error)
             throw error
         }
 
@@ -676,7 +676,7 @@ class ClienteRepository {
             .order('created_at', { ascending: false })
 
         if (error) {
-            console.error('Erro ao buscar respostas de formulários do cliente:', error)
+            console.error('Erro ao buscar respostas de formularios do cliente:', error)
             throw error
         }
 
@@ -699,7 +699,8 @@ class ClienteRepository {
                     id,
                     produto_nome,
                     status,
-                    data_hora
+                    data_hora,
+                    pagamento_status
                 ),
                 requerimentos (*)
             `)

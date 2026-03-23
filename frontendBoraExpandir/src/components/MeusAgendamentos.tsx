@@ -157,7 +157,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
           const clienteId = activeTab === 'consultorias' ? selectedItem.cliente_id : selectedItem.cliente_id;
           
           if (clienteId) {
-            console.log(`DEBUG: Verificando formulários para cliente: ${clienteId}`);
+            console.log(`DEBUG: Verificando formularios para cliente: ${clienteId}`);
             if (activeTab === 'consultorias') {
               let preenchido = false;
               try {
@@ -170,7 +170,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
               setHasFormulario(!!selectedItem.respostas);
             }
           } else {
-             console.warn("DEBUG: Item selecionado não possui cliente_id!");
+             console.warn("DEBUG: Item selecionado nao possui cliente_id!");
              setHasFormulario(false);
           }
 
@@ -185,7 +185,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
           }
 
         } catch (e) {
-          console.error("DEBUG: Erro ao verificar segurança:", e);
+          console.error("DEBUG: Erro ao verificar seguranca:", e);
         } finally {
           setCheckingSecurity(false);
         }
@@ -651,23 +651,42 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                           </div>
                         </div>
 
-                        <div className={`p-5 rounded-3xl border flex items-center gap-4 transition-all ${
+                        <div className={`p-5 rounded-3xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all ${
                           checkingSecurity ? 'bg-gray-50 dark:bg-neutral-800/50 border-gray-100 animate-pulse' :
                           hasFormulario 
                             ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-700 dark:text-emerald-400' 
                             : 'bg-rose-500/5 border-rose-500/20 text-rose-700 dark:text-rose-400'
                         }`}>
-                          <div className={`p-2 rounded-xl scale-110 ${hasFormulario ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                            {hasFormulario ? <FileText className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                          <div className="flex items-center gap-4">
+                            <div className={`p-2 rounded-xl scale-110 ${hasFormulario ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                              {hasFormulario ? <FileText className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                            </div>
+                            <div>
+                              <p className="text-sm font-black">Formulário Legal: {hasFormulario ? 'Preenchido' : 'Pendente'}</p>
+                              <p className="text-xs opacity-70 font-medium">
+                                {hasFormulario 
+                                  ? 'Dados carregados para o atendimento.' 
+                                  : 'Requer preenchimento para consultar.'}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-sm font-black">Formulário Legal: {hasFormulario ? 'Preenchido' : 'Pendente'}</p>
-                            <p className="text-xs opacity-70 font-medium">
-                              {hasFormulario 
-                                ? 'Dados do cliente carregados para o atendimento.' 
-                                : 'Necessário preenchimento para iniciar a consultoria.'}
-                            </p>
-                          </div>
+                          
+                          {activeTab === 'consultorias' && !checkingSecurity && (
+                            <button
+                               onClick={() => {
+                                 const targetId = selectedItem.cliente_id || selectedItem.id;
+                                 navigate(`/juridico/dna?clienteId=${targetId}&tab=formularios`);
+                               }}
+                               className={`w-full sm:w-auto px-5 py-2.5 rounded-2xl font-black text-sm transition-all shadow-sm flex items-center justify-center gap-2 border flex-shrink-0 ${
+                                 hasFormulario 
+                                   ? 'bg-emerald-500 text-white border-emerald-400 hover:bg-emerald-600 shadow-emerald-500/20' 
+                                   : 'bg-rose-500 text-white border-rose-400 hover:bg-rose-600 shadow-rose-500/20'
+                               }`}
+                            >
+                               <Fingerprint className="h-4 w-4" />
+                               Ver Formulários
+                            </button>
+                          )}
                         </div>
                     </div>
                  </div>

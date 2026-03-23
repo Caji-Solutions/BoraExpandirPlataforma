@@ -168,66 +168,62 @@ export function ClientQuestionnaireAnswers({ clienteId }: ClientQuestionnaireAns
   ]
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-0 overflow-hidden relative">
-      <div className="p-6 border-b border-border bg-muted/20">
-        <h3 className="text-xl font-bold text-foreground flex items-center gap-3">
-          <FileText className="h-6 w-6 text-primary" />
-          Formulário de Consultoria
-        </h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          Respostas enviadas pelo cliente através do formulário de Onboarding / Diagnóstico.
-        </p>
+    <div className="space-y-5 animate-in fade-in duration-300">
+      <div className="flex items-center gap-4 bg-gray-50/50 dark:bg-neutral-800/30 px-6 py-5 rounded-3xl border border-gray-100/50 dark:border-neutral-800/50">
+        <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-400/30 to-blue-600/30 flex items-center justify-center flex-shrink-0">
+          <User className="h-6 w-6 text-blue-500" />
+        </div>
+        <div>
+          <p className="text-[10px] text-gray-400 uppercase font-black tracking-[0.2em] mb-0.5">Submetido Por</p>
+          <p className="text-base font-black text-gray-900 dark:text-white tracking-tight">{data.nome_completo}</p>
+          <p className="text-xs text-gray-400 font-medium mt-0.5">
+            {data.created_at
+              ? new Date(data.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+              : 'Data desconhecida'}
+          </p>
+        </div>
       </div>
 
-      <div className="p-6">
-        <div className="flex items-center gap-3 bg-primary/5 p-4 rounded-xl border border-primary/10 mb-8">
-          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-            <User className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-foreground">Submetido por: <span className="font-bold">{data.nome_completo}</span></p>
-            <p className="text-xs text-muted-foreground">Em: {data.created_at ? new Date(data.created_at).toLocaleDateString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Data desconhecida'}</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {sections.map((section, idx) => (
-            <div key={idx} className={cn("bg-card border border-border shadow-sm rounded-2xl overflow-hidden", 
-               // Make the last section (financeiro) span full width if it's odd number of sections
-               idx === sections.length - 1 && sections.length % 2 !== 0 ? 'lg:col-span-2' : ''
-            )}>
-              <div className="px-5 py-4 border-b border-border bg-muted/20 flex items-center gap-3">
-                <div className={cn("p-2 rounded-lg", section.bg)}>
-                  <section.icon className={cn("h-4 w-4", section.color)} />
-                </div>
-                <h4 className="font-bold text-foreground text-sm tracking-wide">{section.title}</h4>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {sections.map((section, idx) => (
+          <div
+            key={idx}
+            className={cn(
+              "bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.08)] overflow-hidden",
+              idx === sections.length - 1 && sections.length % 2 !== 0 ? 'lg:col-span-2' : ''
+            )}
+          >
+            <div className="px-5 py-4 border-b border-gray-100/50 dark:border-neutral-800/50 bg-white/40 dark:bg-neutral-900/40 backdrop-blur-xl flex items-center gap-3">
+              <div className={cn("p-2 rounded-xl", section.bg)}>
+                <section.icon className={cn("h-4 w-4", section.color)} />
               </div>
-              
-              <div className="p-5 flex flex-col gap-4">
-                {section.fields.map((field, fIdx) => {
-                  if (!field.value) return null; // hide empty fields
-                  
-                  return (
-                    <div key={fIdx} className="w-full">
-                      <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest block mb-1">
-                        {field.label}
-                      </span>
-                      <div className="flex items-start gap-2">
-                        {field.icon && <field.icon className="h-4 w-4 text-muted-foreground/60 mt-0.5 shrink-0" />}
-                        <span className={cn(
-                          "text-sm font-medium text-foreground", 
-                          field.isFullWidth ? "whitespace-pre-line" : "break-words"
-                        )}>
-                          {field.value}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+              <h4 className="font-black text-gray-900 dark:text-white text-sm tracking-tight">{section.title}</h4>
             </div>
-          ))}
-        </div>
+            <div className="p-5 flex flex-col gap-4">
+              {section.fields.map((field, fIdx) => {
+                if (!field.value) return null;
+                return (
+                  <div key={fIdx} className="group">
+                    <span className="text-[10px] text-gray-400 uppercase font-black tracking-widest block mb-1.5 group-hover:text-blue-500 transition-colors">
+                      {field.label}
+                    </span>
+                    <div className="flex items-start gap-2">
+                      {field.icon && (
+                        <field.icon className="h-4 w-4 text-gray-400 mt-0.5 shrink-0 group-hover:text-blue-400 transition-colors" />
+                      )}
+                      <span className={cn(
+                        "text-sm font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors",
+                        field.isFullWidth ? "whitespace-pre-line" : "break-words"
+                      )}>
+                        {field.value}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )

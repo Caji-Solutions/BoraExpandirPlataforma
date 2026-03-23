@@ -64,7 +64,7 @@ export class DNAService {
 
             // 2. Itera o Payload para aplicar regras de sobreposição
             for (const [key, newValue] of Object.entries(payload)) {
-                // Ignore strings vazias, nulls ou undefined do payload entrante para nÃ£o sobrescrever acidentalmente com lixo
+                // Ignore strings vazias, nulls ou undefined do payload entrante para não sobrescrever acidentalmente com lixo
                 if (newValue === null || newValue === undefined || newValue === '') {
                     continue;
                 }
@@ -79,17 +79,17 @@ export class DNAService {
 
                 const isEmptyCurrently = currentValue === null || currentValue === undefined || currentValue === '';
                 
-                // Mapeia se `newValue` possui autarquia maior ou igual que a Ãºltima
+                // Mapeia se `newValue` possui autarquia maior ou igual que a última
                 let shouldUpdate = false;
 
                 if (isEmptyCurrently) {
-                    // Sem discussÃ£o, se estÃ¡ vazio, preenche com o incoming (qualquer prioridade).
+                    // Sem discussão, se está vazio, preenche com o incoming (qualquer prioridade).
                     shouldUpdate = true;
                 } else if (priority === 'HIGH') {
                     // HIGH sempre sobrescreve tudo
                     shouldUpdate = true;
                 } else if (priority === 'MEDIUM' && currentPriority !== 'HIGH') {
-                    // MEDIUM sÃ³ sobrescreve se a prioridade existente nÃ£o for HIGH
+                    // MEDIUM só sobrescreve se a prioridade existente não for HIGH
                     shouldUpdate = true;
                 }
 
@@ -98,7 +98,7 @@ export class DNAService {
                     dna.metadata[key] = priority;
                     dnaUpdated = true;
 
-                    // 3. Se essa key corresponder Ã  uma coluna raiz, agenda atualizaÃ§Ã£o para root.
+                    // 3. Se essa key corresponder Ã  uma coluna raiz, agenda atualização para root.
                     // Adaptando keys que diferem: nome_completo -> nome, cpf/documento -> cpf etc.
                     let rootKey = key;
                     if (key === 'nome_completo') rootKey = 'nome';
@@ -111,7 +111,7 @@ export class DNAService {
                 }
             }
 
-            // 4. Executa a atualizaÃ§Ã£o no banco (DNA e/ou Root Params)
+            // 4. Executa a atualização no banco (DNA e/ou Root Params)
             if (dnaUpdated) {
                 const updatePayload = {
                     ...rootUpdatePayload,
@@ -130,13 +130,13 @@ export class DNAService {
                     console.log(`[DNAService] DNA do Cliente ${clienteId} mergeado e atualizado (Chaves sincronizadas na raiz: ${Object.keys(rootUpdatePayload).join(', ') || 'Nenhuma'})`);
                 }
             } else {
-                console.log(`[DNAService] DNA do Cliente ${clienteId} sem alteraÃ§Ãµes detectadas pelas regras de prioridade.`);
+                console.log(`[DNAService] DNA do Cliente ${clienteId} sem alteracoes detectadas pelas regras de prioridade.`);
             }
 
             return dna;
 
         } catch (err) {
-            console.error('[DNAService] Falha catastrÃ³fica em DNAService:', err);
+            console.error('[DNAService] Falha catastrofica em DNAService:', err);
             return null;
         }
     }

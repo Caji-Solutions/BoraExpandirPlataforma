@@ -78,7 +78,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
     {
       title: 'Documentos Rejeitados',
       value: rejectedDocuments.toString(),
-      description: rejectedDocuments > 0 ? 'Necessitam correÃ§Ã£o' : 'Nenhuma rejeiÃ§Ã£o',
+      description: rejectedDocuments > 0 ? 'Necessitam correção' : 'Nenhuma rejeição',
       icon: XCircle,
       color: 'text-red-600 dark:text-red-400',
       bgColor: 'bg-red-100 dark:bg-red-900/30',
@@ -92,7 +92,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
       bgColor: 'bg-green-100 dark:bg-green-900/30',
     },
     {
-      title: 'Em AnÃ¡lise',
+      title: 'Em Análise',
       value: analyzingDocuments.toString(),
       description: 'Documentos sendo revisados',
       icon: Clock,
@@ -100,7 +100,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
       bgColor: 'bg-blue-100 dark:bg-blue-900/30',
     },
     {
-      title: 'PendÃªncias',
+      title: 'Pendências',
       value: pendingDocuments.toString(),
       description: 'Documentos para enviar',
       icon: AlertTriangle,
@@ -109,7 +109,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
     },
   ]
 
-  // Encontra o agendamento mais prÃ³ximo no futuro (ou o atual)
+  // Encontra o agendamento mais próximo no futuro (ou o atual)
   const nextAppointmentData = useMemo(() => {
     if (!agendamentos || agendamentos.length === 0) return null;
     
@@ -188,7 +188,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
 
         return {
           id: n.id,
-          title: n.titulo || n.title || 'AÃ§Ã£o NecessÃ¡ria',
+          title: n.titulo || n.title || 'Ação Necessária',
           description: n.mensagem || n.message || '',
           deadline: hasDeadline ? new Date((n.data_prazo || (n as any).deadline) as string) : defaultDeadline,
           priority: (n.type === 'error' || n.type === 'warning' || hasDeadline) ? 'high' as const : 'medium' as const,
@@ -226,7 +226,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
         title: doc.status === 'rejected' ? 'Documento Rejeitado' : 'Envio Pendente',
         message: doc.status === 'rejected'
           ? `O documento "${doc.name}" foi rejeitado e precisa ser reenviado.`
-          : `O documento "${doc.name}" ainda nÃ£o foi enviado.`,
+          : `O documento "${doc.name}" ainda não foi enviado.`,
         date: doc.updatedAt || doc.uploadDate || new Date(),
         type: doc.status === 'rejected' ? 'urgent' as const : 'warning' as const,
         actionLink: '/cliente/upload'
@@ -238,7 +238,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
       .map(r => ({
         id: `req-${r.id}`,
         title: 'Requerimento Pendente',
-        message: `O requerimento de "${r.tipo}" estÃ¡ aguardando sua aÃ§Ã£o.`,
+        message: `O requerimento de "${r.tipo}" está aguardando sua ação.`,
         date: r.created_at || new Date(),
         type: 'urgent' as const,
         actionLink: '/cliente/processo'
@@ -361,7 +361,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
               className="absolute bottom-4 right-4 hidden md:flex items-center space-x-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors border border-white/20 backdrop-blur-sm"
             >
               <AlertTriangle className="w-4 h-4 text-yellow-300" />
-              <span className="font-semibold text-xs">AÃ§Ãµes Solicitadas</span>
+              <span className="font-semibold text-xs">Ações Solicitadas</span>
             </button>
           </div>
         </div>
@@ -379,10 +379,10 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-bold text-red-800 dark:text-red-300">
-                    AÃ§Ã£o NecessÃ¡ria: Requerimento Pendente
+                    Ação Necessária: Requerimento Pendente
                   </h3>
                   <p className="text-red-700 dark:text-red-400 mt-1">
-                    VocÃª possui {pendingRequerimentos.length} {pendingRequerimentos.length === 1 ? 'requerimento' : 'requerimentos'} em aberto que {pendingRequerimentos.length === 1 ? 'precisa' : 'precisan'} ser regularizados.
+                    Você possui {pendingRequerimentos.length} {pendingRequerimentos.length === 1 ? 'requerimento' : 'requerimentos'} em aberto que {pendingRequerimentos.length === 1 ? 'precisa' : 'precisan'} ser regularizados.
                   </p>
                 </div>
                 <Link to="/cliente/processo">
@@ -397,7 +397,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
       )}
       {/* Reminders Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* PrÃ³ximo Agendamento */}
+        {/* Próximo Agendamento */}
         {nextAppointmentData && (
           <AppointmentReminder 
             appointmentDate={nextAppointmentData.data_hora}
@@ -411,7 +411,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
         {/* Only show categories that have real reminders */}
         {legalReminders.length > 0 && (
           <ReminderCard
-            title="JurÃ­dico"
+            title="Jurídico"
             type="legal"
             reminders={legalReminders}
           />
@@ -421,7 +421,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
         {legalReminders.length === 0 && (
           <div className="col-span-full text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
             <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-gray-500 dark:text-gray-400">Nenhum lembrete ou aÃ§Ã£o pendente no momento.</p>
+            <p className="text-gray-500 dark:text-gray-400">Nenhum lembrete ou ação pendente no momento.</p>
           </div>
         )}
       </div>
@@ -539,7 +539,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
                 ))
               ) : (
                 <div className="text-center py-4">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum passo do processo disponÃ­vel.</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum passo do processo disponível.</p>
                 </div>
               )}
             </div>
@@ -580,7 +580,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
                       className="text-xs"
                     >
                       {doc.status === 'pending' ? 'Pendente' :
-                        doc.status.toLowerCase().includes('analyzing') ? 'AnÃ¡lise' :
+                        doc.status.toLowerCase().includes('analyzing') ? 'Análise' :
                           doc.status === 'approved' ? 'Aprovado' :
                             doc.status === 'rejected' ? 'Rejeitado' :
                               doc.status.replace('_', ' ')}

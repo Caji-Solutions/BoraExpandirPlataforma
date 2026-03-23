@@ -10,7 +10,7 @@ class ApostilamentoController {
         return res.status(400).json({ message: 'documentoId é obrigatório' });
       }
 
-      console.log(`[ApostilamentoController.solicitar] Iniciando solicitação para documento: ${documentoId}`);
+      console.log(`[ApostilamentoController.solicitar] Iniciando solicitacao para documento: ${documentoId}`);
 
       const apostilamento = await ApostilamentoRepository.create({
         documentoId,
@@ -18,7 +18,7 @@ class ApostilamentoController {
         observacoes
       });
 
-      console.log(`[ApostilamentoController.solicitar] Solicitação processada com sucesso (Idempotente). ID: ${apostilamento.id}`);
+      console.log(`[ApostilamentoController.solicitar] Solicitacao processada com sucesso (Idempotente). ID: ${apostilamento.id}`);
 
       return res.status(201).json({
         message: 'Solicitação de apostilamento processada com sucesso',

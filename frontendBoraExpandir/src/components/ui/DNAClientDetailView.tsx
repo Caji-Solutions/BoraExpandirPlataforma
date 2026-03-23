@@ -577,7 +577,205 @@ export function DNAClientDetailView({
                                 </div>
                             </div>
                         ) : activeTab === 'formularios' ? (
-                            <ClientQuestionnaireAnswers clienteId={client.true_id || client.id} />
+                            <div className="space-y-6">
+                                {client.perfil_unificado?.data && (() => {
+                                    const dna = client.perfil_unificado!.data
+                                    const hasPerfilPessoal = dna.nacionalidade || dna.estado_civil || dna.cidade_pais_residencia || dna.esteve_europa_6meses
+                                    const hasFamilia = dna.filhos_qtd_idades || dna.familiares_espanha || dna.filhos_nacionalidade_europeia
+                                    const hasMobilidade = dna.visto_ue || dna.trabalho_destacado_ue || dna.possui_cnh_categoria_ano || dna.proposta_trabalho_espanha
+                                    const hasTrabalho = dna.situacao_profissional || dna.profissao_online_presencial || dna.pretende_autonomo || dna.pretende_trabalhar_espanha || dna.disposto_estudar || dna.escolaridade || dna.area_formacao || dna.tipo_visto_planejado
+                                    const hasAny = hasPerfilPessoal || hasFamilia || hasMobilidade || hasTrabalho || dna.duvidas_consultoria
+                                    if (!hasAny) return null
+
+                                    const card = "bg-gray-50/50 dark:bg-neutral-800/30 p-5 rounded-3xl border border-gray-100/50 dark:border-neutral-800/50 transition-all hover:border-blue-200 dark:hover:border-blue-900/50 group"
+                                    const cardLabel = "text-[10px] text-gray-400 uppercase font-black tracking-widest mb-2"
+                                    const cardValue = "text-base font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors whitespace-pre-line"
+
+                                    return (
+                                        <div className="bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.15)] overflow-hidden animate-in fade-in duration-300">
+                                            {/* Header */}
+                                            <div className="px-8 py-6 border-b border-gray-100/50 dark:border-neutral-800/50 bg-white/40 dark:bg-neutral-900/40 backdrop-blur-2xl flex items-center justify-between">
+                                                <div>
+                                                    <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">Formulário de Consultoria</h3>
+                                                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-[0.2em] mt-1">DNA do cliente · Dados preenchidos no agendamento</p>
+                                                </div>
+                                                <div className="p-3 bg-blue-500 rounded-2xl shadow-lg shadow-blue-500/20 flex-shrink-0">
+                                                    <FileText className="h-5 w-5 text-white" />
+                                                </div>
+                                            </div>
+
+                                            {/* Body */}
+                                            <div className="p-8 space-y-8">
+
+                                                {/* Perfil Pessoal */}
+                                                {hasPerfilPessoal && (
+                                                    <div className="space-y-4">
+                                                        <p className="text-[10px] text-gray-400 uppercase font-black tracking-[0.2em]">Perfil Pessoal</p>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                            {dna.nacionalidade && (
+                                                                <div className={card}>
+                                                                    <p className={cardLabel}>Nacionalidade</p>
+                                                                    <p className={cardValue}>{String(dna.nacionalidade)}</p>
+                                                                </div>
+                                                            )}
+                                                            {dna.estado_civil && (
+                                                                <div className={card}>
+                                                                    <p className={cardLabel}>Estado Civil</p>
+                                                                    <p className={cardValue}>{String(dna.estado_civil)}</p>
+                                                                </div>
+                                                            )}
+                                                            {dna.cidade_pais_residencia && (
+                                                                <div className={cn(card, "sm:col-span-2")}>
+                                                                    <p className={cardLabel}>Cidade / País de Residência</p>
+                                                                    <p className={cardValue}>{String(dna.cidade_pais_residencia)}</p>
+                                                                </div>
+                                                            )}
+                                                            {dna.esteve_europa_6meses && (
+                                                                <div className={cn(card, "sm:col-span-2")}>
+                                                                    <p className={cardLabel}>Esteve na Europa por mais de 6 meses</p>
+                                                                    <p className={cardValue}>{String(dna.esteve_europa_6meses)}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Família */}
+                                                {hasFamilia && (
+                                                    <div className="space-y-4">
+                                                        <p className="text-[10px] text-gray-400 uppercase font-black tracking-[0.2em]">Família</p>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                            {dna.filhos_qtd_idades && (
+                                                                <div className={card}>
+                                                                    <p className={cardLabel}>Filhos — Qtd. e Idades</p>
+                                                                    <p className={cardValue}>{String(dna.filhos_qtd_idades)}</p>
+                                                                </div>
+                                                            )}
+                                                            {dna.familiares_espanha && (
+                                                                <div className={card}>
+                                                                    <p className={cardLabel}>Familiares na Espanha</p>
+                                                                    <p className={cardValue}>{String(dna.familiares_espanha)}</p>
+                                                                </div>
+                                                            )}
+                                                            {dna.filhos_nacionalidade_europeia && (
+                                                                <div className={cn(card, "sm:col-span-2")}>
+                                                                    <p className={cardLabel}>Filhos com Nacionalidade Europeia</p>
+                                                                    <p className={cardValue}>{String(dna.filhos_nacionalidade_europeia)}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Mobilidade & Vínculos */}
+                                                {hasMobilidade && (
+                                                    <div className="space-y-4">
+                                                        <p className="text-[10px] text-gray-400 uppercase font-black tracking-[0.2em]">Mobilidade & Vínculos com a Europa</p>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                            {dna.visto_ue && (
+                                                                <div className={card}>
+                                                                    <p className={cardLabel}>Visto UE</p>
+                                                                    <p className={cardValue}>{String(dna.visto_ue)}</p>
+                                                                </div>
+                                                            )}
+                                                            {dna.trabalho_destacado_ue && (
+                                                                <div className={card}>
+                                                                    <p className={cardLabel}>Trabalho Destacado na UE</p>
+                                                                    <p className={cardValue}>{String(dna.trabalho_destacado_ue)}</p>
+                                                                </div>
+                                                            )}
+                                                            {dna.possui_cnh_categoria_ano && (
+                                                                <div className={card}>
+                                                                    <p className={cardLabel}>CNH — Categoria e Ano</p>
+                                                                    <p className={cardValue}>{String(dna.possui_cnh_categoria_ano)}</p>
+                                                                </div>
+                                                            )}
+                                                            {dna.proposta_trabalho_espanha && (
+                                                                <div className={card}>
+                                                                    <p className={cardLabel}>Proposta de Trabalho na Espanha</p>
+                                                                    <p className={cardValue}>{String(dna.proposta_trabalho_espanha)}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Trabalho & Formação */}
+                                                {hasTrabalho && (
+                                                    <div className="space-y-4">
+                                                        <p className="text-[10px] text-gray-400 uppercase font-black tracking-[0.2em]">Trabalho, Formação & Planos</p>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                            {dna.situacao_profissional && (
+                                                                <div className={card}>
+                                                                    <p className={cardLabel}>Situação Profissional</p>
+                                                                    <p className={cardValue}>{String(dna.situacao_profissional)}</p>
+                                                                </div>
+                                                            )}
+                                                            {dna.profissao_online_presencial && (
+                                                                <div className={card}>
+                                                                    <p className={cardLabel}>Profissão (online / presencial)</p>
+                                                                    <p className={cardValue}>{String(dna.profissao_online_presencial)}</p>
+                                                                </div>
+                                                            )}
+                                                            {dna.escolaridade && (
+                                                                <div className={card}>
+                                                                    <p className={cardLabel}>Escolaridade</p>
+                                                                    <p className={cardValue}>{String(dna.escolaridade)}</p>
+                                                                </div>
+                                                            )}
+                                                            {dna.area_formacao && (
+                                                                <div className={card}>
+                                                                    <p className={cardLabel}>Área de Formação</p>
+                                                                    <p className={cardValue}>{String(dna.area_formacao)}</p>
+                                                                </div>
+                                                            )}
+                                                            {dna.tipo_visto_planejado && (
+                                                                <div className={cn(card, "sm:col-span-2")}>
+                                                                    <p className={cardLabel}>Tipo de Visto Planejado</p>
+                                                                    <p className={cardValue}>{String(dna.tipo_visto_planejado)}</p>
+                                                                </div>
+                                                            )}
+                                                            {dna.pretende_trabalhar_espanha && (
+                                                                <div className={card}>
+                                                                    <p className={cardLabel}>Pretende Trabalhar na Espanha</p>
+                                                                    <p className={cardValue}>{String(dna.pretende_trabalhar_espanha)}</p>
+                                                                </div>
+                                                            )}
+                                                            {dna.disposto_estudar && (
+                                                                <div className={card}>
+                                                                    <p className={cardLabel}>Disposto a Estudar</p>
+                                                                    <p className={cardValue}>{String(dna.disposto_estudar)}</p>
+                                                                </div>
+                                                            )}
+                                                            {dna.pretende_autonomo && (
+                                                                <div className={cn(card, "sm:col-span-2")}>
+                                                                    <p className={cardLabel}>Pretende Ser Autônomo</p>
+                                                                    <p className={cardValue}>{String(dna.pretende_autonomo)}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Dúvidas — destaque especial */}
+                                                {dna.duvidas_consultoria && (
+                                                    <div className="p-6 bg-amber-500/5 dark:bg-amber-500/5 border border-amber-500/20 rounded-[2rem] relative overflow-hidden group">
+                                                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                                                            <AlertCircle className="h-16 w-16 text-amber-500" />
+                                                        </div>
+                                                        <p className="text-[10px] text-amber-600 dark:text-amber-400 uppercase font-black tracking-widest mb-3">Dúvidas para a Consultoria</p>
+                                                        <p className="text-sm text-gray-700 dark:text-gray-300 font-medium leading-relaxed italic">
+                                                            "{String(dna.duvidas_consultoria)}"
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                            </div>
+                                        </div>
+                                    )
+                                })()}
+                                <ClientQuestionnaireAnswers clienteId={client.true_id || client.id} />
+                            </div>
                         ) : activeTab === 'contrato_comprovantes' ? (
                             <div className="bg-card border border-border rounded-2xl p-8 relative">
                                 <h3 className="text-xl font-bold text-foreground flex items-center gap-3 mb-8">

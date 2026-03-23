@@ -9,7 +9,7 @@ import { supabase } from '../config/SupabaseClient';
 export const startCronJobs = () => {
     cron.schedule('*/30 * * * *', async () => {
         try {
-            console.log('[CRON] Executando verificação de formulários atrasados...');
+            console.log('[CRON] Executando verificacao de formularios atrasados...');
             
             // Calculamos o limite de 1 hora no futuro a partir de agora
             const cancelLimitTime = new Date();
@@ -41,7 +41,7 @@ export const startCronJobs = () => {
 
                     // 2. Se o formulário já foi enviado (cliente_is_user === true), NUNCA cancela por esse CRON.
                     if (agendamento.cliente_is_user === true) {
-                        console.log(`[CRON] Poupando agendamento ${agendamento.id}: Formulário já foi enviado ao cliente.`);
+                        console.log(`[CRON] Poupando agendamento ${agendamento.id}: Formulario ja foi enviado ao cliente.`);
                         continue;
                     }
 
@@ -53,7 +53,7 @@ export const startCronJobs = () => {
 
                     // 3. Se falta 1h ou menos e NÃO tem formulário enviado, cancela.
                     if (agendamentoDateTime <= cancelLimitTime) {
-                        console.log(`[CRON] Cancelando agendamento ${agendamento.id} por falta de formulário (falta <= 60 min).`);
+                        console.log(`[CRON] Cancelando agendamento ${agendamento.id} por falta de formulario (falta <= 60 min).`);
 
                         const { error: updateError } = await supabase
                             .from('agendamentos')
@@ -91,9 +91,9 @@ export const startCronJobs = () => {
             }
 
         } catch (err) {
-            console.error('[CRON] Erro crítico no Worker de Cancelamento:', err);
+            console.error('[CRON] Erro critico no Worker de Cancelamento:', err);
         }
     });
 
-    console.log('[CRON] Workers iniciados com sucesso. (Verificação a cada 30 minutos)');
+    console.log('[CRON] Workers iniciados com sucesso. (Verificacao a cada 30 minutos)');
 };

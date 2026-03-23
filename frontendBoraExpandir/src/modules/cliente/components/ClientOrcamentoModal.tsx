@@ -70,7 +70,7 @@ export function ClientOrcamentoModal({
             budgetsMap[doc.id] = budget
           }
         } catch (e) {
-          console.error(`Erro ao buscar orçamento para doc ${doc.id}:`, e)
+          console.error(`Erro ao buscar orcamento para doc ${doc.id}:`, e)
         }
       }))
 
@@ -96,7 +96,7 @@ export function ClientOrcamentoModal({
       }
       
     } catch (err: any) {
-      console.error('Erro ao inicializar fluxo de orçamento:', err)
+      console.error('Erro ao inicializar fluxo de orcamento:', err)
       setError('Não foi possível carregar os detalhes do orçamento.')
     } finally {
       setIsLoading(false)
@@ -149,7 +149,7 @@ export function ClientOrcamentoModal({
 
       // 1. Processar solicitações de orçamento (sem pagamento)
       if (docsToRequest.length > 0) {
-        console.log('Solicitando orçamentos para:', docsToRequest)
+        console.log('Solicitando orcamentos para:', docsToRequest)
         const requestPromises = docsToRequest.map(id => {
             const newStatus = 'ANALYZING_APOSTILLE'
             return clienteService.updateDocumentoStatus(id, newStatus)
@@ -174,7 +174,7 @@ export function ClientOrcamentoModal({
           window.location.href = checkout.checkoutUrl
           return
         } else {
-          console.error('CheckoutUrl não encontrado no objeto:', checkout)
+          console.error('CheckoutUrl nao encontrado no objeto:', checkout)
         }
       }
 

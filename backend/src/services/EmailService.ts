@@ -11,11 +11,11 @@ class EmailService {
             const pass = process.env.SMTP_PASS
 
             if (!host || !user || !pass) {
-                console.warn('[EmailService] Variáveis SMTP não configuradas. Emails não serão enviados.')
+                console.warn('[EmailService] Variaveis SMTP nao configuradas. Emails nao serao enviados.')
                 // Retorna um transporter "fantasma" que apenas faz log
                 return {
                     sendMail: async (opts: any) => {
-                        console.log('[EmailService] (SMTP não configurado) Email simulado:', {
+                        console.log('[EmailService] (SMTP nao configurado) Email simulado:', {
                             to: opts.to,
                             subject: opts.subject
                         })
@@ -226,9 +226,9 @@ class EmailService {
                 subject: '✅ Pagamento Confirmado — Preencha seu formulário | Bora Expandir',
                 html
             })
-            console.log(`[EmailService] Email de formulário enviado para ${params.to}`)
+            console.log(`[EmailService] Email de formulario enviado para ${params.to}`)
         } catch (error) {
-            console.error('[EmailService] Erro ao enviar email de formulário:', error)
+            console.error('[EmailService] Erro ao enviar email de formulario:', error)
             throw error
         }
     }

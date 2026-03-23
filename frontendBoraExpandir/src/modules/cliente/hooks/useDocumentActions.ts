@@ -78,7 +78,7 @@ export function useDocumentActions({
             const ids = new Set<string>(memberResponses.map((r: any) => r.formulario_juridico_id as string))
             setSentFormularioIds(ids)
         } catch (error) {
-            console.error('Erro ao buscar formulários enviados:', error)
+            console.error('Erro ao buscar formularios enviados:', error)
         }
     }, [member.id, member.clienteId, member.isTitular])
 
@@ -362,7 +362,7 @@ export function useDocumentActions({
             await fetchSentForms()
             alert('Formulário assinado enviado com sucesso!')
         } catch (error: any) {
-            console.error('Erro ao enviar formulário:', error)
+            console.error('Erro ao enviar formulario:', error)
             alert(error.message || 'Erro ao enviar formulário assinado')
         } finally {
             setIsUploading(false)
@@ -376,7 +376,7 @@ export function useDocumentActions({
             await clienteService.updateDocumentoStatus(selectedDocForQuote.id, 'WAITING_TRANSLATION_QUOTE')
             setRequestedSuccessfully(true)
         } catch (error: any) {
-            console.error('Erro ao solicitar tradução:', error)
+            console.error('Erro ao solicitar traducao:', error)
             alert(error.message || 'Erro ao solicitar tradução')
         } finally {
             setIsRequestingQuote(false)

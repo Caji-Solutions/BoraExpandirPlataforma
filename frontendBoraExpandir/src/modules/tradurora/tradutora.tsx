@@ -70,7 +70,7 @@ export default function Tradutora() {
       const data = await traducoesService.getOrcamentosPendentes()
       setOrcamentos(data.map(mapDocToOrcamentoItem))
     } catch (error) {
-      console.error('Erro ao buscar orçamentos:', error)
+      console.error('Erro ao buscar orcamentos:', error)
     }
   }
 
@@ -98,7 +98,7 @@ export default function Tradutora() {
       // Refresh fila and entregues after submission
       await Promise.all([fetchFila(), fetchEntregues()])
     } catch (error) {
-      console.error('Erro ao enviar tradução:', error)
+      console.error('Erro ao enviar traducao:', error)
       throw error // Re-throw so DeliveryModal can handle the error
     }
   }
@@ -122,7 +122,7 @@ export default function Tradutora() {
         )
       )
     } catch (error) {
-      console.error(`Erro ao responder orçamento ${orcamentoId}:`, error)
+      console.error(`Erro ao responder orcamento ${orcamentoId}:`, error)
       alert('Erro ao enviar orçamento. Verifique o console para mais detalhes.')
     }
   }

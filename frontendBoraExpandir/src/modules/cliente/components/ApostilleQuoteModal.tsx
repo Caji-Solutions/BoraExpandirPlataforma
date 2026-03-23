@@ -131,7 +131,7 @@ export function ApostilleQuoteModal({
   const handleAction = async () => {
     if (selectedDocIds.size === 0) return
 
-    console.log(`[ApostilleQuoteModal.handleAction] Iniciando ação no passo: ${step}`);
+    console.log(`[ApostilleQuoteModal.handleAction] Iniciando acao no passo: ${step}`);
     console.log(`[ApostilleQuoteModal.handleAction] Documentos selecionados: ${Array.from(selectedDocIds).join(', ')}`);
 
     try {
@@ -139,7 +139,7 @@ export function ApostilleQuoteModal({
       setError(null)
       
       if (step === 'selection') {
-        console.log('[ApostilleQuoteModal.handleAction] Avançando para o passo PIX');
+        console.log('[ApostilleQuoteModal.handleAction] Avancando para o passo PIX');
         setStep('pix');
       } else if (step === 'pix') {
         if (!comprovanteFile) {
@@ -149,7 +149,7 @@ export function ApostilleQuoteModal({
           return
         }
 
-        console.log('[ApostilleQuoteModal.handleAction] Iniciando criação de orçamentos e upload de comprovante');
+        console.log('[ApostilleQuoteModal.handleAction] Iniciando criacao de orcamentos e upload de comprovante');
         
         const docsToSolicit = Array.from(selectedDocIds)
         const collectedOrcamentoIds: string[] = [];
@@ -166,24 +166,24 @@ export function ApostilleQuoteModal({
           )
           
           if (result.data.orcamentoId) {
-            console.log(`[ApostilleQuoteModal.handleAction] Orçamento criado/recuperado: ${result.data.orcamentoId} para doc: ${docId}`);
+            console.log(`[ApostilleQuoteModal.handleAction] Orcamento criado/recuperado: ${result.data.orcamentoId} para doc: ${docId}`);
             collectedOrcamentoIds.push(result.data.orcamentoId);
           }
         }
 
         if (collectedOrcamentoIds.length === 0) {
-          console.error('[ApostilleQuoteModal.handleAction] Nenhum orçamento foi gerado/recuperado');
+          console.error('[ApostilleQuoteModal.handleAction] Nenhum orcamento foi gerado/recuperado');
           setError('Não foi possível gerar os orçamentos. Tente novamente.')
           setIsProcessing(false)
           return
         }
 
-        console.log(`[ApostilleQuoteModal.handleAction] Enviando comprovante para orçamentos: ${collectedOrcamentoIds.join(', ')}`);
+        console.log(`[ApostilleQuoteModal.handleAction] Enviando comprovante para orcamentos: ${collectedOrcamentoIds.join(', ')}`);
 
         // 2. Upload do comprovante (bulk)
         await clienteService.submitApostilleComprovante(collectedOrcamentoIds, comprovanteFile)
         
-        console.log('[ApostilleQuoteModal.handleAction] Fluxo concluído com sucesso');
+        console.log('[ApostilleQuoteModal.handleAction] Fluxo concluido com sucesso');
         setStep('success')
         if (onPaymentSuccess) onPaymentSuccess()
       }

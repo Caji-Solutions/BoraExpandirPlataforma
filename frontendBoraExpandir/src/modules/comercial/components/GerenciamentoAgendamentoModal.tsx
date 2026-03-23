@@ -31,7 +31,7 @@ export function GerenciamentoAgendamentoModal({ agendamento, onClose, onAtualiza
                     setFormularioPreenchido(data.preenchido || false)
                 }
             } catch (err) {
-                console.error('Erro ao verificar formulário:', err)
+                console.error('Erro ao verificar formulario:', err)
             } finally {
                 setLoadingFormCheck(false)
             }

@@ -59,6 +59,7 @@ export type ClientDNAData = {
         id: string
         nome: string
     }
+    perfil_unificado?: { data: Record<string, any>; metadata?: Record<string, any> }
 }
 
 export type DNACategory = {
@@ -123,6 +124,10 @@ export function ClientDNAPage() {
                     const lastProcess = item.processos?.[0]
                     const agendamentos = item.agendamentos || []
                     const lastAgendamento = agendamentos.length > 0 ? agendamentos.reduce((latest: any, current: any) => new Date(latest.data_hora) > new Date(current.data_hora) ? latest : current) : null
+                    const agendamentosPagos = agendamentos.filter((a: any) => a.pagamento_status === 'aprovado')
+                    const firstPaidAgendamento = agendamentosPagos.length > 0
+                        ? agendamentosPagos.reduce((earliest: any, current: any) => new Date(earliest.data_hora) < new Date(current.data_hora) ? earliest : current)
+                        : null
 
                     return {
                         id: item.client_id || item.id,
@@ -131,7 +136,7 @@ export function ClientDNAPage() {
                         nome: item.nome || 'Sem nome',
                         email: item.email || 'Sem e-mail',
                         telefone: item.whatsapp || '',
-                        tipoAssessoria: lastProcess?.tipo_servico || lastAgendamento?.produto_nome || 'Assessoria',
+                        tipoAssessoria: lastProcess?.tipo_servico || firstPaidAgendamento?.produto_nome || lastAgendamento?.produto_nome || 'Assessoria',
                         contratoAtivo: true, // Padronizado para true para evitar quebras, mas não é mais usado na listagem
                         categoria: lastProcess?.status || item.stage || (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status || 'formularios')),
                         previsaoChegada: item.previsao_chegada || '',
@@ -148,7 +153,8 @@ export function ClientDNAPage() {
                         criador: item.criado_por ? {
                             id: item.criado_por,
                             nome: item.criado_por_nome || 'Desconhecido'
-                        } : undefined
+                        } : undefined,
+                        perfil_unificado: item.perfil_unificado || undefined
                     }
                 })
                 setClientes(mappedClientes)

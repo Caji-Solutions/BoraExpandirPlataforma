@@ -151,7 +151,7 @@ export function ClienteApp() {
 
       setNotifications(backendNotifs)
     } catch (error) {
-      console.error('Erro ao buscar notificações:', error)
+      console.error('Erro ao buscar notificacoes:', error)
     }
   }
 
@@ -366,7 +366,7 @@ export function ClienteApp() {
 
       await clienteService.updateNotificacaoStatus(notificationId, lida)
     } catch (error) {
-      console.error('Erro ao atualizar status da notificação:', error)
+      console.error('Erro ao atualizar status da notificacao:', error)
     }
   }
 
@@ -637,7 +637,7 @@ export function ClienteApp() {
                 requiredDocuments={requiredDocuments}
                 requerimentos={requerimentos}
                 onUploadSuccess={async (data) => {
-                  console.log('Upload concluído:', data)
+                  console.log('Upload concluido:', data)
                   // Recarregar documentos do backend para obter o estado real
                   await fetchDocuments()
                 }}
