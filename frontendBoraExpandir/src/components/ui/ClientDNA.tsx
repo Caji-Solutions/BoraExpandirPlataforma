@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
     AlertCircle,
     ClipboardList,
@@ -93,6 +94,9 @@ type DNAView = 'list' | 'detail'
 
 export function ClientDNAPage() {
     const { activeProfile } = useAuth()
+    const [searchParams] = useSearchParams()
+    const queryClienteId = searchParams.get('clienteId')
+    const queryTab = searchParams.get('tab') as 'timeline' | 'formularios' | 'contrato_comprovantes' | 'notas' | null
     const [view, setView] = useState<DNAView>('list')
     const [selectedClient, setSelectedClient] = useState<ClientDNAData | null>(null)
     const [clientes, setClientes] = useState<ClientDNAData[]>([])
@@ -147,6 +151,15 @@ export function ClientDNAPage() {
                     }
                 })
                 setClientes(mappedClientes)
+                if (queryClienteId) {
+                    const found = mappedClientes.find(
+                        c => c.true_id === queryClienteId || c.id === queryClienteId
+                    )
+                    if (found) {
+                        setSelectedClient(found)
+                        setView('detail')
+                    }
+                }
             }
             setError(null)
         } catch (err) {
@@ -155,7 +168,7 @@ export function ClientDNAPage() {
         } finally {
             setLoading(false)
         }
-    }, [activeProfile?.id])
+    }, [activeProfile?.id, queryClienteId])
 
     useEffect(() => {
         fetchClientes()
@@ -206,6 +219,7 @@ export function ClientDNAPage() {
                 <DNAClientDetailView
                     client={selectedClient!}
                     onBack={handleBackToList}
+                    initialTab={queryTab || undefined}
                 />
             )
     }

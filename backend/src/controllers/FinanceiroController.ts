@@ -241,10 +241,44 @@ class FinanceiroController {
                 formularioPreenchido = true
             }
 
-            // 6. Só marca 'confirmado' se pagamento E formulário estiverem OK
-            const novoStatus = formularioPreenchido ? 'confirmado' : 'agendado'
+            // 6. Só marca 'confirmado' se pagamento E formulário estiverem OK, e se NÃO houver conflito
+            let novoStatus = formularioPreenchido ? 'confirmado' : 'agendado'
+            if (conflitoHorario) {
+                novoStatus = 'Conflito'
+            }
             await ComercialRepository.updateAgendamentoStatus(id, novoStatus)
             console.log(`[FinanceiroController] Status do agendamento atualizado para: ${novoStatus} (formulario: ${formularioPreenchido ? 'sim' : 'nao'})`)
+
+            // TASK 2: Se status virou 'confirmado', gera link do Meet
+            if (novoStatus === 'confirmado' && !agendamento.meet_link) {
+                try {
+                    console.log(`[GoogleMeet] Agendamento ${id} confirmado via Financeiro. Gerando link...`);
+                    const ComposioService = (await import('../services/ComposioService')).default;
+                    const { getSuperAdminId } = await import('../utils/calendarHelpers');
+                    const superAdminId = await getSuperAdminId();
+                    
+                    const calendarUserId = superAdminId || 'default';
+
+                    const eventResult = await ComposioService.createCalendarEvent(
+                        calendarUserId,
+                        {
+                            summary: `Consultoria - ${agendamento.nome}`,
+                            description: `Consultoria confirmada via PIX.\nTelefone: ${agendamento.telefone}\nEmail: ${agendamento.email}`,
+                            startTime: new Date(agendamento.data_hora),
+                            endTime: new Date(new Date(agendamento.data_hora).getTime() + (agendamento.duracao_minutos || 60) * 60000),
+                            attendees: [agendamento.email],
+                            location: 'Google Meet'
+                        }
+                    );
+
+                    if (eventResult.success && eventResult.eventLink) {
+                        await ComercialRepository.updateMeetLink(id, eventResult.eventLink);
+                        console.log('[GoogleMeet] Link salvo:', eventResult.eventLink);
+                    }
+                } catch (errMeet) {
+                    console.error('[GoogleMeet] Erro ao gerar link:', errMeet);
+                }
+            }
 
             // 7. Se formulário ainda não preenchido, enviar email com link do formulário
             if (!agendamento.email) {

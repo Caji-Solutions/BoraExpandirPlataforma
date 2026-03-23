@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { supabase } from '../config/SupabaseClient';
 import htmlPdf from 'html-pdf-node';
+import Handlebars from 'handlebars';
 import { formatCpfDisplay, formatPhoneDisplay } from '../utils/normalizers';
 
 interface ContratoPayload {
@@ -20,6 +21,11 @@ interface ContratoPayload {
     valor_consultoria?: string;
     forma_pagamento?: string;
     data: string;
+    pendencias?: string; // JSON string of Array<{nome, parentesco, valor}>
+}
+
+function sanitizeText(str: string): string {
+    return String(str || '').replace(/<[^>]*>/g, '').trim();
 }
 
 class HtmlPdfService {
@@ -36,7 +42,7 @@ class HtmlPdfService {
                 throw new Error(`Template nao encontrado: ${templatePath}`);
             }
 
-            let html = fs.readFileSync(templatePath, 'utf-8');
+            const templateSource = fs.readFileSync(templatePath, 'utf-8');
 
             // Formatar dados
             const documentoDigits = String(payload.documento || '').replace(/\D/g, '');
@@ -45,23 +51,42 @@ class HtmlPdfService {
                 : String(payload.documento || '');
             const telefoneFormatado = formatPhoneDisplay(payload.telefone || '');
 
-            // Substituir variáveis
-            html = html
-                .replace(/\{\{NOME\}\}/g, payload.nome || '')
-                .replace(/\{\{nacionalidade\}\}/g, payload.nacionalidade || '')
-                .replace(/\{\{estado.?civil\}\}/gi, payload.estado_civil || '')
-                .replace(/\{\{profissão\}\}/gi, payload.profissao || '')
-                .replace(/\{\{nome do\(s\) documento\(s\) e número\(s\)\}\}/gi, documentoFormatado)
-                .replace(/\{\{endereço\}\}/gi, payload.endereco || '')
-                .replace(/\{\{.*email.*\}\}/gi, payload.email || '')
-                .replace(/\{\{.*telefone.*\}\}/gi, telefoneFormatado)
-                .replace(/\{\{TIPO DE SERVIÇO\}\}/gi, payload.tipo_servico || '')
-                .replace(/\{\{Titulares.*\}\}/gi, payload.descricao_pessoas || '')
-                .replace(/\{\{VALOR PAVÃO.*\}\}/gi, payload.valor_pavao || '')
-                .replace(/\{\{VALOR TOTAL.*\}\}/gi, payload.valor_desconto || '')
-                .replace(/\{\{VALOR TOTAL CONSULTORIA.*\}\}/gi, payload.valor_consultoria || '')
-                .replace(/\{\{FORMA DE PAGAMENTO\}\}/gi, payload.forma_pagamento || '')
-                .replace(/\{\{data\}\}/g, payload.data || new Date().toLocaleDateString('pt-BR'));
+            // Parsear pendencias
+            let pendenciasArray: Array<{nome: string, parentesco: string, valor: string}> = [];
+            if (payload.pendencias) {
+                try {
+                    const parsed = JSON.parse(payload.pendencias);
+                    if (Array.isArray(parsed)) {
+                        pendenciasArray = parsed.filter(p => p.nome || p.valor);
+                    }
+                } catch {
+                    console.warn('[HtmlPdfService] Falha ao parsear pendencias');
+                }
+            }
+
+            // Compilar template com Handlebars
+            const template = Handlebars.compile(templateSource);
+
+            const context: Record<string, any> = {
+                nome: sanitizeText(payload.nome),
+                nacionalidade: sanitizeText(payload.nacionalidade),
+                estado_civil: sanitizeText(payload.estado_civil),
+                profissao: sanitizeText(payload.profissao),
+                documento: documentoFormatado,
+                endereco: sanitizeText(payload.endereco),
+                email: sanitizeText(payload.email),
+                telefone: telefoneFormatado,
+                tipo_servico: sanitizeText(payload.tipo_servico),
+                descricao_pessoas: payload.descricao_pessoas || '',
+                valor_pavao: payload.valor_pavao || '',
+                valor_desconto: payload.valor_desconto || '',
+                valor_consultoria: payload.valor_consultoria || '',
+                forma_pagamento: payload.forma_pagamento || '',
+                data: payload.data || new Date().toLocaleDateString('pt-BR'),
+                pendencias: pendenciasArray.length > 0 ? pendenciasArray : null,
+            };
+
+            const html = template(context);
 
             // Gerar PDF
             const file = { content: html };

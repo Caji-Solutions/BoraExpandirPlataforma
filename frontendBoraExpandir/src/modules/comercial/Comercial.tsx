@@ -682,6 +682,7 @@ export default function Comercial() {
         { label: 'Serviços', to: '/comercial/servicos', icon: FileText },
         { label: 'Meus Agendamentos', to: '/comercial/meus-agendamentos', icon: Calendar },
         { label: 'Minhas Comissões', to: '/comercial/ganhos', icon: DollarSign },
+        { label: 'Contratos', to: '/comercial/contratos', icon: FileText },
       ],
     },
   ]

@@ -207,10 +207,7 @@ class CalendarController {
 
       const url = await composioService.getConnectionUrl(userId as string);
 
-      return res.status(200).json({
-        success: true,
-        connectionUrl: url,
-      });
+      return res.redirect(url);
     } catch (error: any) {
       console.error('❌ Erro no CalendarController.getConnectionUrl:', error);
       return res.status(500).json({
@@ -235,17 +232,48 @@ class CalendarController {
         });
       }
 
-      const isConnected = await composioService.isConnected(userId as string);
+      const connectionInfo = await composioService.getConnectionDetails(userId as string);
 
       return res.status(200).json({
         success: true,
-        isConnected,
+        isConnected: connectionInfo.isConnected,
+        connection: connectionInfo.isConnected ? connectionInfo.account : null
       });
     } catch (error: any) {
       console.error('❌ Erro no CalendarController.getConnectionStatus:', error);
       return res.status(500).json({
         success: false,
         error: error.message || 'Erro ao verificar status de conexão',
+      });
+    }
+  }
+
+  /**
+   * Desconecta o usuário do Google Calendar
+   * DELETE /api/calendar/disconnect?userId=string
+   */
+  async disconnect(req: Request, res: Response) {
+    try {
+      const { userId } = req.query;
+
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          error: 'userId é obrigatório',
+        });
+      }
+
+      const success = await composioService.disconnectCalendar(userId as string);
+
+      return res.status(200).json({
+        success,
+        message: success ? 'Desconectado com sucesso' : 'Falha ao desconectar ou conta não conectada'
+      });
+    } catch (error: any) {
+      console.error('❌ Erro no CalendarController.disconnect:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Erro ao desconectar conta',
       });
     }
   }
@@ -275,14 +303,19 @@ class CalendarController {
               .account-id { background: #f3f4f6; padding: 8px 16px; border-radius: 8px; font-family: monospace; font-size: 12px; color: #374151; }
               .close-btn { background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px; margin-top: 16px; }
               .close-btn:hover { background: #5a67d8; }
+              .back-btn { background: #4b5563; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px; margin-top: 16px; margin-left: 8px; }
+              .back-btn:hover { background: #374151; text-decoration: none; }
             </style>
           </head>
           <body>
             <div class="card">
               <h1>✅ Conectado!</h1>
-              <p>Sua conta do Google Calendar foi conectada com sucesso.</p>
+              <p>Sua conta do Google Calendar foi conectada com sucesso. Você pode fechar esta aba com segurança.</p>
               <div class="account-id">Account ID: ${connected_account_id}</div>
-              <button class="close-btn" onclick="window.close()">Fechar</button>
+              <div style="display: flex; justify-content: center; align-items: center;">
+                <button class="close-btn" onclick="window.close()">Fechar Aba</button>
+                <button class="back-btn" onclick="window.location.href = '${process.env.FRONTEND_URL || 'http://localhost:5174'}/admin'">Dashboard</button>
+              </div>
             </div>
           </body>
           </html>
@@ -298,13 +331,21 @@ class CalendarController {
               body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%); }
               .card { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); text-align: center; max-width: 400px; }
               h1 { color: #ef4444; margin-bottom: 16px; }
-              p { color: #666; }
+              p { color: #666; margin-bottom: 24px; }
+              .close-btn { background: #ff6b6b; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px; margin-top: 16px; }
+              .close-btn:hover { background: #fa5252; }
+              .back-btn { background: #4b5563; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px; margin-top: 16px; margin-left: 8px; }
+              .back-btn:hover { background: #374151; text-decoration: none; }
             </style>
           </head>
           <body>
             <div class="card">
               <h1>❌ Erro na Conexão</h1>
               <p>Não foi possível conectar sua conta do Google Calendar. Por favor, tente novamente.</p>
+              <div style="display: flex; justify-content: center; align-items: center;">
+                <button class="close-btn" onclick="window.close()">Fechar Aba</button>
+                <button class="back-btn" onclick="window.location.href = '${process.env.FRONTEND_URL || 'http://localhost:5174'}/admin'">Dashboard</button>
+              </div>
             </div>
           </body>
           </html>

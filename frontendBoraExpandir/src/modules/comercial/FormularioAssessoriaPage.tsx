@@ -32,6 +32,7 @@ type FormularioDraft = {
   valor_consultoria: string
   forma_pagamento: string
   formaPagamento: string
+  pendencias?: string
 }
 
 const emptyFormData: FormularioDraft = {
@@ -49,7 +50,8 @@ const emptyFormData: FormularioDraft = {
   valor_desconto: '',
   valor_consultoria: '',
   forma_pagamento: '',
-  formaPagamento: ''
+  formaPagamento: '',
+  pendencias: ''
 }
 
 export default function FormularioAssessoriaPage() {
@@ -63,6 +65,7 @@ export default function FormularioAssessoriaPage() {
   const [formData, setFormData] = useState<FormularioDraft>(emptyFormData)
   const [contrato, setContrato] = useState<ContratoServico | null>(null)
   const [erroGeracao, setErroGeracao] = useState<any>(null)
+  const [pendencias, setPendencias] = useState<Array<{nome: string, parentesco: string, valor: string}>>([])
 
   const initializedRef = useRef(false)
   const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -98,6 +101,13 @@ export default function FormularioAssessoriaPage() {
       forma_pagamento: draft.forma_pagamento || draft.formaPagamento || '',
       formaPagamento: draft.forma_pagamento || draft.formaPagamento || ''
     })
+
+    try {
+      const pendenciasData = draft.pendencias ? JSON.parse(draft.pendencias) : []
+      setPendencias(Array.isArray(pendenciasData) ? pendenciasData : [])
+    } catch {
+      setPendencias([])
+    }
 
     const etapaErro = Number(erro?.etapa || 4)
     const etapaPersistida = Number(data.etapa_fluxo || 1)
@@ -159,6 +169,8 @@ export default function FormularioAssessoriaPage() {
     if (documentoDigits.length === 11) {
       payload.documento = normalizeCpf(payload.documento)
     }
+
+    payload.pendencias = JSON.stringify(pendencias)
 
     return payload
   }
@@ -460,6 +472,61 @@ export default function FormularioAssessoriaPage() {
                 <input type="text" disabled={saving || isLockedByGeracaoErro} placeholder="Ex: 200 (duzentos euros)" value={formData.valor_consultoria} onChange={(e) => setFormData({ ...formData, valor_consultoria: e.target.value })} className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm" />
               </div>
             </div>
+            {/* Pendencias */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Pendentes / Dependentes com Pendencia</label>
+                <button
+                  type="button"
+                  disabled={saving || isLockedByGeracaoErro}
+                  onClick={() => setPendencias(prev => [...prev, { nome: '', parentesco: '', valor: '' }])}
+                  className="text-blue-600 hover:text-blue-700 font-medium text-sm disabled:opacity-50"
+                >
+                  + Adicionar Pendente
+                </button>
+              </div>
+              {pendencias.length > 0 && (
+                <div className="bg-gray-50 dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700 divide-y divide-gray-200 dark:divide-neutral-700">
+                  {pendencias.map((p, i) => (
+                    <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 p-3 items-center">
+                      <input
+                        type="text"
+                        placeholder="Nome"
+                        disabled={saving || isLockedByGeracaoErro}
+                        value={p.nome}
+                        onChange={(e) => setPendencias(prev => prev.map((x, idx) => idx === i ? { ...x, nome: e.target.value } : x))}
+                        className="border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-neutral-900"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Vinculo/Parentesco"
+                        disabled={saving || isLockedByGeracaoErro}
+                        value={p.parentesco}
+                        onChange={(e) => setPendencias(prev => prev.map((x, idx) => idx === i ? { ...x, parentesco: e.target.value } : x))}
+                        className="border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-neutral-900"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Valor R$"
+                        disabled={saving || isLockedByGeracaoErro}
+                        value={p.valor}
+                        onChange={(e) => setPendencias(prev => prev.map((x, idx) => idx === i ? { ...x, valor: e.target.value } : x))}
+                        className="border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-neutral-900"
+                      />
+                      <button
+                        type="button"
+                        disabled={saving || isLockedByGeracaoErro}
+                        onClick={() => setPendencias(prev => prev.filter((_, idx) => idx !== i))}
+                        className="text-red-500 hover:text-red-700 px-2 font-bold disabled:opacity-50"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="pt-4 flex justify-between">
               <button onClick={handleBack} disabled={saving || isLockedByGeracaoErro} className="px-6 py-2.5 border border-gray-300 dark:border-neutral-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-neutral-800 disabled:opacity-50 transition-all">Anterior</button>
               <button onClick={handleNext} disabled={saving || isLockedByGeracaoErro} className="px-6 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-emerald-600/20">

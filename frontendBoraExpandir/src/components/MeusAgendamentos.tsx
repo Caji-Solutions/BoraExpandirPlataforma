@@ -1,21 +1,27 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  Calendar, 
+import {
+  Calendar,
   Briefcase,
-  AlertCircle, 
-  Clock, 
-  User, 
+  AlertCircle,
+  Clock,
+  User,
   X,
   CreditCard,
-  Copy
+  Copy,
+  Video,
+  CalendarClock,
+  FileText
 } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
 import juridicoService from "../modules/juridico/services/juridicoService"; // Keeping the service reference for now
 import { catalogService, Service } from "../modules/adm/services/catalogService";
 import { Badge } from "./ui/Badge";
 import { formatDate } from "../modules/cliente/lib/utils";
 import { CalendarPicker } from "./ui/CalendarPicker";
+import { parseBackendDate, formatDataHora, formatHoraOnly } from "../utils/dateUtils";
+import { PedidoReagendamentoModal } from "../modules/juridico/components/PedidoReagendamentoModal";
 
 type TabType = 'consultorias' | 'assessorias';
 
@@ -48,13 +54,14 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
   // Checks de Segurança
   const [hasFormulario, setHasFormulario] = useState<boolean | null>(null);
   const [checkingSecurity, setCheckingSecurity] = useState(false);
+  const [isReagendamentoOpen, setIsReagendamentoOpen] = useState(false);
   const [cachedProfiles, setCachedProfiles] = useState<Record<string, string>>({});
   const [servicosCatalogo, setServicosCatalogo] = useState<Service[]>([]);
 
   const effectiveUserId = userId || activeProfile?.id;
 
   const getLocalDateString = (date: Date | string) => {
-    const d = typeof date === 'string' ? new Date(date) : date;
+    const d = typeof date === 'string' ? parseBackendDate(date) : date;
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
@@ -149,7 +156,8 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
           if (clienteId) {
             console.log(`DEBUG: Verificando formulários para cliente: ${clienteId}`);
             if (activeTab === 'consultorias') {
-              setHasFormulario(!!selectedItem.cliente_is_user);
+              const preenchido = await juridicoService.verificarFormularioPreenchido(clienteId);
+              setHasFormulario(preenchido);
             } else {
               setHasFormulario(!!selectedItem.respostas);
             }
@@ -215,6 +223,12 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
         return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-none">Agendado</Badge>;
       case 'cancelado':
         return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-none">Cancelado</Badge>;
+      case 'aguardando_verificacao':
+        return <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100 border-none">Aguardando Verificação</Badge>;
+      case 'realizado':
+        return <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100 border-none">Realizado</Badge>;
+      case 'conflito':
+        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none">Conflito</Badge>;
       default:
         return <Badge variant="outline">{status || 'N/A'}</Badge>;
     }
@@ -244,9 +258,8 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
       const timeValue = item.data_hora || item.criado_em;
       if (!timeValue) return false;
       
-      // Normalização idêntica ao Comercial1.tsx para ignorar fuso
-      const d = new Date(timeValue);
-      const inicioAgendamento = new Date(d.getTime() + d.getTimezoneOffset() * 60000);
+      // Com as mudanças no backend, os dados agora chegam blindados em UTC-3
+      const inicioAgendamento = parseBackendDate(timeValue);
       
       const duracao = item.duracao_minutos || 60;
       const fimAgendamento = new Date(inicioAgendamento.getTime() + duracao * 60000);
@@ -258,11 +271,10 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
 
     if (found) {
        const rawVal = found.data_hora || found.criado_em;
-       const d = new Date(rawVal);
+       const d = parseBackendDate(rawVal);
        console.log(`DEBUG: Slot ${hora} ocupado por:`, found.id, 
          "| Raw:", rawVal, 
-         "| LocalTime:", d.toLocaleTimeString(), 
-         "| ISOTime:", d.toISOString());
+         "| LocalTime:", d.toLocaleTimeString());
     }
     return found;
   };
@@ -271,9 +283,8 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
     const timeValue = item.data_hora || item.criado_em;
     if (!item || !timeValue) return false;
     
-    // Normalização idêntica para checar início exato
-    const d = new Date(timeValue);
-    const normalized = new Date(d.getTime() + d.getTimezoneOffset() * 60000);
+    // Normalização local 1:1
+    const normalized = parseBackendDate(timeValue);
     const h = String(normalized.getHours()).padStart(2, '0');
     const m = String(normalized.getMinutes()).padStart(2, '0');
     return `${h}:${m}` === hora;
@@ -323,6 +334,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
               selectedDate={dataSelecionada}
               disabledDates={[]}
               disablePastDates={false}
+              disableWeekends={true}
               occupancyData={occupancyData}
             />
           </div>
@@ -467,7 +479,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                   <div className="bg-gray-50 dark:bg-neutral-900/50 p-3 rounded-xl border border-gray-100 dark:border-neutral-800">
                     <p className="text-xs text-gray-500 uppercase font-semibold mb-1 flex items-center gap-1.5"><Calendar className="h-3 w-3"/> Data</p>
                     <p className="font-medium text-gray-900 dark:text-white">
-                       {selectedItem.data_hora || selectedItem.criado_em ? new Date(selectedItem.data_hora || selectedItem.criado_em).toLocaleDateString('pt-BR') : '—'}
+                       {selectedItem.data_hora || selectedItem.criado_em ? parseBackendDate(selectedItem.data_hora || selectedItem.criado_em).toLocaleDateString('pt-BR') : '—'}
                     </p>
                   </div>
                   <div className="bg-gray-50 dark:bg-neutral-900/50 p-3 rounded-xl border border-gray-100 dark:border-neutral-800">
@@ -483,22 +495,27 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                           const timeValue = selectedItem.data_hora || selectedItem.criado_em;
                           if (!timeValue) return '—';
                           
-                          // Normalização idêntica ao Comercial1.tsx para ignorar fuso
-                          const d = new Date(timeValue);
-                          const normalizedDate = new Date(d.getTime() + d.getTimezoneOffset() * 60000);
+                          // Agora a data chega no formato local via backend dateUtils
+                          const normalizedDate = parseBackendDate(timeValue);
                           
-                          console.log("DEBUG: Detalhes Modal - Time Debug:", {
-                             raw: timeValue,
-                             localParsed: d.toString(),
-                             normalized: normalizedDate.toString(),
-                             formatted: normalizedDate.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})
-                          });
-                          
-                          return normalizedDate.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+                          return formatHoraOnly(normalizedDate);
                        })()}
                        <span className="text-xs text-gray-500 ml-1">({selectedItem.duracao_minutos || 60}m)</span>
                     </p>
                   </div>
+                  {selectedItem.meet_link && (
+                    <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-xl border border-emerald-100 dark:border-emerald-800/30 flex flex-col justify-center">
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 uppercase font-bold mb-1 flex items-center gap-1.5"><Video className="h-3.5 w-3.5"/> Google Meet</p>
+                      <a 
+                        href={selectedItem.meet_link} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="text-sm font-bold text-emerald-700 dark:text-emerald-300 hover:underline flex items-center gap-1"
+                      >
+                        Entrar na Reunião
+                      </a>
+                    </div>
+                  )}
                </div>
 
                {/* Seção Condicional: Informações de Assessoria (Chamada) */}
@@ -573,41 +590,17 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                  </div>
                )}
 
-               <div className="pt-4 border-t border-gray-100 dark:border-neutral-700 grid grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider block mb-1">Responsável pela Consultoria</span>
-                    <div className="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-xl border border-blue-100/50 dark:border-blue-900/30">
-                       <p className="font-medium text-blue-900 dark:text-blue-100 italic">
-                         {(() => {
-                           const respId = selectedItem.responsavel_juridico_id;
-                           if (!respId) return 'Aguardando Atribuição';
-                           const user = usuariosSistema.find(u => u.id === respId);
-                           if (user) return user.full_name;
-                           if (activeProfile?.id === respId) return activeProfile?.full_name;
-                           return 'Não identificado';
-                         })()}
-                       </p>
-                       {!selectedItem.responsavel_juridico_id && activeTab === 'consultorias' && (
-                         <button 
-                           onClick={handleAssign}
-                           disabled={isAssigning}
-                           className="mt-2 w-full py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
-                         >
-                           {isAssigning ? 'Atribuindo...' : 'Realizar Consultoria'}
-                         </button>
-                       )}
-                    </div>
-                  </div>
-                  <div>
+               <div className="pt-4 border-t border-gray-100 dark:border-neutral-700">
                     <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider block mb-1">Agendado / Criado Por</span>
                     <div className="bg-gray-50 dark:bg-neutral-800/50 p-3 rounded-xl border border-gray-100 dark:border-neutral-800">
                        <p className="font-medium text-gray-900 dark:text-white">
                          {(() => {
                             const creatorId = selectedItem.usuario_id || selectedItem.responsavel_id;
                             const user = usuariosSistema.find(u => u.id === creatorId);
-                            if (user) return user.full_name;
+                            if (user?.full_name) return user.full_name;
                             if (activeProfile?.id === creatorId) return activeProfile?.full_name;
                             if (cachedProfiles[creatorId]) return cachedProfiles[creatorId];
+                            if (creatorId && checkingSecurity) return '...';
                             return creatorId ? 'Não identificado' : 'Sistema';
                           })()}
                        </p>
@@ -621,7 +614,6 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                          })()}
                        </p>
                     </div>
-                  </div>
                </div>
                
                <div className="pt-4 border-t border-gray-100 dark:border-neutral-700">
@@ -640,14 +632,14 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                     )}
                     {selectedItem.meet_link && (
                       <div className="flex flex-col">
-                        <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider block mb-1 flex-shrink-0">Google Meet</span>
+                        <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider block mb-1 flex-shrink-0">Google Meet (Link)</span>
                         <div className="flex items-center gap-2 mt-1 min-w-0">
                           <a href={selectedItem.meet_link} target="_blank" rel="noreferrer" className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 truncate max-w-[150px] sm:max-w-[200px]" title={selectedItem.meet_link}>
                             {selectedItem.meet_link}
                           </a>
                           <button onClick={() => { 
                             navigator.clipboard.writeText(selectedItem.meet_link); 
-                            setTimeout(() => alert('Link copiado!'), 100);
+                            toast.success('Link do Google Meet copiado!');
                           }} className="p-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 rounded-md transition-colors flex-shrink-0" title="Copiar link">
                             <Copy className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
                           </button>
@@ -655,6 +647,25 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                       </div>
                     )}
                   </div>
+
+                  {/* Botao Formulario do Cliente */}
+                  {activeTab === 'consultorias' && !checkingSecurity && (
+                    <div className="mt-4">
+                      {hasFormulario === true ? (
+                        <button
+                          onClick={() => navigate(`/juridico/dna?clienteId=${selectedItem.cliente_id}&tab=formularios`)}
+                          className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+                        >
+                          <FileText className="h-4 w-4" />
+                          Ver Formulario do Cliente
+                        </button>
+                      ) : hasFormulario === false ? (
+                        <div className="w-full px-4 py-2.5 bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-gray-400 font-semibold rounded-xl text-center text-sm">
+                          Formulario ainda nao preenchido
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
 
                   {/* Alertas de Segurança */}
                   <div className="mt-4 space-y-3">
@@ -731,15 +742,37 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                     </div>
                   )}
                </div>
-               <button 
-                 onClick={() => setSelectedItem(null)}
-                 className="px-6 py-2.5 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors"
-               >
-                 Fechar
-               </button>
+               <div className="flex flex-col gap-2 w-full sm:w-auto">
+                 <button
+                   onClick={() => setIsReagendamentoOpen(true)}
+                   className="w-full px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+                 >
+                   <CalendarClock className="h-4 w-4" />
+                   Pedido de Reagendamento
+                 </button>
+                 <button
+                   onClick={() => setSelectedItem(null)}
+                   className="w-full px-6 py-2.5 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors"
+                 >
+                   Fechar
+                 </button>
+               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {selectedItem && (
+        <PedidoReagendamentoModal
+          isOpen={isReagendamentoOpen}
+          onClose={() => setIsReagendamentoOpen(false)}
+          agendamento={selectedItem}
+          onSucesso={() => {
+            setIsReagendamentoOpen(false);
+            setSelectedItem(null);
+            fetchData();
+          }}
+        />
       )}
     </div>
   );

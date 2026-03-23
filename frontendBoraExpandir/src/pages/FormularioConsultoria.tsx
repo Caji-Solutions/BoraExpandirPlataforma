@@ -7,6 +7,32 @@ type PagamentoStatus = 'pendente' | 'aprovado' | 'em_analise' | 'recusado' | nul
 
 const PIX_CNPJ = '55.218.947/0001-65'
 
+const _inputClass = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+const _labelClass = "block text-sm font-semibold text-gray-300 mb-1.5"
+
+function YesNoQuestion({ label, yesLabel = "Sim", noLabel = "Não", value, onYes, onNo, children }: any) {
+    return (
+        <div className="space-y-3">
+            <label className={_labelClass}>{label} *</label>
+            <div className="flex gap-3">
+                <button type="button" onClick={onYes}
+                    className={`flex-1 py-3 rounded-xl font-bold transition-all ${value === "yes" ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" : "bg-white/10 text-gray-300 hover:bg-white/15 border border-white/10"}`}>
+                    {yesLabel}
+                </button>
+                <button type="button" onClick={onNo}
+                    className={`flex-1 py-3 rounded-xl font-bold transition-all ${value === "no" ? "bg-red-500/80 text-white shadow-lg shadow-red-500/25" : "bg-white/10 text-gray-300 hover:bg-white/15 border border-white/10"}`}>
+                    {noLabel}
+                </button>
+            </div>
+            {value !== null && children && (
+                <div className="mt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {children}
+                </div>
+            )}
+        </div>
+    )
+}
+
 export default function FormularioConsultoria() {
     const { agendamentoId } = useParams<{ agendamentoId: string }>()
     const [step, setStep] = useState<FormStep>(agendamentoId ? 'loading' : 'form')
@@ -28,62 +54,101 @@ export default function FormularioConsultoria() {
 
     // Dados do formulário — pré-preenchidos via query params quando disponíveis
     const [formData, setFormData] = useState({
+        // Step 1 - Identificação
         nome_completo: preNome,
+        parceiro_indicador: '',
         email: preEmail,
         whatsapp: preTelefone,
-        data_nascimento: '',
+        // Step 1 - Pessoais
         nacionalidade: '',
-        estado_civil: '',
-        cpf: '',
-        passaporte: '',
-        pais_residencia: '',
-        tem_filhos: false,
-        quantidade_filhos: 0,
-        idades_filhos: '',
-        profissao: '',
-        escolaridade: '',
-        experiencia_exterior: '',
-        empresa_exterior: '',
-        objetivo_imigracao: '',
-        pais_destino: '',
-        prazo_mudanca: '',
-        ja_tem_visto: false,
-        tipo_visto: '',
-        pretende_trabalhar: '',
-        area_trabalho: '',
-        renda_mensal: '',
-        possui_reserva: '',
-        observacoes: '',
-        como_conheceu: ''
+        esteve_europa_6meses: '',
+        cidade_pais_residencia: '',
+        // Step 2 - Familiar e Documentos
+        estado_civil: [] as string[],
+        filhos_qtd_idades: '',
+        familiares_espanha: '',
+        possui_cnh_categoria_ano: '',
+        proposta_trabalho_espanha: '',
+        visto_ue: '',
+        trabalho_destacado_ue: '',
+        filhos_nacionalidade_europeia: '',
+        pretende_autonomo: [] as string[],
+        // Step 3 - Educação e Trabalho
+        disposto_estudar: '',
+        pretende_trabalhar_espanha: [] as string[],
+        escolaridade: [] as string[],
+        area_formacao: '',
+        situacao_profissional: [] as string[],
+        profissao_online_presencial: '',
+        tipo_visto_planejado: '',
+        duvidas_consultoria: '',
     })
 
+    // Estados auxiliares para campos condicionais
+    const [europeAnswer, setEuropeAnswer] = useState<'yes' | 'no' | null>(
+        formData.esteve_europa_6meses?.toLowerCase().startsWith('nao') ? 'no' :
+        formData.esteve_europa_6meses ? 'yes' : null
+    )
+    const [residenciaAnswer, setResidenciaAnswer] = useState<'yes' | 'no' | null>(
+        formData.cidade_pais_residencia ? 'yes' : null
+    )
+    const [semFilhos, setSemFilhos] = useState(
+        formData.filhos_qtd_idades.toLowerCase().includes('nao tenho')
+    )
+    const [semFamiliaresEspanha, setSemFamiliaresEspanha] = useState(
+        formData.familiares_espanha.toLowerCase().includes('nao tenho')
+    )
+    const [semVistoUe, setSemVistoUe] = useState(
+        formData.visto_ue.toLowerCase().includes('nao tenho')
+    )
+    const [semFilhosEuropeus, setSemFilhosEuropeus] = useState(
+        formData.filhos_nacionalidade_europeia.toLowerCase().includes('nao tenho')
+    )
+
     // ========== Verificação de seções completas ==========
-    const isPessoalComplete = useCallback(() => {
+    const isStep1Complete = useCallback(() => {
         return !!(
             formData.nome_completo.trim() &&
             formData.email.trim() &&
             formData.whatsapp.trim() &&
-            formData.data_nascimento &&
             formData.nacionalidade.trim() &&
-            formData.estado_civil
+            formData.esteve_europa_6meses.trim() &&
+            formData.cidade_pais_residencia.trim()
+            // parceiro_indicador é OPCIONAL
         )
-    }, [formData.nome_completo, formData.email, formData.whatsapp, formData.data_nascimento, formData.nacionalidade, formData.estado_civil])
+    }, [formData.nome_completo, formData.email, formData.whatsapp,
+        formData.nacionalidade, formData.esteve_europa_6meses, formData.cidade_pais_residencia])
 
-    const isDocumentosComplete = useCallback(() => {
-        return !!(formData.cpf.trim() || formData.passaporte.trim())
-    }, [formData.cpf, formData.passaporte])
-
-    const isProfissionalComplete = useCallback(() => {
-        return !!(formData.profissao.trim() && formData.escolaridade)
-    }, [formData.profissao, formData.escolaridade])
-
-    const isImigracaoComplete = useCallback(() => {
+    const isStep2Complete = useCallback(() => {
         return !!(
-            formData.objetivo_imigracao.trim() &&
-            formData.pais_destino &&
-            formData.prazo_mudanca
+            formData.estado_civil.length > 0 &&
+            formData.filhos_qtd_idades.trim() &&
+            formData.familiares_espanha.trim() &&
+            formData.possui_cnh_categoria_ano.trim() &&
+            formData.proposta_trabalho_espanha.trim() &&
+            formData.visto_ue.trim() &&
+            formData.trabalho_destacado_ue.trim() &&
+            formData.filhos_nacionalidade_europeia.trim() &&
+            formData.pretende_autonomo.length > 0
         )
-    }, [formData.objetivo_imigracao, formData.pais_destino, formData.prazo_mudanca])
+    }, [formData.estado_civil, formData.filhos_qtd_idades, formData.familiares_espanha,
+        formData.possui_cnh_categoria_ano, formData.proposta_trabalho_espanha, formData.visto_ue,
+        formData.trabalho_destacado_ue, formData.filhos_nacionalidade_europeia, formData.pretende_autonomo])
+
+    const isStep3Complete = useCallback(() => {
+        return !!(
+            formData.disposto_estudar &&
+            formData.pretende_trabalhar_espanha.length > 0 &&
+            formData.escolaridade.length > 0 &&
+            formData.area_formacao.trim() &&
+            formData.situacao_profissional.length > 0 &&
+            formData.profissao_online_presencial.trim() &&
+            formData.tipo_visto_planejado.trim() &&
+            formData.duvidas_consultoria.trim()
+        )
+    }, [formData.disposto_estudar, formData.pretende_trabalhar_espanha, formData.escolaridade,
+        formData.area_formacao, formData.situacao_profissional, formData.profissao_online_presencial,
+        formData.tipo_visto_planejado, formData.duvidas_consultoria])
 
     // ========== Verificação de status ao carregar ==========
     useEffect(() => {
@@ -164,23 +229,15 @@ export default function FormularioConsultoria() {
     // Navegacao do stepper
     const nextStep = () => {
         if (currentStep === 1) {
-            if (!isPessoalComplete()) {
-                setError('Preencha todos os campos obrigatorios de Dados Pessoais antes de continuar.')
-                return
-            }
-            if (!isDocumentosComplete()) {
-                setError('Preencha pelo menos CPF ou Passaporte antes de continuar.')
+            if (!isStep1Complete()) {
+                setError('Preencha todos os campos obrigatórios antes de continuar.')
                 return
             }
             setError(null)
         }
         if (currentStep === 2) {
-            if (!isProfissionalComplete()) {
-                setError('Preencha profissao e escolaridade antes de continuar.')
-                return
-            }
-            if (!isImigracaoComplete()) {
-                setError('Preencha objetivo, pais de destino e prazo antes de continuar.')
+            if (!isStep2Complete()) {
+                setError('Preencha todos os campos obrigatórios desta etapa antes de continuar.')
                 return
             }
             setError(null)
@@ -195,12 +252,21 @@ export default function FormularioConsultoria() {
         window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value, type } = e.target
-        setFormData(prev => ({
-            ...prev,
-            [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
-        }))
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target
+        setFormData(prev => ({ ...prev, [name]: value }))
+    }
+
+    const handleCheckboxChange = (field: keyof typeof formData, value: string) => {
+        setFormData(prev => {
+            const current = (prev[field] as string[]) || []
+            return {
+                ...prev,
+                [field]: current.includes(value)
+                    ? current.filter(v => v !== value)
+                    : [...current, value]
+            }
+        })
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -210,24 +276,15 @@ export default function FormularioConsultoria() {
         // Validação das seções obrigatórias
         const erros: string[] = []
 
-        if (!isPessoalComplete()) {
-            erros.push('Dados Pessoais (nome, email, whatsapp, data de nascimento, nacionalidade e estado civil)')
-        }
-        if (!isDocumentosComplete()) {
-            erros.push('Documentos (CPF ou passaporte)')
-        }
-        if (!isProfissionalComplete()) {
-            erros.push('Informações Profissionais (profissão e escolaridade)')
-        }
-        if (!isImigracaoComplete()) {
-            erros.push('Plano de Imigração (objetivo, país de destino e prazo)')
-        }
+        if (!isStep1Complete()) erros.push('Identificação e Dados Pessoais (Etapa 1)')
+        if (!isStep2Complete()) erros.push('Situação Familiar e Documentos (Etapa 2)')
+        if (!isStep3Complete()) erros.push('Educação, Trabalho e Objetivos (Etapa 3)')
 
         if (erros.length > 0) {
             setError(`Preencha as seções obrigatórias:\n• ${erros.join('\n• ')}`)
-            // Abrir a etapa que contem o erro
-            if (!isPessoalComplete() || !isDocumentosComplete()) setCurrentStep(1)
-            else if (!isProfissionalComplete() || !isImigracaoComplete()) setCurrentStep(2)
+            if (!isStep1Complete()) setCurrentStep(1)
+            else if (!isStep2Complete()) setCurrentStep(2)
+            else setCurrentStep(3)
             return
         }
 
@@ -680,7 +737,7 @@ export default function FormularioConsultoria() {
     const inputClass = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
     const labelClass = "block text-sm font-semibold text-gray-300 mb-1.5"
 
-    const stepLabels = ['Sobre Você', 'Carreira e Planos', 'Finalizar']
+    const stepLabels = ['Identificação', 'Situação Familiar', 'Educação e Planos']
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-[#0a1628] via-[#0d1f3c] to-[#071222]">
@@ -700,6 +757,18 @@ export default function FormularioConsultoria() {
                     <p className="text-gray-400 text-sm leading-relaxed max-w-xl">
                         Preencha o formulário abaixo com suas informações. Ao finalizar, sua conta será criada automaticamente e as informações serão enviadas para seu email.
                     </p>
+                </div>
+            </div>
+
+            {/* Aviso Importante */}
+            <div className="max-w-3xl mx-auto px-6 pb-6">
+                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                    <p className="text-amber-400 font-bold text-sm mb-2">⚠️ Importante:</p>
+                    <ol className="text-gray-300 text-sm space-y-1 list-decimal list-inside">
+                        <li>Use o mesmo e-mail que você utilizou para fazer o agendamento. Se for diferente, o sistema não consegue confirmar a sua consultoria.</li>
+                        <li>Quem vai participar da consultoria é quem precisa preencher o formulário. (Ex.: se a consultoria é para você, não deixe outra pessoa preencher por você.)</li>
+                    </ol>
+                    <p className="text-gray-400 text-sm mt-2">Esse formulário é essencial para que possamos analisar o seu caso e garantir um atendimento realmente personalizado.</p>
                 </div>
             </div>
 
@@ -744,88 +813,81 @@ export default function FormularioConsultoria() {
                     </div>
                 )}
 
-                {/* ==================== ETAPA 1: Sobre Você ==================== */}
+                {/* ==================== ETAPA 1: Identificação ==================== */}
                 {currentStep === 1 && (
                     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                        {/* Dados Pessoais */}
+                        {/* Identificação */}
                         <div className="space-y-4 p-6 bg-white/[0.03] rounded-2xl border border-white/5">
-                            <h2 className="text-lg font-bold text-white flex items-center gap-2">📋 Dados Pessoais</h2>
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">👤 Identificação</h2>
                             <div>
                                 <label className={labelClass}>Nome completo *</label>
-                                <input name="nome_completo" value={formData.nome_completo} onChange={handleChange} className={inputClass + (preNome ? ' opacity-70' : '')} placeholder="Seu nome completo" required readOnly={!!preNome} />
+                                <input name="nome_completo" value={formData.nome_completo} onChange={handleChange} className={inputClass + (preNome ? ' opacity-70' : '')} placeholder="Seu nome completo" readOnly={!!preNome} />
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className={labelClass}>Email *</label>
-                                    <input name="email" type="email" value={formData.email} onChange={handleChange} className={inputClass + (preEmail ? ' opacity-70' : '')} placeholder="seuemail@exemplo.com" required readOnly={!!preEmail} />
-                                </div>
-                                <div>
-                                    <label className={labelClass}>WhatsApp com DDD *</label>
-                                    <input name="whatsapp" value={formData.whatsapp} onChange={handleChange} className={inputClass + (preTelefone ? ' opacity-70' : '')} placeholder="+55 11 99999-9999" required readOnly={!!preTelefone} />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label className={labelClass}>Data de Nascimento *</label>
-                                    <input name="data_nascimento" type="date" value={formData.data_nascimento} onChange={handleChange} className={inputClass} />
-                                </div>
-                                <div>
-                                    <label className={labelClass}>Nacionalidade *</label>
-                                    <input name="nacionalidade" value={formData.nacionalidade} onChange={handleChange} className={inputClass} placeholder="Brasileira" />
-                                </div>
-                                <div>
-                                    <label className={labelClass}>Estado Civil *</label>
-                                    <select name="estado_civil" value={formData.estado_civil} onChange={handleChange} className={inputClass}>
-                                        <option className="bg-[#0f172a] text-gray-200" value="">Selecione</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="solteiro">Solteiro(a)</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="casado">Casado(a)</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="divorciado">Divorciado(a)</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="viuvo">Viúvo(a)</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="uniao_estavel">União Estável</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Documentos */}
-                        <div className="space-y-4 p-6 bg-white/[0.03] rounded-2xl border border-white/5">
-                            <h2 className="text-lg font-bold text-white flex items-center gap-2">🪪 Documentos</h2>
-                            <p className="text-xs text-gray-400">Preencha pelo menos um: CPF ou Passaporte</p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className={labelClass}>CPF *</label>
-                                    <input name="cpf" value={formData.cpf} onChange={handleChange} className={inputClass} placeholder="000.000.000-00" />
-                                </div>
-                                <div>
-                                    <label className={labelClass}>Passaporte *</label>
-                                    <input name="passaporte" value={formData.passaporte} onChange={handleChange} className={inputClass} placeholder="Nº do passaporte" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Situação Atual */}
-                        <div className="space-y-4 p-6 bg-white/[0.03] rounded-2xl border border-white/5">
-                            <h2 className="text-lg font-bold text-white flex items-center gap-2">🌍 Situação Atual</h2>
                             <div>
-                                <label className={labelClass}>Qual cidade e país você reside hoje?</label>
-                                <input name="pais_residencia" value={formData.pais_residencia} onChange={handleChange} className={inputClass} placeholder="Ex: São Paulo, Brasil" />
+                                <label className={labelClass}>Você foi indicado(a) por algum parceiro(a)? Se sim, qual nome dele(a)?</label>
+                                <input name="parceiro_indicador" value={formData.parceiro_indicador} onChange={handleChange} className={inputClass} placeholder="Deixe em branco se não foi indicado" />
                             </div>
-                            <div className="flex items-center gap-3">
-                                <input type="checkbox" name="tem_filhos" checked={formData.tem_filhos} onChange={handleChange} className="w-5 h-5 rounded bg-white/5 border-white/10 accent-blue-500" />
-                                <label className="text-sm text-gray-300">Você têm filhos(as) que seguem para Europa com você?</label>
-                            </div>
-                            {formData.tem_filhos && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className={labelClass}>Quantos filhos?</label>
-                                        <input name="quantidade_filhos" type="number" value={formData.quantidade_filhos} onChange={handleChange} className={inputClass} min="0" />
-                                    </div>
-                                    <div>
-                                        <label className={labelClass}>Idades</label>
-                                        <input name="idades_filhos" value={formData.idades_filhos} onChange={handleChange} className={inputClass} placeholder="Ex: 5, 8, 12" />
-                                    </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className={labelClass}>Qual seu email? *</label>
+                                    <input name="email" type="email" value={formData.email} onChange={handleChange} className={inputClass + (preEmail ? ' opacity-70' : '')} placeholder="seuemail@exemplo.com" readOnly={!!preEmail} />
                                 </div>
-                            )}
+                                <div>
+                                    <label className={labelClass}>Qual seu número de WhatsApp com DDI? *</label>
+                                    <input name="whatsapp" type="tel" value={formData.whatsapp} onChange={handleChange} className={inputClass + (preTelefone ? ' opacity-70' : '')} placeholder="+55 11 99999-9999" readOnly={!!preTelefone} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Dados Pessoais */}
+                        <div className="space-y-4 p-6 bg-white/[0.03] rounded-2xl border border-white/5">
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">🌍 Dados Pessoais</h2>
+                            <div>
+                                <label className={labelClass}>Qual sua nacionalidade? *</label>
+                                <textarea name="nacionalidade" value={formData.nacionalidade} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: Brasileira" />
+                            </div>
+                            <YesNoQuestion
+                                label="Você esteve na EUROPA nos últimos 6 meses? Se sim, quais as datas?"
+                                value={europeAnswer}
+                                onYes={() => {
+                                    setEuropeAnswer('yes')
+                                    setFormData(prev => ({ ...prev, esteve_europa_6meses: '' }))
+                                }}
+                                onNo={() => {
+                                    setEuropeAnswer('no')
+                                    setFormData(prev => ({ ...prev, esteve_europa_6meses: 'Não' }))
+                                }}
+                            >
+                                <textarea
+                                    name="esteve_europa_6meses"
+                                    value={formData.esteve_europa_6meses}
+                                    onChange={handleChange}
+                                    className={inputClass + ' min-h-[80px]'}
+                                    placeholder="Informe as datas (Ex: Março/2024 a Abril/2024)"
+                                />
+                            </YesNoQuestion>
+                            <YesNoQuestion
+                                label="Qual cidade e país reside hoje?"
+                                yesLabel="Já estou na Espanha"
+                                noLabel="Ainda no Brasil"
+                                value={residenciaAnswer}
+                                onYes={() => {
+                                    setResidenciaAnswer('yes')
+                                    setFormData(prev => ({ ...prev, cidade_pais_residencia: '' }))
+                                }}
+                                onNo={() => {
+                                    setResidenciaAnswer('no')
+                                    setFormData(prev => ({ ...prev, cidade_pais_residencia: '' }))
+                                }}
+                            >
+                                <textarea
+                                    name="cidade_pais_residencia"
+                                    value={formData.cidade_pais_residencia}
+                                    onChange={handleChange}
+                                    className={inputClass + ' min-h-[80px]'}
+                                    placeholder={residenciaAnswer === 'yes' ? "Ex: Madrid, Espanha (entrou em 15/03/2024)" : "Ex: São Paulo, Brasil"}
+                                />
+                            </YesNoQuestion>
                         </div>
 
                         {/* Navegação */}
@@ -837,91 +899,162 @@ export default function FormularioConsultoria() {
                     </div>
                 )}
 
-                {/* ==================== ETAPA 2: Carreira e Planos ==================== */}
+                {/* ==================== ETAPA 2: Situação Familiar ==================== */}
                 {currentStep === 2 && (
                     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                        {/* Profissional */}
+                        {/* Estado Civil */}
+                        <div className="space-y-3 p-6 bg-white/[0.03] rounded-2xl border border-white/5">
+                            <label className={labelClass}>💍 Qual seu estado civil? *</label>
+                            <select
+                                value={formData.estado_civil[0] || ''}
+                                onChange={e => setFormData(prev => ({ ...prev, estado_civil: [e.target.value] }))}
+                                className={inputClass + ' cursor-pointer appearance-none'}
+                            >
+                                <option value="">Selecione...</option>
+                                <option value="Solteiro(a)">Solteiro(a)</option>
+                                <option value="Namorando">Namorando</option>
+                                <option value="Noivo(a)">Noivo(a)</option>
+                                <option value="Casado(a)">Casado(a)</option>
+                                <option value="Amasiado">Amasiado (sem registro)</option>
+                                <option value="União Estável">União Estável (com registro em cartório)</option>
+                                <option value="Divorciado(a)">Divorciado(a)</option>
+                                <option value="Separado(a)">Separado(a) (sem divórcio)</option>
+                            </select>
+                        </div>
+
+                        {/* Família e Documentos */}
                         <div className="space-y-4 p-6 bg-white/[0.03] rounded-2xl border border-white/5">
-                            <h2 className="text-lg font-bold text-white flex items-center gap-2">💼 Informações Profissionais</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className={labelClass}>Profissão *</label>
-                                    <input name="profissao" value={formData.profissao} onChange={handleChange} className={inputClass} placeholder="Sua profissão atual" />
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">👨‍👩‍👧 Família e Documentos</h2>
+                            <div>
+                                <label className={labelClass}>Possui filhos? Se sim, quantos e idade? *</label>
+                                <div className="flex items-center gap-3 mb-2">
+                                    <input
+                                        type="checkbox"
+                                        id="sem_filhos"
+                                        checked={semFilhos}
+                                        onChange={e => {
+                                            setSemFilhos(e.target.checked)
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                filhos_qtd_idades: e.target.checked ? 'Não tenho filhos' : ''
+                                            }))
+                                        }}
+                                        className="w-4 h-4 accent-blue-500"
+                                    />
+                                    <label htmlFor="sem_filhos" className="text-sm font-medium text-gray-300 cursor-pointer">Não tenho filhos</label>
                                 </div>
-                                <div>
-                                    <label className={labelClass}>Escolaridade *</label>
-                                    <select name="escolaridade" value={formData.escolaridade} onChange={handleChange} className={inputClass}>
-                                        <option className="bg-[#0f172a] text-gray-200" value="">Selecione</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="fundamental">Ensino Fundamental</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="medio">Ensino Médio</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="tecnico">Técnico</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="superior_incompleto">Superior Incompleto</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="superior">Superior Completo</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="pos_graduacao">Pós-Graduação</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="mestrado">Mestrado</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="doutorado">Doutorado</option>
-                                    </select>
-                                </div>
+                                {!semFilhos && (
+                                    <div className="animate-in fade-in duration-200">
+                                        <textarea name="filhos_qtd_idades" value={formData.filhos_qtd_idades} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: 2 filhos, 5 e 8 anos" />
+                                    </div>
+                                )}
                             </div>
                             <div>
-                                <label className={labelClass}>Você possui CNPJ? Se sim, informe qual a categoria.</label>
-                                <input name="empresa_exterior" value={formData.empresa_exterior} onChange={handleChange} className={inputClass} placeholder="Ex: MEI, ME, etc." />
+                                <label className={labelClass}>Possui familiares que mora na Espanha? Se sim qual o grau de parentesco e qual tipo de residência eles possuem aqui? *</label>
+                                <div className="flex items-center gap-3 mb-2">
+                                    <input
+                                        type="checkbox"
+                                        id="sem_familiares_espanha"
+                                        checked={semFamiliaresEspanha}
+                                        onChange={e => {
+                                            setSemFamiliaresEspanha(e.target.checked)
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                familiares_espanha: e.target.checked ? 'Não tenho familiares na Espanha' : ''
+                                            }))
+                                        }}
+                                        className="w-4 h-4 accent-blue-500"
+                                    />
+                                    <label htmlFor="sem_familiares_espanha" className="text-sm font-medium text-gray-300 cursor-pointer">Não tenho familiares na Espanha</label>
+                                </div>
+                                {!semFamiliaresEspanha && (
+                                    <div className="animate-in fade-in duration-200">
+                                        <textarea name="familiares_espanha" value={formData.familiares_espanha} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: Irmão com residência permanente" />
+                                    </div>
+                                )}
                             </div>
                             <div>
-                                <label className={labelClass}>Experiência no exterior</label>
-                                <textarea name="experiencia_exterior" value={formData.experiencia_exterior} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Já morou/trabalhou fora do Brasil? Descreva..." />
+                                <label className={labelClass}>Você possui CNH? Se sim, informe qual a categoria e qual ano você obteve. *</label>
+                                <input name="possui_cnh_categoria_ano" value={formData.possui_cnh_categoria_ano} onChange={handleChange} className={inputClass} placeholder="Ex: Categoria B, 2015 / Não possuo" />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Você já tem uma proposta de trabalho na Espanha? Se sim, qual o tipo de contrato, salário e cargo? *</label>
+                                <textarea name="proposta_trabalho_espanha" value={formData.proposta_trabalho_espanha} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: Sim, contrato CLT, 2000€/mês, cargo de Engenheiro / Não" />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Você tem algum tipo de visto, residência ou nacionalidade de outro país da União Europeia? *</label>
+                                <div className="flex items-center gap-3 mb-2">
+                                    <input
+                                        type="checkbox"
+                                        id="sem_visto_ue"
+                                        checked={semVistoUe}
+                                        onChange={e => {
+                                            setSemVistoUe(e.target.checked)
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                visto_ue: e.target.checked ? 'Não tenho' : ''
+                                            }))
+                                        }}
+                                        className="w-4 h-4 accent-blue-500"
+                                    />
+                                    <label htmlFor="sem_visto_ue" className="text-sm font-medium text-gray-300 cursor-pointer">Não tenho</label>
+                                </div>
+                                {!semVistoUe && (
+                                    <div className="animate-in fade-in duration-200">
+                                        <textarea name="visto_ue" value={formData.visto_ue} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: Tenho residência portuguesa" />
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <label className={labelClass}>Você trabalha na Espanha como destacado/transladado por uma empresa de outro país da União Europeia? *</label>
+                                <input name="trabalho_destacado_ue" value={formData.trabalho_destacado_ue} onChange={handleChange} className={inputClass} placeholder="Ex: Sim, empresa portuguesa prestando serviço na Espanha / Não" />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Você tem algum filho menor de idade que tem nacionalidade europeia? *</label>
+                                <div className="flex items-center gap-3 mb-2">
+                                    <input
+                                        type="checkbox"
+                                        id="sem_filhos_europeus"
+                                        checked={semFilhosEuropeus}
+                                        onChange={e => {
+                                            setSemFilhosEuropeus(e.target.checked)
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                filhos_nacionalidade_europeia: e.target.checked ? 'Não tenho' : ''
+                                            }))
+                                        }}
+                                        className="w-4 h-4 accent-blue-500"
+                                    />
+                                    <label htmlFor="sem_filhos_europeus" className="text-sm font-medium text-gray-300 cursor-pointer">Não tenho</label>
+                                </div>
+                                {!semFilhosEuropeus && (
+                                    <div className="animate-in fade-in duration-200">
+                                        <textarea name="filhos_nacionalidade_europeia" value={formData.filhos_nacionalidade_europeia} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: Sim, filho de 7 anos com passaporte espanhol" />
+                                    </div>
+                                )}
                             </div>
                         </div>
 
-                        {/* Imigração */}
-                        <div className="space-y-4 p-6 bg-white/[0.03] rounded-2xl border border-white/5">
-                            <h2 className="text-lg font-bold text-white flex items-center gap-2">✈️ Planos de Imigração</h2>
-                            <div>
-                                <label className={labelClass}>Qual seu objetivo com a imigração? *</label>
-                                <textarea name="objetivo_imigracao" value={formData.objetivo_imigracao} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Descreva seus objetivos..." />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className={labelClass}>País de destino *</label>
-                                    <select name="pais_destino" value={formData.pais_destino} onChange={handleChange} className={inputClass}>
-                                        <option className="bg-[#0f172a] text-gray-200" value="">Selecione</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="espanha">Espanha 🇪🇸</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="portugal">Portugal 🇵🇹</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="ambos">Ambos</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="indeciso">Ainda indeciso</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className={labelClass}>Prazo estimado para mudança *</label>
-                                    <select name="prazo_mudanca" value={formData.prazo_mudanca} onChange={handleChange} className={inputClass}>
-                                        <option className="bg-[#0f172a] text-gray-200" value="">Selecione</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="imediato">Imediato</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="3_meses">Até 3 meses</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="6_meses">Até 6 meses</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="1_ano">Até 1 ano</option>
-                                        <option className="bg-[#0f172a] text-gray-200" value="mais_1_ano">Mais de 1 ano</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <input type="checkbox" name="ja_tem_visto" checked={formData.ja_tem_visto} onChange={handleChange} className="w-5 h-5 rounded bg-white/5 border-white/10 accent-blue-500" />
-                                <label className="text-sm text-gray-300">Você está disponível a estudar na Espanha?</label>
-                            </div>
-                            <div>
-                                <label className={labelClass}>Você pretende trabalhar na Espanha?</label>
-                                <select name="pretende_trabalhar" value={formData.pretende_trabalhar} onChange={handleChange} className={inputClass}>
-                                    <option className="bg-[#0f172a] text-gray-200" value="">Selecione</option>
-                                    <option className="bg-[#0f172a] text-gray-200" value="sim_presencial">Sim, presencialmente</option>
-                                    <option className="bg-[#0f172a] text-gray-200" value="sim_remoto">Sim, trabalho remoto do Brasil</option>
-                                    <option className="bg-[#0f172a] text-gray-200" value="sim_autonomo">Sim, como autônomo</option>
-                                    <option className="bg-[#0f172a] text-gray-200" value="nao">Não</option>
-                                    <option className="bg-[#0f172a] text-gray-200" value="indeciso">Indeciso</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className={labelClass}>Qual sua área de trabalho?</label>
-                                <input name="area_trabalho" value={formData.area_trabalho} onChange={handleChange} className={inputClass} placeholder="Ex: TI, Saúde, Educação..." />
-                            </div>
+                        {/* Pretende Autônomo */}
+                        <div className="space-y-3 p-6 bg-white/[0.03] rounded-2xl border border-white/5">
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">🏢 Você pretende trabalhar como autônomo, abrir um negócio/empreender, assim que chegar na Espanha? *</h2>
+                            {[
+                                'Sim. Tenho experiência/formação na área. Tenho investimento inicial',
+                                'Sim. Mas não tenho experiência/formação na área. Tenho investimento',
+                                'Sim. Mas não tenho experiência/formação. Não tenho investimento',
+                                'Não pretendo agora mas em futuro quem sabe',
+                                'Não pretendo',
+                            ].map(opcao => (
+                                <label key={opcao} className="flex items-start gap-3 cursor-pointer group">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.pretende_autonomo.includes(opcao)}
+                                        onChange={() => handleCheckboxChange('pretende_autonomo', opcao)}
+                                        className="mt-0.5 w-4 h-4 accent-blue-500 flex-shrink-0"
+                                    />
+                                    <span className="text-gray-300 text-sm group-hover:text-white transition-colors">{opcao}</span>
+                                </label>
+                            ))}
                         </div>
 
                         {/* Navegação */}
@@ -936,39 +1069,119 @@ export default function FormularioConsultoria() {
                     </div>
                 )}
 
-                {/* ==================== ETAPA 3: Finalizar ==================== */}
+                {/* ==================== ETAPA 3: Educação e Planos ==================== */}
                 {currentStep === 3 && (
                     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                        {/* Financeiro */}
-                        <div className="space-y-4 p-6 bg-white/[0.03] rounded-2xl border border-white/5">
-                            <h2 className="text-lg font-bold text-white flex items-center gap-2">💰 Informações Financeiras</h2>
-                            <div>
-                                <label className={labelClass}>Qual sua faixa de renda mensal?</label>
-                                <select name="renda_mensal" value={formData.renda_mensal} onChange={handleChange} className={inputClass}>
-                                    <option className="bg-[#0f172a] text-gray-200" value="">Selecione</option>
-                                    <option className="bg-[#0f172a] text-gray-200" value="ate_3k">Até R$ 3.000</option>
-                                    <option className="bg-[#0f172a] text-gray-200" value="3k_5k">R$ 3.000 - R$ 5.000</option>
-                                    <option className="bg-[#0f172a] text-gray-200" value="5k_10k">R$ 5.000 - R$ 10.000</option>
-                                    <option className="bg-[#0f172a] text-gray-200" value="10k_20k">R$ 10.000 - R$ 20.000</option>
-                                    <option className="bg-[#0f172a] text-gray-200" value="acima_20k">Acima de R$ 20.000</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className={labelClass}>Possui reserva financeira? Qual montante?</label>
-                                <input name="possui_reserva" value={formData.possui_reserva} onChange={handleChange} className={inputClass} placeholder="Ex: Sim, R$ 50.000" />
+                        {/* Disposto a estudar */}
+                        <div className="space-y-3 p-6 bg-white/[0.03] rounded-2xl border border-white/5">
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">📚 Você está disposto(a) a estudar na Espanha? *</h2>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                {[
+                                    { value: 'Sim', label: 'Sim' },
+                                    { value: 'Apenas se esse for o único jeito de ficar regular', label: 'Apenas se for o único jeito' },
+                                    { value: 'Não. De jeito nenhum', label: 'Não' },
+                                ].map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => setFormData(prev => ({ ...prev, disposto_estudar: opt.value }))}
+                                        className={`py-3 px-4 rounded-xl font-medium text-sm text-center transition-all ${
+                                            formData.disposto_estudar === opt.value
+                                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                                : 'bg-white/5 text-gray-300 hover:bg-white/10 border border-white/10'
+                                        }`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
-                        {/* Observações */}
+                        {/* Pretende trabalhar */}
+                        <div className="space-y-3 p-6 bg-white/[0.03] rounded-2xl border border-white/5">
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">💼 Você pretende trabalhar na Espanha? *</h2>
+                            {[
+                                'Sim. Isso é essencial para mim.',
+                                'Não pretendo. Tenho renda para me manter sem precisar trabalhar.',
+                                'Tenho renda para me manter. Mas quero ter a opção de poder trabalhar.',
+                                'Depende. Tenho renda p/ me manter sem trabalhar mas preciso analisar.',
+                            ].map(opcao => (
+                                <label key={opcao} className="flex items-start gap-3 cursor-pointer group">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.pretende_trabalhar_espanha.includes(opcao)}
+                                        onChange={() => handleCheckboxChange('pretende_trabalhar_espanha', opcao)}
+                                        className="mt-0.5 w-4 h-4 accent-blue-500 flex-shrink-0"
+                                    />
+                                    <span className="text-gray-300 text-sm group-hover:text-white transition-colors">{opcao}</span>
+                                </label>
+                            ))}
+                        </div>
+
+                        {/* Escolaridade */}
+                        <div className="space-y-3 p-6 bg-white/[0.03] rounded-2xl border border-white/5">
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">🎓 Qual sua escolaridade? *</h2>
+                            {[
+                                'Ensino fundamental completo',
+                                'Ensino fundamental incompleto',
+                                'Ensino médio completo',
+                                'Ensino médio incompleto',
+                                'Ensino superior completo',
+                                'Ensino superior incompleto',
+                            ].map(opcao => (
+                                <label key={opcao} className="flex items-center gap-3 cursor-pointer group">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.escolaridade.includes(opcao)}
+                                        onChange={() => handleCheckboxChange('escolaridade', opcao)}
+                                        className="w-4 h-4 accent-blue-500"
+                                    />
+                                    <span className="text-gray-300 text-sm group-hover:text-white transition-colors">{opcao}</span>
+                                </label>
+                            ))}
+                        </div>
+
+                        {/* Situação profissional */}
+                        <div className="space-y-3 p-6 bg-white/[0.03] rounded-2xl border border-white/5">
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">🏗️ Qual sua situação profissional atual? *</h2>
+                            {[
+                                'Desempregado(a)',
+                                'Aposentado/Pensionista',
+                                'Autônomo(atua sem CNPJ)',
+                                'Tem empresa(atua com CNPJ: MEI ME ou LTDA)',
+                                'Contrato CLT',
+                                'Funcionário(a) Público(a)',
+                            ].map(opcao => (
+                                <label key={opcao} className="flex items-center gap-3 cursor-pointer group">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.situacao_profissional.includes(opcao)}
+                                        onChange={() => handleCheckboxChange('situacao_profissional', opcao)}
+                                        className="w-4 h-4 accent-blue-500"
+                                    />
+                                    <span className="text-gray-300 text-sm group-hover:text-white transition-colors">{opcao}</span>
+                                </label>
+                            ))}
+                        </div>
+
+                        {/* Textos longos */}
                         <div className="space-y-4 p-6 bg-white/[0.03] rounded-2xl border border-white/5">
-                            <h2 className="text-lg font-bold text-white flex items-center gap-2">💬 Observações</h2>
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">📝 Formação e Objetivos</h2>
                             <div>
-                                <label className={labelClass}>Como conheceu a Bora Expandir?</label>
-                                <input name="como_conheceu" value={formData.como_conheceu} onChange={handleChange} className={inputClass} placeholder="Ex: Instagram, indicação..." />
+                                <label className={labelClass}>Qual sua área de formação? *</label>
+                                <textarea name="area_formacao" value={formData.area_formacao} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: Engenharia de Software, Medicina, Direito..." />
                             </div>
                             <div>
-                                <label className={labelClass}>Alguma observação adicional?</label>
-                                <textarea name="observacoes" value={formData.observacoes} onChange={handleChange} className={inputClass + ' min-h-[100px]'} placeholder="Escreva aqui qualquer informação adicional que julgar relevante..." />
+                                <label className={labelClass}>Qual sua profissão? Você trabalha Online ou Presencial? *</label>
+                                <textarea name="profissao_online_presencial" value={formData.profissao_online_presencial} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: Desenvolvedor Frontend, trabalho 100% remoto" />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Você já tem ideia do tipo de visto ou residência que pretende solicitar? Se sim, qual? *</label>
+                                <textarea name="tipo_visto_planejado" value={formData.tipo_visto_planejado} onChange={handleChange} className={inputClass + ' min-h-[80px]'} placeholder="Ex: Visto de trabalho por conta alheia / Ainda não sei" />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Como podemos te ajudar na Consultoria? Deixe aqui as dúvidas que você deseja resolver. *</label>
+                                <textarea name="duvidas_consultoria" value={formData.duvidas_consultoria} onChange={handleChange} className={inputClass + ' min-h-[120px]'} placeholder="Descreva aqui as principais dúvidas que deseja resolver na consultoria..." />
                             </div>
                         </div>
 

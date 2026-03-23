@@ -12,6 +12,7 @@ import { catalogService, Service } from '../adm/services/catalogService'
 import comercialService from './services/comercialService'
 import { useLocation } from 'react-router-dom'
 import juridicoService from '../juridico/services/juridicoService'
+import { parseBackendDate } from '../../utils/dateUtils'
 
 /**
  * Converte string de duração do catálogo (ex: "1 horas", "30 minutos") para minutos.
@@ -215,9 +216,9 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
           // Preencher Data e Hora
           if (ag.data_hora) {
-            const dt = new Date(ag.data_hora)
-            // Ajustar timezone fixo se necessário para preencher o dia corretamente no calendário local
-            setDataSelecionada(new Date(dt.getTime() + dt.getTimezoneOffset() * 60000))
+            const dt = parseBackendDate(ag.data_hora)
+            // Agora garantimos o local time direto pelo dateUtils
+            setDataSelecionada(dt)
             setHoraSelecionada(ag.data_hora.includes('T') ? ag.data_hora.split('T')[1].substring(0, 5) : '')
           }
 
@@ -322,10 +323,10 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
   // Calcula quais slots estão diretamente ocupados por um agendamento
   function getDirectlyOccupiedSlots(ag: any, allSlots: string[], dateIso: string): string[] {
-    const inicio = new Date(ag.data_hora)
+    const inicio = parseBackendDate(ag.data_hora)
     const fim = new Date(inicio.getTime() + (ag.duracao_minutos || 60) * 60000)
     return allSlots.filter(hora => {
-      const slotTime = new Date(`${dateIso}T${hora}:00Z`)
+      const slotTime = new Date(`${dateIso}T${hora}:00`)
       return slotTime >= inicio && slotTime < fim
     })
   }
@@ -567,11 +568,11 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const isHorarioDisponivel = (hora: string) => {
     if (!dataSelecionadaIso) return true
 
-    const inicioNovo = new Date(`${dataSelecionadaIso}T${hora}:00Z`)
+    const inicioNovo = new Date(`${dataSelecionadaIso}T${hora}:00`)
     const fimNovo = new Date(inicioNovo.getTime() + duracaoMinutos * 60000)
 
     return agendamentosDia.every((agendamento) => {
-      const inicioExistente = new Date(agendamento.data_hora)
+      const inicioExistente = parseBackendDate(agendamento.data_hora)
       const duracaoExistente = agendamento.duracao_minutos || 60
       const fimExistente = new Date(inicioExistente.getTime() + duracaoExistente * 60000)
 
@@ -590,11 +591,11 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     const x = rect.left - (parentRect?.left || 0) + rect.width / 2
     const y = rect.top - (parentRect?.top || 0) + rect.height + 10
 
-    const inicioNovo = new Date(`${dataSelecionadaIso}T${hora}:00Z`)
+    const inicioNovo = new Date(`${dataSelecionadaIso}T${hora}:00`)
     const fimNovo = new Date(inicioNovo.getTime() + duracaoMinutos * 60000)
 
     const conflito = agendamentosDia.find((agendamento) => {
-      const inicioExistente = new Date(agendamento.data_hora)
+      const inicioExistente = parseBackendDate(agendamento.data_hora)
       const duracaoExistente = agendamento.duracao_minutos || 60
       const fimExistente = new Date(inicioExistente.getTime() + duracaoExistente * 60000)
 
@@ -870,6 +871,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                     selectedDate={dataSelecionada || undefined}
                     disabledDates={[]}
                     disablePastDates={true}
+                    disableWeekends={true}
                     minDate={(() => {
                       // Impede agendamento para o dia atual, apenas dia seguinte em diante
                       const tomorrow = new Date()

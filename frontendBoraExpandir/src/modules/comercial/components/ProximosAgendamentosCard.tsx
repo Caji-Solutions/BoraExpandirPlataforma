@@ -11,7 +11,7 @@ export default function ProximosAgendamentosCard({ agendamentos }: ProximosAgend
   const navigate = useNavigate()
   
   const proximosAgendamentos = agendamentos
-    .filter(a => a.status === 'agendado')
+    .filter(a => ['agendado', 'confirmado', 'aguardando_verificacao', 'Conflito'].includes(a.status))
     .sort((a, b) => new Date(a.data + ' ' + a.hora).getTime() - new Date(b.data + ' ' + b.hora).getTime())
     .slice(0, 3)
 

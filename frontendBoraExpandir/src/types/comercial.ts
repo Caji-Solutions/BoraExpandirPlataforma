@@ -121,13 +121,16 @@ export interface Agendamento {
   cliente: Cliente
   cliente_id?: string
   duracao_minutos: number
-  status: 'agendado' | 'confirmado' | 'realizado' | 'cancelado' | 'aguardando_verificacao'
+  status: 'agendado' | 'confirmado' | 'realizado' | 'cancelado' | 'aguardando_verificacao' | 'Conflito' | 'reagendar'
   cliente_is_user?: boolean
   observacoes?: string
   comprovante_url?: string | null
   pagamento_status?: 'pendente' | 'em_analise' | 'aprovado' | 'recusado' | null
   pagamento_nota_recusa?: string | null
   conflito_horario?: boolean
+  produto?: string
+  produto_id?: string
+  produto_nome?: string
   created_at: string
   updated_at: string
 }

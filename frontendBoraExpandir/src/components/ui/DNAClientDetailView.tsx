@@ -30,10 +30,12 @@ import { useAuth } from '../../contexts/AuthContext'
 
 export function DNAClientDetailView({
     client,
-    onBack
+    onBack,
+    initialTab
 }: {
     client: ClientDNAData
     onBack: () => void
+    initialTab?: 'timeline' | 'formularios' | 'contrato_comprovantes' | 'notas'
 }) {
     const { activeProfile } = useAuth()
     const navigate = useNavigate()
@@ -50,7 +52,7 @@ export function DNAClientDetailView({
     const [loadingMembers, setLoadingMembers] = useState(false)
     const [selectedRequerimentoId, setSelectedRequerimentoId] = useState<string | undefined>(undefined)
     const [areaFilter, setAreaFilter] = useState<'todos' | 'juridico' | 'comercial' | 'administrativo'>('todos')
-    const [activeTab, setActiveTab] = useState<'timeline' | 'formularios' | 'contrato_comprovantes' | 'notas'>('timeline')
+    const [activeTab, setActiveTab] = useState<'timeline' | 'formularios' | 'contrato_comprovantes' | 'notas'>(initialTab || 'timeline')
     const [agendamentos, setAgendamentos] = useState<any[]>([])
     const [loadingAgendamentos, setLoadingAgendamentos] = useState(false)
     const [contratosServicos, setContratosServicos] = useState<any[]>([])
