@@ -11,7 +11,9 @@
       "Bash(ls -lh /home/joaov/Documents/BoraExpandirPLataforma/BoraExpandirPlataforma/backend/src/controllers/*.ts)",
       "Bash(for dir:*)",
       "Bash(do echo:*)",
-      "Read(//home/joaov/Documents/BoraExpandirPLataforma/BoraExpandirPlataforma/**)"
+      "Read(//home/joaov/Documents/BoraExpandirPLataforma/BoraExpandirPlataforma/**)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(ls \"c:\\\\Users\\\\natha\\\\Documents\\\\Caji\\\\BoraExpandirPlataforma\\\\frontendBoraExpandir\\\\src\\\\modules\\\\comercial\\\\components\"\" 2>/dev/null || echo \"Directory not found \")"
     ]
   }
 }

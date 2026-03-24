@@ -5,6 +5,11 @@ import { TimeRangeFilter, filterByTimeRange, type TimeRange } from '@/components
 import { SortControl, sortData, type SortDirection, type SortOption } from '@/components/ui/SortControl'
 import { calcularComissao, getLabelOrigem, type OrigemVenda } from '../../services/comissaoService'
 import { useAuth } from '../../contexts/AuthContext'
+import MetaComissaoCard from './components/MetaComissaoCard'
+import RecordsPessoaisCard from './components/RecordsPessoaisCard'
+import AlertaComissoesRisco from './components/AlertaComissoesRisco'
+
+const META_MENSAL_PADRAO = 2000
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL
 
@@ -123,6 +128,132 @@ export default function Ganhos() {
     setSortDirection(newDirection)
   }
 
+  // Dados para MetaComissaoCard (sempre mês atual)
+  const metaComissaoData = useMemo(() => {
+    const now = new Date()
+    const currentMonth = now.getMonth()
+    const currentYear = now.getFullYear()
+
+    const currentMonthComissoes = comissoesComCalculo.filter(c => {
+      const d = new Date(c.data_venda)
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear
+    })
+
+    const comissaoAtual = currentMonthComissoes
+      .filter(c => c.status === 'pago')
+      .reduce((acc: number, c: any) => acc + c.valor_comissao, 0)
+
+    const comissaoPendente = currentMonthComissoes
+      .filter(c => c.status === 'pendente' || c.status === 'processando')
+      .reduce((acc: number, c: any) => acc + c.valor_comissao, 0)
+
+    // Agrupar todos os meses (excluindo cancelados)
+    const byMonth: Record<string, number> = {}
+    comissoesComCalculo
+      .filter((c: any) => c.status !== 'cancelado')
+      .forEach((c: any) => {
+        const d = new Date(c.data_venda)
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        byMonth[key] = (byMonth[key] || 0) + c.valor_comissao
+      })
+
+    // Melhor mês histórico
+    let bestKey = ''
+    let bestValue = 0
+    Object.entries(byMonth).forEach(([key, value]) => {
+      if (value > bestValue) { bestKey = key; bestValue = value }
+    })
+
+    const mesMelhorMes = bestKey
+      ? (() => {
+          const [y, m] = bestKey.split('-')
+          return new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+        })()
+      : ''
+
+    // Meses anteriores ao atual
+    const currentKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`
+    const mesesAnteriores = Object.entries(byMonth)
+      .filter(([key]) => key < currentKey)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, comissao]) => {
+        const [y, m] = key.split('-')
+        return {
+          mes: new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+          comissao,
+        }
+      })
+
+    return { comissaoAtual, comissaoPendente, melhorMesHistorico: bestValue, mesMelhorMes, mesesAnteriores }
+  }, [comissoesComCalculo])
+
+  // Dados para RecordsPessoaisCard
+  const recordsPessoaisData = useMemo(() => {
+    const byMonth: Record<string, { mes: string; valor: number }> = {}
+    comissoesComCalculo
+      .filter((c: any) => c.status !== 'cancelado')
+      .forEach((c: any) => {
+        const d = new Date(c.data_venda)
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        if (!byMonth[key]) {
+          byMonth[key] = {
+            mes: d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+            valor: 0,
+          }
+        }
+        byMonth[key].valor += c.valor_comissao
+      })
+
+    const sortedMonths = Object.values(byMonth).sort((a, b) => b.valor - a.valor)
+    const melhorMes = sortedMonths[0] || { mes: '-', valor: 0 }
+
+    // Sequência de meses positivos consecutivos
+    const now = new Date()
+    let sequencia = 0
+    let checkMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    for (let i = 0; i < 24; i++) {
+      const key = `${checkMonth.getFullYear()}-${String(checkMonth.getMonth() + 1).padStart(2, '0')}`
+      if (byMonth[key] && byMonth[key].valor > 0) {
+        sequencia++
+        checkMonth = new Date(checkMonth.getFullYear(), checkMonth.getMonth() - 1, 1)
+      } else {
+        break
+      }
+    }
+
+    const top3 = comissoesComCalculo
+      .filter((c: any) => c.status !== 'cancelado')
+      .sort((a: any, b: any) => b.valor_comissao - a.valor_comissao)
+      .slice(0, 3)
+      .map((c: any) => ({
+        id: c.id,
+        cliente_nome: c.cliente_nome,
+        servico: c.servico,
+        valor_comissao: c.valor_comissao,
+        data_venda: c.data_venda,
+      }))
+
+    return { melhorMes, mesesPositivosSequencia: sequencia, top3MaioresComissoes: top3 }
+  }, [comissoesComCalculo])
+
+  // Comissões canceladas no mês atual para AlertaComissoesRisco
+  const comissoesCanceladas = useMemo(() => {
+    const now = new Date()
+    return comissoesComCalculo
+      .filter((c: any) => {
+        if (c.status !== 'cancelado') return false
+        const d = new Date(c.data_venda)
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+      })
+      .map((c: any) => ({
+        id: c.id,
+        cliente_nome: c.cliente_nome,
+        servico: c.servico,
+        valor_comissao: c.valor_comissao,
+        data_venda: c.data_venda,
+      }))
+  }, [comissoesComCalculo])
+
   // Calcular totais
   const totais = useMemo(() => {
     const total = filteredComissoes.reduce((acc, c) => acc + c.valor_comissao, 0)
@@ -169,6 +300,26 @@ export default function Ganhos() {
           )}
         </button>
       </div>
+
+      {/* MetaComissaoCard + RecordsPessoaisCard */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <MetaComissaoCard
+          metaMensal={META_MENSAL_PADRAO}
+          comissaoAtual={metaComissaoData.comissaoAtual}
+          comissaoPendente={metaComissaoData.comissaoPendente}
+          melhorMesHistorico={metaComissaoData.melhorMesHistorico}
+          mesMelhorMes={metaComissaoData.mesMelhorMes}
+          mesesAnteriores={metaComissaoData.mesesAnteriores}
+        />
+        <RecordsPessoaisCard
+          melhorMes={recordsPessoaisData.melhorMes}
+          mesesPositivosSequencia={recordsPessoaisData.mesesPositivosSequencia}
+          top3MaioresComissoes={recordsPessoaisData.top3MaioresComissoes}
+        />
+      </div>
+
+      {/* Alerta de Comissões Canceladas */}
+      <AlertaComissoesRisco comissoesCanceladas={comissoesCanceladas} />
 
       {/* Cards de Métricas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

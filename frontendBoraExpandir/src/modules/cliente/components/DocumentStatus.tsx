@@ -12,7 +12,7 @@ interface DocumentStatusProps {
   onView?: (document: Document) => void
 }
 
-const statusConfig: Record<Document['status'], {
+const statusConfig: Record<string, {
   icon: typeof Clock;
   label: string;
   color: string;

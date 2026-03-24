@@ -47,7 +47,7 @@ const JuridicoProcessos = () => {
           cliente: { nome: p.clientes?.nome || 'Cliente Desconhecido' },
           servico: p.tipo_servico,
           tipo: 'Processo Jurídico',
-          dataProtocolo: p.created_at ? new Date(p.created_at).toLocaleDateString() : 'N/A',
+          dataProtocolo: (p as any).created_at ? new Date((p as any).created_at).toLocaleDateString() : 'N/A',
           valorAcao: '---',
           observacao: p.observacoes || '',
         }));

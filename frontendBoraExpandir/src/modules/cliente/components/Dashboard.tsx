@@ -213,7 +213,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
         message: action.deadline
           ? `${action.description} (Prazo: ${formatDateSimple(action.deadline)})`
           : action.description,
-        date: action.deadline || new Date(),
+        date: new Date(action.deadline || new Date()),
         type: action.type === 'error' ? 'urgent' as const : (action.type === 'agendamento' ? 'agendamento' as const : 'warning' as const),
         actionLink: '/cliente/notificacoes'
       }))
@@ -227,7 +227,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
         message: doc.status === 'rejected'
           ? `O documento "${doc.name}" foi rejeitado e precisa ser reenviado.`
           : `O documento "${doc.name}" ainda não foi enviado.`,
-        date: doc.updatedAt || doc.uploadDate || new Date(),
+        date: new Date(doc.updatedAt || doc.uploadDate || new Date()),
         type: doc.status === 'rejected' ? 'urgent' as const : 'warning' as const,
         actionLink: '/cliente/upload'
       }))
@@ -239,7 +239,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
         id: `req-${r.id}`,
         title: 'Requerimento Pendente',
         message: `O requerimento de "${r.tipo}" está aguardando sua ação.`,
-        date: r.created_at || new Date(),
+        date: new Date(r.created_at || new Date()),
         type: 'urgent' as const,
         actionLink: '/cliente/processo'
       }))
@@ -253,7 +253,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
           id: `contrato-sign-${contrato.id}`,
           title: 'Assinatura de contrato pendente',
           message: `O contrato de ${servico} aguarda envio da assinatura.`,
-          date,
+          date: new Date(date),
           type: 'warning' as const,
           actionLink: '/cliente/contratos'
         }]
@@ -264,7 +264,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
           id: `contrato-sign-rejected-${contrato.id}`,
           title: 'Contrato recusado',
           message: contrato.assinatura_recusa_nota || `O contrato de ${servico} foi recusado e precisa de reenvio.`,
-          date,
+          date: new Date(date),
           type: 'urgent' as const,
           actionLink: '/cliente/contratos'
         }]
@@ -277,7 +277,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
           message: contrato.pagamento_status === 'recusado'
             ? (contrato.pagamento_nota_recusa || `O comprovante do contrato de ${servico} foi recusado e precisa de novo envio.`)
             : `Envie o comprovante de pagamento do contrato de ${servico}.`,
-          date,
+          date: new Date(date),
           type: contrato.pagamento_status === 'recusado' ? 'urgent' as const : 'warning' as const,
           actionLink: '/cliente/contratos'
         }]

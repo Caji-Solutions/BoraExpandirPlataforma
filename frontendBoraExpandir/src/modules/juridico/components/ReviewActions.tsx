@@ -13,6 +13,7 @@ interface ReviewActionsProps {
 }
 
 export function ReviewActions({
+  docId,
   responseId,
   currentStatus,
   onStatusChange,
