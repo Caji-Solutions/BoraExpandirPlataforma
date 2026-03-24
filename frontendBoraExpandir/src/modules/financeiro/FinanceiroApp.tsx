@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { Sidebar } from '@/components/ui/Sidebar'
 import type { SidebarGroup } from '@/components/ui/Sidebar'
-import { Dashboard } from './components/Dashboard'
+
 import { FinancialProcessList } from './pages/FinancialProcessList'
 import Comissoes from './pages/Comissoes'
 import { FinancialDashboard } from './pages/VisaoGeral'
@@ -109,7 +109,7 @@ export function FinanceiroApp() {
 
       <main className="ml-64 p-6">
         <Routes>
-          <Route index element={<Dashboard />} />
+          <Route index element={<FinancialDashboard />} />
 
           {/* New Admin Modules */}
           <Route path="clientes" element={<Clientes />} />
