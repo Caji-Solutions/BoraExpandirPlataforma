@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useToast } from "../../hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/modules/shared/components/ui/button";
 import {
   Dialog,

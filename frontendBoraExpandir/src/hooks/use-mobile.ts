@@ -1,1 +1,1 @@
-export { useIsMobile } from '@/modules/adm/hooks/use-mobile'
+export { useIsMobile } from '@/modules/shared/hooks/use-mobile'

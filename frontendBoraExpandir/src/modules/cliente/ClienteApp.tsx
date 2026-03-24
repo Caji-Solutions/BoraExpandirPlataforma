@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react'
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { Sidebar } from '@/components/ui/Sidebar'
 import type { SidebarGroup } from '@/components/ui/Sidebar'
-import { Dashboard } from './components/dashboard/Dashboard'
-import PartnerDashboard from './components/dashboard/PartnerDashboard'
+import { Dashboard } from './pages/dashboard/Dashboard'
+import PartnerDashboard from './pages/dashboard/PartnerDashboard'
 import { ProcessTimeline } from './components/documents/ProcessTimeline'
 import { Notifications } from './components/dashboard/Notifications'
 import { DocumentModal } from './components/uploads/DocumentModal'
-import { Traducao } from './components/services/Traducao'
+import { Traducao } from './pages/services/Traducao'
 import Parceiro from './components/contracts/Parceiro'
-import { ClienteAgendamento } from './components/scheduling/ClienteAgendamento'
+import { ClienteAgendamento } from './pages/scheduling/ClienteAgendamento'
 import {
   mockNotifications,
   mockRequiredDocuments,
@@ -18,7 +18,7 @@ import {
   mockPendingActions,
 } from './lib/mock-data'
 import { Client, Document, Notification, ApprovedDocument, TranslatedDocument, Process, ProcessStep } from './types'
-import { Apostilamento } from './components/services/Apostilamento'
+import { Apostilamento } from './pages/services/Apostilamento'
 import { DocumentUploadFlow } from './components/uploads/DocumentUploadFlow'
 import ClienteContratos from './components/contracts/ClienteContratos'
 import { Home, FileText, Upload, GitBranch, Bell, Languages, Users, Calendar, Settings, Stamp } from 'lucide-react'

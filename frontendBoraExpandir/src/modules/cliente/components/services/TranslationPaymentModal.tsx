@@ -3,7 +3,7 @@ import { X, CreditCard, Clock, FileText, AlertCircle, Loader2, Check, Copy, Chec
 import { Document as ClientDocument } from '../../types'
 import { Button } from '@/modules/shared/components/ui/button'
 import { Badge } from '@/modules/shared/components/ui/badge'
-import { traducoesService } from '../../../tradurora/services/traducoesService'
+import { traducoesService } from '../../../tradutora/services/traducoesService'
 import { clienteService } from '../../services/clienteService'
 import { cn, formatDateSimple } from '../../lib/utils'
 import { useToast } from '@/components/ui/Toast'

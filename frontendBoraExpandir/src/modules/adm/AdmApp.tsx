@@ -20,7 +20,7 @@ import { Relatorios } from "../financeiro/pages/Relatorios";
 import { ComprovantesPage } from "../financeiro/pages/ComprovantesPage";
 
 // Importar componentes jurídicos
-import { Dashboard as JuridicoDashboard } from "../juridico/components/Dashboard";
+import { Dashboard as JuridicoDashboard } from "../juridico/pages/Dashboard";
 import { ProcessQueue } from "../juridico/components/ProcessQueue";
 import { ProcessTable, ProcessData } from "../juridico/components/ProcessTable";
 import { TaskModule } from "../shared/components/TaskModule";

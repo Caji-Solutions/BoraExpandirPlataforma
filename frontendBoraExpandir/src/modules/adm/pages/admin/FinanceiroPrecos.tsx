@@ -20,7 +20,7 @@ import {
   ArrowUpRight,
   Filter
 } from 'lucide-react'
-import { traducoesService } from '../../../tradurora/services/traducoesService'
+import { traducoesService } from '../../../tradutora/services/traducoesService'
 import { configService } from '../../../../services/configService'
 import { cn } from '../../../../lib/utils'
 
