@@ -1,177 +1,16 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card'
-import { Badge } from '@/modules/shared/components/ui/badge'
+import { StatusBadge } from '@/modules/shared/components/ui/StatusBadge'
 import { Button } from '@/modules/shared/components/ui/button'
 import { FileText, CheckCircle, Clock, AlertCircle, X, Eye, Upload } from 'lucide-react'
 import { Document } from '../../types'
 import { cn, formatDate } from '../../lib/utils'
+import { getDocumentStatusConfig } from '@/modules/shared/constants/statusConfig'
 
 interface DocumentStatusProps {
   documents: Document[]
   onUpload?: (documentType: string) => void
   onView?: (document: Document) => void
-}
-
-const statusConfig: Record<string, {
-  icon: typeof Clock;
-  label: string;
-  color: string;
-  bgColor: string;
-  badge: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning';
-  description: string;
-}> = {
-  pending: {
-    icon: Clock,
-    label: 'Aguardando Envio',
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-100',
-    badge: 'warning',
-    description: 'Documento ainda não foi enviado',
-  },
-  analyzing: {
-    icon: Clock,
-    label: 'Em Análise',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-    badge: 'default',
-    description: 'Nossa equipe está revisando o documento',
-  },
-  approved: {
-    icon: CheckCircle,
-    label: 'Aprovado',
-    color: 'text-green-600',
-    bgColor: 'bg-green-100',
-    badge: 'success',
-    description: 'Documento foi aprovado e está sendo processado',
-  },
-  rejected: {
-    icon: X,
-    label: 'Rejeitado',
-    color: 'text-red-600',
-    bgColor: 'bg-red-100',
-    badge: 'destructive',
-    description: 'Documento precisa ser reenviado',
-  },
-  waiting_apostille: {
-    icon: Clock,
-    label: 'Aguardando Apostilamento',
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-100',
-    badge: 'warning',
-    description: 'O documento está aguardando o processo de apostilamento.',
-  },
-  analyzing_apostille: {
-    icon: Clock,
-    label: 'Analisando Apostila',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-    badge: 'default',
-    description: 'Estamos analisando a apostila do documento.',
-  },
-  waiting_translation: {
-    icon: Clock,
-    label: 'Aguardando Tradução',
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-100',
-    badge: 'warning',
-    description: 'O documento está aguardando tradução juramentada.',
-  },
-  analyzing_translation: {
-    icon: Clock,
-    label: 'Analisando Tradução',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-    badge: 'default',
-    description: 'Estamos analisando a tradução do documento.',
-  },
-  waiting_translation_quote: {
-    icon: Clock,
-    label: 'Aguardando Orçamento',
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-100',
-    badge: 'warning',
-    description: 'Estamos aguardando o orçamento da tradução.',
-  },
-  waiting_quote_approval: {
-    icon: Clock,
-    label: 'Aguardando Aprovação',
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-100',
-    badge: 'warning',
-    description: 'O orçamento da tradução está aguardando sua aprovação.',
-  },
-  waiting_apostille_quote: {
-    icon: Clock,
-    label: 'Aguardando Orçamento',
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-100',
-    badge: 'warning',
-    description: 'Estamos aguardando o orçamento do apostilamento.',
-  },
-  sent_for_apostille: {
-    icon: Clock,
-    label: 'Enviado para Apostila',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-    badge: 'default',
-    description: 'O documento foi enviado para o processo de apostilamento.',
-  },
-  analyzing_translation_payment: {
-    icon: Clock,
-    label: 'Analisando Pagamento',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-    badge: 'default',
-    description: 'Estamos analisando o comprovante de pagamento da tradução.',
-  },
-  ANALYZING_APOSTILLE_PAYMENT: {
-    icon: Clock,
-    label: 'Analisando Pagamento',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-    badge: 'default',
-    description: 'Estamos analisando o comprovante de pagamento do apostilamento.',
-  },
-  ANALYZING_TRANSLATION_PAYMENT: {
-    icon: Clock,
-    label: 'Analisando Pagamento',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-    badge: 'default',
-    description: 'Estamos analisando o comprovante de pagamento da tradução.',
-  },
-  EXECUTING_APOSTILLE: {
-    icon: Clock,
-    label: 'Apostilando',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-    badge: 'default',
-    description: 'O documento está sendo apostilado.',
-  },
-  EXECUTING_TRANSLATION: {
-    icon: Clock,
-    label: 'Traduzindo',
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-    badge: 'default',
-    description: 'O documento está sendo traduzido.',
-  },
-  aguardando_pagamento: {
-    icon: Clock,
-    label: 'Aguardando Pagamento',
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-100',
-    badge: 'warning',
-    description: 'Aguardando confirmação de pagamento.',
-  },
-  pronto_para_apostilagem: {
-    icon: CheckCircle,
-    label: 'Pronto para Apostilamento',
-    color: 'text-green-600',
-    bgColor: 'bg-green-100',
-    badge: 'success',
-    description: 'O documento está pronto para ser apostilado.',
-  },
 }
 
 export function DocumentStatus({ documents, onUpload, onView }: DocumentStatusProps) {
@@ -278,7 +117,7 @@ export function DocumentStatus({ documents, onUpload, onView }: DocumentStatusPr
           </Card>
         ) : (
           filteredDocuments.map((document) => {
-            const config = statusConfig[document.status]
+            const config = getDocumentStatusConfig(document.status)
             const StatusIcon = config.icon
 
             return (
@@ -292,7 +131,7 @@ export function DocumentStatus({ documents, onUpload, onView }: DocumentStatusPr
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-1">
                           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{document.name}</h3>
-                          <Badge variant={config.badge}>{config.label}</Badge>
+                          <StatusBadge status={document.status} />
                         </div>
                         <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">{config.description}</p>
                         

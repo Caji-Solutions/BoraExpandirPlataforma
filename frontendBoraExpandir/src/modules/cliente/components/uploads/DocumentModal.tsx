@@ -1,8 +1,9 @@
 import { X, FileText, Download, Calendar, User } from 'lucide-react'
 import { Button } from '@/modules/shared/components/ui/button'
-import { Badge } from '@/modules/shared/components/ui/badge'
+import { StatusBadge } from '@/modules/shared/components/ui/StatusBadge'
 import { Document } from '../../types'
 import { formatDate, formatFileSize } from '../../lib/utils'
+import { getDocumentStatusConfig } from '@/modules/shared/constants/statusConfig'
 
 interface DocumentModalProps {
   document: Document | null
@@ -10,114 +11,13 @@ interface DocumentModalProps {
   onClose: () => void
 }
 
-const statusConfig: Record<Document['status'], {
-  label: string;
-  variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning';
-  description: string;
-}> = {
-  pending: {
-    label: 'Aguardando Envio',
-    variant: 'warning',
-    description: 'Este documento ainda não foi enviado.',
-  },
-  analyzing: {
-    label: 'Aguardando Análise',
-    variant: 'default',
-    description: 'Nossa equipe está revisando este documento.',
-  },
-  approved: {
-    label: 'Aprovado',
-    variant: 'success',
-    description: 'Documento aprovado e sendo processado.',
-  },
-  rejected: {
-    label: 'Rejeitado',
-    variant: 'destructive',
-    description: 'Documento rejeitado e precisa ser reenviado.',
-  },
-  waiting_apostille: {
-    label: 'Aguardando Apostilamento',
-    variant: 'warning',
-    description: 'O documento está aguardando o processo de apostilamento.',
-  },
-  analyzing_apostille: {
-    label: 'Aguardando Análise',
-    variant: 'default',
-    description: 'Estamos analisando a apostila do documento.',
-  },
-  waiting_translation: {
-    label: 'Aguardando Tradução',
-    variant: 'warning',
-    description: 'O documento está aguardando tradução juramentada.',
-  },
-  analyzing_translation: {
-    label: 'Aguardando Análise',
-    variant: 'default',
-    description: 'Estamos analisando a tradução do documento.',
-  },
-  waiting_translation_quote: {
-    label: 'Aguardando Orçamento',
-    variant: 'warning',
-    description: 'Estamos aguardando o orçamento da tradução.',
-  },
-  waiting_quote_approval: {
-    label: 'Aguardando Aprovação',
-    variant: 'warning',
-    description: 'O orçamento da tradução está aguardando sua aprovação.',
-  },
-  waiting_apostille_quote: {
-    label: 'Aguardando Orçamento',
-    variant: 'warning',
-    description: 'Estamos aguardando o orçamento do apostilamento.',
-  },
-  sent_for_apostille: {
-    label: 'Enviado para Apostila',
-    variant: 'default',
-    description: 'O documento foi enviado para o processo de apostilamento.',
-  },
-  ANALYZING_APOSTILLE_PAYMENT: {
-    label: 'Análise de Pagamento',
-    variant: 'warning',
-    description: 'Estamos verificando o pagamento do seu apostilamento.',
-  },
-  ANALYZING_TRANSLATION_PAYMENT: {
-    label: 'Análise de Pagamento',
-    variant: 'warning',
-    description: 'Estamos verificando o pagamento da sua tradução.',
-  },
-  analyzing_translation_payment: {
-    label: 'Análise de Pagamento',
-    variant: 'warning',
-    description: 'Seu pagamento está sendo analisado pela nossa equipe.',
-  },
-  EXECUTING_APOSTILLE: {
-    label: 'Em Apostilamento',
-    variant: 'default',
-    description: 'Seu documento está em processo de apostilamento.',
-  },
-  EXECUTING_TRANSLATION: {
-    label: 'Em Tradução',
-    variant: 'default',
-    description: 'Seu documento está em processo de tradução juramentada.',
-  },
-  aguardando_pagamento: {
-    label: 'Aguardando Pagamento',
-    variant: 'warning',
-    description: 'O pagamento do serviço está sendo aguardado.',
-  },
-  pronto_para_apostilagem: {
-    label: 'Pronto para Apostila',
-    variant: 'success',
-    description: 'O pagamento foi aprovado e o documento seguiu para o cartório.',
-  },
-}
+// statusConfig is now sourced from @/modules/shared/constants/statusConfig
 
 export function DocumentModal({ document, isOpen, onClose }: DocumentModalProps) {
   if (!isOpen || !document) return null
 
-  // Normalize status to lowercase to match statusConfig keys
-  const statusKey = document.status.toLowerCase() as keyof typeof statusConfig
-  const config = statusConfig[statusKey] || statusConfig.pending
+  // Get config from shared constants (normalises casing automatically)
+  const config = getDocumentStatusConfig(document.status)
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -142,9 +42,7 @@ export function DocumentModal({ document, isOpen, onClose }: DocumentModalProps)
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-medium text-gray-700 mb-2">Status do Documento</h3>
-              <Badge variant={config.variant} className="text-sm">
-                {config.label}
-              </Badge>
+              <StatusBadge status={document.status} className="text-sm" />
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-500">Tipo</p>

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DialogFooter } from '@/modules/shared/components/ui/dialog'
 import { compressFile } from '../../../../utils/compressFile'
 import { clienteService } from '../../services/clienteService'
+import { getDocumentStatusConfig } from '@/modules/shared/constants/statusConfig'
 
 interface FamilyMemberModalProps {
     isOpen: boolean
@@ -25,17 +26,7 @@ interface FamilyMemberModalProps {
     onRefresh?: () => void
 }
 
-const statusConfig: Record<string, { label: string, color: string, bg: string, badge: any }> = {
-    pending: { label: 'Pendente', color: 'text-gray-600', bg: 'bg-gray-100', badge: 'secondary' },
-    analyzing: { label: 'Em Análise', color: 'text-yellow-600', bg: 'bg-yellow-100', badge: 'warning' },
-    approved: { label: 'Aprovado', color: 'text-green-600', bg: 'bg-green-100', badge: 'success' },
-    rejected: { label: 'Rejeitado', color: 'text-red-600', bg: 'bg-red-100', badge: 'destructive' },
-    sent_for_apostille: { label: 'Enviado p/ Apostila', color: 'text-purple-600', bg: 'bg-purple-100', badge: 'secondary' },
-    waiting_apostille: { label: 'Aguardando Apostila', color: 'text-amber-600', bg: 'bg-amber-100', badge: 'warning' },
-    analyzing_apostille: { label: 'Analisando Apostila', color: 'text-amber-700', bg: 'bg-amber-100', badge: 'warning' },
-    waiting_translation: { label: 'Aguardando Tradução', color: 'text-blue-600', bg: 'bg-blue-100', badge: 'warning' },
-    analyzing_translation: { label: 'Analisando Tradução', color: 'text-blue-700', bg: 'bg-blue-100', badge: 'warning' },
-}
+// statusConfig is now sourced from @/modules/shared/constants/statusConfig
 
 export function FamilyMemberModal({
     isOpen,
@@ -366,12 +357,7 @@ export function FamilyMemberModal({
                                         const uploadedDoc = getDocument(reqDoc.type)
                                         // Use status config or fallback to pending/unknown to avoid crash
                                         const statusKey = uploadedDoc ? uploadedDoc.status : 'pending';
-                                        const status = statusConfig[statusKey] || {
-                                            label: statusKey,
-                                            color: 'text-gray-600',
-                                            bg: 'bg-gray-100',
-                                            badge: 'secondary'
-                                        };
+                                        const status = getDocumentStatusConfig(statusKey);
 
                                         const inputId = `file-upload-${member.id}-${reqDoc.type}`
                                         const isUploading = uploadingType === reqDoc.type
@@ -425,7 +411,7 @@ export function FamilyMemberModal({
                                                     <div className="flex flex-col items-end gap-2">
                                                         {/* Status Badge */}
                                                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide
-                                                            ${uploadedDoc ? status.bg + ' ' + status.color : 'bg-gray-100 text-gray-500'}
+                                                            ${uploadedDoc ? status.bgColor + ' ' + status.color : 'bg-gray-100 text-gray-500'}
                                                         `}>
                                                             {status.label}
                                                         </span>
