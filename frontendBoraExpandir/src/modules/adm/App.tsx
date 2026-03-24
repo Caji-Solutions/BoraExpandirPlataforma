@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/modules/shared/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AdminLayout } from "./components/layout/AdminLayout";
-import Dashboard from "./pages/admin/Dashboard";
+import Dashboard from "../cliente/components/dashboard/Dashboard";
 import UserManagement from "./pages/admin/UserManagement";
 import ServiceCatalog from "./pages/admin/ServiceCatalog";
 import AuditLogs from "./pages/admin/AuditLogs";

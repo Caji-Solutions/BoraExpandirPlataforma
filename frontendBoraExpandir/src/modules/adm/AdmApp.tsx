@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import { AdminLayout } from "./components/layout/AdminLayout";
-import Dashboard from "./pages/admin/Dashboard";
+import Dashboard from "../cliente/components/dashboard/Dashboard";
 import UserManagement from "./pages/admin/UserManagement";
 import ServiceCatalog from "./pages/admin/ServiceCatalog";
 import AuditLogs from "./pages/admin/AuditLogs";
@@ -20,7 +20,7 @@ import { Relatorios } from "../financeiro/pages/Relatorios";
 import { ComprovantesPage } from "../financeiro/pages/ComprovantesPage";
 
 // Importar componentes jurídicos
-import { Dashboard as JuridicoDashboard } from "../juridico/components/Dashboard";
+import { Dashboard as JuridicoDashboard } from "../cliente/components/dashboard/Dashboard";
 import { ProcessQueue } from "../juridico/components/ProcessQueue";
 import { ProcessTable, ProcessData } from "../juridico/components/ProcessTable";
 import { TaskModule } from "../shared/components/TaskModule";

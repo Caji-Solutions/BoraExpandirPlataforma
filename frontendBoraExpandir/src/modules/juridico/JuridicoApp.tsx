@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { Home, FolderOpen, FileSearch, CheckSquare, Settings, Users, FileStack, Dna, ClipboardCheck, Clock } from "lucide-react";
 import { Sidebar } from "@/components/ui/Sidebar";
 import type { SidebarGroup } from "@/components/ui/Sidebar";
-import { Dashboard } from "./components/Dashboard";
+import { Dashboard } from "../cliente/components/dashboard/Dashboard";
 import { ProcessQueue } from "./components/ProcessQueue";
 import { ReviewPanel } from "./components/ReviewPanel";
 import { Config } from "@/components/ui/Config";

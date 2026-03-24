@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { User, Mail, Phone, Fingerprint, Save, Loader2, Edit2, X, Camera } from 'lucide-react'
 import { Client, Document } from '../../modules/cliente/types'
-import { TimezoneSelector } from '../../modules/cliente/components/TimezoneSelector'
+import { TimezoneSelector } from '../../modules/cliente/components/scheduling/TimezoneSelector'
 
 interface ConfigProps {
   onClose?: () => void

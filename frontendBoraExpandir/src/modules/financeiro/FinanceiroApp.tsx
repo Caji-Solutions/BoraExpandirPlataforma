@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { Sidebar } from '@/components/ui/Sidebar'
 import type { SidebarGroup } from '@/components/ui/Sidebar'
-import { Dashboard } from './components/Dashboard'
+import { Dashboard } from '../cliente/components/dashboard/Dashboard'
 import { FinancialProcessList } from './pages/FinancialProcessList'
 import Comissoes from './pages/Comissoes'
 import { FinancialDashboard } from './pages/VisaoGeral'
