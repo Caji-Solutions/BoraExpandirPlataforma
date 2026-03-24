@@ -385,7 +385,7 @@ export function DNAClientListView({
                                         <div className="col-span-2 text-center">
                                             <div className="text-xs font-medium text-foreground">{cliente.tipoAssessoria}</div>
                                             <div className="text-[10px] text-muted-foreground">
-                                                {CATEGORIAS_LIST.find(cat => cat.id === cliente.categoria)?.label.split('-')[1] || cliente.categoria}
+                                                {CATEGORIAS_LIST.find(cat => cat.id === cliente.categoria)?.label || cliente.categoria}
                                             </div>
                                         </div>
                                         <div className="col-span-2 text-center text-xs font-medium text-foreground">

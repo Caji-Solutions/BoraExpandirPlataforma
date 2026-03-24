@@ -399,10 +399,11 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Próximo Agendamento */}
         {nextAppointmentData && (
-          <AppointmentReminder 
+          <AppointmentReminder
             appointmentDate={nextAppointmentData.data_hora}
             appointmentTime={new Date(nextAppointmentData.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             service={nextAppointmentData.produto_nome || "Consultoria"}
+            meetLink={nextAppointmentData.meet_link}
             status={nextAppointmentData.status}
             checkoutUrl={nextAppointmentData.checkout_url || nextAppointmentData.checkoutUrl}
             agendamentoId={nextAppointmentData.id}

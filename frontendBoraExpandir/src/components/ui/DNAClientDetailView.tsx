@@ -61,6 +61,7 @@ export function DNAClientDetailView({
     const [loadingContratos, setLoadingContratos] = useState(false)
     const [leadNotesData, setLeadNotesData] = useState<any[]>([])
     const [loadingLeadNotes, setLoadingLeadNotes] = useState(false)
+    const [leadNotesExpanded, setLeadNotesExpanded] = useState(false)
 
     // Handle adding document to a specific requirement
     const handleAddDocToReq = (reqId: string) => {
@@ -160,7 +161,7 @@ export function DNAClientDetailView({
             fetchAgendamentos()
             fetchContratos()
         }
-        if (activeTab === 'notas') {
+        if (activeTab === 'notas' || activeTab === 'timeline') {
             const fetchLeadNotes = async () => {
                 try {
                     setLoadingLeadNotes(true)
@@ -434,6 +435,52 @@ export function DNAClientDetailView({
                                     </h3>
                                 </div>
 
+                                {/* Notas do Lead */}
+                                {leadNotesData.length > 0 && (
+                                    <div className="mb-6 bg-amber-500/5 border border-amber-500/20 rounded-xl overflow-hidden">
+                                        <button
+                                            onClick={() => setLeadNotesExpanded(!leadNotesExpanded)}
+                                            className="w-full flex items-center justify-between px-5 py-3 hover:bg-amber-500/10 transition-colors"
+                                        >
+                                            <span className="flex items-center gap-2 text-sm font-bold text-amber-400">
+                                                <StickyNote className="h-4 w-4" />
+                                                Notas
+                                                <span className="text-xs font-normal text-amber-400/70">
+                                                    ({leadNotesData.length} {leadNotesData.length === 1 ? 'nota' : 'notas'})
+                                                </span>
+                                            </span>
+                                            <ChevronDown className={cn(
+                                                "h-4 w-4 text-amber-400 transition-transform duration-300",
+                                                leadNotesExpanded && "rotate-180"
+                                            )} />
+                                        </button>
+                                        {leadNotesExpanded && (
+                                            <div className="px-5 pb-4 space-y-3 animate-in slide-in-from-top-2 duration-300">
+                                                {leadNotesData.map((note: any) => (
+                                                    <div key={note.id} className="bg-card/50 border border-amber-500/10 rounded-lg p-3 text-sm">
+                                                        <div className="flex justify-between items-center mb-2 opacity-70">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="font-bold flex items-center gap-1.5 text-amber-300">
+                                                                    <User className="h-3 w-3" /> {note.autor_nome || 'Lead'}
+                                                                </span>
+                                                                <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-tight bg-amber-100 text-amber-700">
+                                                                    lead
+                                                                </span>
+                                                            </div>
+                                                            <span className="text-[10px] text-muted-foreground">
+                                                                {note.created_at ? new Date(note.created_at).toLocaleDateString('pt-BR') : ''}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-foreground/90 leading-relaxed italic border-l-2 border-amber-500/30 pl-3">
+                                                            "{note.texto || note.text}"
+                                                        </p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 <div className="space-y-0 relative ml-4">
                                     {/* Linha vertical decorativa */}
                                     <div className="absolute left-[15px] top-2 bottom-6 w-0.5 bg-border" />
@@ -469,7 +516,7 @@ export function DNAClientDetailView({
                                                             isCurrent ? "text-primary text-lg" :
                                                                 isCompleted ? "text-foreground" : "text-muted-foreground"
                                                         )}>
-                                                            {stage.label.split('-')[1] || stage.label}
+                                                            {stage.label}
                                                         </h4>
 
                                                         <div className="flex items-center gap-2">
@@ -866,7 +913,7 @@ export function DNAClientDetailView({
                                         <StickyNote className="h-6 w-6 text-amber-500" />
                                         Notas do Cliente
                                     </h3>
-                                    <button 
+                                    <button
                                         onClick={() => setNoteStageId(noteStageId === 'general' ? null : 'general')}
                                         className="text-sm font-bold bg-primary text-primary-foreground px-4 py-2 rounded-xl hover:bg-primary/90 transition-all flex items-center gap-2 shadow-sm"
                                     >
@@ -927,53 +974,53 @@ export function DNAClientDetailView({
                                                     type: 'lead'
                                                 }))
                                             ]
-                                            .filter(n => areaFilter === 'todos' || n.area === areaFilter)
-                                            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                                            .map((note) => (
-                                                <div key={note.id} className="bg-muted/30 border border-border/50 rounded-2xl p-5 text-sm relative group hover:border-primary/20 transition-all shadow-sm">
-                                                    <div className="flex justify-between items-center mb-3">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                                                <User className="h-4 w-4" />
-                                                            </div>
-                                                            <div>
-                                                                <div className="font-bold text-foreground flex items-center gap-2">
-                                                                    {note.author}
-                                                                    <span className={cn(
-                                                                        "text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider",
-                                                                        note.area === 'juridico' ? "bg-purple-100 text-purple-700" :
-                                                                        note.area === 'comercial' ? "bg-blue-100 text-blue-700" :
-                                                                        note.area === 'lead' ? "bg-amber-100 text-amber-700" :
-                                                                        "bg-emerald-100 text-emerald-700"
-                                                                    )}>
-                                                                        {note.area}
-                                                                    </span>
-                                                                    {note.type === 'process' && (note as any).stageId && (
-                                                                        <span className="text-[9px] bg-muted px-2 py-0.5 rounded-md text-muted-foreground font-bold uppercase">
-                                                                            Etapa: {(note as any).stageId}
+                                                .filter(n => areaFilter === 'todos' || n.area === areaFilter)
+                                                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                                                .map((note) => (
+                                                    <div key={note.id} className="bg-muted/30 border border-border/50 rounded-2xl p-5 text-sm relative group hover:border-primary/20 transition-all shadow-sm">
+                                                        <div className="flex justify-between items-center mb-3">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                                    <User className="h-4 w-4" />
+                                                                </div>
+                                                                <div>
+                                                                    <div className="font-bold text-foreground flex items-center gap-2">
+                                                                        {note.author}
+                                                                        <span className={cn(
+                                                                            "text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider",
+                                                                            note.area === 'juridico' ? "bg-purple-100 text-purple-700" :
+                                                                                note.area === 'comercial' ? "bg-blue-100 text-blue-700" :
+                                                                                    note.area === 'lead' ? "bg-amber-100 text-amber-700" :
+                                                                                        "bg-emerald-100 text-emerald-700"
+                                                                        )}>
+                                                                            {note.area}
                                                                         </span>
-                                                                    )}
-                                                                </div>
-                                                                <div className="text-[10px] text-muted-foreground font-medium">
-                                                                    {new Date(note.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                                        {note.type === 'process' && (note as any).stageId && (
+                                                                            <span className="text-[9px] bg-muted px-2 py-0.5 rounded-md text-muted-foreground font-bold uppercase">
+                                                                                Etapa: {(note as any).stageId}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="text-[10px] text-muted-foreground font-medium">
+                                                                        {new Date(note.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                                    </div>
                                                                 </div>
                                                             </div>
+                                                            {note.autorId === activeProfile?.id && (
+                                                                <button
+                                                                    onClick={() => note.type === 'lead' ? handleDeleteLeadNote(note.id) : handleDeleteNote(note.id)}
+                                                                    className="opacity-0 group-hover:opacity-100 p-2 text-muted-foreground hover:text-red-500 transition-all hover:bg-red-50 rounded-lg"
+                                                                    title="Excluir nota"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </button>
+                                                            )}
                                                         </div>
-                                                        {note.autorId === activeProfile?.id && (
-                                                            <button
-                                                                onClick={() => note.type === 'lead' ? handleDeleteLeadNote(note.id) : handleDeleteNote(note.id)}
-                                                                className="opacity-0 group-hover:opacity-100 p-2 text-muted-foreground hover:text-red-500 transition-all hover:bg-red-50 rounded-lg"
-                                                                title="Excluir nota"
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </button>
-                                                        )}
+                                                        <p className="text-foreground/90 leading-relaxed pl-11 border-l-2 border-primary/10 ml-4 py-1">
+                                                            {note.text}
+                                                        </p>
                                                     </div>
-                                                    <p className="text-foreground/90 leading-relaxed pl-11 border-l-2 border-primary/10 ml-4 py-1">
-                                                        {note.text}
-                                                    </p>
-                                                </div>
-                                            ))}
+                                                ))}
 
                                             {notes.length === 0 && leadNotesData.length === 0 && (
                                                 <div className="text-center p-16 bg-muted/20 rounded-3xl border border-dashed border-border">
@@ -1002,12 +1049,12 @@ export function DNAClientDetailView({
                                     } else if (action === 'solicitar_formulario') {
                                         setIsFormModalOpen(true)
                                     } else if (action === 'comercial_agenda') {
-                                        navigate('/comercial/agendamento', { 
-                                            state: { 
-                                                preSelectedClient: client, 
-                                                preSelectedProduto: 'Consultoria', 
-                                                step: 'data_hora' 
-                                            } 
+                                        navigate('/comercial/agendamento', {
+                                            state: {
+                                                preSelectedClient: client,
+                                                preSelectedProduto: 'Consultoria',
+                                                step: 'data_hora'
+                                            }
                                         })
                                     } else {
                                         console.log('Action triggered:', action)

@@ -51,7 +51,7 @@ export default function RecordsPessoaisCard({
         <div className="flex items-center gap-3 p-3 bg-orange-50 dark:bg-orange-500/10 rounded-lg border border-orange-100 dark:border-orange-500/20">
           <Flame className="h-5 w-5 text-orange-500 shrink-0" />
           <div>
-            <p className="text-xs text-orange-700 dark:text-orange-400 font-medium">Sequência positiva</p>
+            <p className="text-xs text-orange-700 dark:text-orange-400 font-medium">Sequência de metas batidas</p>
             <p className="text-base font-bold text-orange-800 dark:text-orange-300">
               {mesesPositivosSequencia} {mesesPositivosSequencia === 1 ? 'mês' : 'meses'} consecutivos
             </p>

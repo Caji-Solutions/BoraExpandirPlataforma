@@ -71,13 +71,13 @@ export type DNACategory = {
 }
 
 export const CATEGORIAS_LIST: Omit<DNACategory, 'count'>[] = [
-    { id: 'formularios', label: '1-Formulários Consultoria Imigração', icon: <ClipboardList className="h-6 w-6" />, color: 'bg-gray-500' },
-    { id: 'aguardando_consultoria', label: '2-CRM de Clientes Aguardando Consultoria', icon: <FolderOpen className="h-6 w-6" />, color: 'bg-amber-600' },
-    { id: 'clientes_c2', label: '3- CRM Clientes C2', icon: <ClipboardList className="h-6 w-6" />, color: 'bg-slate-600' },
-    { id: 'aguardando_assessoria', label: '4-CRM Clientes Aguardando Assessoria', icon: <CheckSquare className="h-6 w-6 text-green-500" />, color: 'bg-green-600' },
-    { id: 'assessoria_andamento', label: '5-CRM de Clientes Assessoria em Andamento', icon: <Plane className="h-6 w-6 text-blue-500" />, color: 'bg-blue-600' },
-    { id: 'assessoria_finalizada', label: '6- CRM de Clientes Assessorias Finalizadas', icon: <Flag className="h-6 w-6" />, color: 'bg-slate-700' },
-    { id: 'cancelado', label: '7-CRM de Clientes Cancelados/Desistiu', icon: <XCircle className="h-6 w-6 text-red-500" />, color: 'bg-red-600' },
+    { id: 'formularios', label: 'Formularios Consultoria Imigracao', icon: <ClipboardList className="h-6 w-6" />, color: 'bg-gray-500' },
+    { id: 'aguardando_consultoria', label: 'Aguardando consultoria', icon: <FolderOpen className="h-6 w-6" />, color: 'bg-amber-600' },
+    { id: 'clientes_c2', label: 'Pos Consultoria', icon: <ClipboardList className="h-6 w-6" />, color: 'bg-slate-600' },
+    { id: 'aguardando_assessoria', label: 'Aguardando Assessoria', icon: <CheckSquare className="h-6 w-6 text-green-500" />, color: 'bg-green-600' },
+    { id: 'assessoria_andamento', label: 'Assessoria em Andamento', icon: <Plane className="h-6 w-6 text-blue-500" />, color: 'bg-blue-600' },
+    { id: 'assessoria_finalizada', label: 'Assessoria finalizada', icon: <Flag className="h-6 w-6" />, color: 'bg-slate-700' },
+    { id: 'cancelado', label: 'Cancelou / Desistiu', icon: <XCircle className="h-6 w-6 text-red-500" />, color: 'bg-red-600' },
 ];
 
 export const formatDate = (dateString: string | undefined) => {

@@ -213,7 +213,7 @@ export default function Ganhos() {
     let checkMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     for (let i = 0; i < 24; i++) {
       const key = `${checkMonth.getFullYear()}-${String(checkMonth.getMonth() + 1).padStart(2, '0')}`
-      if (byMonth[key] && byMonth[key].valor > 0) {
+      if (byMonth[key] && byMonth[key].valor >= META_MENSAL_PADRAO) {
         sequencia++
         checkMonth = new Date(checkMonth.getFullYear(), checkMonth.getMonth() - 1, 1)
       } else {

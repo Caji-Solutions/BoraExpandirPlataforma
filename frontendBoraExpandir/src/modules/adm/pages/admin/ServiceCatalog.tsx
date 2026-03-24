@@ -168,8 +168,9 @@ export default function ServiceCatalog() {
 
 
   const handleSaveService = async () => {
-    if (!formData.name || !formData.value) {
-      toast.error("Nome e valor sao obrigatorios.");
+    const valorObrigatorio = formData.type !== 'fixo'
+    if (!formData.name || (valorObrigatorio && !formData.value)) {
+      toast.error(valorObrigatorio ? "Nome e valor sao obrigatorios." : "Nome e obrigatorio.");
       return;
     }
 
@@ -382,7 +383,7 @@ export default function ServiceCatalog() {
                       </TableCell>
                       <TableCell className="py-4">
                         <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/10 rounded-lg">
-                          {service.type === 'fixo' ? 'Fixo' : service.type === 'diverso' ? 'Diverso' : 'Agendavel'}
+                          {service.type === 'fixo' ? 'Contratos' : service.type === 'diverso' ? 'Serviços Diversos' : 'Serviços com Agendamento'}
                         </Badge>
                       </TableCell>
                       <TableCell className="py-4">
@@ -557,7 +558,9 @@ export default function ServiceCatalog() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Valor Unitario (EUR)</Label>
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">
+                  Valor Unitario (EUR){formData.type === 'fixo' && <span className="ml-1 font-normal normal-case tracking-normal text-muted-foreground/70">— opcional para Contratos</span>}
+                </Label>
                 <div className="relative">
                   <Euro className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -607,9 +610,9 @@ export default function ServiceCatalog() {
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="agendavel">Agendavel</SelectItem>
-                    <SelectItem value="fixo">Fixo</SelectItem>
-                    <SelectItem value="diverso">Diverso</SelectItem>
+                    <SelectItem value="agendavel">Serviços com Agendamento</SelectItem>
+                    <SelectItem value="fixo">Contratos</SelectItem>
+                    <SelectItem value="diverso">Serviços Diversos</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

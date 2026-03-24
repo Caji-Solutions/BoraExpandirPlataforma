@@ -114,10 +114,10 @@ export default function ServicosComerciais() {
       <section className="space-y-4">
         <div className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
           <Calendar className="w-5 h-5 text-emerald-600" />
-          Agendáveis
+          Serviços com Agendamento
         </div>
         {grouped.agendaveis.length === 0 ? (
-          <div className="text-sm text-gray-500">Nenhum serviço agendável cadastrado.</div>
+          <div className="text-sm text-gray-500">Nenhum serviço com agendamento cadastrado.</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {grouped.agendaveis.map((servico) => (
@@ -141,17 +141,16 @@ export default function ServicosComerciais() {
       <section className="space-y-4">
         <div className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
           <FileText className="w-5 h-5 text-blue-600" />
-          Fixos
+          Contratos
         </div>
         {grouped.fixos.length === 0 ? (
-          <div className="text-sm text-gray-500">Nenhum serviço fixo cadastrado.</div>
+          <div className="text-sm text-gray-500">Nenhum contrato cadastrado.</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {grouped.fixos.map((servico) => (
               <div key={servico.id} className="bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-2xl p-5 flex items-center justify-between gap-4">
                 <div>
                   <h3 className="font-semibold text-gray-900 dark:text-white">{servico.name}</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Valor: € {formatValor(servico.value)}</p>
                 </div>
                 <button
                   onClick={() => handleCriarContrato(servico)}
@@ -168,7 +167,7 @@ export default function ServicosComerciais() {
       <section className="space-y-4">
         <div className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
           <Layers className="w-5 h-5 text-gray-600" />
-          Diversos
+          Serviços Diversos
         </div>
         {grouped.diversos.length === 0 ? (
           <div className="text-sm text-gray-500">Nenhum serviço diverso cadastrado.</div>

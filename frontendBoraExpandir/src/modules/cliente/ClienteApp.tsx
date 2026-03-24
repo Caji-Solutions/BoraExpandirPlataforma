@@ -505,9 +505,7 @@ export function ClienteApp() {
         items: [
           { label: 'Dashboard', to: '/cliente', icon: Home },
           { label: 'Meu Processo', to: '/cliente/processo', icon: GitBranch },
-          { label: 'Agendamento', to: '/cliente/agendamento', icon: Calendar },
           { label: 'Documentos', to: '/cliente/upload', icon: FileText },
-          { label: 'Contratos', to: '/cliente/contratos', icon: FileText },
           { label: 'Parceiro', to: '/cliente/parceiro', icon: Users },
 
           {
