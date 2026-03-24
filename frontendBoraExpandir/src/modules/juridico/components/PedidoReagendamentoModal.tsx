@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { CalendarClock } from 'lucide-react';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
-import { Textarea } from './ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/modules/shared/components/ui/dialog';
+import { Textarea } from '@/modules/shared/components/ui/textarea';
 import juridicoService from '../services/juridicoService';
 
 interface PedidoReagendamentoModalProps {

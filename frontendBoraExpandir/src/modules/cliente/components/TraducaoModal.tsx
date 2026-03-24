@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog'
-import { Button } from './ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/modules/shared/components/ui/dialog'
+import { Button } from '@/modules/shared/components/ui/button'
 import { ScrollArea } from '../../shared/components/ui/scroll-area'
 import { ApprovedDocument, TranslatedDocument } from '../types'
 import { FileText, Download, Send, CheckCircle, Upload, X, File } from 'lucide-react'
-import { Badge } from './ui/badge'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { formatDate } from '../lib/utils'
 import { compressFile } from '../../../utils/compressFile'
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, FileText, Loader2, PencilLine, CheckCircle2, Clock, CreditCard, ChevronRight } from 'lucide-react'
-import { Badge } from '../../components/ui/Badge'
+import { Badge } from '@/components/ui/Badge'
 import comercialService from './services/comercialService'
 import type { ContratoServico } from '../../types/comercial'
 

@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { X, Clock, FileText, AlertCircle, Loader2, Check, Send, CreditCard, Copy, Upload, Trash2, CheckCircle2 } from 'lucide-react'
 import { Document as ClientDocument } from '../types'
-import { Button } from './ui/button'
-import { Badge } from './ui/badge'
+import { Button } from '@/modules/shared/components/ui/button'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { clienteService } from '../services/clienteService'
 import { cn } from '../lib/utils'
-import { useToast } from '../../../components/ui/Toast'
+import { useToast } from '@/components/ui/Toast'
 
 interface ApostilleQuoteModalProps {
   documentoId: string

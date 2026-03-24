@@ -1,9 +1,9 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
-import { Label } from "../../components/ui/label";
-import { Input } from "../../components/ui/input";
-import { Button } from "../../components/ui/button";
-import { Switch } from "../../components/ui/switch";
-import { Separator } from "../../components/ui/separator";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/modules/shared/components/ui/card";
+import { Label } from "@/modules/shared/components/ui/label";
+import { Input } from "@/modules/shared/components/ui/input";
+import { Button } from "@/modules/shared/components/ui/button";
+import { Switch } from "@/modules/shared/components/ui/switch";
+import { Separator } from "@/modules/shared/components/ui/separator";
 
 export default function Settings() {
   return (

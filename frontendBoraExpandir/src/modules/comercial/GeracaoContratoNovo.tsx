@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { X, Loader, Check, ArrowRight, Copy, Mail } from 'lucide-react'
 import { CONTRATOS_PDF_MOCK } from './lib/mockPdfContratos'
 import type { Cliente, ContratoFormData } from '../../types/comercial'
-import Toast, { useToast, ToastContainer } from '../../components/ui/Toast'
+import Toast, { useToast, ToastContainer } from '@/components/ui/Toast'
 
 interface GeracaoContratoNovoProps {
   onClose: () => void

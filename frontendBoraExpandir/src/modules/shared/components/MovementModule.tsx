@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Search } from "lucide-react";
-import { Badge } from "./ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Input } from "./ui/input";
+import { Badge } from "@/modules/shared/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/modules/shared/components/ui/card";
+import { Input } from "@/modules/shared/components/ui/input";
 import {
     Table,
     TableBody,
@@ -10,8 +10,8 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "./ui/table";
-import { ScrollArea, ScrollBar } from "./ui/scroll-area";
+} from "@/modules/shared/components/ui/table";
+import { ScrollArea, ScrollBar } from "@/modules/shared/components/ui/scroll-area";
 
 interface Movement {
     id: string;

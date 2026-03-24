@@ -1,5 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
-import { Badge } from './ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { Rocket, CheckCircle2, Gift, Users, Star } from 'lucide-react'
 import { Client } from '../types'
 

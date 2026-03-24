@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { X, CheckCircle2, Copy, Loader2, AlertCircle, Check } from 'lucide-react'
-import { useToast } from '../../../components/ui/Toast'
+import { useToast } from '@/components/ui/Toast'
 
 interface AgendamentoConfirmacaoModalProps {
   isOpen: boolean

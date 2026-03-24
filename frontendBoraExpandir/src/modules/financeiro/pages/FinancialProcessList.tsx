@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { ExternalLink, Send, CheckCircle, FileText, FileSignature, Calendar, DollarSign, Mail, Receipt, AlertCircle, Clock } from "lucide-react";
-import { Badge } from "../../../components/ui/Badge";
-import { Button } from "../components/ui/button";
-import { Progress } from "../components/ui/progress";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/modules/shared/components/ui/button";
+import { Progress } from "@/modules/shared/components/ui/progress";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "../components/ui/dialog";
+} from "@/modules/shared/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -18,10 +18,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../components/ui/table";
-import { Card, CardContent } from "../components/ui/card";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
+} from "@/modules/shared/components/ui/table";
+import { Card, CardContent } from "@/modules/shared/components/ui/card";
+import { Input } from "@/modules/shared/components/ui/input";
+import { Label } from "@/modules/shared/components/ui/label";
 
 interface FinancialProcess {
   id: string;

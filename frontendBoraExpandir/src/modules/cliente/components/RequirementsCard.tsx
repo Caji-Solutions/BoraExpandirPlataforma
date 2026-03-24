@@ -11,7 +11,7 @@ import {
     ExternalLink,
     Upload
 } from 'lucide-react'
-import { Badge } from './ui/badge'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { cn, formatDate } from '../lib/utils'
 import { clienteService } from '../services/clienteService'
 import { compressFile } from '../../../utils/compressFile'

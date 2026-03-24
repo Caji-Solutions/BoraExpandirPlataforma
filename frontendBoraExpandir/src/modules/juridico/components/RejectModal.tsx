@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { Button } from './ui/button';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import { Button } from '@/modules/shared/components/ui/button';
+import { Label } from '@/modules/shared/components/ui/label';
+import { Textarea } from '@/modules/shared/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/shared/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/modules/shared/components/ui/dialog';
 
 interface RejectModalProps {
   open: boolean;

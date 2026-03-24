@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card'
 import { Calendar, Clock, MapPin, CheckCircle, XCircle, Target, CreditCard } from 'lucide-react'
-import { Button } from './ui/button'
+import { Button } from '@/modules/shared/components/ui/button'
 import { clienteService } from '../services/clienteService'
 import { getClientTimezone } from './TimezoneSelector'
 

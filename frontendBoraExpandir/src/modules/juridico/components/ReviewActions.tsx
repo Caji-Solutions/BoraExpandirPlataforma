@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { CheckCircle, XCircle } from "lucide-react";
-import { Button } from "./ui/button";
-import { Textarea } from "./ui/textarea";
-import { Checkbox } from "./ui/checkbox";
+import { Button } from "@/modules/shared/components/ui/button";
+import { Textarea } from "@/modules/shared/components/ui/textarea";
+import { Checkbox } from "@/modules/shared/components/ui/checkbox";
 import { updateFormularioClienteStatus } from "../services/juridicoService";
 
 interface ReviewActionsProps {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Copy, Check } from 'lucide-react';
-import { Badge } from '../../../components/ui/Badge';
+import { Badge } from '@/components/ui/Badge';
 import { Client } from '../types';
 import { parceiroService } from '../services/parceiroService';
 

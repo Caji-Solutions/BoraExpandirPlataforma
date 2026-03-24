@@ -12,7 +12,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "./ui/sidebar";
+} from "@/modules/shared/components/ui/sidebar";
 import { useAuth } from "../../../contexts/AuthContext";
 import type { UserProfile } from "../../../contexts/AuthContext";
 

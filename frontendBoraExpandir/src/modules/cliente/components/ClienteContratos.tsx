@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, FileCheck, FileText, Loader2, XCircle } from 'lucide-react'
-import { Badge } from '../../../components/ui/Badge'
-import { useToast, ToastContainer } from '../../../components/ui/Toast'
+import { Badge } from '@/components/ui/Badge'
+import { useToast, ToastContainer } from '@/components/ui/Toast'
 import { clienteService } from '../services/clienteService'
 import type { ContratoServico } from '../../../types/comercial'
 

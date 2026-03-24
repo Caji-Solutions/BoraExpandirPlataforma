@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2, Upload, FileText, AlertCircle } from 'lucide-react';
-import { Button } from './ui/button';
+import { Button } from '@/modules/shared/components/ui/button';
 import { formatFileSize } from '../lib/utils';
 import { cn } from '../lib/utils';
 

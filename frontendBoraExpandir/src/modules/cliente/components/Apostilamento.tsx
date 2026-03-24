@@ -1,7 +1,7 @@
 
 import { useState } from 'react'
 import { Folder, FileText } from 'lucide-react'
-import { Card, CardContent } from './ui/card'
+import { Card, CardContent } from '@/modules/shared/components/ui/card'
 import { Client, Document } from '../types'
 import { ApostilamentoModal } from './ApostilamentoModal'
 

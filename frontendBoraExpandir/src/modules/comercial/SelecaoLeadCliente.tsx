@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Loader2, UserPlus, Users } from 'lucide-react'
 import comercialService from './services/comercialService'
 import { useAuth } from '../../contexts/AuthContext'
-import Toast, { useToast, ToastContainer } from '../../components/ui/Toast'
+import Toast, { useToast, ToastContainer } from '@/components/ui/Toast'
 import type { Cliente } from '../../types/comercial'
 
 interface LocationState {

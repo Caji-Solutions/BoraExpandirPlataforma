@@ -16,7 +16,7 @@ import {
   CheckCircle,
   Eye
 } from 'lucide-react'
-import { Badge } from '../../../../components/ui/Badge'
+import { Badge } from '@/components/ui/Badge'
 
 // Tipos
 type TipoBeneficiario = 'funcionario' | 'parceiro' | 'tradutor'

@@ -4,7 +4,7 @@ import { Calendar, FileText, Layers, Loader2, Search } from 'lucide-react'
 import { catalogService, Service } from '../adm/services/catalogService'
 import comercialService from './services/comercialService'
 import { useAuth } from '../../contexts/AuthContext'
-import { useToast, ToastContainer } from '../../components/ui/Toast'
+import { useToast, ToastContainer } from '@/components/ui/Toast'
 import type { Cliente } from '../../types/comercial'
 
 export default function ServicosComerciais() {

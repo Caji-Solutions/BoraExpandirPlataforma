@@ -1,5 +1,5 @@
 import { XCircle, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import { Button } from './ui/button';
+import { Button } from '@/modules/shared/components/ui/button';
 
 interface ReviewActionButtonsProps {
   onReject: () => void;

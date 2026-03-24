@@ -6,7 +6,12 @@
       "Bash(npm install:*)",
       "Bash(npx tsc:*)",
       "Bash(npx vitest:*)",
-      "Bash(grep -n \"getAllAgendamentos\\\\|/api.*agendamentos\" backend/src/routes/*.ts)"
+      "Bash(grep -n \"getAllAgendamentos\\\\|/api.*agendamentos\" backend/src/routes/*.ts)",
+      "Bash(ls -la /home/joaov/Documents/BoraExpandirPLataforma/BoraExpandirPlataforma/frontendBoraExpandir/src/modules/*/components/)",
+      "Bash(ls -lh /home/joaov/Documents/BoraExpandirPLataforma/BoraExpandirPlataforma/backend/src/controllers/*.ts)",
+      "Bash(for dir:*)",
+      "Bash(do echo:*)",
+      "Read(//home/joaov/Documents/BoraExpandirPLataforma/BoraExpandirPlataforma/**)"
     ]
   }
 }

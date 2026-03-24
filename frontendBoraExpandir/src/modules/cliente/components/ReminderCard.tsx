@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card'
 import { Bell, Briefcase, FileText, Scale, ArrowRight, Clock, Info, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import { Reminder } from '../types'
 import { Link } from 'react-router-dom'

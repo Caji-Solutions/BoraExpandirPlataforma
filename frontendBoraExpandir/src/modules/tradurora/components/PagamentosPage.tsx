@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { DollarSign, CheckCircle, TrendingUp, FileCheck, Download, Eye, X, FileText } from 'lucide-react'
 import type { OrcamentoItem } from '../types/orcamento'
-import { Badge } from '../../../components/ui/Badge'
+import { Badge } from '@/components/ui/Badge'
 
 interface PagamentosPageProps {
   items: OrcamentoItem[]

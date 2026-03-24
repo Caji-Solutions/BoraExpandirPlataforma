@@ -1,7 +1,7 @@
 
 import { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog'
-import { Button } from './ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/modules/shared/components/ui/dialog'
+import { Button } from '@/modules/shared/components/ui/button'
 import { Checkbox } from '../../shared/components/ui/checkbox'
 import { ScrollArea } from '../../shared/components/ui/scroll-area'
 import { Document } from '../types'

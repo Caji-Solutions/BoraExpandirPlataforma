@@ -12,8 +12,8 @@ import {
     CheckCircle,
     AlertCircle
 } from 'lucide-react'
-import { Button } from './ui/button'
-import { Badge } from '../../../components/ui/Badge'
+import { Button } from '@/modules/shared/components/ui/button'
+import { Badge } from '@/components/ui/Badge'
 import { formatFileSize } from '../../cliente/lib/utils'
 import { compressFile } from '../../../utils/compressFile'
 

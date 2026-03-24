@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Badge } from "../../../components/ui/Badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/modules/shared/components/ui/card";
+import { Badge } from "@/components/ui/Badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/modules/shared/components/ui/table";
 import { 
   TrendingUp, 
   Users, 
@@ -18,7 +18,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { TimeRangeFilter, TimeRange } from "../../../components/ui/TimeRangeFilter";
+import { TimeRangeFilter, TimeRange } from "@/components/ui/TimeRangeFilter";
 
 // Tipos
 type TipoComissionado = 'parceiro' | 'funcionario';

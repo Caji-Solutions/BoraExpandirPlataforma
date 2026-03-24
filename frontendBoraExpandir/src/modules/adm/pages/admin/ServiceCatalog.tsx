@@ -1,17 +1,17 @@
 import { useState, useEffect } from "react";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
+import { Button } from "@/modules/shared/components/ui/button";
+import { Input } from "@/modules/shared/components/ui/input";
+import { Label } from "@/modules/shared/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../components/ui/select";
-import { Switch } from "../../components/ui/switch";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
-import { Separator } from "../../components/ui/separator";
+} from "@/modules/shared/components/ui/select";
+import { Switch } from "@/modules/shared/components/ui/switch";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/modules/shared/components/ui/card";
+import { Separator } from "@/modules/shared/components/ui/separator";
 import {
   Plus,
   Trash2,
@@ -36,7 +36,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../../components/ui/table";
+} from "@/modules/shared/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -44,9 +44,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../../components/ui/dialog";
-import { Badge } from "../../components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../components/ui/dropdown-menu";
+} from "@/modules/shared/components/ui/dialog";
+import { Badge } from "@/modules/shared/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/modules/shared/components/ui/dropdown-menu";
 import { catalogService, Service, Subservice } from "../../services/catalogService";
 import { toast } from "sonner";
 

@@ -9,8 +9,8 @@ import {
     Folder,
     Upload
 } from 'lucide-react'
-import { Button } from './ui/button'
-import { Badge } from './ui/badge'
+import { Button } from '@/modules/shared/components/ui/button'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { formatDate, formatFileSize } from '../lib/utils'
 import { compressFile } from '../../../utils/compressFile'
 import { clienteService } from '../services/clienteService'

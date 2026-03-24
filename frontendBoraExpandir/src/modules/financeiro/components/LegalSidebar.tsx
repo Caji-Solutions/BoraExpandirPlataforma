@@ -1,6 +1,6 @@
 import { LayoutDashboard, Files, CalendarClock, Users, PieChart, Wallet, HandCoins, BarChart, Settings, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/modules/shared/components/ui/badge";
 import {
   Sidebar,
   SidebarContent,
@@ -11,7 +11,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar";
+} from "@/modules/shared/components/ui/sidebar";
 
 interface MenuItem {
   title: string;

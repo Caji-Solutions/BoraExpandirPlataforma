@@ -19,17 +19,17 @@ import {
   Plus,
   Bell
 } from 'lucide-react';
-import { Button } from './ui/button';
-import { Badge } from '../../../components/ui/Badge';
-import { Card } from '../../cliente/components/ui/card';
+import { Button } from '@/modules/shared/components/ui/button';
+import { Badge } from '@/components/ui/Badge';
+import { Card } from '@/modules/shared/components/ui/card';
 import { cn } from '../../cliente/lib/utils';
-import { ScrollArea } from './ui/scroll-area';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Input } from './ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
-import { toast } from './ui/sonner';
+import { ScrollArea } from '@/modules/shared/components/ui/scroll-area';
+import { Label } from '@/modules/shared/components/ui/label';
+import { Textarea } from '@/modules/shared/components/ui/textarea';
+import { Input } from '@/modules/shared/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/modules/shared/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/modules/shared/components/ui/dialog';
+import { toast } from '@/modules/shared/components/ui/sonner';
 import {
   getFormulariosWithStatus,
   updateFormularioClienteStatus,

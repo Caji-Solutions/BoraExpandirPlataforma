@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card } from './ui/card';
-import { Badge } from '../../../components/ui/Badge';
+import { Card } from '@/modules/shared/components/ui/card';
+import { Badge } from '@/components/ui/Badge';
 import { FileText, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface Requerimento {

@@ -3,7 +3,7 @@
 import { X, CheckCircle, Clock, AlertTriangle } from 'lucide-react'
 import { Notification } from '../types'
 import { formatDate } from '../lib/utils'
-import { Badge } from './ui/badge'
+import { Badge } from '@/modules/shared/components/ui/badge'
 
 interface RequestedActionsModalProps {
     isOpen: boolean

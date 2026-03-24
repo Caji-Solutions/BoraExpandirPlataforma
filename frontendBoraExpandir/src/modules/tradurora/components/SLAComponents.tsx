@@ -1,7 +1,7 @@
 import React from 'react'
 import { AlertTriangle, Clock, CheckCircle2 } from 'lucide-react'
 import type { TraducaoItem } from '../types'
-import { Badge } from '../../../components/ui/Badge'
+import { Badge } from '@/components/ui/Badge'
 
 interface UrgencyBadgeProps {
   prazoSLA: string

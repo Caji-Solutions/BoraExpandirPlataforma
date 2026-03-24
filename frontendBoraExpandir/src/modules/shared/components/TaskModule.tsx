@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Eye, Calendar, User } from "lucide-react";
-import { Badge } from "../../../components/ui/Badge";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Checkbox } from "./ui/checkbox";
-import { Input } from "./ui/input";
+import { Badge } from "@/components/ui/Badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/modules/shared/components/ui/card";
+import { Checkbox } from "@/modules/shared/components/ui/checkbox";
+import { Input } from "@/modules/shared/components/ui/input";
 import {
     Table,
     TableBody,
@@ -11,8 +11,8 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "./ui/table";
-import { ScrollArea, ScrollBar } from "./ui/scroll-area";
+} from "@/modules/shared/components/ui/table";
+import { ScrollArea, ScrollBar } from "@/modules/shared/components/ui/scroll-area";
 
 interface Task {
     id: string;

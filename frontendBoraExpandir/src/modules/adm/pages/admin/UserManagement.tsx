@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useToast } from "../../hooks/use-toast";
-import { Button } from "../../components/ui/button";
+import { Button } from "@/modules/shared/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,16 +8,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../../components/ui/dialog";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
+} from "@/modules/shared/components/ui/dialog";
+import { Input } from "@/modules/shared/components/ui/input";
+import { Label } from "@/modules/shared/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../components/ui/select";
+} from "@/modules/shared/components/ui/select";
 import {
   Table,
   TableBody,
@@ -25,12 +25,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../../components/ui/table";
-import { Badge } from "../../../../components/ui/Badge";
-import { Avatar, AvatarFallback } from "../../components/ui/avatar";
+} from "@/modules/shared/components/ui/table";
+import { Badge } from "@/components/ui/Badge";
+import { Avatar, AvatarFallback } from "@/modules/shared/components/ui/avatar";
 import { Plus, MoreVertical, Trash2, Eye, EyeOff, Pencil, Check, X } from "lucide-react";
-import { Checkbox } from "../../components/ui/checkbox";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Checkbox } from "@/modules/shared/components/ui/checkbox";
+import { Card, CardContent, CardHeader, CardTitle } from "@/modules/shared/components/ui/card";
 import { useAuth } from "../../../../contexts/AuthContext";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";

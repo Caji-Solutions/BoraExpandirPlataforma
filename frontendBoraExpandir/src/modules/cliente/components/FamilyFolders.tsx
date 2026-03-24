@@ -12,7 +12,7 @@ import {
     Users,
     FileText,
 } from 'lucide-react'
-import { Badge } from './ui/badge'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { cn } from '../lib/utils'
 
 interface FamilyMember {

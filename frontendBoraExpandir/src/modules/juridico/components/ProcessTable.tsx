@@ -12,18 +12,18 @@ import {
     Circle,
     Info
 } from "lucide-react";
-import { Badge } from '../../../components/ui/Badge';
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
+import { Badge } from '@/components/ui/Badge';
+import { Button } from "@/modules/shared/components/ui/button";
+import { Input } from "@/modules/shared/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select";
+} from "@/modules/shared/components/ui/select";
 import juridicoService from "../services/juridicoService";
-import { toast } from "./ui/sonner";
+import { toast } from "@/modules/shared/components/ui/sonner";
 
 export interface ProcessData {
     id: string;

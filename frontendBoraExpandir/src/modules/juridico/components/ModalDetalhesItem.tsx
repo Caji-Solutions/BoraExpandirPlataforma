@@ -15,8 +15,8 @@ import {
   FileText,
   Users
 } from 'lucide-react';
-import { Badge } from '../../../components/ui/Badge';
-import { Button } from './ui/button';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/modules/shared/components/ui/button';
 
 interface ModalDetalhesItemProps {
   isOpen: boolean;

@@ -1,7 +1,7 @@
 import React from 'react'
 import { TrendingUp, Target,Plus, DollarSign, Percent, Clock, AlertCircle, CheckCircle, ArrowRight } from 'lucide-react'
 import type { Contrato, Cliente } from '../../types/comercial'
-import { Badge } from '../../components/ui/Badge'
+import { Badge } from '@/components/ui/Badge'
 
 interface DashboardVendasProps {
   contratos: Contrato[]

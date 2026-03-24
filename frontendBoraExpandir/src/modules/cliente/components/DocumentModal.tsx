@@ -1,6 +1,6 @@
 import { X, FileText, Download, Calendar, User } from 'lucide-react'
-import { Button } from './ui/button'
-import { Badge } from './ui/badge'
+import { Button } from '@/modules/shared/components/ui/button'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { Document } from '../types'
 import { formatDate, formatFileSize } from '../lib/utils'
 

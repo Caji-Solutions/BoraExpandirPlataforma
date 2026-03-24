@@ -4,8 +4,8 @@ import {
     FileText,
     Folder,
 } from 'lucide-react'
-import { Button } from './ui/button'
-import { Badge } from './ui/badge'
+import { Button } from '@/modules/shared/components/ui/button'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { Document as ClientDocument, RequiredDocument } from '../types'
 import { cn } from '../lib/utils'
 import { FormsDeclarationsCard } from './FormsDeclarationsCard'

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/modules/shared/components/ui/card";
+import { Button } from "@/modules/shared/components/ui/button";
 import {
   Table,
   TableBody,
@@ -8,8 +8,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../../components/ui/table";
-import { Badge } from "../../components/ui/badge";
+} from "@/modules/shared/components/ui/table";
+import { Badge } from "@/modules/shared/components/ui/badge";
 import { CheckCircle, XCircle, Clock } from "lucide-react";
 
 interface PendingRequest {

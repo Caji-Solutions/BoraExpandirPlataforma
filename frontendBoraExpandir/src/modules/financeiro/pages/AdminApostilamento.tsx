@@ -14,10 +14,10 @@ import {
     AlertCircle,
     Loader2
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Badge } from '../../../components/ui/Badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card'
+import { Button } from '@/modules/shared/components/ui/button'
+import { Input } from '@/modules/shared/components/ui/input'
+import { Badge } from '@/components/ui/Badge'
 import { cn, formatDateSimple } from '../../cliente/lib/utils'
 import { apostilamentoService, Apostilamento } from '../services/apostilamentoService'
 

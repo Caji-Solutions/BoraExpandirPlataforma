@@ -3,9 +3,9 @@ import { Clock, ShoppingCart, Check, ChevronLeft, ChevronRight, Search, X, Trash
 import { useNavigate, useParams } from 'react-router-dom'
 // import { useToast } from '../../components/Toast'
 // Update the import path below if Toast is located elsewhere:
-import { useToast } from '../../components/ui/Toast'
+import { useToast } from '@/components/ui/Toast'
 import { SUCESSO, ERRO, AVISO } from '../../components/MockFrases'
-import { CalendarPicker } from '../../components/ui/CalendarPicker'
+import { CalendarPicker } from '@/components/ui/CalendarPicker'
 import { AgendamentoConfirmacaoModal } from './components/AgendamentoConfirmacaoModal'
 import { useAuth } from '../../contexts/AuthContext'
 import { catalogService, Service } from '../adm/services/catalogService'

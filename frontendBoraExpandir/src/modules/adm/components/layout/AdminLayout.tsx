@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { AdminSidebar } from "../AdminSidebar";
-import { SidebarProvider, SidebarInset } from "../ui/sidebar";
+import { SidebarProvider, SidebarInset } from "@/modules/shared/components/ui/sidebar";
 
 interface AdminLayoutProps {
   children: ReactNode;

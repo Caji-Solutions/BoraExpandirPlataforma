@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { Card } from '../../components/ui/card'
-import { Button } from '../../components/ui/button'
-import { Input } from '../../components/ui/input'
-import { Badge } from '../../components/ui/badge'
+import { Card } from '@/modules/shared/components/ui/card'
+import { Button } from '@/modules/shared/components/ui/button'
+import { Input } from '@/modules/shared/components/ui/input'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { 
   HandCoins, 
   FileText, 

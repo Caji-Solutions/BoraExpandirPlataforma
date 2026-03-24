@@ -5,7 +5,7 @@ import {
     Upload,
     Loader2,
 } from 'lucide-react'
-import { Button } from './ui/button'
+import { Button } from '@/modules/shared/components/ui/button'
 import { Document as ClientDocument } from '../types'
 import { cn } from '../lib/utils'
 import { UploadConfirmModal } from './UploadConfirmModal'

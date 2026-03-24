@@ -17,13 +17,13 @@ import {
   Dna,
   FileCheck,
 } from 'lucide-react'
-import { Sidebar } from '../../components/ui/Sidebar'
-import type { SidebarGroup } from '../../components/ui/Sidebar'
+import { Sidebar } from '@/components/ui/Sidebar'
+import type { SidebarGroup } from '@/components/ui/Sidebar'
 import { Dashboard } from './components/Dashboard'
 import { FinancialProcessList } from './pages/FinancialProcessList'
 import Comissoes from './pages/Comissoes'
 import { FinancialDashboard } from './pages/VisaoGeral'
-import { Config } from '../../components/ui/Config'
+import { Config } from '@/components/ui/Config'
 import UserManagement from '../adm/pages/admin/UserManagement'
 import AdminSettings from '../adm/pages/admin/Settings'
 import { Clientes } from './pages/Clientes'
@@ -34,7 +34,7 @@ import { Tarefas } from './pages/Tarefas'
 import { Movimentos } from './pages/Movimentos'
 import { RelatoriosComparativos } from './pages/RelatoriosComparativos'
 import { AdminApostilamento } from './pages/AdminApostilamento'
-import { ClientDNAPage } from '../../components/ui/ClientDNA'
+import { ClientDNAPage } from '@/components/ui/ClientDNA'
 import { ComprovantesPage } from './pages/ComprovantesPage'
 
 

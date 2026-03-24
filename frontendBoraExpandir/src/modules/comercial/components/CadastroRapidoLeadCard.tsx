@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Plus, Mail, Phone, User, Building2 } from 'lucide-react'
 import type { LeadFormData } from '../../../types/comercial'
-import { PhoneInput } from '../../../components/ui/PhoneInput'
+import { PhoneInput } from '@/components/ui/PhoneInput'
 interface CadastroRapidoLeadCardProps {
   onSaveLead: (leadData: LeadFormData) => void
 }

@@ -18,8 +18,8 @@ import {
   Calendar,
   RotateCcw
 } from "lucide-react";
-import { Badge } from "../../../components/ui/Badge";
-import { Button } from "../../../components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import juridicoService, { ClienteComResponsavel } from "../services/juridicoService";

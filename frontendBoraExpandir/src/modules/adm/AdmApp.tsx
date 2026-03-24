@@ -9,8 +9,8 @@ import AuditoriaAprovacoes from "./pages/admin/AuditoriaAprovacoes";
 import GestaoTradutores from "./pages/admin/GestaoTradutores";
 import PagamentosAdmin from "./pages/admin/PagamentosAdmin";
 import FinanceiroPrecos from "./pages/admin/FinanceiroPrecos";
-import { Config } from "../../components/ui/Config";
-import { ClientDNAPage } from "../../components/ui/ClientDNA";
+import { Config } from "@/components/ui/Config";
+import { ClientDNAPage } from "@/components/ui/ClientDNA";
 
 // Importar componentes financeiros
 import { FinancialDashboard } from "../financeiro/pages/VisaoGeral";

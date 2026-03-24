@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { Sidebar } from '../../components/ui/Sidebar'
-import type { SidebarGroup } from '../../components/ui/Sidebar'
+import { Sidebar } from '@/components/ui/Sidebar'
+import type { SidebarGroup } from '@/components/ui/Sidebar'
 import DashboardVendas from './DashboardVendas'
 import CadastroCliente from './CadastroCliente'
 import GeracaoContratoNovo from './GeracaoContratoNovo'
@@ -19,11 +19,11 @@ import ContratoServicoDetailPage from './ContratoServicoDetailPage'
 import FormularioAssessoriaPage from './FormularioAssessoriaPage'
 import ProximosAgendamentosCard from './components/ProximosAgendamentosCard'
 import CadastroRapidoLeadCard from './components/CadastroRapidoLeadCard'
-import { Config } from '../../components/ui/Config'
+import { Config } from '@/components/ui/Config'
 import { Plus, Home, Users, FileText, CreditCard, AlertCircle, PenTool, CheckCircle, Calendar, Settings, Search, Filter, X, DollarSign, Dna } from 'lucide-react'
-import { ClientDNAPage } from '../../components/ui/ClientDNA'
-import { TimeRangeFilter, filterByTimeRange, type TimeRange } from '../../components/ui/TimeRangeFilter'
-import { SortControl, sortData, type SortDirection, type SortOption } from '../../components/ui/SortControl'
+import { ClientDNAPage } from '@/components/ui/ClientDNA'
+import { TimeRangeFilter, filterByTimeRange, type TimeRange } from '@/components/ui/TimeRangeFilter'
+import { SortControl, sortData, type SortDirection, type SortOption } from '@/components/ui/SortControl'
 import { catalogService } from '../adm/services/catalogService'
 import type {
   Cliente,
@@ -38,8 +38,8 @@ import type {
   AgendamentoFormData
 
 } from '../../types/comercial'
-import Toast, { useToast, ToastContainer } from '../../components/ui/Toast'
-import { Badge } from '../../components/ui/Badge'
+import Toast, { useToast, ToastContainer } from '@/components/ui/Toast'
+import { Badge } from '@/components/ui/Badge'
 import comercialService from './services/comercialService'
 
 // Componentes de página

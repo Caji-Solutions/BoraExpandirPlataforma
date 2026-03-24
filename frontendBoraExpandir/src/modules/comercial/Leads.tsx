@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { Plus, Trash2, Phone, Search, Edit2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, X, User, Sparkles, Loader2, CheckCircle2, Copy, Key, Mail, StickyNote, Send } from 'lucide-react'
-import { Badge } from '../../components/ui/Badge'
-import { PhoneInput } from '../../components/ui/PhoneInput'
+import { Badge } from '@/components/ui/Badge'
+import { PhoneInput } from '@/components/ui/PhoneInput'
 import { cn } from '@/lib/utils'
 import { useAuth } from '../../contexts/AuthContext'
 

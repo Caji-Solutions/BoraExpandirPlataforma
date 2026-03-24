@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { X, CreditCard, Clock, FileText, AlertCircle, Loader2, Check, Copy, CheckCircle2, Upload, Trash2 } from 'lucide-react'
 import { Document as ClientDocument } from '../types'
-import { Button } from './ui/button'
-import { Badge } from './ui/badge'
+import { Button } from '@/modules/shared/components/ui/button'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { traducoesService } from '../../tradurora/services/traducoesService'
 import { clienteService } from '../services/clienteService'
 import { cn, formatDateSimple } from '../lib/utils'
-import { useToast } from '../../../components/ui/Toast'
+import { useToast } from '@/components/ui/Toast'
 
 interface TranslationQuoteModalProps {
   documentoId: string

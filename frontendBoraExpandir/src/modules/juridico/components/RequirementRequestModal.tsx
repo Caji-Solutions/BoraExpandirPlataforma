@@ -6,17 +6,17 @@ import {
     DialogTitle,
     DialogDescription,
     DialogFooter
-} from './ui/dialog';
+} from '@/modules/shared/components/ui/dialog';
 import { Button } from '@/components/ui/Button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
+import { Input } from '@/modules/shared/components/ui/input';
+import { Label } from '@/modules/shared/components/ui/label';
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from './ui/select';
+} from '@/modules/shared/components/ui/select';
 import {
     ClipboardCheck,
     Loader2,
@@ -29,8 +29,8 @@ import {
     X
 } from 'lucide-react';
 import { requestRequirement, requestDocument } from '../services/juridicoService';
-import { toast } from './ui/sonner';
-import { ScrollArea } from './ui/scroll-area';
+import { toast } from '@/modules/shared/components/ui/sonner';
+import { ScrollArea } from '@/modules/shared/components/ui/scroll-area';
 
 interface RequirementRequestModalProps {
     isOpen: boolean;

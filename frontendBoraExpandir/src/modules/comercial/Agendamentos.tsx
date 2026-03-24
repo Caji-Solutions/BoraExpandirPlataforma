@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react'
 import { Calendar, Clock, Filter, Search, X, CreditCard, FileText } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Agendamento } from '../../types/comercial'
-import { Badge } from '../../components/ui/Badge'
+import { Badge } from '@/components/ui/Badge'
 import { GerenciamentoAgendamentoModal } from './components/GerenciamentoAgendamentoModal'
 
 const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'; label: string }> = {

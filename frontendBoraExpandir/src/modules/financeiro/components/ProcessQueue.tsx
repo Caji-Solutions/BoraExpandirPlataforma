@@ -7,16 +7,16 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+} from "@/modules/shared/components/ui/table";
+import { Badge } from "@/modules/shared/components/ui/badge";
+import { Button } from "@/modules/shared/components/ui/button";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet";
+} from "@/modules/shared/components/ui/sheet";
 
 interface Process {
   id: number;

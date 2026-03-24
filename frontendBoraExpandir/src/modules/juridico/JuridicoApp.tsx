@@ -1,17 +1,17 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Home, FolderOpen, FileSearch, CheckSquare, Settings, Users, FileStack, Dna, ClipboardCheck, Clock } from "lucide-react";
-import { Sidebar } from "../../components/ui/Sidebar";
-import type { SidebarGroup } from "../../components/ui/Sidebar";
+import { Sidebar } from "@/components/ui/Sidebar";
+import type { SidebarGroup } from "@/components/ui/Sidebar";
 import { Dashboard } from "./components/Dashboard";
 import { ProcessQueue } from "./components/ProcessQueue";
 import { ReviewPanel } from "./components/ReviewPanel";
-import { Config } from "../../components/ui/Config";
+import { Config } from "@/components/ui/Config";
 import { DelegacaoDocumentos } from "./components/DelegacaoDocumentos";
 import { EquipeJuridica } from "./components/EquipeJuridica";
 import { AssessoriaJuridica } from "./components/AssessoriaJuridica";
 import { MeusAgendamentos } from "../../components/MeusAgendamentos";
-import { ClientDNAPage } from "../../components/ui/ClientDNA";
+import { ClientDNAPage } from "@/components/ui/ClientDNA";
 import DelegacaoFila from "./pages/DelegacaoFila";
 import juridicoService, { Processo } from "./services/juridicoService";
 

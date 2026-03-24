@@ -20,9 +20,9 @@ import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
 import juridicoService from "../modules/juridico/services/juridicoService"; // Keeping the service reference for now
 import { catalogService, Service } from "../modules/adm/services/catalogService";
-import { Badge } from "./ui/Badge";
+import { Badge } from "@/components/ui/Badge";
 import { formatDate } from "../modules/cliente/lib/utils";
-import { CalendarPicker } from "./ui/CalendarPicker";
+import { CalendarPicker } from "@/components/ui/CalendarPicker";
 import { parseBackendDate, formatDataHora, formatHoraOnly } from "../utils/dateUtils";
 import { PedidoReagendamentoModal } from "../modules/juridico/components/PedidoReagendamentoModal";
 

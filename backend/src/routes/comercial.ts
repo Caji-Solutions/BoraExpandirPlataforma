@@ -1,34 +1,8 @@
-import { Router, Request } from 'express'
-import multer, { FileFilterCallback } from 'multer'
+import { Router } from 'express'
 import ComercialController from '../controllers/ComercialController'
-
+import upload from '../middlewares/upload'
 
 const comercial = Router()
-
-// Configuração do multer para armazenar em memória (buffer)
-const storage = multer.memoryStorage()
-const upload = multer({
-  storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // Limite de 10MB
-  },
-  fileFilter: (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
-    const allowedTypes = [
-      'application/pdf',
-      'image/jpeg',
-      'image/jpg',
-      'image/png',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ]
-
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true)
-    } else {
-      cb(new Error('Tipo de arquivo não permitido. Use PDF, JPG, PNG ou DOC.'))
-    }
-  }
-})
 
 
 comercial.post('/agendamento', ComercialController.createAgendamento.bind(ComercialController))

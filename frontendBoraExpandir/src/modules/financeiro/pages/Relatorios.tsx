@@ -9,7 +9,7 @@ import {
     ResponsiveContainer,
     Legend,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/modules/shared/components/ui/card";
 import {
     Table,
     TableBody,
@@ -17,9 +17,9 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "../components/ui/table";
-import { Badge } from "../components/ui/badge";
-import { Button } from "../components/ui/button";
+} from "@/modules/shared/components/ui/table";
+import { Badge } from "@/modules/shared/components/ui/badge";
+import { Button } from "@/modules/shared/components/ui/button";
 import { Download } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";

@@ -7,10 +7,10 @@ import {
     TableHead,
     TableHeader,
     TableRow
-} from "../../adm/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "../../adm/components/ui/card";
-import { Button } from "../../adm/components/ui/button";
-import { Input } from "../../adm/components/ui/input";
+} from "@/modules/shared/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/modules/shared/components/ui/card";
+import { Button } from "@/modules/shared/components/ui/button";
+import { Input } from "@/modules/shared/components/ui/input";
 import { Search, Plus, Filter, FileSpreadsheet, Users } from "lucide-react";
 
 interface Titularidade {

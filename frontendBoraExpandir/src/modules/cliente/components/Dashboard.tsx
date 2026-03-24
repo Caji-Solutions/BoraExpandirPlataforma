@@ -2,10 +2,10 @@
 
 import { Link } from 'react-router-dom'
 
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
-import { Badge } from './ui/badge'
-import { Progress } from './ui/progress'
-import { Button } from './ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card'
+import { Badge } from '@/modules/shared/components/ui/badge'
+import { Progress } from '@/modules/shared/components/ui/progress'
+import { Button } from '@/modules/shared/components/ui/button'
 import {
   FileText,
   CheckCircle,

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/modules/shared/components/ui/card";
 import {
   Table,
   TableBody,
@@ -7,10 +7,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../../components/ui/table";
-import { Input } from "../../components/ui/input";
-import { Button } from "../../components/ui/button";
-import { Badge } from '../../../../components/ui/Badge';
+} from "@/modules/shared/components/ui/table";
+import { Input } from "@/modules/shared/components/ui/input";
+import { Button } from "@/modules/shared/components/ui/button";
+import { Badge } from '@/components/ui/Badge';
 import { Search, Calendar } from "lucide-react";
 
 interface AuditLog {
