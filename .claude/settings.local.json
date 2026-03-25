@@ -25,7 +25,9 @@
       "Bash(__NEW_LINE_8ae9ebdaed42cc54__ cd:*)",
       "Bash(__NEW_LINE_8ae9ebdaed42cc54__ git:*)",
       "Bash(__NEW_LINE_7f1953a5caa36a78__ cd:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
