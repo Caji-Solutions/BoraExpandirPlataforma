@@ -23,6 +23,14 @@ class ApiClient {
   }
 
   /**
+   * Get the authentication token from localStorage
+   */
+  private getAuthToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('auth_token');
+  }
+
+  /**
    * Generic fetch wrapper with error handling
    */
   private async request<T>(
@@ -32,19 +40,50 @@ class ApiClient {
     const url = `${this.baseUrl}${endpoint}`;
     const { skipErrorHandling = false, ...fetchOptions } = options;
 
+    // ✅ Adicionar token de autenticação automaticamente
+    const token = this.getAuthToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...fetchOptions.headers,
+    };
+
+    // Se tem token e não é FormData, adicionar Authorization
+    if (token && !(fetchOptions.body instanceof FormData)) {
+      headers['Authorization'] = `Bearer ${token}`;
+    } else if (token && fetchOptions.body instanceof FormData) {
+      // Para FormData, adicionar Authorization sem Content-Type (navegador define)
+      delete headers['Content-Type'];
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     try {
       const response = await fetch(url, {
         ...fetchOptions,
-        headers: {
-          'Content-Type': 'application/json',
-          ...fetchOptions.headers,
-        },
+        headers,
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const errorMessage =
           errorData.message || errorData.error || `HTTP ${response.status}`;
+
+        // ✅ Tratar erros de autenticação
+        if (response.status === 401) {
+          // Token expirado ou inválido
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth_token');
+            // Redirecionar para login se estamos em navegador
+            if (window.location.pathname !== '/login') {
+              window.location.href = '/login';
+            }
+          }
+          throw new Error('Token expirado. Por favor, faça login novamente.');
+        }
+
+        if (response.status === 403) {
+          throw new Error('Você não tem permissão para acessar este recurso.');
+        }
+
         throw new Error(errorMessage);
       }
 
