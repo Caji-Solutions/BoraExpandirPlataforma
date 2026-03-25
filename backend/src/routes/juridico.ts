@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import JuridicoController from '../controllers/JuridicoController'
+import JuridicoController from '../controllers/juridico/JuridicoController'
 import { authMiddleware } from '../middlewares/auth'
 import upload from '../middlewares/upload'
 

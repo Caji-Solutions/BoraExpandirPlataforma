@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import ComercialController from '../controllers/ComercialController'
+import ComercialController from '../controllers/comercial/ComercialController'
 import upload from '../middlewares/upload'
 
 const comercial = Router()

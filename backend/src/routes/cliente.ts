@@ -1,55 +1,63 @@
 import { Router } from 'express'
-import ClienteController from '../controllers/ClienteController'
+import ClienteProfileController from '../controllers/cliente/ClienteProfileController'
+import ClienteDocumentController from '../controllers/cliente/ClienteDocumentController'
+import ClienteFormulariosController from '../controllers/cliente/ClienteFormulariosController'
+import ClienteNotificationController from '../controllers/cliente/ClienteNotificationController'
+import ClienteContratosController from '../controllers/cliente/ClienteContratosController'
+import ClienteRequerimentosController from '../controllers/cliente/ClienteRequerimentosController'
+import ClienteController from '../controllers/cliente/ClienteController'
 import upload from '../middlewares/upload'
 
 const cliente = Router()
 
-cliente.post('/register', ClienteController.register.bind(ClienteController))
-cliente.post('/register-lead', ClienteController.registerLead.bind(ClienteController))
-cliente.post('/attstatusbywpp', ClienteController.AttStatusClientebyWpp.bind(ClienteController))
-cliente.post('/uploadDoc', upload.single('file'), ClienteController.uploadDoc.bind(ClienteController))
-cliente.post('/profile-photo', upload.single('file'), ClienteController.uploadProfilePhoto.bind(ClienteController))
-
-cliente.get('/clientesbyparceiro/:parceiroId', ClienteController.getByParceiro.bind(ClienteController))
-cliente.get('/clientes', ClienteController.getAllClientes.bind(ClienteController))
+// Profile Routes
+cliente.post('/register', ClienteProfileController.register.bind(ClienteProfileController))
+cliente.post('/register-lead', ClienteProfileController.registerLead.bind(ClienteProfileController))
+cliente.post('/attstatusbywpp', ClienteProfileController.AttStatusClientebyWpp.bind(ClienteProfileController))
+cliente.post('/profile-photo', upload.single('file'), ClienteProfileController.uploadProfilePhoto.bind(ClienteProfileController))
+cliente.get('/clientesbyparceiro/:parceiroId', ClienteProfileController.getByParceiro.bind(ClienteProfileController))
+cliente.get('/clientes', ClienteProfileController.getAllClientes.bind(ClienteProfileController))
 cliente.get('/credentials/:email', ClienteController.getClienteCredentials.bind(ClienteController))
+cliente.get('/by-user/:userId', ClienteProfileController.getClienteByUserId.bind(ClienteProfileController))
+cliente.get('/:clienteId/dna', ClienteProfileController.getDNA.bind(ClienteProfileController))
+cliente.get('/:clienteId', ClienteProfileController.getCliente.bind(ClienteProfileController))
+cliente.get('/:clienteId/dependentes', ClienteProfileController.getDependentes.bind(ClienteProfileController))
+cliente.post('/:clienteId/dependentes', ClienteProfileController.createDependent.bind(ClienteProfileController))
 
-// Contratos de serviços fixos
-cliente.get('/contratos', ClienteController.getContratos.bind(ClienteController))
-cliente.post('/contratos/:id/upload', upload.single('file'), ClienteController.uploadContratoAssinado.bind(ClienteController))
+// Document Routes
+cliente.post('/uploadDoc', upload.single('file'), ClienteDocumentController.uploadDoc.bind(ClienteDocumentController))
+cliente.get('/:clienteId/documentos-requeridos', ClienteDocumentController.getDocumentosRequeridos.bind(ClienteDocumentController))
+cliente.get('/:clienteId/processos', ClienteDocumentController.getProcessos.bind(ClienteDocumentController))
+cliente.get('/:clienteId/documentos', ClienteDocumentController.getDocumentos.bind(ClienteDocumentController))
+cliente.get('/processo/:processoId/documentos', ClienteDocumentController.getDocumentosByProcesso.bind(ClienteDocumentController))
+cliente.delete('/documento/:documentoId', ClienteDocumentController.deleteDocumento.bind(ClienteDocumentController))
+cliente.patch('/documento/:documentoId/status', ClienteDocumentController.updateDocumentoStatus.bind(ClienteDocumentController))
+
+// Formulários Routes
+cliente.get('/processo/:processoId/formularios', ClienteFormulariosController.getFormularios.bind(ClienteFormulariosController))
+cliente.get('/processo/:processoId/formularios/:memberId', ClienteFormulariosController.getFormularios.bind(ClienteFormulariosController))
+cliente.post('/processo/:processoId/formularios', upload.single('file'), ClienteFormulariosController.uploadFormulario.bind(ClienteFormulariosController))
+cliente.delete('/processo/:processoId/formularios/:formularioId', ClienteFormulariosController.deleteFormulario.bind(ClienteFormulariosController))
+cliente.post('/formularios/:formularioId/response', upload.single('file'), ClienteFormulariosController.uploadFormularioResponse.bind(ClienteFormulariosController))
+cliente.get('/:clienteId/formulario-responses', ClienteFormulariosController.getFormularioResponses.bind(ClienteFormulariosController))
+
+// Notificações Routes
+cliente.get('/:clienteId/notificacoes', ClienteNotificationController.getNotificacoes.bind(ClienteNotificationController))
+cliente.patch('/notificacoes/:notificacaoId/status', ClienteNotificationController.updateNotificacaoStatus.bind(ClienteNotificationController))
+cliente.post('/:clienteId/notificacoes/read-all', ClienteNotificationController.markAllNotificacoesAsRead.bind(ClienteNotificationController))
+
+// Requerimentos Routes
+cliente.get('/:clienteId/requerimentos', ClienteRequerimentosController.getRequerimentosByCliente.bind(ClienteRequerimentosController))
+
+// Contratos Routes
+cliente.get('/contratos', ClienteContratosController.getContratos.bind(ClienteContratosController))
+cliente.post('/contratos/:id/upload', upload.single('file'), ClienteContratosController.uploadContratoAssinado.bind(ClienteContratosController))
 cliente.post('/contratos/:id/comprovante', upload.single('file'), ClienteController.uploadComprovanteContrato.bind(ClienteController))
 
-// Rotas de documentos
-cliente.get('/by-user/:userId', ClienteController.getClienteByUserId.bind(ClienteController))
-cliente.get('/:clienteId/dna', ClienteController.getDNA.bind(ClienteController))
-cliente.get('/:clienteId', ClienteController.getCliente.bind(ClienteController))
-cliente.get('/:clienteId/documentos-requeridos', ClienteController.getDocumentosRequeridos.bind(ClienteController))
-cliente.get('/:clienteId/dependentes', ClienteController.getDependentes.bind(ClienteController))
-cliente.post('/:clienteId/dependentes', ClienteController.createDependent.bind(ClienteController))
-cliente.get('/:clienteId/processos', ClienteController.getProcessos.bind(ClienteController))
-cliente.get('/:clienteId/documentos', ClienteController.getDocumentos.bind(ClienteController))
-cliente.get('/processo/:processoId/documentos', ClienteController.getDocumentosByProcesso.bind(ClienteController))
-cliente.delete('/documento/:documentoId', ClienteController.deleteDocumento.bind(ClienteController))
-cliente.patch('/documento/:documentoId/status', ClienteController.updateDocumentoStatus.bind(ClienteController))
-
-// Formulários e Declarações Routes
-cliente.get('/processo/:processoId/formularios', ClienteController.getFormularios.bind(ClienteController))
-cliente.get('/processo/:processoId/formularios/:memberId', ClienteController.getFormularios.bind(ClienteController))
-cliente.post('/processo/:processoId/formularios', upload.single('file'), ClienteController.uploadFormulario.bind(ClienteController))
-cliente.delete('/processo/:processoId/formularios/:formularioId', ClienteController.deleteFormulario.bind(ClienteController))
-
-// Client Form Response Route
-cliente.post('/formularios/:formularioId/response', upload.single('file'), ClienteController.uploadFormularioResponse.bind(ClienteController))
-cliente.get('/:clienteId/formulario-responses', ClienteController.getFormularioResponses.bind(ClienteController))
-cliente.get('/:clienteId/notificacoes', ClienteController.getNotificacoes.bind(ClienteController))
-cliente.patch('/notificacoes/:notificacaoId/status', ClienteController.updateNotificacaoStatus.bind(ClienteController))
-cliente.post('/:clienteId/notificacoes/read-all', ClienteController.markAllNotificacoesAsRead.bind(ClienteController))
-cliente.get('/:clienteId/requerimentos', ClienteController.getRequerimentosByCliente.bind(ClienteController))
-
-// Fuso horário
+// Fuso horário (mantido no original)
 cliente.post('/timezone', ClienteController.saveTimezone.bind(ClienteController))
 
-// Notas de Lead
+// Notas de Lead (mantido no original)
 cliente.post('/lead-notas', ClienteController.createLeadNote.bind(ClienteController))
 cliente.get('/lead-notas/:leadId', ClienteController.getLeadNotes.bind(ClienteController))
 cliente.delete('/lead-notas/:noteId', ClienteController.deleteLeadNote.bind(ClienteController))
