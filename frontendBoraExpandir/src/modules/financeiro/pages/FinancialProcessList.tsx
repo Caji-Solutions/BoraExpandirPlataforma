@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ExternalLink, Send, CheckCircle, FileText, FileSignature, Calendar, DollarSign, Mail, Receipt, AlertCircle, Clock } from "lucide-react";
 import { Badge } from '@/modules/shared/components/ui/badge';
-import { Button } from "@/modules/shared/components/ui/button";
+import { Button } from '@/modules/shared/components/ui/button';
 import { Progress } from "@/modules/shared/components/ui/progress";
 import {
   Dialog,
@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/modules/shared/components/ui/dialog";
+} from '@/modules/shared/components/ui/dialog';
 import {
   Table,
   TableBody,
@@ -19,8 +19,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/modules/shared/components/ui/table";
-import { Card, CardContent } from "@/modules/shared/components/ui/card";
-import { Input } from "@/modules/shared/components/ui/input";
+import { Card, CardContent } from '@/modules/shared/components/ui/card';
+import { Input } from '@/modules/shared/components/ui/input';
 import { Label } from "@/modules/shared/components/ui/label";
 
 interface FinancialProcess {

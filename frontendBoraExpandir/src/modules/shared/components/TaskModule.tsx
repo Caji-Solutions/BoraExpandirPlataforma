@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Eye, Calendar, User } from "lucide-react";
 import { Badge } from '@/modules/shared/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from "@/modules/shared/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card';
 import { Checkbox } from "@/modules/shared/components/ui/checkbox";
-import { Input } from "@/modules/shared/components/ui/input";
+import { Input } from '@/modules/shared/components/ui/input';
 import {
     Table,
     TableBody,
@@ -12,7 +12,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/modules/shared/components/ui/table";
-import { ScrollArea, ScrollBar } from "@/modules/shared/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from '@/modules/shared/components/ui/scroll-area';
 
 interface Task {
     id: string;

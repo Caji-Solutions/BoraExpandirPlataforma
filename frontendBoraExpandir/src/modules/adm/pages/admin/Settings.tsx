@@ -1,7 +1,7 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/modules/shared/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/modules/shared/components/ui/card';
 import { Label } from "@/modules/shared/components/ui/label";
-import { Input } from "@/modules/shared/components/ui/input";
-import { Button } from "@/modules/shared/components/ui/button";
+import { Input } from '@/modules/shared/components/ui/input';
+import { Button } from '@/modules/shared/components/ui/button';
 import { Switch } from "@/modules/shared/components/ui/switch";
 import { Separator } from "@/modules/shared/components/ui/separator";
 

@@ -13,15 +13,15 @@ import {
     Info
 } from "lucide-react";
 import { Badge } from '@/modules/shared/components/ui/badge';
-import { Button } from "@/modules/shared/components/ui/button";
-import { Input } from "@/modules/shared/components/ui/input";
+import { Button } from '@/modules/shared/components/ui/button';
+import { Input } from '@/modules/shared/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/modules/shared/components/ui/select";
+} from '@/modules/shared/components/ui/select';
 import juridicoService from "../services/juridicoService";
 import { toast } from "@/modules/shared/components/ui/sonner";
 

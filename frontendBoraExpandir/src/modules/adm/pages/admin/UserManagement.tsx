@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/modules/shared/components/ui/button";
+import { Button } from '@/modules/shared/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -8,8 +8,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/modules/shared/components/ui/dialog";
-import { Input } from "@/modules/shared/components/ui/input";
+} from '@/modules/shared/components/ui/dialog';
+import { Input } from '@/modules/shared/components/ui/input';
 import { Label } from "@/modules/shared/components/ui/label";
 import {
   Select,
@@ -17,7 +17,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/modules/shared/components/ui/select";
+} from '@/modules/shared/components/ui/select';
 import {
   Table,
   TableBody,
@@ -30,7 +30,7 @@ import { Badge } from '@/modules/shared/components/ui/badge';
 import { Avatar, AvatarFallback } from "@/modules/shared/components/ui/avatar";
 import { Plus, MoreVertical, Trash2, Eye, EyeOff, Pencil, Check, X } from "lucide-react";
 import { Checkbox } from "@/modules/shared/components/ui/checkbox";
-import { Card, CardContent, CardHeader, CardTitle } from "@/modules/shared/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card';
 import { useAuth } from "../../../../contexts/AuthContext";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";

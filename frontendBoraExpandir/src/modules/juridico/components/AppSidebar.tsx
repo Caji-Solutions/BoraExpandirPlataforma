@@ -10,7 +10,7 @@ import {
   SidebarFooter,
 } from "@/modules/shared/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/modules/shared/components/ui/avatar";
-import { Button } from "@/modules/shared/components/ui/button";
+import { Button } from '@/modules/shared/components/ui/button';
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const menuItems = [

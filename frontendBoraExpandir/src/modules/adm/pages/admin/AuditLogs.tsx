@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/modules/shared/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card';
 import {
   Table,
   TableBody,
@@ -8,8 +8,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/modules/shared/components/ui/table";
-import { Input } from "@/modules/shared/components/ui/input";
-import { Button } from "@/modules/shared/components/ui/button";
+import { Input } from '@/modules/shared/components/ui/input';
+import { Button } from '@/modules/shared/components/ui/button';
 import { Badge } from '@/modules/shared/components/ui/badge';
 import { Search, Calendar } from "lucide-react";
 

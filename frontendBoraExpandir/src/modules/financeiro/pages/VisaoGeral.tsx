@@ -1,5 +1,5 @@
 import { TrendingUp, DollarSign, AlertCircle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/modules/shared/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 const kpiData = [

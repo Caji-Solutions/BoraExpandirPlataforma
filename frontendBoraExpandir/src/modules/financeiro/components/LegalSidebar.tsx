@@ -1,6 +1,6 @@
 import { LayoutDashboard, Files, CalendarClock, Users, PieChart, Wallet, HandCoins, BarChart, Settings, LogOut } from "lucide-react";
 import { NavLink } from "./NavLink";
-import { Badge } from "@/modules/shared/components/ui/badge";
+import { Badge } from '@/modules/shared/components/ui/badge';
 import {
   Sidebar,
   SidebarContent,

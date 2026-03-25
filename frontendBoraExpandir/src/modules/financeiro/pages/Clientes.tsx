@@ -7,9 +7,9 @@ import {
     TableHeader,
     TableRow
 } from "@/modules/shared/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/modules/shared/components/ui/card";
-import { Button } from "@/modules/shared/components/ui/button";
-import { Input } from "@/modules/shared/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card';
+import { Button } from '@/modules/shared/components/ui/button';
+import { Input } from '@/modules/shared/components/ui/input';
 import { Search, Plus, Filter, FileSpreadsheet, Loader2 } from "lucide-react";
 
 interface Cliente {

@@ -1,4 +1,4 @@
-import { Button } from "@/modules/shared/components/ui/button";
+import { Button } from '@/modules/shared/components/ui/button';
 import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 

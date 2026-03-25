@@ -1,8 +1,8 @@
 import { useMemo, useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/modules/shared/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card';
 import { Badge } from '@/modules/shared/components/ui/badge';
 import { Clock, CheckCircle2 } from "lucide-react";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/modules/shared/components/ui/select";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/modules/shared/components/ui/select';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/modules/shared/components/ui/table";
 import juridicoService, { Processo } from "../services/juridicoService";
 import { useAuth } from "../../../contexts/AuthContext";

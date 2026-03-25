@@ -8,8 +8,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/modules/shared/components/ui/table";
-import { Badge } from "@/modules/shared/components/ui/badge";
-import { Button } from "@/modules/shared/components/ui/button";
+import { Badge } from '@/modules/shared/components/ui/badge';
+import { Button } from '@/modules/shared/components/ui/button';
 import {
   Sheet,
   SheetContent,

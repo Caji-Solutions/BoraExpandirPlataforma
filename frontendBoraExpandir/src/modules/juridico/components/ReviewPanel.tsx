@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { FileText, CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
-import { ScrollArea } from "@/modules/shared/components/ui/scroll-area";
+import { ScrollArea } from '@/modules/shared/components/ui/scroll-area';
 import { Badge } from '@/modules/shared/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from "@/modules/shared/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card';
 import { DocumentViewer } from "./DocumentViewer";
 import { ReviewActions } from "./ReviewActions";
 import { getFormulariosWithStatus } from "../services/juridicoService";

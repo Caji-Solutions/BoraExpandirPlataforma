@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { Button } from '@/modules/shared/components/ui/Button'
+import { Button } from '@/modules/shared/components/ui/button'
 
 interface CalendarPickerProps {
   onDateSelect: (date: Date) => void
