@@ -11,7 +11,20 @@
     "outDir": "dist",
     "types": ["node", "cors"],
     "allowSyntheticDefaultImports": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@/controllers/*": ["src/controllers/*"],
+      "@/services/*": ["src/services/*"],
+      "@/repositories/*": ["src/repositories/*"],
+      "@/routes/*": ["src/routes/*"],
+      "@/middlewares/*": ["src/middlewares/*"],
+      "@/config/*": ["src/config/*"],
+      "@/utils/*": ["src/utils/*"],
+      "@/types/*": ["src/types/*"],
+      "@/constants/*": ["src/constants/*"]
+    }
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

@@ -8,6 +8,14 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
+      '@/modules': path.resolve(__dirname, 'src/modules'),
+      '@/components': path.resolve(__dirname, 'src/modules/shared/components'),
+      '@/hooks': path.resolve(__dirname, 'src/modules/shared/hooks'),
+      '@/services': path.resolve(__dirname, 'src/modules/shared/services'),
+      '@/utils': path.resolve(__dirname, 'src/utils'),
+      '@/types': path.resolve(__dirname, 'src/modules/shared/types'),
+      '@/contexts': path.resolve(__dirname, 'src/contexts'),
+      '@/lib': path.resolve(__dirname, 'src/lib'),
     },
   },
 })

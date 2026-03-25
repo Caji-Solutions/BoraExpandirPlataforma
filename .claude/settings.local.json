@@ -21,7 +21,9 @@
       "Bash(npm run:*)",
       "Bash(wc:*)",
       "Bash(__NEW_LINE_bfd774db841e9659__ cd:*)",
-      "Bash(__NEW_LINE_bfd774db841e9659__ git:*)"
+      "Bash(__NEW_LINE_bfd774db841e9659__ git:*)",
+      "Bash(__NEW_LINE_8ae9ebdaed42cc54__ cd:*)",
+      "Bash(__NEW_LINE_8ae9ebdaed42cc54__ git:*)"
     ]
   }
 }
