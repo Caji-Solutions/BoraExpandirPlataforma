@@ -20,9 +20,11 @@ export type SidebarGroup = {
 }
 
 type SidebarProps = {
-  groups: SidebarGroup[]
+  groups?: SidebarGroup[]
   sidebarOpen?: boolean
   setSidebarOpen?: (open: boolean) => void
+  children?: React.ReactNode
+  className?: string
 }
 
 // Component for rendering individual sidebar items (with support for expandable children)
@@ -101,7 +103,7 @@ function SidebarItemComponent({ item }: { item: SidebarItem }) {
 }
 
 
-export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen }: SidebarProps) {
+export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen, children, className }: SidebarProps) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [localSidebarOpen, setLocalSidebarOpen] = useState(false)
@@ -124,6 +126,35 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen }: Sidebar
     window.location.href = '/login'
   }
 
+  // Se tiver children, renderizar com a nova estrutura
+  if (children) {
+    return (
+      <>
+        {isOpen && (
+          <div
+            className="md:hidden fixed inset-0 z-20 bg-black/50"
+            onClick={() => setOpen(false)}
+          />
+        )}
+
+        <aside
+          data-sidebar-toggle="true"
+          className={cn(
+            'fixed left-0 top-0 h-screen w-64 shrink-0 border-r bg-sidebar background border-sidebar-border text-sidebar-foreground flex flex-col',
+            'transition-transform duration-300 ease-in-out',
+            'md:translate-x-0',
+            isOpen ? 'translate-x-0 z-30' : '-translate-x-full md:translate-x-0',
+            className
+          )}
+          style={{} as React.CSSProperties}
+        >
+          {children}
+        </aside>
+      </>
+    )
+  }
+
+  // Renderizar com grupos (estrutura antiga)
   return (
     <>
       {isOpen && (
@@ -207,7 +238,7 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen }: Sidebar
 
         {/* Navegação */}
         <nav className="flex-1 overflow-y-auto py-2">
-          {groups.map((group, gi) => (
+          {groups && groups.map((group, gi) => (
             <div key={gi} className="px-2">
               {group.label && (
                 <div className="px-2 py-2 text-xs uppercase tracking-wide text-muted-foreground">{group.label}</div>
