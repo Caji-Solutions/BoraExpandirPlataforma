@@ -11,6 +11,8 @@ import PagamentosAdmin from "./pages/admin/PagamentosAdmin";
 import FinanceiroPrecos from "./pages/admin/FinanceiroPrecos";
 import { Config } from "@/components/ui/Config";
 import { ClientDNAPage } from "@/components/ui/ClientDNA";
+import MetasComerciais from "./pages/admin/MetasComerciais";
+import RelatorioFechamento from "../financeiro/pages/RelatorioFechamento";
 
 // Importar componentes financeiros
 import { FinancialDashboard } from "../financeiro/pages/VisaoGeral";
@@ -108,6 +110,10 @@ const App = () => (
       <Route path="financeiro/pagamentos" element={<PagamentosAdmin />} />
       <Route path="financeiro/relatorios" element={<Relatorios />} />
       <Route path="financeiro/comprovantes" element={<ComprovantesPage />} />
+      <Route path="financeiro/fechamento" element={<RelatorioFechamento />} />
+
+      {/* Metas Comerciais */}
+      <Route path="metas" element={<MetasComerciais />} />
 
       {/* Rotas Jurídicas */}
       <Route path="juridico" element={<JuridicoDashboard />} />

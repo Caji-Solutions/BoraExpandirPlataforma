@@ -623,6 +623,73 @@ class FinanceiroController {
             return res.status(500).json({ message: 'Erro ao recusar comprovante', error: error.message })
         }
     }
+    // =============================================
+    // MULTAS DE CONTRATOS
+    // =============================================
+
+    async registrarMulta(req: any, res: any) {
+        try {
+            const { id } = req.params
+            const { valor } = req.body
+
+            if (!valor || valor <= 0) {
+                return res.status(400).json({ message: 'Valor da multa e obrigatorio e deve ser positivo' })
+            }
+
+            const updated = await ContratoServicoRepository.updateContrato(id, {
+                status_contrato: 'MULTADO',
+                multa_valor: valor,
+                multa_status: 'pendente',
+                atualizado_em: new Date().toISOString()
+            })
+
+            // Notificar cliente
+            if (updated.cliente_id) {
+                await this.notificarClienteContrato({
+                    clienteId: updated.cliente_id,
+                    titulo: 'Multa Registrada',
+                    mensagem: `Uma multa de EUR ${valor} foi registrada para o contrato #${id.substring(0, 8)}. Envie o comprovante de pagamento.`,
+                    tipo: 'warning'
+                })
+            }
+
+            return res.status(200).json({
+                message: 'Multa registrada com sucesso',
+                data: updated
+            })
+        } catch (error: any) {
+            console.error('[FinanceiroController] Erro ao registrar multa:', error)
+            return res.status(500).json({ message: 'Erro ao registrar multa', error: error.message })
+        }
+    }
+
+    async aprovarComprovanteMulta(req: any, res: any) {
+        try {
+            const { id } = req.params
+
+            const updated = await ContratoServicoRepository.updateContrato(id, {
+                multa_status: 'pago',
+                atualizado_em: new Date().toISOString()
+            })
+
+            if (updated.cliente_id) {
+                await this.notificarClienteContrato({
+                    clienteId: updated.cliente_id,
+                    titulo: 'Comprovante de Multa Aprovado',
+                    mensagem: `O comprovante de multa do contrato #${id.substring(0, 8)} foi aprovado.`,
+                    tipo: 'success'
+                })
+            }
+
+            return res.status(200).json({
+                message: 'Comprovante de multa aprovado',
+                data: updated
+            })
+        } catch (error: any) {
+            console.error('[FinanceiroController] Erro ao aprovar comprovante de multa:', error)
+            return res.status(500).json({ message: 'Erro ao aprovar comprovante', error: error.message })
+        }
+    }
 }
 
 export default new FinanceiroController()

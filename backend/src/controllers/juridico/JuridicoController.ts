@@ -1055,6 +1055,80 @@ class JuridicoController {
             return res.status(500).json({ message: 'Erro ao registrar pedido de reagendamento', error: error.message })
         }
     }
+    // =============================================
+    // VALIDACAO DE CONTRATOS
+    // =============================================
+
+    // POST /juridico/contratos/:id/invalidar
+    async invalidarContrato(req: any, res: any) {
+        try {
+            const { id } = req.params
+            const { justificativa } = req.body
+            const invalidadoPor = req.userId
+
+            if (!justificativa) {
+                return res.status(400).json({ message: 'Justificativa e obrigatoria' })
+            }
+
+            // Buscar contrato
+            const { data: contrato, error: fetchError } = await supabase
+                .from('contratos_servicos')
+                .select('id, cliente_id, usuario_id')
+                .eq('id', id)
+                .single()
+
+            if (fetchError || !contrato) {
+                return res.status(404).json({ message: 'Contrato nao encontrado' })
+            }
+
+            // Atualizar status do contrato
+            const { data: updated, error: updateError } = await supabase
+                .from('contratos_servicos')
+                .update({
+                    status_contrato: 'INVALIDO',
+                    justificativa_invalidacao: justificativa,
+                    invalidado_por: invalidadoPor,
+                    invalidado_em: new Date().toISOString(),
+                    atualizado_em: new Date().toISOString()
+                })
+                .eq('id', id)
+                .select()
+                .single()
+
+            if (updateError) {
+                console.error('[JuridicoController] Erro ao invalidar contrato:', updateError)
+                return res.status(500).json({ message: 'Erro ao invalidar contrato' })
+            }
+
+            // Notificar o C2 responsavel
+            if (contrato.usuario_id) {
+                // Buscar profile do C2 para pegar o cliente_id associado
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('id, full_name')
+                    .eq('id', contrato.usuario_id)
+                    .single()
+
+                // Criar notificacao para o usuario responsavel pelo contrato
+                // Usamos o usuario_id como "clienteId" no sistema de notificacoes interno
+                await NotificationService.createNotification({
+                    clienteId: contrato.usuario_id,
+                    criadorId: invalidadoPor,
+                    titulo: 'Contrato Invalidado pelo Juridico',
+                    mensagem: `O contrato #${id.substring(0, 8)} foi marcado como invalido. Justificativa: ${justificativa}`,
+                    tipo: 'warning'
+                })
+            }
+
+            return res.status(200).json({
+                message: 'Contrato invalidado com sucesso',
+                data: updated
+            })
+        } catch (error: any) {
+            console.error('[JuridicoController] Erro ao invalidar contrato:', error)
+            return res.status(500).json({ message: 'Erro ao invalidar contrato', error: error.message })
+        }
+    }
 }
 
 export default new JuridicoController()

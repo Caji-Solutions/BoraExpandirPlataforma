@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Activity, Shield, Library, FileText, Settings, ShieldAlert, Settings2, Users, ChevronDown, ChevronRight, UserCircle, LogOut, Dna, Languages, CreditCard, PieChart, BarChart, HandCoins, Wallet } from "lucide-react";
+import { Activity, Shield, Library, FileText, Settings, ShieldAlert, Settings2, Users, ChevronDown, ChevronRight, UserCircle, LogOut, Dna, Languages, CreditCard, PieChart, BarChart, HandCoins, Wallet, Target } from "lucide-react";
 import { NavLink } from "./NavLink";
 import { useNavigate } from "react-router-dom";
 import {
@@ -29,6 +29,7 @@ const adminMenuItems = [
   { title: "Auditoria & Aprovações", url: "/adm/approvals", icon: ShieldAlert },
   { title: "Configurar Serviços", url: "/adm/services", icon: Settings2 },
   { title: "Gestão de Equipe", url: "/adm/team", icon: Users },
+  { title: "Metas Comerciais", url: "/adm/metas", icon: Target },
 ];
 
 

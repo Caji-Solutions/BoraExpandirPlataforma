@@ -1,5 +1,7 @@
 import { Router } from 'express'
 import ComercialController from '../controllers/comercial/ComercialController'
+import ComissaoController from '../controllers/comercial/ComissaoController'
+import { authMiddleware } from '../middlewares/auth'
 import upload from '../middlewares/upload'
 
 const comercial = Router()
@@ -30,5 +32,17 @@ comercial.post('/contratos/:id/comprovante', upload.single('file'), ComercialCon
 comercial.put('/contratos/:id/draft', ComercialController.updateContratoDraft.bind(ComercialController))
 comercial.post('/contratos/:id/gerar-pdf', ComercialController.gerarContratoPdf.bind(ComercialController))
 comercial.post('/contratos/:id/enviar-assinatura', ComercialController.enviarContratoAssinatura.bind(ComercialController))
+
+// Cancelamento de contrato
+comercial.post('/contratos/:id/cancelar', authMiddleware, ComercialController.cancelarContrato.bind(ComercialController))
+
+// Upload comprovante de multa
+comercial.post('/contratos/:id/multa/comprovante', authMiddleware, upload.single('file'), ComercialController.uploadComprovanteMulta.bind(ComercialController))
+
+// Comissoes (requer autenticacao)
+comercial.get('/comissao/calcular', authMiddleware, ComissaoController.calcularMinhaComissao.bind(ComissaoController))
+comercial.get('/comissao/historico', authMiddleware, ComissaoController.getHistoricoComissao.bind(ComissaoController))
+comercial.get('/comissao/cotacao', ComissaoController.getCotacao.bind(ComissaoController))
+comercial.get('/comissao/relatorio', authMiddleware, ComissaoController.getRelatorioComissoes.bind(ComissaoController))
 
 export default comercial

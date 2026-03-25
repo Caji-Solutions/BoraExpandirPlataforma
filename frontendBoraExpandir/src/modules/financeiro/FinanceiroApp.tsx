@@ -36,6 +36,8 @@ import { RelatoriosComparativos } from './pages/RelatoriosComparativos'
 import { AdminApostilamento } from './pages/AdminApostilamento'
 import { ClientDNAPage } from '@/components/ui/ClientDNA'
 import { ComprovantesPage } from './pages/ComprovantesPage'
+import RelatorioFechamento from './pages/RelatorioFechamento'
+import { CurrencyWidget } from '@/modules/shared/components/CurrencyWidget'
 
 
 export function FinanceiroApp() {
@@ -81,6 +83,7 @@ export function FinanceiroApp() {
         { label: 'Visão Geral', to: '/financeiro/visao-geral', icon: PieChart },
         { label: 'Contas a Receber', to: '/financeiro/contas-receber', icon: Wallet },
         { label: 'Comissões', to: '/financeiro/comissoes', icon: HandCoins },
+        { label: 'Fechamento', to: '/financeiro/fechamento', icon: HandCoins },
         { 
           label: 'Comprovantes', 
           to: '/financeiro/comprovantes', 
@@ -108,6 +111,9 @@ export function FinanceiroApp() {
       <Sidebar groups={sidebarGroups} />
 
       <main className="ml-64 p-6">
+        <div className="flex justify-end mb-4">
+          <CurrencyWidget />
+        </div>
         <Routes>
           <Route index element={<FinancialDashboard />} />
 
@@ -125,6 +131,7 @@ export function FinanceiroApp() {
           <Route path="visao-geral" element={<FinancialDashboard />} />
           <Route path="contas-receber" element={<FinancialProcessList />} />
           <Route path="comissoes" element={<Comissoes />} />
+          <Route path="fechamento" element={<RelatorioFechamento />} />
           <Route path="comprovantes" element={<ComprovantesPage />} />
 
           {/* System */}

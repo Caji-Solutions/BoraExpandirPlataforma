@@ -1224,7 +1224,111 @@ class ComercialController {
         }
     }
 
+    // =============================================
+    // CANCELAMENTO DE CONTRATOS
+    // =============================================
 
+    async cancelarContrato(req: any, res: any) {
+        try {
+            const { id } = req.params
+            const { motivo } = req.body
+            const canceladoPor = req.userId
+
+            if (!motivo) {
+                return res.status(400).json({ message: 'Motivo do cancelamento e obrigatorio' })
+            }
+
+            const contrato = await ContratoServicoRepository.getContratoById(id)
+            if (!contrato) {
+                return res.status(404).json({ message: 'Contrato nao encontrado' })
+            }
+
+            const updated = await ContratoServicoRepository.updateContrato(id, {
+                status_contrato: 'CANCELADO',
+                cancelado_por: canceladoPor,
+                cancelado_em: new Date().toISOString(),
+                motivo_cancelamento: motivo,
+                atualizado_em: new Date().toISOString()
+            })
+
+            // Notificar financeiro (usando notificacao genérica)
+            await this.notificarClienteContrato({
+                clienteId: contrato.cliente_id,
+                titulo: 'Contrato Cancelado',
+                mensagem: `O contrato #${id.substring(0, 8)} foi cancelado. Motivo: ${motivo}`,
+                tipo: 'warning'
+            })
+
+            return res.status(200).json({
+                message: 'Contrato cancelado com sucesso',
+                data: updated
+            })
+        } catch (error: any) {
+            console.error('[ComercialController] Erro ao cancelar contrato:', error)
+            return res.status(500).json({ message: 'Erro ao cancelar contrato', error: error.message })
+        }
+    }
+
+    // =============================================
+    // UPLOAD COMPROVANTE DE MULTA
+    // =============================================
+
+    async uploadComprovanteMulta(req: any, res: any) {
+        try {
+            const { id } = req.params
+            const file = req.file
+
+            if (!file) {
+                return res.status(400).json({ message: 'Arquivo e obrigatorio' })
+            }
+
+            const contrato = await ContratoServicoRepository.getContratoById(id)
+            if (!contrato) {
+                return res.status(404).json({ message: 'Contrato nao encontrado' })
+            }
+
+            // Upload para Supabase Storage (pasta multas/)
+            const filePath = `multas/${id}/${Date.now()}_${file.originalname}`
+            const { error: uploadError } = await supabase.storage
+                .from('contratos')
+                .upload(filePath, file.buffer, {
+                    contentType: file.mimetype,
+                    upsert: true
+                })
+
+            if (uploadError) {
+                console.error('[ComercialController] Erro ao fazer upload da multa:', uploadError)
+                return res.status(500).json({ message: 'Erro ao fazer upload do comprovante' })
+            }
+
+            const { data: publicUrl } = supabase.storage
+                .from('contratos')
+                .getPublicUrl(filePath)
+
+            const updated = await ContratoServicoRepository.updateContrato(id, {
+                multa_comprovante_url: publicUrl.publicUrl,
+                multa_upload_em: new Date().toISOString(),
+                multa_status: 'comprovante_enviado',
+                atualizado_em: new Date().toISOString()
+            })
+
+            // Notificar admin/financeiro
+            await this.notificarClienteContrato({
+                clienteId: contrato.cliente_id,
+                titulo: 'Comprovante de Multa Enviado',
+                mensagem: `Comprovante de multa para o contrato #${id.substring(0, 8)} foi enviado e aguarda verificacao.`,
+                tipo: 'info'
+            })
+
+            return res.status(200).json({
+                message: 'Comprovante de multa enviado com sucesso',
+                data: updated
+            })
+        } catch (error: any) {
+            console.error('[ComercialController] Erro ao upload comprovante de multa:', error)
+            return res.status(500).json({ message: 'Erro ao enviar comprovante', error: error.message })
+        }
+    }
 }
 
 export default new ComercialController()

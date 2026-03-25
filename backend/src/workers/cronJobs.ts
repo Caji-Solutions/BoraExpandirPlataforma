@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { supabase } from '../config/SupabaseClient';
+import CambioService from '../services/CambioService';
 
 /**
  * Job que roda a cada 30 minutos
@@ -95,5 +96,25 @@ export const startCronJobs = () => {
         }
     });
 
-    console.log('[CRON] Workers iniciados com sucesso. (Verificacao a cada 30 minutos)');
+    console.log('[CRON] Worker de cancelamento iniciado. (Verificacao a cada 30 minutos)');
+
+    // Job de atualizacao de cambio EUR/BRL - a cada 6 horas (apenas fora de teste)
+    if (process.env.NODE_ENV !== 'test') {
+        cron.schedule('0 */6 * * *', async () => {
+            try {
+                console.log('[CRON] Atualizando cotacao EUR/BRL...');
+                const cotacao = await CambioService.fetchCotacao();
+                console.log(`[CRON] Cotacao EUR/BRL atualizada: ${cotacao}`);
+            } catch (err) {
+                console.error('[CRON] Erro ao atualizar cotacao:', err);
+            }
+        });
+
+        // Buscar cotacao inicial ao iniciar
+        CambioService.fetchCotacao().catch(err => {
+            console.warn('[CRON] Nao foi possivel buscar cotacao inicial:', err);
+        });
+
+        console.log('[CRON] Worker de cambio iniciado. (Atualizacao a cada 6 horas)');
+    }
 };

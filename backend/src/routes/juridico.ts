@@ -113,6 +113,11 @@ juridico.get('/notas/:clienteId', JuridicoController.getNotes.bind(JuridicoContr
 // Deletar nota
 juridico.delete('/notas/:noteId', JuridicoController.deleteNote.bind(JuridicoController))
 
+// =============================================
+// ROTAS DE VALIDACAO DE CONTRATOS
+// =============================================
+juridico.post('/contratos/:id/invalidar', JuridicoController.invalidarContrato.bind(JuridicoController))
+
 export default juridico
 
 

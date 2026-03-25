@@ -12,6 +12,7 @@ import LeadsPage from './Leads'
 import AgendamentosPage from '@/modules/comercial/pages/agendamentos/Agendamentos'
 import { AgendamentoEditPage } from '../agendamentos/AgendamentoEditPage'
 import GanhosPage from '../financeiro/Ganhos'
+import ComissaoColaborador from '../financeiro/ComissaoColaborador'
 import ServicosComerciais from './ServicosComerciais'
 import SelecaoLeadCliente from '../cadastro/SelecaoLeadCliente'
 import ContratosFixosPage from '../contratos/ContratosFixosPage'
@@ -671,19 +672,26 @@ export default function Comercial() {
     toast.success('Lead cadastrado com sucesso!', 3)
   }
 
-  // Configuração da sidebar
+  // Configuração da sidebar (C1 nao ve Assessoria nem Contratos)
+  const nivel = activeProfile?.nivel || 'C1'
+  const isC1 = nivel === 'C1'
+
+  const sidebarItems = [
+    { label: 'Dashboard', to: '/comercial', icon: Home },
+    { label: 'DNA do Cliente', to: '/comercial/dna', icon: Dna },
+    { label: 'Leads', to: '/comercial/leads', icon: Users },
+    { label: 'Servicos', to: '/comercial/servicos', icon: FileText },
+    { label: 'Meus Agendamentos', to: '/comercial/meus-agendamentos', icon: Calendar },
+    { label: 'Minhas Comissoes', to: '/comercial/comissoes', icon: DollarSign },
+    ...(!isC1 ? [
+      { label: 'Contratos', to: '/comercial/contratos', icon: FileText },
+    ] : []),
+  ]
+
   const sidebarGroups: SidebarGroup[] = [
     {
       label: 'Menu Principal',
-      items: [
-        { label: 'Dashboard', to: '/comercial', icon: Home },
-        { label: 'DNA do Cliente', to: '/comercial/dna', icon: Dna },
-        { label: 'Leads', to: '/comercial/leads', icon: Users },
-        { label: 'Serviços', to: '/comercial/servicos', icon: FileText },
-        { label: 'Meus Agendamentos', to: '/comercial/meus-agendamentos', icon: Calendar },
-        { label: 'Minhas Comissões', to: '/comercial/ganhos', icon: DollarSign },
-        { label: 'Contratos', to: '/comercial/contratos', icon: FileText },
-      ],
+      items: sidebarItems,
     },
   ]
 
@@ -770,6 +778,10 @@ export default function Comercial() {
           <Route
             path="/ganhos"
             element={<GanhosPage />}
+          />
+          <Route
+            path="/comissoes"
+            element={<ComissaoColaborador />}
           />
           <Route
             path="/contratos"

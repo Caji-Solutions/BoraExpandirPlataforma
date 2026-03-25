@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, FileText, Loader2, PencilLine, CheckCircle2, Clock, CreditCard, ChevronRight } from 'lucide-react'
+import { AlertTriangle, FileText, Loader2, PencilLine, CheckCircle2, Clock, CreditCard, ChevronRight, Filter, Ban, ShieldAlert, XCircle, Receipt } from 'lucide-react'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import comercialService from '../../services/comercialService'
 import type { ContratoServico } from '../../../types/comercial'
@@ -33,10 +33,41 @@ const pagamentoLabel = (status: string) => {
   return 'Pendente'
 }
 
+const statusContratoVariant = (status?: string) => {
+  switch (status) {
+    case 'CANCELADO': return 'destructive'
+    case 'MULTADO': return 'warning'
+    case 'INVALIDO': return 'destructive'
+    case 'AGUARDANDO_VALIDACAO': return 'warning'
+    default: return 'default'
+  }
+}
+
+const statusContratoLabel = (status?: string) => {
+  switch (status) {
+    case 'CANCELADO': return 'Cancelado'
+    case 'MULTADO': return 'Multado'
+    case 'INVALIDO': return 'Invalido'
+    case 'AGUARDANDO_VALIDACAO': return 'Aguardando Validacao'
+    case 'ATIVO': return 'Ativo'
+    default: return 'Ativo'
+  }
+}
+
+const STATUS_FILTERS = [
+  { value: 'TODOS', label: 'Todos' },
+  { value: 'ATIVO', label: 'Ativos' },
+  { value: 'CANCELADO', label: 'Cancelados' },
+  { value: 'MULTADO', label: 'Multados' },
+  { value: 'INVALIDO', label: 'Invalidos' },
+  { value: 'AGUARDANDO_VALIDACAO', label: 'Aguardando Validacao' },
+]
+
 export default function ContratosFixosPage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [contratos, setContratos] = useState<ContratoServico[]>([])
+  const [statusFilter, setStatusFilter] = useState('TODOS')
 
   useEffect(() => {
     const fetchContratos = async () => {
@@ -73,6 +104,11 @@ export default function ContratosFixosPage() {
     return labels[etapaNumerica] || `Etapa ${etapaNumerica}`
   }
 
+  const filteredContratos = useMemo(() => {
+    if (statusFilter === 'TODOS') return contratos
+    return contratos.filter(c => (c as any).status_contrato === statusFilter || (!( c as any).status_contrato && statusFilter === 'ATIVO'))
+  }, [contratos, statusFilter])
+
   const handleOpenContrato = (contrato: ContratoServico) => {
     if (contrato.is_draft) {
       navigate(`/comercial/contratos/assessoria/${contrato.id}`)
@@ -104,7 +140,33 @@ export default function ContratosFixosPage() {
         </div>
       </div>
 
-      {contratos.length === 0 ? (
+      {/* Filtros de status */}
+      <div className="flex flex-wrap gap-2">
+        {STATUS_FILTERS.map((filter) => (
+          <button
+            key={filter.value}
+            onClick={() => setStatusFilter(filter.value)}
+            className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+              statusFilter === filter.value
+                ? 'bg-emerald-600 text-white border-emerald-600'
+                : 'bg-white dark:bg-neutral-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-neutral-800 hover:border-emerald-300'
+            }`}
+          >
+            {filter.label}
+            {filter.value !== 'TODOS' && (
+              <span className="ml-1.5 text-xs opacity-70">
+                ({contratos.filter(c => {
+                  const st = (c as any).status_contrato
+                  if (filter.value === 'ATIVO') return !st || st === 'ATIVO'
+                  return st === filter.value
+                }).length})
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {filteredContratos.length === 0 ? (
         <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-gray-100 dark:border-neutral-800 shadow-sm p-16 text-center">
           <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-neutral-800 flex items-center justify-center mx-auto mb-4">
             <FileText className="w-8 h-8 text-gray-400" />
@@ -114,7 +176,7 @@ export default function ContratosFixosPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {contratos.map((contrato) => {
+          {filteredContratos.map((contrato) => {
             const hasDraftError = contrato.draft_dados?.__erroGeracao?.ativo
 
             return (
@@ -172,6 +234,14 @@ export default function ContratosFixosPage() {
                     <CreditCard className="w-3 h-3 mr-1" />
                     {pagamentoLabel(contrato.pagamento_status)}
                   </Badge>
+                  {(contrato as any).status_contrato && (contrato as any).status_contrato !== 'ATIVO' && (
+                    <Badge variant={statusContratoVariant((contrato as any).status_contrato) as any}>
+                      {(contrato as any).status_contrato === 'CANCELADO' && <Ban className="w-3 h-3 mr-1" />}
+                      {(contrato as any).status_contrato === 'INVALIDO' && <ShieldAlert className="w-3 h-3 mr-1" />}
+                      {(contrato as any).status_contrato === 'MULTADO' && <Receipt className="w-3 h-3 mr-1" />}
+                      {statusContratoLabel((contrato as any).status_contrato)}
+                    </Badge>
+                  )}
                   <ChevronRight className="w-4 h-4 text-gray-400 hidden md:block group-hover:text-emerald-500 transition-colors ml-1" />
                 </div>
               </button>

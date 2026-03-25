@@ -26,4 +26,8 @@ financeiro.post('/traducao/comprovante/:id/aprovar', FinanceiroController.aprova
 financeiro.post('/traducao/comprovante/:id/recusar', FinanceiroController.recusarComprovanteTraducao.bind(FinanceiroController))
 
 
+// ROTAS PARA MULTAS DE CONTRATOS
+financeiro.post('/contratos/:id/multa', FinanceiroController.registrarMulta.bind(FinanceiroController))
+financeiro.post('/contratos/:id/multa/aprovar', FinanceiroController.aprovarComprovanteMulta.bind(FinanceiroController))
+
 export default financeiro
