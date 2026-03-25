@@ -1,10 +1,10 @@
-import type { ClienteDTO } from '../types/parceiro';
-import { supabase } from '../config/SupabaseClient';
+import type { ClienteDTO } from '../../types/parceiro';
+import { supabase } from '../../config/SupabaseClient';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import ClienteRepository from '../repositories/ClienteRepository';
-import NotificationService from '../services/NotificationService';
-import { normalizeCpf, normalizePhone } from '../utils/normalizers';
+import ClienteRepository from '../../repositories/ClienteRepository';
+import NotificationService from '../../services/NotificationService';
+import { normalizeCpf, normalizePhone } from '../../utils/normalizers';
 
 class ClienteProfileController {
   private async notificarClienteContrato(params: {

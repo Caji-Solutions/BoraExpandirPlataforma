@@ -1,4 +1,4 @@
-import ClienteRepository from '../repositories/ClienteRepository';
+import ClienteRepository from '../../repositories/ClienteRepository';
 
 class ClienteNotificationController {
   // GET /cliente/:clienteId/notificacoes

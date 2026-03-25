@@ -1,8 +1,8 @@
-import { DocumentStatus } from '../constants/DocumentStatus';
-import ClienteRepository from '../repositories/ClienteRepository';
-import AdmRepository from '../repositories/AdmRepository';
-import NotificationService from '../services/NotificationService';
-import { getDocumentosPorTipoServico, DocumentoRequeridoConfig } from '../config/documentosConfig';
+import { DocumentStatus } from '../../constants/DocumentStatus';
+import ClienteRepository from '../../repositories/ClienteRepository';
+import AdmRepository from '../../repositories/AdmRepository';
+import NotificationService from '../../services/NotificationService';
+import { getDocumentosPorTipoServico, DocumentoRequeridoConfig } from '../../config/documentosConfig';
 
 interface DocumentoRequeridoComProcesso extends DocumentoRequeridoConfig {
   processoId: string;

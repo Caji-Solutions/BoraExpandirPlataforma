@@ -1,4 +1,4 @@
-import ClienteRepository from '../repositories/ClienteRepository';
+import ClienteRepository from '../../repositories/ClienteRepository';
 
 class ClienteFormulariosController {
   // GET /cliente/processo/:processoId/formularios

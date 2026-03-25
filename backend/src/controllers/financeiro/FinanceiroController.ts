@@ -1,10 +1,10 @@
-import { supabase } from '../config/SupabaseClient'
-import ComercialRepository from '../repositories/ComercialRepository'
+import { supabase } from '../../config/SupabaseClient'
+import ComercialRepository from '../../repositories/ComercialRepository'
 
-import ContratoServicoRepository from '../repositories/ContratoServicoRepository'
-import NotificationService from '../services/NotificationService'
+import ContratoServicoRepository from '../../repositories/ContratoServicoRepository'
+import NotificationService from '../../services/NotificationService'
 
-import TraducoesRepository from '../repositories/TraducoesRepository'
+import TraducoesRepository from '../../repositories/TraducoesRepository'
 
 
 class FinanceiroController {

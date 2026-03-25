@@ -1,8 +1,8 @@
-import JuridicoRepository from '../repositories/JuridicoRepository'
-import AdmRepository from '../repositories/AdmRepository'
-import { supabase } from '../config/SupabaseClient'
-import NotificationService from '../services/NotificationService'
-import ComercialRepository from '../repositories/ComercialRepository'
+import JuridicoRepository from '../../repositories/JuridicoRepository'
+import AdmRepository from '../../repositories/AdmRepository'
+import { supabase } from '../../config/SupabaseClient'
+import NotificationService from '../../services/NotificationService'
+import ComercialRepository from '../../repositories/ComercialRepository'
 
 class JuridicoController {
 

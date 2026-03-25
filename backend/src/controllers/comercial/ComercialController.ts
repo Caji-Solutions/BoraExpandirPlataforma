@@ -1,13 +1,13 @@
-import { supabase } from '../config/SupabaseClient'
-import type { ClienteDTO } from '../types/parceiro';
-import ComercialRepository from '../repositories/ComercialRepository';
-import AdmRepository from '../repositories/AdmRepository';
-import ContratoServicoRepository from '../repositories/ContratoServicoRepository';
-import EmailService from '../services/EmailService';
-import NotificationService from '../services/NotificationService';
-import { normalizeCpf, normalizePhone } from '../utils/normalizers';
-import DNAService from '../services/DNAService';
-import { toUtcFromBrt, toBrtFromUtc } from '../utils/dateUtils';
+import { supabase } from '../../config/SupabaseClient'
+import type { ClienteDTO } from '../../types/parceiro';
+import ComercialRepository from '../../repositories/ComercialRepository';
+import AdmRepository from '../../repositories/AdmRepository';
+import ContratoServicoRepository from '../../repositories/ContratoServicoRepository';
+import EmailService from '../../services/EmailService';
+import NotificationService from '../../services/NotificationService';
+import { normalizeCpf, normalizePhone } from '../../utils/normalizers';
+import DNAService from '../../services/DNAService';
+import { toUtcFromBrt, toBrtFromUtc } from '../../utils/dateUtils';
 
 
 class ComercialController {

@@ -1,4 +1,4 @@
-import JuridicoRepository from '../repositories/JuridicoRepository';
+import JuridicoRepository from '../../repositories/JuridicoRepository';
 
 class ClienteRequerimentosController {
   // GET /cliente/:clienteId/requerimentos

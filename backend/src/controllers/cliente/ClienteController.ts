@@ -1,15 +1,15 @@
-import { DocumentStatus } from '../constants/DocumentStatus';
-import type { ClienteDTO } from '../types/parceiro';
-import { supabase } from '../config/SupabaseClient';
+import { DocumentStatus } from '../../constants/DocumentStatus';
+import type { ClienteDTO } from '../../types/parceiro';
+import { supabase } from '../../config/SupabaseClient';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import ClienteRepository from '../repositories/ClienteRepository';
-import JuridicoRepository from '../repositories/JuridicoRepository';
-import NotificationService from '../services/NotificationService';
-import AdmRepository from '../repositories/AdmRepository';
-import { getDocumentosPorTipoServico, DocumentoRequeridoConfig } from '../config/documentosConfig';
-import ContratoServicoRepository from '../repositories/ContratoServicoRepository';
-import { normalizeCpf, normalizePhone } from '../utils/normalizers';
+import ClienteRepository from '../../repositories/ClienteRepository';
+import JuridicoRepository from '../../repositories/JuridicoRepository';
+import NotificationService from '../../services/NotificationService';
+import AdmRepository from '../../repositories/AdmRepository';
+import { getDocumentosPorTipoServico, DocumentoRequeridoConfig } from '../../config/documentosConfig';
+import ContratoServicoRepository from '../../repositories/ContratoServicoRepository';
+import { normalizeCpf, normalizePhone } from '../../utils/normalizers';
 
 // Interface para o documento requerido com informações do processo
 interface DocumentoRequeridoComProcesso extends DocumentoRequeridoConfig {

@@ -1,6 +1,6 @@
-import { supabase } from '../config/SupabaseClient';
-import ContratoServicoRepository from '../repositories/ContratoServicoRepository';
-import NotificationService from '../services/NotificationService';
+import { supabase } from '../../config/SupabaseClient';
+import ContratoServicoRepository from '../../repositories/ContratoServicoRepository';
+import NotificationService from '../../services/NotificationService';
 
 class ClienteContratosController {
   private async notificarClienteContrato(params: {
