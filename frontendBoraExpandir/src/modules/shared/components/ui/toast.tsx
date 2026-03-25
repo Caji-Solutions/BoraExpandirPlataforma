@@ -121,4 +121,43 @@ export function ToastContainer({ toasts, onRemove }: { toasts: Array<{ id: strin
   )
 }
 
+// Componentes compostos para compatibilidade com shadcn/ui toast
+import { createContext, useContext as useReactContext } from 'react'
+
+interface ToastContextType {
+  toasts: Array<any>
+}
+
+const ToastContext = createContext<ToastContextType | undefined>(undefined)
+
+export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const [toasts] = useState<any[]>([])
+  return <ToastContext.Provider value={{ toasts }}>{children}</ToastContext.Provider>
+}
+
+export function ToastTitle({ children }: { children: React.ReactNode }) {
+  return <h3 className="font-semibold text-sm">{children}</h3>
+}
+
+export function ToastDescription({ children }: { children: React.ReactNode }) {
+  return <p className="text-sm opacity-90">{children}</p>
+}
+
+export function ToastClose({ onClick, ...props }: { onClick?: () => void; [key: string]: any }) {
+  return (
+    <button
+      onClick={onClick}
+      className="p-1 hover:bg-white/20 rounded transition-colors flex-shrink-0 ml-auto"
+      aria-label="Fechar notificação"
+      {...props}
+    >
+      <X className="h-4 w-4" />
+    </button>
+  )
+}
+
+export function ToastViewport() {
+  return <div className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col gap-2 pointer-events-none" />
+}
+
 export default Toast

@@ -236,4 +236,69 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen }: Sidebar
   )
 }
 
+// Context para gerenciar estado da sidebar
+import { createContext, useContext } from 'react'
+
+interface SidebarContextType {
+  open: boolean
+  setOpen: (open: boolean) => void
+}
+
+const SidebarContext = createContext<SidebarContextType | undefined>(undefined)
+
+export function useSidebar() {
+  const context = useContext(SidebarContext)
+  if (!context) {
+    return { open: true, setOpen: () => {} }
+  }
+  return context
+}
+
+// Componentes compostos para compatibilidade com shadcn/ui
+export function SidebarProvider({ children, open = true, onOpenChange }: { children: React.ReactNode; open?: boolean; onOpenChange?: (open: boolean) => void }) {
+  const [sidebarOpen, setSidebarOpen] = useState(open)
+
+  return (
+    <SidebarContext.Provider value={{ open: sidebarOpen, setOpen: (o) => { setSidebarOpen(o); onOpenChange?.(o) } }}>
+      {children}
+    </SidebarContext.Provider>
+  )
+}
+
+export function SidebarInset({ children }: { children: React.ReactNode }) {
+  return <div className="flex-1 overflow-auto">{children}</div>
+}
+
+export function SidebarContent({ children }: { children: React.ReactNode }) {
+  return <nav className="flex-1 overflow-y-auto py-2">{children}</nav>
+}
+
+export function SidebarGroup({ children }: { children: React.ReactNode }) {
+  return <div className="px-2">{children}</div>
+}
+
+export function SidebarGroupLabel({ children }: { children: React.ReactNode }) {
+  return <div className="px-2 py-2 text-xs uppercase tracking-wide text-muted-foreground">{children}</div>
+}
+
+export function SidebarGroupContent({ children }: { children: React.ReactNode }) {
+  return <ul className="space-y-1">{children}</ul>
+}
+
+export function SidebarMenu({ children }: { children: React.ReactNode }) {
+  return <ul className="space-y-1">{children}</ul>
+}
+
+export function SidebarMenuItem({ children }: { children: React.ReactNode }) {
+  return <li>{children}</li>
+}
+
+export function SidebarMenuButton({ children, asChild, ...props }: { children: React.ReactNode; asChild?: boolean; [key: string]: any }) {
+  return (
+    <button className="w-full rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent transition" {...props}>
+      {children}
+    </button>
+  )
+}
+
 export default Sidebar
