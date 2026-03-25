@@ -1,0 +1,47 @@
+.status-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #ffffff;
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    white-space: nowrap;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Tamanhos */
+.status-tag--small {
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    border-radius: 4px;
+}
+
+.status-tag--medium {
+    padding: 4px 12px;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    border-radius: 6px;
+}
+
+.status-tag--large {
+    padding: 6px 16px;
+    font-size: 1rem;
+    line-height: 1.5rem;
+    border-radius: 8px;
+}
+
+/* Efeito hover sutil */
+.status-tag:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Garantir que o texto seja sempre branco */
+.status-tag * {
+    color: #ffffff;
+}

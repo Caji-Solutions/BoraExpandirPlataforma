@@ -16,7 +16,9 @@
       "Bash(ls \"c:\\\\Users\\\\natha\\\\Documents\\\\Caji\\\\BoraExpandirPlataforma\\\\frontendBoraExpandir\\\\src\\\\modules\\\\comercial\\\\components\"\" 2>/dev/null || echo \"Directory not found \")",
       "Bash(while read:*)",
       "Bash(do sed:*)",
-      "Bash(grep -r from.*components/ui/Badge /home/joaov/Documents/BoraExpandirPLataforma/BoraExpandirPlataforma/frontendBoraExpandir/src --include=*.tsx --include=*.ts)"
+      "Bash(grep -r from.*components/ui/Badge /home/joaov/Documents/BoraExpandirPLataforma/BoraExpandirPlataforma/frontendBoraExpandir/src --include=*.tsx --include=*.ts)",
+      "Bash(__NEW_LINE_9588bb191df12c24__ cd:*)",
+      "Bash(npm run:*)"
     ]
   }
 }
