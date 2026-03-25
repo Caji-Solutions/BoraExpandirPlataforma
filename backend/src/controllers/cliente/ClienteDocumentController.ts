@@ -16,9 +16,15 @@ class ClienteDocumentController {
   async getDocumentos(req: any, res: any) {
     try {
       const { clienteId } = req.params
+      const { id: userId, role } = req.user
 
       if (!clienteId) {
         return res.status(400).json({ message: 'clienteId é obrigatório' })
+      }
+
+      // Validar autorização: cliente vê só seus docs, admin/juridico veem de qualquer um
+      if (userId !== clienteId && role !== 'admin' && role !== 'juridico') {
+        return res.status(403).json({ message: 'Sem permissão para acessar documentos de outro cliente' })
       }
 
       const documentos = await ClienteRepository.getDocumentosByClienteId(clienteId)
@@ -40,9 +46,16 @@ class ClienteDocumentController {
   async getDocumentosByProcesso(req: any, res: any) {
     try {
       const { processoId } = req.params
+      const { role } = req.user
 
       if (!processoId) {
         return res.status(400).json({ message: 'processoId é obrigatório' })
+      }
+
+      // Apenas juridico e admin conseguem ver documentos por processo
+      // (clientes devem usar /cliente/:clienteId/documentos)
+      if (role !== 'admin' && role !== 'juridico') {
+        return res.status(403).json({ message: 'Sem permissão para acessar documentos por processo' })
       }
 
       const documentos = await ClienteRepository.getDocumentosByProcessoId(processoId)
@@ -66,9 +79,15 @@ class ClienteDocumentController {
   async getDocumentosRequeridos(req: any, res: any) {
     try {
       const { clienteId } = req.params
+      const { id: userId, role } = req.user
 
       if (!clienteId) {
         return res.status(400).json({ message: 'clienteId é obrigatório' })
+      }
+
+      // Validar autorização
+      if (userId !== clienteId && role !== 'admin' && role !== 'juridico') {
+        return res.status(403).json({ message: 'Sem permissão para acessar documentos requeridos de outro cliente' })
       }
 
       // Buscar os processos do cliente
@@ -268,9 +287,20 @@ class ClienteDocumentController {
   async deleteDocumento(req: any, res: any) {
     try {
       const { documentoId } = req.params
+      const { id: userId, role } = req.user
 
       if (!documentoId) {
         return res.status(400).json({ message: 'documentoId é obrigatório' })
+      }
+
+      // Validar autorização: cliente só deleta seus próprios, admin/juridico deletam de qualquer um
+      if (role === 'cliente') {
+        // Verificar se documento pertence ao cliente
+        const docs = await ClienteRepository.getDocumentosByClienteId(userId)
+        const docBelongsToClient = docs.some(d => d.id === documentoId)
+        if (!docBelongsToClient) {
+          return res.status(403).json({ message: 'Sem permissão para deletar documento de outro cliente' })
+        }
       }
 
       await ClienteRepository.deleteDocumento(documentoId)
@@ -295,10 +325,16 @@ class ClienteDocumentController {
 
     try {
       const { documentoId } = req.params
-      const { status, motivoRejeicao, analisadoPor } = req.body
+      const { status, motivoRejeicao } = req.body
+      const { id: userId, role } = req.user
 
       if (!documentoId) {
         return res.status(400).json({ message: 'documentoId é obrigatório' })
+      }
+
+      // Validar que apenas juridico/admin conseguem atualizar status
+      if (role !== 'juridico' && role !== 'admin') {
+        return res.status(403).json({ message: 'Apenas jurídico ou admin conseguem atualizar status' })
       }
 
       const validStatuses = [
@@ -328,14 +364,15 @@ class ClienteDocumentController {
       const { solicitado_pelo_juridico, prazo } = req.body;
 
       console.log('Enviando para o repositorio...', {
-        documentoId, status, solicitado_pelo_juridico
+        documentoId, status, solicitado_pelo_juridico, analisadoPor: userId
       });
 
+      // Usar o userId do usuário autenticado em vez de req.body
       const documento = await ClienteRepository.updateDocumentoStatus(
         documentoId,
         status,
         motivoRejeicao,
-        analisadoPor,
+        userId,  // ✅ Agora é o usuário autenticado, não um UUID fake
         apostilado,
         traduzido,
         solicitado_pelo_juridico
@@ -370,7 +407,7 @@ class ClienteDocumentController {
           if (titulo && mensagem) {
             await NotificationService.createNotification({
               clienteId: documento.cliente_id,
-              criadorId: analisadoPor,
+              criadorId: userId,  // ✅ Usar userId autenticado
               titulo,
               mensagem,
               tipo,
@@ -407,9 +444,15 @@ class ClienteDocumentController {
   async getProcessos(req: any, res: any) {
     try {
       const { clienteId } = req.params
+      const { id: userId, role } = req.user
 
       if (!clienteId) {
         return res.status(400).json({ message: 'clienteId é obrigatório' })
+      }
+
+      // Validar autorização
+      if (userId !== clienteId && role !== 'admin' && role !== 'juridico') {
+        return res.status(403).json({ message: 'Sem permissão para acessar processos de outro cliente' })
       }
 
       const processos = await ClienteRepository.getProcessosByClienteId(clienteId)

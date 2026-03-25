@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { authMiddleware } from '../middlewares/auth'
 import ClienteProfileController from '../controllers/cliente/ClienteProfileController'
 import ClienteDocumentController from '../controllers/cliente/ClienteDocumentController'
 import ClienteFormulariosController from '../controllers/cliente/ClienteFormulariosController'
@@ -10,9 +11,14 @@ import upload from '../middlewares/upload'
 
 const cliente = Router()
 
-// Profile Routes
+// Public Routes (sem autenticação)
 cliente.post('/register', ClienteProfileController.register.bind(ClienteProfileController))
 cliente.post('/register-lead', ClienteProfileController.registerLead.bind(ClienteProfileController))
+
+// Aplicar autenticação para todas as rotas abaixo
+cliente.use(authMiddleware)
+
+// Protected Routes (com autenticação)
 cliente.post('/attstatusbywpp', ClienteProfileController.AttStatusClientebyWpp.bind(ClienteProfileController))
 cliente.post('/profile-photo', upload.single('file'), ClienteProfileController.uploadProfilePhoto.bind(ClienteProfileController))
 cliente.get('/clientesbyparceiro/:parceiroId', ClienteProfileController.getByParceiro.bind(ClienteProfileController))

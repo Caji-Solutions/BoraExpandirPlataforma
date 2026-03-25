@@ -5,9 +5,15 @@ class ClienteNotificationController {
   async getNotificacoes(req: any, res: any) {
     try {
       const { clienteId } = req.params
+      const { id: userId, role } = req.user
 
       if (!clienteId) {
         return res.status(400).json({ message: 'clienteId é obrigatório' })
+      }
+
+      // Validar autorização
+      if (userId !== clienteId && role !== 'admin' && role !== 'juridico') {
+        return res.status(403).json({ message: 'Sem permissão para acessar notificações de outro cliente' })
       }
 
       const notificacoes = await ClienteRepository.getNotificacoes(clienteId)
@@ -54,9 +60,15 @@ class ClienteNotificationController {
   async markAllNotificacoesAsRead(req: any, res: any) {
     try {
       const { clienteId } = req.params
+      const { id: userId, role } = req.user
 
       if (!clienteId) {
         return res.status(400).json({ message: 'clienteId é obrigatório' })
+      }
+
+      // Validar autorização
+      if (userId !== clienteId && role !== 'admin' && role !== 'juridico') {
+        return res.status(403).json({ message: 'Sem permissão para marcar notificações de outro cliente como lidas' })
       }
 
       await ClienteRepository.markAllNotificacoesAsRead(clienteId)
