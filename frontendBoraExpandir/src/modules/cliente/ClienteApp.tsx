@@ -22,10 +22,11 @@ import { Apostilamento } from './pages/services/Apostilamento'
 import { DocumentUploadFlow } from './components/uploads/DocumentUploadFlow'
 import ClienteContratos from './components/contracts/ClienteContratos'
 import { Home, FileText, Upload, GitBranch, Bell, Languages, Users, Calendar, Settings, Stamp } from 'lucide-react'
-import { Config } from '@/components/ui/Config'
+import { Config } from '../../components/ui/Config'
 import { RequiredActionModal } from './components/forms/RequiredActionModal'
 import { clienteService } from './services/clienteService'
 import { useAuth } from '../../contexts/AuthContext'
+import { apiClient } from '@/modules/shared/services/api'
 
 export function ClienteApp() {
   const location = useLocation()
@@ -51,8 +52,6 @@ export function ClienteApp() {
   const [isLoading, setIsLoading] = useState(true)
   const { profile, activeProfile, isAuthenticated } = useAuth()
 
-  const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
-
   // Helper to sanitize name (same as backend)
   const sanitizeName = (name: string) => {
     return name
@@ -65,10 +64,7 @@ export function ClienteApp() {
 
   const fetchDocuments = async (clientId: string = client.id, reqDocs?: any[]) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/cliente/${clientId}/documentos`)
-      if (!response.ok) throw new Error('Falha ao buscar documentos')
-
-      const result = await response.json()
+      const result = await apiClient.get<{ data: any[] }>(`/cliente/${clientId}/documentos`)
       const apiDocs = result.data || []
 
       const currentReqDocs = reqDocs && reqDocs.length > 0 ? reqDocs : (requiredDocuments.length > 0 ? requiredDocuments : mockRequiredDocuments)
@@ -121,9 +117,7 @@ export function ClienteApp() {
 
   const fetchRequerimentos = async (clientId: string = client.id) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/cliente/${clientId}/requerimentos`)
-      if (!response.ok) throw new Error('Falha ao buscar requerimentos')
-      const result = await response.json()
+      const result = await apiClient.get<{ data: any[] }>(`/cliente/${clientId}/requerimentos`)
       setRequerimentos(result.data || [])
     } catch (error) {
       console.error('Erro ao buscar requerimentos:', error)
@@ -168,25 +162,22 @@ export function ClienteApp() {
 
   const fetchClientData = async (clientId: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/cliente/${clientId}`)
-      if (response.ok) {
-        const result = await response.json()
-        if (result.data) {
-          const apiCliente = result.data
-          const updatedClient: Client = {
-            ...client,
-            id: apiCliente.id,
-            name: apiCliente.nome,
-            email: apiCliente.email,
-            phone: apiCliente.whatsapp,
-            avatarUrl: apiCliente.foto_perfil,
-            clientId: apiCliente.client_id,
-            status: apiCliente.status,
-            createdAt: new Date(apiCliente.criado_em || apiCliente.created_at)
-          }
-          setClient(updatedClient)
-          return updatedClient
+      const result = await apiClient.get<{ data: any }>(`/cliente/${clientId}`)
+      if (result.data) {
+        const apiCliente = result.data
+        const updatedClient: Client = {
+          ...client,
+          id: apiCliente.id,
+          name: apiCliente.nome,
+          email: apiCliente.email,
+          phone: apiCliente.whatsapp,
+          avatarUrl: apiCliente.foto_perfil,
+          clientId: apiCliente.client_id,
+          status: apiCliente.status,
+          createdAt: new Date(apiCliente.criado_em || apiCliente.created_at)
         }
+        setClient(updatedClient)
+        return updatedClient
       }
     } catch (error) {
       console.error('Erro ao buscar dados do cliente:', error)
@@ -206,13 +197,10 @@ export function ClienteApp() {
           if (activeProfile.role === 'cliente') {
             // Primeiro tenta buscar o cliente pelo user_id (Auth UID)
             try {
-              const byUserRes = await fetch(`${API_BASE_URL}/cliente/by-user/${activeProfile.id}`)
-              if (byUserRes.ok) {
-                const byUserResult = await byUserRes.json()
-                if (byUserResult.data?.id) {
-                  activeId = byUserResult.data.id
-                  console.log('[ClienteApp] Cliente encontrado pelo user_id:', activeId)
-                }
+              const byUserResult = await apiClient.get<{ data: { id: string } }>(`/cliente/by-user/${activeProfile.id}`)
+              if (byUserResult.data?.id) {
+                activeId = byUserResult.data.id
+                console.log('[ClienteApp] Cliente encontrado pelo user_id:', activeId)
               }
             } catch (err) {
               console.warn('[ClienteApp] Erro ao buscar por user_id, usando fallback:', err)
@@ -231,9 +219,8 @@ export function ClienteApp() {
         const finalActiveId = currentClient?.id || activeId
 
         // Fetch processos
-        const processosRes = await fetch(`${API_BASE_URL}/cliente/${finalActiveId}/processos`)
-        if (processosRes.ok) {
-          const processosData = await processosRes.json()
+        try {
+          const processosData = await apiClient.get<{ data: any[] }>(`/cliente/${finalActiveId}/processos`)
           if (processosData.data && processosData.data.length > 0) {
             const apiProcesso = processosData.data[0]
             const phases = [
@@ -263,12 +250,13 @@ export function ClienteApp() {
             }
             setProcesso(mappedProcesso)
           }
+        } catch (error) {
+          console.error('Erro ao buscar processos:', error)
         }
 
         // Fetch dependentes
-        const dependentesRes = await fetch(`${API_BASE_URL}/cliente/${finalActiveId}/dependentes`)
-        if (dependentesRes.ok) {
-          const dependentesData = await dependentesRes.json()
+        try {
+          const dependentesData = await apiClient.get<{ data: any[] }>(`/cliente/${finalActiveId}/dependentes`)
           const members = (dependentesData.data || []).map((dep: any) => ({
             id: dep.id,
             name: dep.nome_completo,
@@ -276,7 +264,8 @@ export function ClienteApp() {
             type: dep.parentesco ? (dep.parentesco.charAt(0).toUpperCase() + dep.parentesco.slice(1)) : 'Dependente'
           }))
           setFamilyMembers([{ id: finalActiveId, name: currentClient?.name || client.name || 'Titular', email: currentClient?.email || client.email, type: 'Titular' }, ...members])
-        } else {
+        } catch (error) {
+          console.error('Erro ao buscar dependentes:', error)
           setFamilyMembers([{ id: finalActiveId, name: currentClient?.name || client.name || 'Titular', email: currentClient?.email || client.email, type: 'Titular' }])
         }
 
@@ -641,7 +630,7 @@ export function ClienteApp() {
                 }}
                 onDelete={async (documentId) => {
                   try {
-                    await fetch(`${API_BASE_URL}/cliente/documento/${documentId}`, { method: 'DELETE' })
+                    await apiClient.delete(`/cliente/documento/${documentId}`)
                     handleDeleteDocument(documentId)
                   } catch (e) {
                     console.error("Delete failed", e)

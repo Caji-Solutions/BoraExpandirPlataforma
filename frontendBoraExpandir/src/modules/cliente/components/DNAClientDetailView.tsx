@@ -27,6 +27,7 @@ import { RequirementsSection } from '@/modules/juridico/components/RequirementsS
 import juridicoService from '@/modules/juridico/services/juridicoService'
 import comercialService from '@/modules/comercial/services/comercialService'
 import { useAuth } from '@/contexts/AuthContext'
+import { apiClient } from '@/modules/shared/services/api'
 
 export function DNAClientDetailView({
     client,
@@ -79,9 +80,7 @@ export function DNAClientDetailView({
     const fetchNotes = useCallback(async () => {
         try {
             setLoadingNotes(true)
-            const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-            const response = await fetch(`${baseUrl}/juridico/notas/${client.true_id || client.id}`)
-            const result = await response.json()
+            const result = await apiClient.get<{ data: any[] }>(`/juridico/notas/${client.true_id || client.id}`)
 
             if (result.data) {
                 const mappedNotes: ClientNote[] = result.data.map((n: any) => ({
@@ -165,9 +164,7 @@ export function DNAClientDetailView({
             const fetchLeadNotes = async () => {
                 try {
                     setLoadingLeadNotes(true)
-                    const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-                    const response = await fetch(`${baseUrl}/cliente/lead-notas/${client.true_id || client.id}`)
-                    const result = await response.json()
+                    const result = await apiClient.get<{ data: any[] }>(`/cliente/lead-notas/${client.true_id || client.id}`)
                     setLeadNotesData(result.data || [])
                 } catch (err) {
                     console.error('Erro ao buscar notas do lead:', err)
@@ -198,23 +195,17 @@ export function DNAClientDetailView({
         if (!newNote.trim()) return
 
         try {
-            const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-            const response = await fetch(`${baseUrl}/juridico/notas`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    clienteId: client.true_id || client.id,
-                    processoId: client.processo_id,
-                    etapa: stageId || noteStageId || undefined,
-                    texto: newNote,
-                    autorId: activeProfile?.id,
-                    autorNome: activeProfile?.full_name,
-                    autorSetor: activeProfile?.role
-                })
+            const result = await apiClient.post<{ data: any }>('/juridico/notas', {
+                clienteId: client.true_id || client.id,
+                processoId: client.processo_id,
+                etapa: stageId || noteStageId || undefined,
+                texto: newNote,
+                autorId: activeProfile?.id,
+                autorNome: activeProfile?.full_name,
+                autorSetor: activeProfile?.role
             })
 
-            if (response.ok) {
-                const result = await response.json()
+            if (result.data) {
                 const n = result.data
                 const note: ClientNote = {
                     id: n.id,
@@ -236,31 +227,21 @@ export function DNAClientDetailView({
 
     const handleDeleteNote = async (noteId: string) => {
         try {
-            const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-            const response = await fetch(`${baseUrl}/juridico/notas/${noteId}?userId=${activeProfile?.id}`, { method: 'DELETE' })
-            if (response.ok) {
-                setNotes(notes.filter(n => n.id !== noteId))
-            } else {
-                const errorData = await response.json()
-                alert(errorData.message || 'Erro ao deletar nota da timeline')
-            }
+            await apiClient.delete(`/juridico/notas/${noteId}?userId=${activeProfile?.id}`)
+            setNotes(notes.filter(n => n.id !== noteId))
         } catch (err) {
             console.error('Erro ao deletar nota da timeline:', err)
+            alert('Erro ao deletar nota da timeline')
         }
     }
 
     const handleDeleteLeadNote = async (noteId: string) => {
         try {
-            const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-            const response = await fetch(`${baseUrl}/cliente/lead-notas/${noteId}?userId=${activeProfile?.id}`, { method: 'DELETE' })
-            if (response.ok) {
-                setLeadNotesData(prev => prev.filter(n => n.id !== noteId))
-            } else {
-                const errData = await response.json()
-                alert(errData.message || 'Erro ao deletar nota do lead')
-            }
+            await apiClient.delete(`/cliente/lead-notas/${noteId}?userId=${activeProfile?.id}`)
+            setLeadNotesData(prev => prev.filter(n => n.id !== noteId))
         } catch (err) {
             console.error('Erro ao deletar nota do lead:', err)
+            alert('Erro ao deletar nota do lead')
         }
     }
 
