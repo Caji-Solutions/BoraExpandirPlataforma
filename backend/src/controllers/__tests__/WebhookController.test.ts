@@ -1,11 +1,13 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import ContratoServicoRepository from '../../repositories/ContratoServicoRepository';
 import WebhookController from '../WebhookController';
+import NotificationService from '../../services/NotificationService';
 
 // Mock do repository
 vi.mock('../../repositories/ContratoServicoRepository');
+vi.mock('../../services/NotificationService');
 
 // Setup simplificado do app Express
 const app = express();
@@ -21,6 +23,7 @@ describe('WebhookController - Autentique', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        process.env.AUTENTIQUE_WEBHOOK_SECRETS = '';
         
         // Mock default behavior for finding contract
         (ContratoServicoRepository.findByAutentiqueDocumentId as any).mockResolvedValue({
@@ -141,5 +144,95 @@ describe('WebhookController - Autentique', () => {
         // Tenta buscar, mas como e nulo, nao deve tentar atualizar
         expect(ContratoServicoRepository.findByAutentiqueDocumentId).toHaveBeenCalledWith('non-existent-id');
         expect(ContratoServicoRepository.updateAssinaturaStatus).not.toHaveBeenCalled();
+    });
+
+    it('Deve processar evento "signature.viewed" e marcar visualizado', async () => {
+        const payload = {
+            event: {
+                type: 'signature.viewed',
+                data: { object: { id: mockAutentiqueDocId } }
+            }
+        };
+
+        const res = await request(app).post(route).send(payload);
+
+        expect(res.status).toBe(200);
+        await new Promise(process.nextTick);
+
+        expect(ContratoServicoRepository.findByAutentiqueDocumentId).toHaveBeenCalledWith(mockAutentiqueDocId);
+        expect(ContratoServicoRepository.updateAssinaturaStatus).toHaveBeenCalledWith(
+            mockContratoId,
+            'visualizado'
+        );
+    });
+
+    it('Deve processar evento "signature.delivery_failed" e notificar cliente', async () => {
+        // Modifica mock para retornar cliente_id tambem
+        (ContratoServicoRepository.findByAutentiqueDocumentId as any).mockResolvedValueOnce({
+            id: mockContratoId,
+            autentique_document_id: mockAutentiqueDocId,
+            cliente_id: 'cliente-abc'
+        });
+
+        const payload = {
+            event: {
+                type: 'signature.delivery_failed',
+                data: { object: { id: mockAutentiqueDocId } }
+            }
+        };
+
+        const res = await request(app).post(route).send(payload);
+
+        expect(res.status).toBe(200);
+        await new Promise(process.nextTick);
+
+        expect(ContratoServicoRepository.findByAutentiqueDocumentId).toHaveBeenCalledWith(mockAutentiqueDocId);
+        expect(ContratoServicoRepository.updateAssinaturaStatus).toHaveBeenCalledWith(
+            mockContratoId,
+            'erro_envio'
+        );
+        expect(NotificationService.createNotification).toHaveBeenCalledWith(expect.objectContaining({
+            clienteId: 'cliente-abc',
+            tipo: 'error'
+        }));
+    });
+
+    describe('Seguranca / Validacao de Secret', () => {
+        beforeEach(() => {
+            process.env.AUTENTIQUE_WEBHOOK_SECRETS = 'secret1, secret2';
+        });
+
+        afterEach(() => {
+            process.env.AUTENTIQUE_WEBHOOK_SECRETS = '';
+        });
+
+        it('Deve bloquear requisicao sem token se secrets estiverem configurados', async () => {
+            const res = await request(app).post(route).send({ event: { type: 'ping', data: { object: {} } } });
+            expect(res.status).toBe(401);
+            expect(res.body.error).toBe('Unauthorized');
+        });
+
+        it('Deve bloquear requisicao com token invalido', async () => {
+            const res = await request(app)
+                .post(route)
+                .set('Authorization', 'Bearer wrong_secret')
+                .send({ event: { type: 'ping', data: { object: {} } } });
+            expect(res.status).toBe(401);
+        });
+
+        it('Deve autorizar requisicao com token valido no header Authorization', async () => {
+            const res = await request(app)
+                .post(route)
+                .set('Authorization', 'Bearer secret1')
+                .send({ event: { type: 'ping', data: { object: { id: 'x' } } } });
+            expect(res.status).toBe(200);
+        });
+
+        it('Deve autorizar requisicao com token valido na query string', async () => {
+            const res = await request(app)
+                .post(`${route}?token=secret2`)
+                .send({ event: { type: 'ping', data: { object: { id: 'x' } } } });
+            expect(res.status).toBe(200);
+        });
     });
 });

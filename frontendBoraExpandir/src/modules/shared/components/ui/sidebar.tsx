@@ -297,7 +297,7 @@ export function SidebarProvider({ children, open = true, onOpenChange }: { child
 }
 
 export function SidebarInset({ children }: { children: React.ReactNode }) {
-  return <div className="flex-1 overflow-auto">{children}</div>
+  return <div className="flex-1 overflow-auto md:ml-64">{children}</div>
 }
 
 export function SidebarContent({ children }: { children: React.ReactNode }) {
