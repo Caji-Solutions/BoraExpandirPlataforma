@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Eye, Calendar, User } from "lucide-react";
-import { Badge } from "@/components/ui/Badge";
+import { Badge } from '@/modules/shared/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from "@/modules/shared/components/ui/card";
 import { Checkbox } from "@/modules/shared/components/ui/checkbox";
 import { Input } from "@/modules/shared/components/ui/input";

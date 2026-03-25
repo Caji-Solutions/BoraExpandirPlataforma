@@ -10,7 +10,7 @@ import {
 } from "@/modules/shared/components/ui/table";
 import { Input } from "@/modules/shared/components/ui/input";
 import { Button } from "@/modules/shared/components/ui/button";
-import { Badge } from '@/components/ui/Badge';
+import { Badge } from '@/modules/shared/components/ui/badge';
 import { Search, Calendar } from "lucide-react";
 
 interface AuditLog {

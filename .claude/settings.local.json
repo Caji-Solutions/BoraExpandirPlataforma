@@ -13,7 +13,10 @@
       "Bash(do echo:*)",
       "Read(//home/joaov/Documents/BoraExpandirPLataforma/BoraExpandirPlataforma/**)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(ls \"c:\\\\Users\\\\natha\\\\Documents\\\\Caji\\\\BoraExpandirPlataforma\\\\frontendBoraExpandir\\\\src\\\\modules\\\\comercial\\\\components\"\" 2>/dev/null || echo \"Directory not found \")"
+      "Bash(ls \"c:\\\\Users\\\\natha\\\\Documents\\\\Caji\\\\BoraExpandirPlataforma\\\\frontendBoraExpandir\\\\src\\\\modules\\\\comercial\\\\components\"\" 2>/dev/null || echo \"Directory not found \")",
+      "Bash(while read:*)",
+      "Bash(do sed:*)",
+      "Bash(grep -r from.*components/ui/Badge /home/joaov/Documents/BoraExpandirPLataforma/BoraExpandirPlataforma/frontendBoraExpandir/src --include=*.tsx --include=*.ts)"
     ]
   }
 }

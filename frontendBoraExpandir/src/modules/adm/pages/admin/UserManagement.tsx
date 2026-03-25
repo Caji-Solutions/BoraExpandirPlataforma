@@ -26,7 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/modules/shared/components/ui/table";
-import { Badge } from "@/components/ui/Badge";
+import { Badge } from '@/modules/shared/components/ui/badge';
 import { Avatar, AvatarFallback } from "@/modules/shared/components/ui/avatar";
 import { Plus, MoreVertical, Trash2, Eye, EyeOff, Pencil, Check, X } from "lucide-react";
 import { Checkbox } from "@/modules/shared/components/ui/checkbox";

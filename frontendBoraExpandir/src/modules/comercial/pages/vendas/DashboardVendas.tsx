@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { TrendingUp, Target, Plus, DollarSign, Percent, Clock, AlertCircle, CheckCircle, ArrowRight } from 'lucide-react'
 import type { Contrato, Cliente, ContratoServico, Agendamento, Requerimento } from '../../../types/comercial'
-import { Badge } from '@/components/ui/Badge'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import comercialService from '../../services/comercialService'
 import { useAuth } from '../../../../contexts/AuthContext'
 import FunnelVendas from './components/FunnelVendas'

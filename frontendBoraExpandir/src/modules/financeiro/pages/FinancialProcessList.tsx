@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ExternalLink, Send, CheckCircle, FileText, FileSignature, Calendar, DollarSign, Mail, Receipt, AlertCircle, Clock } from "lucide-react";
-import { Badge } from "@/components/ui/Badge";
+import { Badge } from '@/modules/shared/components/ui/badge';
 import { Button } from "@/modules/shared/components/ui/button";
 import { Progress } from "@/modules/shared/components/ui/progress";
 import {

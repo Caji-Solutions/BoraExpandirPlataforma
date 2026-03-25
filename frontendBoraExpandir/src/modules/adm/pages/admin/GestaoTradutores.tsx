@@ -14,7 +14,7 @@ import {
   DollarSign,
   Settings
 } from 'lucide-react'
-import { Badge } from '@/components/ui/Badge'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { configPlataforma } from '../../../../services/comissaoService'
 
 // Tipos

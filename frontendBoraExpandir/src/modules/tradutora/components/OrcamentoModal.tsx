@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { X, FileText, Calendar, DollarSign, Send } from 'lucide-react'
 import type { OrcamentoItem, OrcamentoFormData } from '../types'
-import { Badge } from '@/components/ui/Badge'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { getDataPrazoPadrao } from '../../../services/comissaoService'
 
 interface OrcamentoModalProps {

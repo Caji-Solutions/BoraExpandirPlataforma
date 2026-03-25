@@ -17,7 +17,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card'
 import { Button } from '@/modules/shared/components/ui/button'
 import { Input } from '@/modules/shared/components/ui/input'
-import { Badge } from '@/components/ui/Badge'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { cn, formatDateSimple } from '../../cliente/lib/utils'
 import { apostilamentoService, Apostilamento } from '../services/apostilamentoService'
 

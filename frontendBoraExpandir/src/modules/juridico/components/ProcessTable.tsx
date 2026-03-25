@@ -12,7 +12,7 @@ import {
     Circle,
     Info
 } from "lucide-react";
-import { Badge } from '@/components/ui/Badge';
+import { Badge } from '@/modules/shared/components/ui/badge';
 import { Button } from "@/modules/shared/components/ui/button";
 import { Input } from "@/modules/shared/components/ui/input";
 import {

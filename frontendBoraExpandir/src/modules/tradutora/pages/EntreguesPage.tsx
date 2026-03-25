@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { CheckCircle2, ChevronDown, ChevronRight, Folder, FileText, ExternalLink } from 'lucide-react'
 import type { OrcamentoItem } from '../types'
-import { Badge } from '@/components/ui/Badge'
+import { Badge } from '@/modules/shared/components/ui/badge'
 
 interface EntreguesPageProps {
   items: OrcamentoItem[]

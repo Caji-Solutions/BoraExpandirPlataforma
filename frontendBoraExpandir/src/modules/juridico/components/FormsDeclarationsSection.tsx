@@ -13,7 +13,7 @@ import {
     AlertCircle
 } from 'lucide-react'
 import { Button } from '@/modules/shared/components/ui/button'
-import { Badge } from '@/components/ui/Badge'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { formatFileSize } from '../../cliente/lib/utils'
 import { compressFile } from '../../../utils/compressFile'
 

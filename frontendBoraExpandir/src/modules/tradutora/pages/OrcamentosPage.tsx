@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { FileText, Calendar, Send, Folder, ArrowLeft, Search, User, ChevronRight, Clock, CheckCircle2, AlertTriangle } from 'lucide-react'
 import OrcamentoModal from '../components/OrcamentoModal'
 import type { OrcamentoItem, OrcamentoFormData } from '../types'
-import { Badge } from '@/components/ui/Badge'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { Button } from '@/components/ui/Button'
 
 interface OrcamentosPageProps {

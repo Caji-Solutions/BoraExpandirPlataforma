@@ -20,7 +20,7 @@ import {
   Bell
 } from 'lucide-react';
 import { Button } from '@/modules/shared/components/ui/button';
-import { Badge } from '@/components/ui/Badge';
+import { Badge } from '@/modules/shared/components/ui/badge';
 import { Card } from '@/modules/shared/components/ui/card';
 import { cn } from '../../cliente/lib/utils';
 import { ScrollArea } from '@/modules/shared/components/ui/scroll-area';

@@ -1,5 +1,5 @@
 import { User, ChevronRight } from "lucide-react";
-import { Badge } from '@/components/ui/Badge';
+import { Badge } from '@/modules/shared/components/ui/badge';
 import { Button } from "@/modules/shared/components/ui/button";
 
 interface ProcessMemberCardProps {

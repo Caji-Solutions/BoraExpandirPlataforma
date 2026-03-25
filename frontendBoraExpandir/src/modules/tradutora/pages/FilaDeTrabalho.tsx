@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { Clock, CheckCircle2, AlertTriangle, ExternalLink } from 'lucide-react'
 import DeliveryModal from '../components/DeliveryModal'
 import type { OrcamentoItem } from '../types'
-import { Badge } from '@/components/ui/Badge'
+import { Badge } from '@/modules/shared/components/ui/badge'
 
 interface FilaDeTrabalhoProps {
   items: OrcamentoItem[]

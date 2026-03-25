@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FileText, ChevronRight, Loader2, AlertCircle, CheckCircle, Calendar, Clock } from "lucide-react";
 import { atribuirResponsavel } from "../services/juridicoService";
-import { Badge } from "@/components/ui/Badge";
+import { Badge } from '@/modules/shared/components/ui/badge';
 
 // Tipos
 export interface DocumentoCliente {

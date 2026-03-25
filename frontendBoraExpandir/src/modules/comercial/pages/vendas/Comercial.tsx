@@ -39,7 +39,7 @@ import type {
 
 } from '../../../types/comercial'
 import Toast, { useToast, ToastContainer } from '@/components/ui/Toast'
-import { Badge } from '@/components/ui/Badge'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import comercialService from '../../services/comercialService'
 
 // Componentes de página

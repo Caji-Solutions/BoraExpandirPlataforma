@@ -18,7 +18,7 @@ import {
     Loader2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Badge } from './Badge'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { ClientDNAData, CATEGORIAS_LIST, formatDate } from './ClientDNA'
 import juridicoService, { type FuncionarioJuridico } from '../../modules/juridico/services/juridicoService'
 import { useAuth } from '../../contexts/AuthContext'

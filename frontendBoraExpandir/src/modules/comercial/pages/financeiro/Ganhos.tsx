@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
 import { DollarSign, TrendingUp, Calendar, Award, Filter, X, User, Bot } from 'lucide-react'
-import { Badge } from '@/components/ui/Badge'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { TimeRangeFilter, filterByTimeRange, type TimeRange } from '@/components/ui/TimeRangeFilter'
 import { SortControl, sortData, type SortDirection, type SortOption } from '@/components/ui/SortControl'
 import { calcularComissao, getLabelOrigem, type OrigemVenda } from '../../../../services/comissaoService'

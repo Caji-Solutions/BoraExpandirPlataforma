@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { X, FileText, CheckCircle, AlertCircle, Upload, Fingerprint } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Agendamento } from '../../../types/comercial'
-import { Badge } from '@/components/ui/Badge'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { useToast } from '@/components/ui/Toast'
 
 interface Props {

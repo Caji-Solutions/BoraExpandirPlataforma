@@ -12,7 +12,7 @@ import {
     User
 } from 'lucide-react'
 import { Button } from '@/modules/shared/components/ui/button'
-import { Badge } from '@/components/ui/Badge'
+import { Badge } from '@/modules/shared/components/ui/badge'
 import { clienteService } from '../../cliente/services/clienteService'
 import { formatDate } from '../../cliente/lib/utils'
 import { cn } from '@/lib/utils'

@@ -16,7 +16,7 @@ import {
 import { ModalDelegacao, type MembroEquipe } from "../components/ModalDelegacao";
 import { ModalDetalhesItem } from "../components/ModalDetalhesItem";
 import juridicoService, { type Processo, type FuncionarioJuridico } from "../services/juridicoService";
-import { Badge } from "@/components/ui/Badge";
+import { Badge } from '@/modules/shared/components/ui/badge';
 import { Button } from "@/modules/shared/components/ui/button";
 
 // Componente de Status

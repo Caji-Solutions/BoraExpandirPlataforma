@@ -18,7 +18,7 @@ import {
   Calendar,
   RotateCcw
 } from "lucide-react";
-import { Badge } from "@/components/ui/Badge";
+import { Badge } from '@/modules/shared/components/ui/badge';
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useNavigate, useSearchParams } from "react-router-dom";

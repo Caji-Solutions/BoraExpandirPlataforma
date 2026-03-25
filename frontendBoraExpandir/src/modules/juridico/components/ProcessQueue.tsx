@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom';
 import { FileText, User, ChevronRight, Folder, ChevronLeft, Search } from "lucide-react";
 import { Button } from "@/modules/shared/components/ui/button";
-import { Badge } from '@/components/ui/Badge';
+import { Badge } from '@/modules/shared/components/ui/badge';
 import { Card } from "@/modules/shared/components/ui/card";
 import { ProcessAnalysis, JuridicoDocument, AnalysisStage } from './ProcessAnalysis';
 import juridicoService, { Processo } from '../services/juridicoService';
