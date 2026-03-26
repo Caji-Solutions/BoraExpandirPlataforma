@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { supabase } from '../config/SupabaseClient'
+import { authMiddleware } from '../middlewares/auth'
+import { loginSchema, registerSchema, validateInput } from '../utils/validators'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 
@@ -46,14 +48,17 @@ router.post('/login', async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body
 
-        if (!email || !password) {
-            return res.status(400).json({ error: 'Email e senha são obrigatórios' })
+        const validation = validateInput(loginSchema, { email, password })
+        if (!validation.success) {
+            return res.status(400).json({ message: 'Validação falhou', errors: validation.errors })
         }
+
+        const { email: validEmail, password: validPassword } = validation.data as { email: string; password: string }
 
         const { data: profile, error } = await supabase
             .from('profiles')
             .select('*')
-            .eq('email', email)
+            .eq('email', validEmail)
             .single()
 
         if (error || !profile) {
@@ -64,7 +69,7 @@ router.post('/login', async (req: Request, res: Response) => {
             return res.status(401).json({ error: 'Erro de autenticação: Conta sem senha definida' })
         }
 
-        const isMatch = await bcrypt.compare(password, profile.password_hash)
+        const isMatch = await bcrypt.compare(validPassword, profile.password_hash)
 
         if (!isMatch) {
             return res.status(401).json({ error: 'Email ou senha inválidos' })
@@ -169,29 +174,27 @@ router.post('/register', async (req: Request, res: Response) => {
 
         const { name, email, password, role, nivel, is_supervisor, supervisor_id, cpf, telefone, horario_trabalho } = req.body
 
-        if (!name || !email || !password || !role) {
-            return res.status(400).json({ error: 'Nome, email, senha e função são obrigatórios' })
+        const validation = validateInput(registerSchema, { name, email, password, role })
+        if (!validation.success) {
+            return res.status(400).json({ message: 'Validação falhou', errors: validation.errors })
         }
 
-        const validRoles = ['comercial', 'juridico', 'administrativo', 'tradutor', 'super_admin']
-        if (!validRoles.includes(role)) {
-            return res.status(400).json({ error: `Função inválida. Opções: ${validRoles.join(', ')}` })
-        }
+        const { name: validName, email: validEmail, password: validPassword, role: validRole } = validation.data as { name: string; email: string; password: string; role: string }
 
-        const isSupervisor = role === 'tradutor' ? false : (is_supervisor || false)
-        const cargo = determineCargo(role, nivel || null, isSupervisor)
+        const isSupervisor = validRole === 'tradutor' ? false : (is_supervisor || false)
+        const cargo = determineCargo(validRole, nivel || null, isSupervisor)
 
         const salt = await bcrypt.genSalt(10)
-        const password_hash = await bcrypt.hash(password, salt)
+        const password_hash = await bcrypt.hash(validPassword, salt)
         const newId = crypto.randomUUID()
 
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .insert({
                 id: newId,
-                full_name: name,
-                email,
-                role,
+                full_name: validName,
+                email: validEmail,
+                role: validRole,
                 cpf: cpf || null,
                 telefone: telefone || null,
                 horario_trabalho: horario_trabalho || null,
@@ -222,11 +225,11 @@ router.post('/register', async (req: Request, res: Response) => {
 // ============================================
 // GET /auth/team — Listar todos os colaboradores
 // ============================================
-router.get('/team', async (req: Request, res: Response) => {
+router.get('/team', authMiddleware, async (req: Request, res: Response) => {
     try {
         const { data: profiles, error } = await supabase
             .from('profiles')
-            .select('*')
+            .select('id, full_name, email, role, cargo, horario_trabalho')
             .order('role', { ascending: true })
             .order('full_name', { ascending: true })
 

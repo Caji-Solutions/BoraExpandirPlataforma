@@ -30,78 +30,10 @@ interface SecurityLog {
   severity: "info" | "warning" | "critical";
 }
 
-const mockRequests: PendingRequest[] = [
-  {
-    id: "1",
-    requester: "Vendedor Lucas",
-    type: "Desconto",
-    description: "Pediu 15% OFF para Cliente X (Visto D7)",
-    date: "23/11/2024 10:30",
-    status: "pending",
-  },
-  {
-    id: "2",
-    requester: "Marina Costa",
-    type: "Exceção",
-    description: "Solicitou pular etapa 2 para Cliente Y (urgência)",
-    date: "23/11/2024 09:15",
-    status: "pending",
-  },
-  {
-    id: "3",
-    requester: "Carlos Santos",
-    type: "Reembolso",
-    description: "Pediu reembolso de R$ 1.200 para Cliente Z",
-    date: "22/11/2024 16:45",
-    status: "pending",
-  },
-];
-
-const mockSecurityLogs: SecurityLog[] = [
-  {
-    id: "1",
-    timestamp: "23/11/2024 14:23",
-    user: "Dra. Ana Silva",
-    action: "Excluiu documento",
-    target: "Passaporte do processo #123",
-    severity: "critical",
-  },
-  {
-    id: "2",
-    timestamp: "23/11/2024 13:15",
-    user: "Carlos Santos",
-    action: "Alterou status",
-    target: "Cliente João Silva - para 'Aprovado'",
-    severity: "warning",
-  },
-  {
-    id: "3",
-    timestamp: "23/11/2024 12:00",
-    user: "Marina Costa",
-    action: "Acessou dados sensíveis",
-    target: "Relatório financeiro completo",
-    severity: "info",
-  },
-  {
-    id: "4",
-    timestamp: "23/11/2024 11:30",
-    user: "Vendedor Lucas",
-    action: "Tentou acessar",
-    target: "Painel de configurações (bloqueado)",
-    severity: "warning",
-  },
-  {
-    id: "5",
-    timestamp: "23/11/2024 10:05",
-    user: "Dra. Ana Silva",
-    action: "Exportou dados",
-    target: "Lista de clientes ativos",
-    severity: "info",
-  },
-];
 
 export default function AuditoriaAprovacoes() {
-  const [requests, setRequests] = useState<PendingRequest[]>(mockRequests);
+  const [requests, setRequests] = useState<PendingRequest[]>([]);
+  const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([]);
 
   const handleApprove = (id: string) => {
     setRequests(requests.map(req => 
@@ -147,6 +79,11 @@ export default function AuditoriaAprovacoes() {
           </p>
         </CardHeader>
         <CardContent>
+          {requests.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhuma aprovação pendente
+            </div>
+          ) : (
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
@@ -212,6 +149,7 @@ export default function AuditoriaAprovacoes() {
               ))}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -235,7 +173,14 @@ export default function AuditoriaAprovacoes() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockSecurityLogs.map((log) => (
+              {securityLogs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    Nenhum log de segurança encontrado
+                  </TableCell>
+                </TableRow>
+              ) : (
+                securityLogs.map((log) => (
                 <TableRow key={log.id} className="border-border">
                   <TableCell className="text-muted-foreground text-sm font-mono">
                     {log.timestamp}
@@ -262,7 +207,8 @@ export default function AuditoriaAprovacoes() {
                     </Badge>
                   </TableCell>
                 </TableRow>
-              ))}
+              ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

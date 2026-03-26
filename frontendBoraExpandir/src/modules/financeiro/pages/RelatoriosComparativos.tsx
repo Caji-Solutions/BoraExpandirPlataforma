@@ -24,36 +24,10 @@ import {
   ArrowDownRight,
 } from 'lucide-react'
 
-// Dados mock para comparação
-const dadosMensais = [
-  { mes: 'Jan', processos: 45, consultorias: 28, assessorias: 15 },
-  { mes: 'Fev', processos: 52, consultorias: 32, assessorias: 18 },
-  { mes: 'Mar', processos: 48, consultorias: 35, assessorias: 22 },
-  { mes: 'Abr', processos: 61, consultorias: 40, assessorias: 25 },
-  { mes: 'Mai', processos: 55, consultorias: 38, assessorias: 28 },
-  { mes: 'Jun', processos: 67, consultorias: 45, assessorias: 32 },
-  { mes: 'Jul', processos: 72, consultorias: 48, assessorias: 35 },
-  { mes: 'Ago', processos: 68, consultorias: 52, assessorias: 38 },
-  { mes: 'Set', processos: 75, consultorias: 55, assessorias: 42 },
-  { mes: 'Out', processos: 82, consultorias: 58, assessorias: 45 },
-  { mes: 'Nov', processos: 78, consultorias: 62, assessorias: 48 },
-  { mes: 'Dez', processos: 85, consultorias: 65, assessorias: 52 },
-]
-
-const dadosDistribuicao = [
-  { name: 'Processos', value: 788, color: '#3b82f6' },
-  { name: 'Consultorias', value: 558, color: '#10b981' },
-  { name: 'Assessorias', value: 400, color: '#f59e0b' },
-]
-
-const dadosFaturamento = [
-  { mes: 'Jan', processos: 125000, consultorias: 85000, assessorias: 45000 },
-  { mes: 'Fev', processos: 142000, consultorias: 92000, assessorias: 52000 },
-  { mes: 'Mar', processos: 138000, consultorias: 98000, assessorias: 58000 },
-  { mes: 'Abr', processos: 165000, consultorias: 105000, assessorias: 68000 },
-  { mes: 'Mai', processos: 155000, consultorias: 112000, assessorias: 75000 },
-  { mes: 'Jun', processos: 178000, consultorias: 125000, assessorias: 82000 },
-]
+// TODO: dados mock - usar query real de relatórios comparativos
+const dadosMensais = []
+const dadosDistribuicao = []
+const dadosFaturamento = []
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b']
 

@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+import { apiClient } from '@/modules/shared/services/api';
 
 export interface Apostilamento {
   id: string;
@@ -25,13 +25,7 @@ export interface Apostilamento {
 
 export const apostilamentoService = {
   async getAllApostilamentos(): Promise<Apostilamento[]> {
-    const response = await fetch(`${API_BASE_URL}/apostilamentos`);
-    
-    if (!response.ok) {
-      throw new Error('Falha ao buscar apostilamentos');
-    }
-    
-    const result = await response.json();
+    const result = await apiClient.get(`/apostilamentos`);
     return result.data || [];
   },
 
@@ -40,19 +34,6 @@ export const apostilamentoService = {
     documentoApostiladoUrl?: string;
     observacoes?: string;
   }) {
-    const response = await fetch(`${API_BASE_URL}/apostilamentos/${id}/status`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(params),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Falha ao atualizar status do apostilamento');
-    }
-
-    return response.json();
+    return apiClient.patch(`/apostilamentos/${id}/status`, params);
   }
 };

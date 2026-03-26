@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import AdmController from '../controllers/AdmController';
+import AdmController from '../controllers/adm/AdmController';
 
 const router = Router();
 

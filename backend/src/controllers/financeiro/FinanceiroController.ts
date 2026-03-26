@@ -5,6 +5,7 @@ import ContratoServicoRepository from '../../repositories/ContratoServicoReposit
 import NotificationService from '../../services/NotificationService'
 
 import TraducoesRepository from '../../repositories/TraducoesRepository'
+import FinanceiroDashboardRepository from '../../repositories/FinanceiroDashboardRepository'
 
 
 class FinanceiroController {
@@ -688,6 +689,82 @@ class FinanceiroController {
         } catch (error: any) {
             console.error('[FinanceiroController] Erro ao aprovar comprovante de multa:', error)
             return res.status(500).json({ message: 'Erro ao aprovar comprovante', error: error.message })
+        }
+    }
+
+    /**
+     * GET /financeiro/dashboard/metricas
+     * Retorna métricas do dashboard (faturamento, novos clientes, contas receber, comissões)
+     */
+    async getDashboardMetricas(_req: any, res: any) {
+        try {
+            const agora = new Date()
+            const mes = agora.getMonth() + 1
+            const ano = agora.getFullYear()
+
+            const [faturamento, novosClientes, contasReceber, comissoes] = await Promise.all([
+                FinanceiroDashboardRepository.getFaturamento(mes, ano),
+                FinanceiroDashboardRepository.getNovosClientes(mes, ano),
+                FinanceiroDashboardRepository.getContasReceber(),
+                FinanceiroDashboardRepository.getComissoes(mes, ano)
+            ])
+
+            const resposta = {
+                faturamento,
+                novos_clientes: novosClientes,
+                contas_receber: contasReceber,
+                comissoes
+            }
+
+            return res.status(200).json(resposta)
+        } catch (error: any) {
+            console.error('[FinanceiroController] Erro ao buscar métricas do dashboard:', error)
+            return res.status(500).json({ message: 'Erro ao buscar métricas do dashboard', error: error.message })
+        }
+    }
+
+    /**
+     * GET /financeiro/dashboard/vendedores
+     * Retorna ranking de vendedores do mês atual
+     */
+    async getDashboardVendedores(_req: any, res: any) {
+        try {
+            const agora = new Date()
+            const mes = agora.getMonth() + 1
+            const ano = agora.getFullYear()
+
+            const vendedores = await FinanceiroDashboardRepository.getVendedoresRanking(mes, ano)
+
+            const vendedoresMapeados = vendedores.map((v: any) => ({
+                id: v.id,
+                nome: v.nome,
+                vendas: v.vendas,
+                meta: null,
+                comissao: v.comissao,
+                status: v.meta_atingida > 0 ? 'acima' : 'abaixo',
+                servico: null
+            }))
+
+            return res.status(200).json({ data: vendedoresMapeados })
+        } catch (error: any) {
+            console.error('[FinanceiroController] Erro ao buscar ranking de vendedores:', error)
+            return res.status(500).json({ message: 'Erro ao buscar ranking de vendedores', error: error.message })
+        }
+    }
+
+    /**
+     * GET /financeiro/titularidades
+     * TODO: endpoint em desenvolvimento
+     */
+    async getTitularidades(_req: any, res: any) {
+        try {
+            return res.status(200).json({
+                data: [],
+                message: 'Em desenvolvimento'
+            })
+        } catch (error: any) {
+            console.error('[FinanceiroController] Erro ao buscar titularidades:', error)
+            return res.status(500).json({ message: 'Erro ao buscar titularidades', error: error.message })
         }
     }
 }

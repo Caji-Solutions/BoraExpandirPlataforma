@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import ApostilamentoController from '../controllers/ApostilamentoController';
+import ApostilamentoController from '../controllers/apostilamento/ApostilamentoController';
 
 const router = Router();
 

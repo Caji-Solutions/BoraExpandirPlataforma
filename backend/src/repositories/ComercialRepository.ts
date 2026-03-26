@@ -18,7 +18,6 @@ class ComercialRepository {
                         .from('clientes')
                         .update({ email: agendamento.email })
                         .eq('id', agendamento.cliente_id)
-                    console.log(`[ComercialRepository] Email ${agendamento.email} atrelado/atualizado para o cliente ${agendamento.cliente_id}`)
                 }
             } catch (err) {
                 console.warn('[ComercialRepository] Erro ao tentar atualizar o email do cliente:', err)
@@ -41,8 +40,6 @@ class ComercialRepository {
     }
 
     async updateAgendamentoFull(id: string, payload: any) {
-        console.log('Atualizando agendamento no banco:', id, payload)
-
         const { data, error } = await supabase
             .from('agendamentos')
             .update(payload)

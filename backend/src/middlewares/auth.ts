@@ -13,12 +13,12 @@ export const authMiddleware = async (req: any, res: Response, next: NextFunction
         // Buscar o profile vinculado a esse token no banco
         const { data: profile, error } = await supabase
             .from('profiles')
-            .select('*')
+            .select('id, email, full_name, role, cargo, supervisor_id')
             .eq('auth_token', token)
             .single()
 
         if (error || !profile) {
-            console.error('[authMiddleware] Token invalido ou expirado:', token)
+            console.error('[authMiddleware] Token inválido ou expirado')
             return res.status(401).json({ error: 'Token inválido ou expirado' })
         }
 

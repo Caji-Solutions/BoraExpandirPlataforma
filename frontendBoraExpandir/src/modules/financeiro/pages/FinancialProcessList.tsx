@@ -95,83 +95,8 @@ function getProcessVisualStatus(process: FinancialProcess): FinancialProcess["st
   return process.status;
 }
 
-const processes: FinancialProcess[] = [
-  {
-    id: "1",
-    contratoId: "CTR-2024-001",
-    cliente: "Carlos Mendes",
-    servico: "Visto D7",
-    valorTotal: 5000,
-    valorEntrada: 2000,
-    dataVencimentoEntrada: "10/10/2024",
-    progressoPagamento: 50,
-    totalParcelas: 4,
-    parcelasPagas: 2,
-    proximoVencimento: getDateInCurrentWeek(1), // Vence amanhã - será "A Vencer"
-    valorProximaParcela: 1250,
-    status: "em_dia",
-  },
-  {
-    id: "2",
-    contratoId: "CTR-2024-002",
-    cliente: "Ana Paula Costa",
-    servico: "Cidadania Portuguesa",
-    valorTotal: 8000,
-    valorEntrada: 3000,
-    dataVencimentoEntrada: "15/10/2024",
-    progressoPagamento: 37.5,
-    totalParcelas: 4,
-    parcelasPagas: 1,
-    proximoVencimento: "20/11/2024",
-    valorProximaParcela: 2000,
-    status: "atrasado",
-  },
-  {
-    id: "3",
-    contratoId: "CTR-2024-003",
-    cliente: "Roberto Silva",
-    servico: "Green Card EB-2",
-    valorTotal: 12000,
-    valorEntrada: 4000,
-    dataVencimentoEntrada: "01/12/2024",
-    progressoPagamento: 0,
-    totalParcelas: 6,
-    parcelasPagas: 0,
-    proximoVencimento: "01/12/2024",
-    valorProximaParcela: 2000,
-    status: "aguardando",
-  },
-  {
-    id: "4",
-    contratoId: "CTR-2024-004",
-    cliente: "Fernanda Lima",
-    servico: "Visto E-2",
-    valorTotal: 9500,
-    valorEntrada: 3500,
-    dataVencimentoEntrada: "20/08/2024",
-    progressoPagamento: 65,
-    totalParcelas: 5,
-    parcelasPagas: 3,
-    proximoVencimento: getDateInCurrentWeek(3), // Vence em 3 dias - será "A Vencer"
-    valorProximaParcela: 1500,
-    status: "em_dia",
-  },
-  {
-    id: "5",
-    contratoId: "CTR-2024-005",
-    cliente: "Pedro Almeida",
-    servico: "Cidadania Italiana",
-    valorTotal: 7200,
-    valorEntrada: 2400,
-    dataVencimentoEntrada: "10/07/2024",
-    progressoPagamento: 80,
-    totalParcelas: 4,
-    parcelasPagas: 3,
-    proximoVencimento: "25/03/2026",
-    valorProximaParcela: 1800,
-    status: "em_dia",
-  },
-];
+// TODO: dados mock - usar query real de processos financeiros
+const processes: FinancialProcess[] = [];
 
 // Função auxiliar para obter data formatada da semana atual (para mock)
 function getDateInCurrentWeek(daysFromToday: number = 2): string {
@@ -183,81 +108,8 @@ function getDateInCurrentWeek(daysFromToday: number = 2): string {
   return `${day}/${month}/${year}`;
 }
 
-const installments: Installment[] = [
-  {
-    id: "1",
-    descricao: "Entrada",
-    valor: 2500,
-    vencimento: "05/09/2024",
-    status: "pago",
-    dataPagamento: "05/09/2024",
-  },
-  {
-    id: "2",
-    descricao: "Parcela 1",
-    valor: 1800,
-    vencimento: "05/10/2024",
-    status: "pago",
-    dataPagamento: "03/10/2024",
-  },
-  {
-    id: "3",
-    descricao: "Parcela 2",
-    valor: 1800,
-    vencimento: "05/11/2024",
-    status: "pago",
-    dataPagamento: "05/11/2024",
-  },
-  {
-    id: "4",
-    descricao: "Parcela 3",
-    valor: 1500,
-    vencimento: "10/12/2024",
-    status: "atrasado",
-  },
-  {
-    id: "5",
-    descricao: "Parcela 4",
-    valor: 1500,
-    vencimento: "05/01/2025",
-    status: "atrasado",
-  },
-  {
-    id: "6",
-    descricao: "Parcela 5",
-    valor: 1200,
-    vencimento: getDateInCurrentWeek(0), // Vence hoje
-    status: "pendente", // Será exibido como "A Vencer"
-  },
-  {
-    id: "7",
-    descricao: "Parcela 6",
-    valor: 1200,
-    vencimento: getDateInCurrentWeek(2), // Vence em 2 dias
-    status: "pendente", // Será exibido como "A Vencer"
-  },
-  {
-    id: "8",
-    descricao: "Parcela 7",
-    valor: 1200,
-    vencimento: getDateInCurrentWeek(5), // Vence em 5 dias (ainda na semana)
-    status: "pendente", // Será exibido como "A Vencer"
-  },
-  {
-    id: "9",
-    descricao: "Parcela 8",
-    valor: 1500,
-    vencimento: "15/02/2026",
-    status: "pendente",
-  },
-  {
-    id: "10",
-    descricao: "Parcela Final",
-    valor: 2000,
-    vencimento: "15/03/2026",
-    status: "pendente",
-  },
-];
+// TODO: dados mock - usar query real de parcelas
+const installments: Installment[] = [];
 
 function getStatusBadge(status: string) {
   switch (status) {
