@@ -292,6 +292,20 @@ class AutentiqueService {
             console.error('[AutentiqueService] Falha ao assinar automaticamente como empresa:', signErr);
         }
 
+        // Apos a empresa assinar, buscar a URL do PDF com a assinatura da empresa
+        try {
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            const docWithFiles = await this.getDocument(autentiqueDoc.id);
+            if (docWithFiles?.files?.signed) {
+                autentiqueDoc.signed_file_url = docWithFiles.files.signed;
+                console.log(`[AutentiqueService] URL do documento com assinatura da empresa obtida com sucesso.`);
+            } else {
+                console.warn('[AutentiqueService] files.signed nao disponivel apos assinatura da empresa.');
+            }
+        } catch (fetchErr) {
+            console.warn('[AutentiqueService] Nao foi possivel obter URL assinada apos assinatura da empresa:', fetchErr);
+        }
+
         return autentiqueDoc;
     }
     /**

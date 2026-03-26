@@ -311,10 +311,10 @@ export default function FormularioAssessoriaPage() {
 
     try {
       setSaving(true)
-      await comercialService.enviarContratoAssinatura(id, formData.email)
+      const contratoAtualizado = await comercialService.enviarContratoAssinatura(id, formData.email)
 
-      // Download automatico do contrato gerado
-      const pdfUrl = contrato?.contrato_gerado_url
+      // Download automatico do contrato com a assinatura da empresa (Bora Expandir)
+      const pdfUrl = contratoAtualizado?.contrato_gerado_url || contrato?.contrato_gerado_url
       if (pdfUrl) {
         const link = document.createElement('a')
         link.href = pdfUrl

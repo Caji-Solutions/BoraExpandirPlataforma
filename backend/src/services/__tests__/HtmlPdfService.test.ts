@@ -10,6 +10,18 @@ vi.mock('html-pdf-node', () => ({
     }
 }));
 
+// Mock pdf-lib para nao precisar de PDF real para contar paginas
+vi.mock('pdf-lib', () => ({
+    PDFDocument: {
+        load: vi.fn().mockResolvedValue({
+            getPageCount: vi.fn().mockReturnValue(10),
+            getPage: vi.fn().mockReturnValue({
+                getSize: vi.fn().mockReturnValue({ width: 595.28, height: 841.89 })
+            })
+        })
+    }
+}));
+
 vi.mock('../../config/SupabaseClient', () => ({
     supabase: { from: vi.fn() }
 }));
@@ -123,9 +135,12 @@ describe('HtmlPdfService - sanitizeText (Task 006)', () => {
         };
 
         const result = await HtmlPdfService.gerarContratoAssessoria('contrato-1', payload);
-        // O PDF deve ser gerado (mock retorna buffer)
+        // O PDF deve ser gerado (mock retorna buffer + totalPages)
         expect(result).not.toBeNull();
-        expect(result).toBeInstanceOf(Buffer);
+        expect(result!.buffer).toBeInstanceOf(Buffer);
+        expect(result!.totalPages).toBe(10);
+        expect(result!.signaturePositions).toBeDefined();
+        expect(result!.signaturePositions.cliente.x).toBeGreaterThan(0);
     });
 
     it('deve parsear pendencias JSON e filtrar vazias', async () => {
@@ -151,6 +166,9 @@ describe('HtmlPdfService - sanitizeText (Task 006)', () => {
 
         const result = await HtmlPdfService.gerarContratoAssessoria('contrato-2', payload);
         expect(result).not.toBeNull();
+        expect(result!.buffer).toBeInstanceOf(Buffer);
+        expect(result!.totalPages).toBe(10);
+        expect(result!.signaturePositions).toBeDefined();
     });
 
     it('deve lidar com pendencias JSON invalido sem quebrar', async () => {
@@ -172,5 +190,7 @@ describe('HtmlPdfService - sanitizeText (Task 006)', () => {
 
         const result = await HtmlPdfService.gerarContratoAssessoria('contrato-3', payload);
         expect(result).not.toBeNull();
+        expect(result!.buffer).toBeInstanceOf(Buffer);
+        expect(result!.signaturePositions).toBeDefined();
     });
 });

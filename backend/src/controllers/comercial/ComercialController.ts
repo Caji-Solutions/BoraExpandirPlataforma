@@ -1084,13 +1084,15 @@ class ComercialController {
             }
 
             const HtmlPdfService = (await import('../../services/HtmlPdfService')).default
-            const pdfBuffer = await HtmlPdfService.gerarContratoAssessoria(id, contrato.draft_dados)
+            const pdfResult = await HtmlPdfService.gerarContratoAssessoria(id, contrato.draft_dados)
             
             let pdfUrl = null;
-            if (pdfBuffer) {
+            let totalPages = 1;
+            if (pdfResult) {
+                totalPages = pdfResult.totalPages;
                 const { supabase } = await import('../../config/SupabaseClient');
                 const supabasePath = `contratos-pending/${id}_${Date.now()}.pdf`;
-                const { error: uploadError } = await supabase.storage.from('contratos').upload(supabasePath, pdfBuffer, { contentType: 'application/pdf' });
+                const { error: uploadError } = await supabase.storage.from('contratos').upload(supabasePath, pdfResult.buffer, { contentType: 'application/pdf' });
                 if (!uploadError) {
                     const { data: urlData } = supabase.storage.from('contratos').getPublicUrl(supabasePath);
                     pdfUrl = urlData.publicUrl;
@@ -1114,10 +1116,15 @@ class ComercialController {
                 return res.status(500).json({ message: mensagemErro, data: updatedWithError })
             }
 
-            const draftSemErro = this.mergeDraftDados(contrato.draft_dados, {})
+            const draftSemErro = this.mergeDraftDados(contrato.draft_dados, {
+                __pdfTotalPages: totalPages,
+                __pdfSignaturePositions: pdfResult?.signaturePositions || null
+            })
             if (draftSemErro.__erroGeracao) {
                 delete draftSemErro.__erroGeracao
             }
+
+            console.log(`[ComercialController] PDF gerado com ${totalPages} paginas. Posicoes de assinatura calculadas a partir das dimensoes reais do PDF.`)
 
             const updatedData = await ContratoServicoRepository.updateContrato(id, {
                 contrato_gerado_url: pdfUrl,
@@ -1157,7 +1164,7 @@ class ComercialController {
     async enviarContratoAssinatura(req: any, res: any) {
         try {
             const { id } = req.params
-            const { email, signaturePositions } = req.body
+            const { email } = req.body
 
             const contrato = await ContratoServicoRepository.getContratoById(id)
             if (!contrato) {
@@ -1181,6 +1188,25 @@ class ComercialController {
             const contratoUrl = String(contrato.contrato_gerado_url || '')
             if (!contratoUrl) {
                 return res.status(400).json({ message: 'O contrato atual nao esta gerado. Gere novamente antes de enviar.' })
+            }
+
+            // Obter posicoes de assinatura calculadas durante a geracao do PDF
+            const savedPositions = contrato?.draft_dados?.__pdfSignaturePositions
+            const totalPages = contrato?.draft_dados?.__pdfTotalPages || 1
+
+            let signaturesData: { cliente: { x: number, y: number, z: number }, empresa: { x: number, y: number, z: number } }
+
+            if (savedPositions?.cliente && savedPositions?.empresa) {
+                // Usar posicoes calculadas a partir das dimensoes reais do PDF
+                signaturesData = savedPositions
+                console.log(`[ComercialController] Usando posicoes de assinatura calculadas: Cliente(x=${signaturesData.cliente.x}, y=${signaturesData.cliente.y}, z=${signaturesData.cliente.z}) Empresa(x=${signaturesData.empresa.x}, y=${signaturesData.empresa.y}, z=${signaturesData.empresa.z})`)
+            } else {
+                // Fallback: coordenadas padrao para A4 (caso o PDF tenha sido gerado antes desta mudanca)
+                console.warn('[ComercialController] Posicoes de assinatura nao encontradas no draft, usando fallback A4')
+                signaturesData = {
+                    cliente: { x: 28.1, y: 10.6, z: totalPages },
+                    empresa: { x: 71.9, y: 10.6, z: totalPages }
+                }
             }
 
             const draftSemErro = this.mergeDraftDados(contrato.draft_dados, {})
@@ -1212,16 +1238,26 @@ class ComercialController {
                     contratoArquivoUrl,
                     contrato.cliente_nome || 'Cliente',
                     emailDestino,
-                    signaturePositions // Passando as coordenadas vindas do frontend
+                    signaturesData
                 )
 
                 // Salvar o ID do documento da Autentique na coluna dedicada para rastreio e webhook
                 if (autentiqueDoc?.id) {
-                    await ContratoServicoRepository.updateContrato(id, {
+                    const updateAutentique: Record<string, any> = {
                         autentique_document_id: autentiqueDoc.id,
                         empresa_assinado_em: new Date().toISOString(),
                         atualizado_em: new Date().toISOString()
-                    })
+                    }
+
+                    // Se a URL do PDF com assinatura da empresa estiver disponivel,
+                    // atualizar contrato_gerado_url para que o comercial ja veja o contrato
+                    // com a assinatura do Bora Expandir
+                    if (autentiqueDoc.signed_file_url) {
+                        updateAutentique.contrato_gerado_url = autentiqueDoc.signed_file_url
+                        console.log(`[ComercialController] contrato_gerado_url atualizado com PDF assinado pela empresa.`)
+                    }
+
+                    await ContratoServicoRepository.updateContrato(id, updateAutentique)
                 }
 
             } catch (authError) {
@@ -1239,7 +1275,10 @@ class ComercialController {
                 })
             }
 
-            return res.status(200).json({ message: 'Contrato enviado com sucesso!', data: updatedData })
+            // Re-buscar o contrato atualizado com a URL do PDF assinado pela empresa
+            const contratoFinal = await ContratoServicoRepository.getContratoById(id)
+
+            return res.status(200).json({ message: 'Contrato enviado com sucesso!', data: contratoFinal || updatedData })
         } catch (error: any) {
             console.error('[ComercialController] Erro ao enviar para assinatura:', error)
             return res.status(500).json({ message: 'Erro ao enviar para assinatura', error: error.message })

@@ -28,6 +28,7 @@
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.2",
+    "pdf-lib": "^1.17.1",
     "prisma": "^5.15.0",
     "stripe": "^20.3.0",
     "supabase": "^2.58.5"
