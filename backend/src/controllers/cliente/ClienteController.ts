@@ -245,7 +245,7 @@ class ClienteController {
       const { clienteId } = req.params;
       if (!clienteId) return res.status(400).json({ message: 'clienteId é obrigatório' });
 
-      const supabase = (await import('../config/SupabaseClient')).supabase;
+      const supabase = (await import('../../config/SupabaseClient')).supabase;
       const { data: cliente, error } = await supabase
         .from('clientes')
         .select('perfil_unificado, id, status')
@@ -293,14 +293,14 @@ class ClienteController {
       // 2. Se não encontrar, pode ser que o clienteId seja o ID do Profile (Auth UID)
       // mas na tabela clientes o ID seja diferente. Vamos tentar buscar pelo profile associado.
       if (!cliente) {
-        const { data: profile } = await (await import('../config/SupabaseClient')).supabase
+        const { data: profile } = await (await import('../../config/SupabaseClient')).supabase
           .from('profiles')
           .select('email')
           .eq('id', clienteId)
           .maybeSingle();
 
         if (profile && profile.email) {
-          const { data: clientePorEmail } = await (await import('../config/SupabaseClient')).supabase
+          const { data: clientePorEmail } = await (await import('../../config/SupabaseClient')).supabase
             .from('clientes')
             .select('*')
             .eq('email', profile.email)
@@ -342,7 +342,7 @@ class ClienteController {
         return res.status(400).json({ message: 'userId é obrigatório' })
       }
 
-      const supabase = (await import('../config/SupabaseClient')).supabase
+      const supabase = (await import('../../config/SupabaseClient')).supabase
 
       // 1. Buscar o email do profile pelo Auth UID
       const { data: profile } = await supabase
@@ -400,7 +400,7 @@ class ClienteController {
         return res.status(400).json({ message: 'Nome, E-mail e WhatsApp são obrigatórios para registro completo' })
       }
 
-      const supabase = (await import('../config/SupabaseClient')).supabase;
+      const supabase = (await import('../../config/SupabaseClient')).supabase;
       const normalizedEmail = email.trim().toLowerCase();
       
       console.log('[ClienteController.register] Iniciando registro completo:', { nome, normalizedEmail });
@@ -1001,7 +1001,7 @@ class ClienteController {
       }
 
       // Get the original juridico form to extract cliente_id and membro_id
-      const { data: originalForm, error: fetchError } = await (await import('../config/SupabaseClient')).supabase
+      const { data: originalForm, error: fetchError } = await (await import('../../config/SupabaseClient')).supabase
         .from('formularios_juridico')
         .select('cliente_id, membro_id')
         .eq('id', formularioId)
@@ -1256,7 +1256,7 @@ class ClienteController {
 
       // Fallback para cenarios em que o frontend envia client_id ou Auth user_id.
       if ((!contratos || contratos.length === 0) && clienteId) {
-        const supabase = (await import('../config/SupabaseClient')).supabase
+        const supabase = (await import('../../config/SupabaseClient')).supabase
         let clienteRealId: string | null = null
 
         const { data: clienteByClientCode } = await supabase
@@ -1515,7 +1515,7 @@ class ClienteController {
         return res.status(400).json({ message: 'E-mail é obrigatório' });
       }
 
-      const { supabase } = await import('../config/SupabaseClient');
+      const { supabase } = await import('../../config/SupabaseClient');
 
       // 1. Buscar o ID na tabela profiles pelo email
       const { data: profile, error: profileError } = await supabase

@@ -143,7 +143,7 @@ class ClienteFormulariosController {
       }
 
       // Get the original juridico form to extract cliente_id and membro_id
-      const { data: originalForm, error: fetchError } = await (await import('../config/SupabaseClient')).supabase
+      const { data: originalForm, error: fetchError } = await (await import('../../config/SupabaseClient')).supabase
         .from('formularios_juridico')
         .select('cliente_id, membro_id')
         .eq('id', formularioId)

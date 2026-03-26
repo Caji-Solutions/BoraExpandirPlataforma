@@ -38,17 +38,56 @@ class CambioService {
   }
 
   private async salvarHistorico(valor: number) {
+    const hoje = new Date()
+    if (hoje.getDate() !== 15) {
+      console.log('[CambioService] Dia diferente de 15, cotacao nao sera persistida no historico.')
+      return
+    }
+
     const { error } = await supabase
       .from('historico_cambio')
       .insert([{
         moeda_origem: 'EUR',
         moeda_destino: 'BRL',
         valor,
-        criado_em: new Date().toISOString()
+        criado_em: hoje.toISOString()
       }])
 
     if (error) {
       console.error('[CambioService] Erro ao salvar historico de cambio:', error)
+      return
+    }
+
+    await this.rotacionarHistorico()
+  }
+
+  private async rotacionarHistorico() {
+    const LIMITE_REGISTROS = 12
+
+    const { data: registros, error } = await supabase
+      .from('historico_cambio')
+      .select('id')
+      .eq('moeda_origem', 'EUR')
+      .eq('moeda_destino', 'BRL')
+      .order('criado_em', { ascending: false })
+
+    if (error || !registros) {
+      console.error('[CambioService] Erro ao listar historico para rotacao:', error)
+      return
+    }
+
+    if (registros.length <= LIMITE_REGISTROS) return
+
+    const idsParaExcluir = registros.slice(LIMITE_REGISTROS).map(r => r.id)
+    const { error: deleteError } = await supabase
+      .from('historico_cambio')
+      .delete()
+      .in('id', idsParaExcluir)
+
+    if (deleteError) {
+      console.error('[CambioService] Erro ao rotacionar historico:', deleteError)
+    } else {
+      console.log(`[CambioService] Rotacao executada: ${idsParaExcluir.length} registro(s) excluido(s).`)
     }
   }
 

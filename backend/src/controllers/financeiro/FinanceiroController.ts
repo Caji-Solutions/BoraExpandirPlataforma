@@ -253,8 +253,8 @@ class FinanceiroController {
             if (novoStatus === 'confirmado' && !agendamento.meet_link) {
                 try {
                     console.log(`[GoogleMeet] Agendamento ${id} confirmado via Financeiro. Gerando link...`);
-                    const ComposioService = (await import('../services/ComposioService')).default;
-                    const { getSuperAdminId } = await import('../utils/calendarHelpers');
+                    const ComposioService = (await import('../../services/ComposioService')).default;
+                    const { getSuperAdminId } = await import('../../utils/calendarHelpers');
                     const superAdminId = await getSuperAdminId();
                     
                     const calendarUserId = superAdminId || 'default';
@@ -297,7 +297,7 @@ class FinanceiroController {
                     if (agendamento.telefone) params.set('telefone', agendamento.telefone)
                     const formularioLink = `${frontendUrl}/formulario/consultoria/${id}?${params.toString()}`
 
-                    const EmailService = (await import('../services/EmailService')).default
+                    const EmailService = (await import('../../services/EmailService')).default
                     await EmailService.sendFormularioEmail({
                         to: agendamento.email,
                         clientName: agendamento.nome || 'Cliente',

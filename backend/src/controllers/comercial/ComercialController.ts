@@ -178,7 +178,7 @@ class ComercialController {
             const fim = new Date(inicio.getTime() + duracao * 60000);
 
             // Supabase query is used directly as we need to exclude the current id
-            const SupabaseClient = (await import('../config/SupabaseClient')).supabase;
+            const SupabaseClient = (await import('../../config/SupabaseClient')).supabase;
             const { data: conflitos } = await SupabaseClient
                 .from('agendamentos')
                 .select('id')
@@ -218,8 +218,8 @@ class ComercialController {
             if (dataMudou && updatedData.meet_link) {
                 try {
                     console.log(`[GoogleMeet] Horario alterado para agendamento ${id}. Atualizando evento...`);
-                    const ComposioService = (await import('../services/ComposioService')).default;
-                    const { getSuperAdminId } = await import('../utils/calendarHelpers');
+                    const ComposioService = (await import('../../services/ComposioService')).default;
+                    const { getSuperAdminId } = await import('../../utils/calendarHelpers');
                     const superAdminId = await getSuperAdminId();
                     
                     // Extrair ID do evento da URL do Meet (se possível) ou se tivéssemos salvo o eventId.
@@ -621,8 +621,8 @@ class ComercialController {
             if (agendamento.meet_link) {
                 try {
                     console.log(`[GoogleMeet] Cancelando evento para agendamento ${id}...`);
-                    const ComposioService = (await import('../services/ComposioService')).default;
-                    const { getSuperAdminId } = await import('../utils/calendarHelpers');
+                    const ComposioService = (await import('../../services/ComposioService')).default;
+                    const { getSuperAdminId } = await import('../../utils/calendarHelpers');
                     const superAdminId = await getSuperAdminId();
                     
                     // Como não salvamos o eventId, o delete pode precisar de busca ou o eventId deve ser extraído do link
@@ -1062,12 +1062,12 @@ class ComercialController {
                 return res.status(404).json({ message: 'Contrato não encontrado' })
             }
 
-            const HtmlPdfService = (await import('../services/HtmlPdfService')).default
+            const HtmlPdfService = (await import('../../services/HtmlPdfService')).default
             const pdfBuffer = await HtmlPdfService.gerarContratoAssessoria(id, contrato.draft_dados)
             
             let pdfUrl = null;
             if (pdfBuffer) {
-                const { supabase } = await import('../config/SupabaseClient');
+                const { supabase } = await import('../../config/SupabaseClient');
                 const supabasePath = `contratos-pending/${id}_${Date.now()}.pdf`;
                 const { error: uploadError } = await supabase.storage.from('contratos').upload(supabasePath, pdfBuffer, { contentType: 'application/pdf' });
                 if (!uploadError) {
@@ -1185,7 +1185,7 @@ class ComercialController {
 
                 console.log(`[ComercialController] Iniciando envio para Autentique do contrato ${id}...`)
 
-                const AutentiqueService = (await import('../services/AutentiqueService')).default
+                const AutentiqueService = (await import('../../services/AutentiqueService')).default
                 const autentiqueDoc = await AutentiqueService.createDocumentWithCompanySignature(
                     `Contrato: ${contrato.servico_nome || 'Assessoria'} - ${contrato.cliente_nome || 'Cliente'}`,
                     contratoArquivoUrl,
