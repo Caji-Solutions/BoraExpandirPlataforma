@@ -70,14 +70,11 @@ export function useToast() {
       duration?: number
     }>
   >([])
-  console.log('useToast initialized')
 
   const showToast = (message: string, type: ToastType = 'info', duration = 4000) => {
     const id = Math.random().toString(36).substring(7)
-    console.log(`🔔 Toast ${type} adicionado:`, message, '| ID:', id)
     setToasts((prev) => {
       const novosToasts = [...prev, { id, message, type, duration }]
-      console.log('Toasts atualizados:', novosToasts)
       return novosToasts
     })
   }
@@ -104,7 +101,6 @@ export function useToast() {
 
 // Componente para renderizar múltiplos Toasts
 export function ToastContainer({ toasts, onRemove }: { toasts: Array<{ id: string; message: string; type: ToastType; duration?: number }>; onRemove: (id: string) => void }) {
-  console.log('🎨 ToastContainer renderizado com toasts:', toasts)
   return (
     <div className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col gap-2 pointer-events-none">
       {toasts.map((toast) => (
