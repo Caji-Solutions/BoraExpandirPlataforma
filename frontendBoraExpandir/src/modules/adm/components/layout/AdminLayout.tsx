@@ -1,20 +1,19 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { AdminSidebar } from "../AdminSidebar";
-import { SidebarProvider, SidebarInset } from "@/modules/shared/components/ui/sidebar";
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
 export function AdminLayout({ children }: AdminLayoutProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
-    <SidebarProvider>
-      <AdminSidebar />
-      <SidebarInset>
-        <main className="p-6 bg-background min-h-screen">
-          {children}
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="min-h-screen bg-background">
+      <AdminSidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+      <main className="md:ml-64 p-4 md:p-6">
+        {children}
+      </main>
+    </div>
   );
 }
