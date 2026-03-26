@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import FormularioController from '../FormularioController';
+import FormularioController from '../formulario/FormularioController';
 import ComercialRepository from '../../repositories/ComercialRepository';
 import { supabase } from '../../config/SupabaseClient';
 import ComposioService from '../../services/ComposioService';

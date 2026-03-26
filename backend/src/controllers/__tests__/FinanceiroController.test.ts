@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import FinanceiroController from '../FinanceiroController';
+import FinanceiroController from '../financeiro/FinanceiroController';
 import ComercialRepository from '../../repositories/ComercialRepository';
 import { supabase } from '../../config/SupabaseClient';
 import EmailService from '../../services/EmailService';

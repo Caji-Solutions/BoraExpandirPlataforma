@@ -40,7 +40,7 @@ class ClienteContratosController {
 
       // Fallback para cenarios em que o frontend envia client_id ou Auth user_id.
       if ((!contratos || contratos.length === 0) && clienteId) {
-        const supabase = (await import('../config/SupabaseClient')).supabase
+        const supabase = (await import('../../config/SupabaseClient')).supabase
         let clienteRealId: string | null = null
 
         const { data: clienteByClientCode } = await supabase

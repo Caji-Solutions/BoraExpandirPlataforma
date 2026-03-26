@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import ClienteController from '../ClienteController';
+import ClienteController from '../cliente/ClienteController';
 import { supabase } from '../../config/SupabaseClient';
 
 vi.mock('../../repositories/ClienteRepository');

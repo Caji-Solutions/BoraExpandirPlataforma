@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import ConfigController from '../controllers/ConfigController'
+import ConfigController from '../controllers/config/ConfigController'
 import ComissaoController from '../controllers/comercial/ComissaoController'
 import { authMiddleware } from '../middlewares/auth'
 

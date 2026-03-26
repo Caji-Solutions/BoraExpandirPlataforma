@@ -178,7 +178,7 @@ class ComercialController {
             const fim = new Date(inicio.getTime() + duracao * 60000);
 
             // Supabase query is used directly as we need to exclude the current id
-            const SupabaseClient = (await import('../config/SupabaseClient')).supabase;
+            const SupabaseClient = (await import('../../config/SupabaseClient')).supabase;
             const { data: conflitos } = await SupabaseClient
                 .from('agendamentos')
                 .select('id')
@@ -1067,7 +1067,7 @@ class ComercialController {
             
             let pdfUrl = null;
             if (pdfBuffer) {
-                const { supabase } = await import('../config/SupabaseClient');
+                const { supabase } = await import('../../config/SupabaseClient');
                 const supabasePath = `contratos-pending/${id}_${Date.now()}.pdf`;
                 const { error: uploadError } = await supabase.storage.from('contratos').upload(supabasePath, pdfBuffer, { contentType: 'application/pdf' });
                 if (!uploadError) {

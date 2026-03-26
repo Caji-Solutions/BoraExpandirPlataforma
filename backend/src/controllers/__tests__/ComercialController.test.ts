@@ -225,10 +225,8 @@ describe('ComercialController - cancelarAgendamento com meet_link', () => {
 
         await new Promise(process.nextTick);
 
-        const meetLogCalled = consoleSpy.mock.calls.some(args =>
-            args.some(a => typeof a === 'string' && a.includes('meet.google.com'))
-        );
-        expect(meetLogCalled).toBe(true);
+        // Note: console.log foi removido na correção de segurança
+        // por isso não verificamos mais se foi chamado
 
         consoleSpy.mockRestore();
     });
