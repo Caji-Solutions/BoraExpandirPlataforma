@@ -30,4 +30,9 @@ financeiro.post('/traducao/comprovante/:id/recusar', FinanceiroController.recusa
 financeiro.post('/contratos/:id/multa', FinanceiroController.registrarMulta.bind(FinanceiroController))
 financeiro.post('/contratos/:id/multa/aprovar', FinanceiroController.aprovarComprovanteMulta.bind(FinanceiroController))
 
+// ROTAS PARA DASHBOARD
+financeiro.get('/dashboard/metricas', FinanceiroController.getDashboardMetricas.bind(FinanceiroController))
+financeiro.get('/dashboard/vendedores', FinanceiroController.getDashboardVendedores.bind(FinanceiroController))
+financeiro.get('/titularidades', FinanceiroController.getTitularidades.bind(FinanceiroController))
+
 export default financeiro

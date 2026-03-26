@@ -21,113 +21,41 @@ interface Titularidade {
     isTitularRow?: boolean;
 }
 
-const mockTitularidades: Titularidade[] = [
-    {
-        id: "1",
-        titular: "Ana Paula Lima Dos Santos",
-        grupoDependencia: "Ana Paula Lima Dos Santos",
-        observacoes: "Não consta no contrato.",
-        isTitularRow: true
-    },
-    {
-        id: "2",
-        titular: "Andeecleebson Xeineeclee Fabiano Roques",
-        grupoDependencia: "Andeecleebson Xeineeclee Fabiano Roques",
-        observacoes: "Titular + 1 dependente",
-        isTitularRow: true
-    },
-    {
-        id: "3",
-        titular: "Antônio Marcos Viana Antunes",
-        grupoDependencia: "Antônio Marcos Viana Antunes",
-        observacoes: "Não.",
-        isTitularRow: true
-    },
-    {
-        id: "4",
-        titular: "Camile Khristime Souza Da Silva",
-        grupoDependencia: "Camile Khristime Souza Da Silva",
-        observacoes: "Não.",
-        isTitularRow: true
-    },
-    {
-        id: "5",
-        titular: "Clistenes Fernandes Dos Reis",
-        grupoDependencia: "Clistenes Fernandes Dos Reis",
-        observacoes: "Sim, 4 dependentes.",
-        isTitularRow: true
-    },
-    {
-        id: "6",
-        titular: "Cristiane Germano Paes",
-        grupoDependencia: "Cristiane Germano Paes",
-        observacoes: "",
-        isTitularRow: true
-    },
-    // Example of Grouping based on the image: Diego Campos Fontenele
-    {
-        id: "8",
-        titular: "Diego Campos Fontenele",
-        grupoDependencia: "Alba Moreira Fontenele",
-        observacoes: "Não.",
-        isTitularRow: true
-    },
-    {
-        id: "9",
-        titular: "Diego Campos Fontenele",
-        grupoDependencia: "Diego Campos Fontenele",
-        observacoes: "Sim, 2 dependentes.",
-        isTitularRow: false
-    },
-    {
-        id: "10",
-        titular: "Elsie Barros Vales",
-        grupoDependencia: "Elsie Barros Vales",
-        observacoes: "",
-        isTitularRow: true
-    },
-    {
-        id: "11",
-        titular: "Erenildo Pereira de Souza",
-        grupoDependencia: "Erenildo Pereira de Souza",
-        observacoes: "Titular + 3 Dependentes",
-        isTitularRow: true
-    },
-    // Example of grouping: Manoel Queiroz Neto
-    {
-        id: "32",
-        titular: "Manoel Queiroz Neto",
-        grupoDependencia: "Açucena da Anunciação Queiroz",
-        observacoes: "2 Titulares + 1 Dependente",
-        isTitularRow: true
-    },
-    {
-        id: "33",
-        titular: "Manoel Queiroz Neto",
-        grupoDependencia: "Manoel Queiroz Neto",
-        observacoes: "2 Titulares + 1 Dependente",
-        isTitularRow: false
-    },
-    // Example of grouping: Mara Alzira Pereira Domingues
-    {
-        id: "34",
-        titular: "Mara Alzira Pereira Domingues",
-        grupoDependencia: "Gustavo Martins Domingues",
-        observacoes: "1 Titular + 1 Dependente",
-        isTitularRow: true
-    },
-    {
-        id: "35",
-        titular: "Mara Alzira Pereira Domingues",
-        grupoDependencia: "Mara Alzira Pereira Domingues",
-        observacoes: "1 Titular + 1 Dependente",
-        isTitularRow: false
-    }
-];
 
 export function Titularidades() {
     const [searchTerm, setSearchTerm] = useState("");
-    const [titularidades] = useState<Titularidade[]>(mockTitularidades);
+    const [titularidades] = useState<Titularidade[]>([]);
+
+    // Mostrar mensagem quando vazio
+    if (titularidades.length === 0) {
+        return (
+            <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-foreground">Titularidades e Dependências</h1>
+                        <p className="text-muted-foreground mt-2">
+                            Gerencie os grupos familiares e dependências contratuais
+                        </p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button variant="outline" disabled>
+                            <Filter className="mr-2 h-4 w-4" />
+                            Filtrar
+                        </Button>
+                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Nova Titularidade
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="flex flex-col items-center justify-center p-12 bg-muted rounded-lg">
+                    <p className="text-muted-foreground text-lg font-medium">Funcionalidade em desenvolvimento</p>
+                    <p className="text-sm text-muted-foreground mt-2">Os dados de titularidades em breve estarão disponíveis</p>
+                </div>
+            </div>
+        );
+    }
 
     const filteredTitularidades = titularidades.filter(item =>
         item.titular.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { X, Loader, Check, ArrowRight, Copy, Mail } from 'lucide-react'
-import { CONTRATOS_PDF_MOCK } from '../../lib/mockPdfContratos'
+import { CONTRATOS_PDF_MOCK } from '../../lib/pdfContratos'
 import type { Cliente, ContratoFormData } from '../../../types/comercial'
 import Toast, { useToast, ToastContainer } from '@/components/ui/Toast'
 
@@ -21,64 +21,6 @@ interface ContratoState {
   linkPagamento: string
 }
 
-// Lista de clientes mocados para teste
-const CLIENTES_MOCK: Cliente[] = [
-  {
-    id: '1',
-    nome: 'João Silva',
-    email: 'joao.silva@example.com',
-    telefone: '(11) 98765-4321',
-    whatsapp: '(11) 98765-4321',
-    documento: '123.456.789-00',
-    endereco: 'Rua das Flores, 123 - São Paulo/SP',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    nome: 'Maria Santos',
-    email: 'maria.santos@example.com',
-    telefone: '(21) 99876-5432',
-    whatsapp: '(21) 99876-5432',
-    documento: '987.654.321-00',
-    endereco: 'Av. Paulista, 1000 - São Paulo/SP',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    nome: 'Carlos Oliveira',
-    email: 'carlos.oliveira@example.com',
-    telefone: '(31) 97654-3210',
-    whatsapp: '(31) 97654-3210',
-    documento: '456.789.123-00',
-    endereco: 'Rua do Comércio, 456 - Belo Horizonte/MG',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '4',
-    nome: 'Ana Costa',
-    email: 'ana.costa@example.com',
-    telefone: '(41) 96543-2109',
-    whatsapp: '(41) 96543-2109',
-    documento: '789.123.456-00',
-    endereco: 'Rua XV de Novembro, 789 - Curitiba/PR',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '5',
-    nome: 'Pedro Almeida',
-    email: 'pedro.almeida@example.com',
-    telefone: '(51) 95432-1098',
-    whatsapp: '(51) 95432-1098',
-    documento: '321.654.987-00',
-    endereco: 'Av. Independência, 321 - Porto Alegre/RS',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-];
 
 export default function GeracaoContratoNovo({ onClose, onSave, clientes }: GeracaoContratoNovoProps) {
   const [etapa, setEtapa] = useState<Etapa>('selecao')
@@ -94,7 +36,7 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const toast = useToast()
 
-  const clientesDisponiveis = clientes || CLIENTES_MOCK
+  const clientesDisponiveis = clientes || []
   const clienteSelecionado = clientesDisponiveis.find(c => c.id === contrato.clienteId)
   const templateSelecionado = CONTRATOS_PDF_MOCK.find(t => t.id === contrato.templateId)
 

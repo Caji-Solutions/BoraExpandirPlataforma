@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   TrendingUp,
   TrendingDown,
@@ -16,15 +16,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react'
-
-interface VendedorInfo {
-  nome: string
-  vendas: number
-  meta: number
-  comissao: number
-  status: 'acima' | 'dentro' | 'abaixo'
-  servico: string
-}
+import { dashboardService, DashboardMetricas, VendedorInfo } from '../services/dashboardService'
 
 // Tipos de serviço disponíveis
 const tiposServico = [
@@ -35,71 +27,6 @@ const tiposServico = [
   { value: 'cidadania_italiana', label: 'Cidadania Italiana' },
   { value: 'green_card', label: 'Green Card' },
   { value: 'visto_e2', label: 'Visto E-2' },
-]
-
-// Mock data com segmentação por serviço
-const mockMetricasPorServico = {
-  todos: {
-    metaVendas: { atual: 145000, total: 200000, percentual: 72.5 },
-    novosClientes: { mes: 42, mesAnterior: 35, crescimento: 20 },
-    faturamentoMensal: { valor: 287500, mesAnterior: 242000, crescimento: 18.8 },
-    contasReceber: { total: 456000, vencidas: 54000, proximasVencer: 85000 },
-    comissoes: { aRealizar: 28750, paga: 165200, total: 193950 },
-  },
-  consultoria: {
-    metaVendas: { atual: 25000, total: 40000, percentual: 62.5 },
-    novosClientes: { mes: 8, mesAnterior: 6, crescimento: 33.3 },
-    faturamentoMensal: { valor: 45000, mesAnterior: 38000, crescimento: 18.4 },
-    contasReceber: { total: 72000, vencidas: 8000, proximasVencer: 15000 },
-    comissoes: { aRealizar: 4500, paga: 28000, total: 32500 },
-  },
-  visto_d7: {
-    metaVendas: { atual: 35000, total: 45000, percentual: 77.8 },
-    novosClientes: { mes: 12, mesAnterior: 10, crescimento: 20 },
-    faturamentoMensal: { valor: 68000, mesAnterior: 55000, crescimento: 23.6 },
-    contasReceber: { total: 98000, vencidas: 12000, proximasVencer: 22000 },
-    comissoes: { aRealizar: 6800, paga: 42000, total: 48800 },
-  },
-  cidadania_portuguesa: {
-    metaVendas: { atual: 28000, total: 35000, percentual: 80 },
-    novosClientes: { mes: 7, mesAnterior: 8, crescimento: -12.5 },
-    faturamentoMensal: { valor: 56000, mesAnterior: 62000, crescimento: -9.7 },
-    contasReceber: { total: 85000, vencidas: 15000, proximasVencer: 18000 },
-    comissoes: { aRealizar: 5600, paga: 32000, total: 37600 },
-  },
-  cidadania_italiana: {
-    metaVendas: { atual: 22000, total: 30000, percentual: 73.3 },
-    novosClientes: { mes: 6, mesAnterior: 4, crescimento: 50 },
-    faturamentoMensal: { valor: 42000, mesAnterior: 35000, crescimento: 20 },
-    contasReceber: { total: 65000, vencidas: 8000, proximasVencer: 12000 },
-    comissoes: { aRealizar: 4200, paga: 25000, total: 29200 },
-  },
-  green_card: {
-    metaVendas: { atual: 18000, total: 25000, percentual: 72 },
-    novosClientes: { mes: 5, mesAnterior: 4, crescimento: 25 },
-    faturamentoMensal: { valor: 48000, mesAnterior: 32000, crescimento: 50 },
-    contasReceber: { total: 78000, vencidas: 6000, proximasVencer: 10000 },
-    comissoes: { aRealizar: 4800, paga: 22000, total: 26800 },
-  },
-  visto_e2: {
-    metaVendas: { atual: 17000, total: 25000, percentual: 68 },
-    novosClientes: { mes: 4, mesAnterior: 3, crescimento: 33.3 },
-    faturamentoMensal: { valor: 28500, mesAnterior: 20000, crescimento: 42.5 },
-    contasReceber: { total: 58000, vencidas: 5000, proximasVencer: 8000 },
-    comissoes: { aRealizar: 2850, paga: 16200, total: 19050 },
-  },
-}
-
-// Vendedores com serviço associado
-const mockVendedores: VendedorInfo[] = [
-  { nome: 'João Silva', vendas: 28000, meta: 25000, comissao: 2800, status: 'acima', servico: 'visto_d7' },
-  { nome: 'Maria Santos', vendas: 22000, meta: 25000, comissao: 1650, status: 'abaixo', servico: 'cidadania_portuguesa' },
-  { nome: 'Pedro Costa', vendas: 26500, meta: 25000, comissao: 2650, status: 'acima', servico: 'consultoria' },
-  { nome: 'Ana Oliveira', vendas: 11000, meta: 25000, comissao: 825, status: 'abaixo', servico: 'green_card' },
-  { nome: 'Carlos Ferreira', vendas: 25000, meta: 25000, comissao: 2500, status: 'dentro', servico: 'cidadania_italiana' },
-  { nome: 'Lucia Mendes', vendas: 30000, meta: 25000, comissao: 3000, status: 'acima', servico: 'visto_e2' },
-  { nome: 'Roberto Lima', vendas: 32000, meta: 25000, comissao: 3200, status: 'acima', servico: 'visto_d7' },
-  { nome: 'Fernanda Alves', vendas: 18000, meta: 25000, comissao: 1350, status: 'abaixo', servico: 'consultoria' },
 ]
 
 const corPorStatus = {
@@ -132,29 +59,70 @@ export function Dashboard() {
   const [servicoFiltro, setServicoFiltro] = useState('todos')
   const [filtroAberto, setFiltroAberto] = useState(false)
 
-  // Métricas baseadas no filtro de serviço
-  const mockMetricas = useMemo(() => {
-    return mockMetricasPorServico[servicoFiltro as keyof typeof mockMetricasPorServico] || mockMetricasPorServico.todos
-  }, [servicoFiltro])
+  // State para dados da API
+  const [metricas, setMetricas] = useState<DashboardMetricas | null>(null)
+  const [vendedores, setVendedores] = useState<VendedorInfo[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch dados quando periodo muda
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const [m, v] = await Promise.all([
+          dashboardService.getMetricas(periodo),
+          dashboardService.getVendedores(periodo)
+        ])
+        setMetricas(m)
+        setVendedores(v)
+      } catch (err) {
+        console.error('Erro ao buscar métricas:', err)
+        setError(err instanceof Error ? err.message : 'Erro ao carregar dados')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [periodo])
+
+  // Mostrar loading
+  if (loading) {
+    return <div className="flex items-center justify-center p-8 text-gray-600">Carregando dados...</div>
+  }
+
+  // Mostrar erro
+  if (error) {
+    return <div className="text-red-500 p-8 border border-red-200 rounded-lg bg-red-50">Erro ao carregar dados: {error}</div>
+  }
+
+  // Mostrar mensagem se sem dados
+  if (!metricas) {
+    return <div className="p-8 text-gray-600">Nenhum dado disponível</div>
+  }
 
   // Vendedores filtrados por serviço
   const vendedoresFiltrados = useMemo(() => {
-    if (servicoFiltro === 'todos') return mockVendedores
-    return mockVendedores.filter(v => v.servico === servicoFiltro)
-  }, [servicoFiltro])
+    if (servicoFiltro === 'todos') return vendedores
+    return vendedores.filter(v => v.servico === servicoFiltro)
+  }, [vendedores, servicoFiltro])
 
   // Cálculos
   const percentualMeta = useMemo(() => {
-    return Math.round((mockMetricas.metaVendas.atual / mockMetricas.metaVendas.total) * 100)
-  }, [mockMetricas])
+    if (!metricas?.metaVendas.total) return 0
+    return Math.round((metricas.metaVendas.atual / metricas.metaVendas.total) * 100)
+  }, [metricas])
 
   const faturamentoPorcentagem = useMemo(() => {
+    if (!metricas?.faturamentoMensal.mesAnterior) return '0'
     return (
-      ((mockMetricas.faturamentoMensal.valor - mockMetricas.faturamentoMensal.mesAnterior) /
-        mockMetricas.faturamentoMensal.mesAnterior) *
+      ((metricas.faturamentoMensal.valor - metricas.faturamentoMensal.mesAnterior) /
+        metricas.faturamentoMensal.mesAnterior) *
       100
     ).toFixed(1)
-  }, [mockMetricas])
+  }, [metricas])
 
   const statusMeta = useMemo(() => {
     if (percentualMeta >= 100) return 'acima'
@@ -162,7 +130,7 @@ export function Dashboard() {
     return 'abaixo'
   }, [percentualMeta])
 
-  const statusClientesNovos = mockMetricas.novosClientes.crescimento >= 0 ? 'up' : 'down'
+  const statusClientesNovos = metricas?.novosClientes.crescimento >= 0 ? 'up' : 'down'
 
   // Ranking de vendedores ordenado por performance
   const vendedoresRanking = useMemo(() => {
@@ -288,11 +256,11 @@ export function Dashboard() {
             <div>
               <p className="text-sm font-medium text-white/90 mb-1">Meta de Vendas</p>
               <h3 className="text-3xl font-bold text-white">
-                {mockMetricas.metaVendas.percentual}%
+                {percentualMeta}%
               </h3>
               <p className="text-xs text-white/80 mt-1">
-                R$ {mockMetricas.metaVendas.atual.toLocaleString('pt-BR')} de R${' '}
-                {mockMetricas.metaVendas.total.toLocaleString('pt-BR')}
+                R$ {metricas.metaVendas.atual.toLocaleString('pt-BR')} de R${' '}
+                {metricas.metaVendas.total?.toLocaleString('pt-BR') || '---'}
               </p>
             </div>
             <div className="p-3 rounded-lg bg-white/20">
@@ -314,7 +282,7 @@ export function Dashboard() {
                   : '⚠ Abaixo da meta'}
             </span>
             <span className="text-xs text-white/80">
-              Faltam R$ {(mockMetricas.metaVendas.total - mockMetricas.metaVendas.atual).toLocaleString('pt-BR')}
+              Faltam R$ {metricas.metaVendas.total ? (metricas.metaVendas.total - metricas.metaVendas.atual).toLocaleString('pt-BR') : '---'}
             </span>
           </div>
         </div>
@@ -325,10 +293,10 @@ export function Dashboard() {
             <div>
               <p className="text-sm font-medium text-white/90 mb-1">Faturamento Mensal</p>
               <h3 className="text-3xl font-bold text-white">
-                R$ {(mockMetricas.faturamentoMensal.valor / 1000).toFixed(1)}k
+                R$ {(metricas.faturamentoMensal.valor / 1000).toFixed(1)}k
               </h3>
               <p className="text-xs text-white/80 mt-1">
-                Mês anterior: R$ {(mockMetricas.faturamentoMensal.mesAnterior / 1000).toFixed(1)}k
+                Mês anterior: R$ {(metricas.faturamentoMensal.mesAnterior / 1000).toFixed(1)}k
               </p>
             </div>
             <div className="p-3 rounded-lg bg-white/20">
@@ -347,10 +315,10 @@ export function Dashboard() {
             <div>
               <p className="text-sm font-medium text-white/90 mb-1">Novos Clientes</p>
               <h3 className="text-3xl font-bold text-white">
-                {mockMetricas.novosClientes.mes}
+                {metricas.novosClientes.mes}
               </h3>
               <p className="text-xs text-white/80 mt-1">
-                Mês anterior: {mockMetricas.novosClientes.mesAnterior} clientes
+                Mês anterior: {metricas.novosClientes.mesAnterior} clientes
               </p>
             </div>
             <div className="p-3 rounded-lg bg-white/20">
@@ -361,7 +329,7 @@ export function Dashboard() {
             {statusClientesNovos === 'up' && <TrendingUp className="h-4 w-4 text-white" />}
             {statusClientesNovos === 'down' && <TrendingDown className="h-4 w-4 text-white" />}
             <span className="text-sm font-medium text-white">
-              {statusClientesNovos === 'down' ? '' : '+'}{mockMetricas.novosClientes.crescimento}%
+              {statusClientesNovos === 'down' ? '' : '+'}{metricas.novosClientes.crescimento}%
             </span>
           </div>
         </div>
@@ -372,7 +340,7 @@ export function Dashboard() {
             <div>
               <p className="text-sm font-medium text-white/90 mb-1">Contas a Receber</p>
               <h3 className="text-3xl font-bold text-white">
-                R$ {(mockMetricas.contasReceber.total / 1000).toFixed(0)}k
+                R$ {(metricas.contasReceber.total / 1000).toFixed(0)}k
               </h3>
             </div>
             <div className="p-3 rounded-lg bg-white/20">
@@ -383,13 +351,13 @@ export function Dashboard() {
             <div className="flex justify-between">
               <span className="text-white/90 font-medium">Vencidas:</span>
               <span className="font-bold text-white">
-                R$ {mockMetricas.contasReceber.vencidas.toLocaleString('pt-BR')}
+                R$ {metricas.contasReceber.vencidas.toLocaleString('pt-BR')}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-white/90 font-medium">Próximas vencer:</span>
               <span className="font-bold text-white">
-                R$ {mockMetricas.contasReceber.proximasVencer.toLocaleString('pt-BR')}
+                R$ {metricas.contasReceber.proximasVencer.toLocaleString('pt-BR')}
               </span>
             </div>
           </div>
@@ -451,7 +419,7 @@ export function Dashboard() {
               <span className="text-sm text-white">✓</span>
             </div>
             <p className="text-2xl font-bold text-white">
-              R$ {mockMetricas.comissoes.paga.toLocaleString('pt-BR')}
+              R$ {metricas.comissoes.paga.toLocaleString('pt-BR')}
             </p>
           </div>
 
@@ -461,14 +429,14 @@ export function Dashboard() {
               <Clock className="h-4 w-4 text-white" />
             </div>
             <p className="text-2xl font-bold text-white">
-              R$ {mockMetricas.comissoes.aRealizar.toLocaleString('pt-BR')}
+              R$ {metricas.comissoes.aRealizar.toLocaleString('pt-BR')}
             </p>
           </div>
 
           <div className="bg-gray-700 rounded-lg p-4 shadow-sm">
             <p className="text-xs text-white/80 mb-1">Total de Comissões</p>
             <p className="text-2xl font-bold text-white">
-              R$ {mockMetricas.comissoes.total.toLocaleString('pt-BR')}
+              R$ {metricas.comissoes.total.toLocaleString('pt-BR')}
             </p>
           </div>
         </div>

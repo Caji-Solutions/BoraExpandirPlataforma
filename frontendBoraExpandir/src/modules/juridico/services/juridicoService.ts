@@ -1,6 +1,6 @@
 // Serviço para chamadas à API do Jurídico
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
+import { apiClient } from '@/modules/shared/services/api';
 
 export interface AtribuirResponsavelPayload {
   processoId: string;
@@ -66,13 +66,7 @@ export interface ClienteComResponsavel {
  * Busca todos os processos
  */
 export async function getProcessos(): Promise<Processo[]> {
-  const response = await fetch(`${API_BASE_URL}/juridico/processos`);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar processos');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(`/juridico/processos`);
   return result.data;
 }
 
@@ -80,13 +74,7 @@ export async function getProcessos(): Promise<Processo[]> {
  * Busca processos de um responsável específico
  */
 export async function getProcessosByResponsavel(responsavelId: string): Promise<Processo[]> {
-  const response = await fetch(`${API_BASE_URL}/juridico/processos/por-responsavel/${responsavelId}`);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar processos do responsável');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(`/juridico/processos/por-responsavel/${responsavelId}`);
   return result.data;
 }
 
@@ -94,13 +82,7 @@ export async function getProcessosByResponsavel(responsavelId: string): Promise<
  * Busca processos sem responsável (vagos)
  */
 export async function getProcessosVagos(): Promise<Processo[]> {
-  const response = await fetch(`${API_BASE_URL}/juridico/processos/vagos`);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar processos vagos');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(`/juridico/processos/vagos`);
   return result.data;
 }
 
@@ -108,56 +90,24 @@ export async function getProcessosVagos(): Promise<Processo[]> {
  * Atribui um responsável jurídico a um processo
  */
 export async function atribuirResponsavel(
-  processoId: string, 
+  processoId: string,
   responsavelId: string
 ): Promise<AtribuirResponsavelResponse> {
-  const response = await fetch(`${API_BASE_URL}/juridico/atribuir-responsavel`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ processoId, responsavelId }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Erro ao atribuir responsável jurídico');
-  }
-
-  return response.json();
+  return apiClient.post(`/juridico/atribuir-responsavel`, { processoId, responsavelId });
 }
 
 /**
  * Remove o responsável jurídico de um cliente (deixa vago)
  */
 export async function removerResponsavel(clienteId: string): Promise<AtribuirResponsavelResponse> {
-  const response = await fetch(`${API_BASE_URL}/juridico/atribuir-responsavel`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ clienteId, responsavelId: null }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Erro ao remover responsável jurídico');
-  }
-
-  return response.json();
+  return apiClient.post(`/juridico/atribuir-responsavel`, { clienteId, responsavelId: null });
 }
 
 /**
  * Busca agendamentos que requerem delegação
  */
 export async function getAgendamentosDelegacao(): Promise<any[]> {
-  const response = await fetch(`${API_BASE_URL}/juridico/agendamentos/delegacao`);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar agendamentos para delegação');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(`/juridico/agendamentos/delegacao`);
   return result.data;
 }
 
@@ -165,37 +115,17 @@ export async function getAgendamentosDelegacao(): Promise<any[]> {
  * Atribui um responsável jurídico a um agendamento
  */
 export async function atribuirResponsavelAgendamento(
-  agendamentoId: string, 
+  agendamentoId: string,
   responsavelId: string
 ): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/juridico/atribuir-responsavel-agendamento`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ agendamentoId, responsavelId }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Erro ao atribuir responsável ao agendamento');
-  }
-
-  return response.json();
+  return apiClient.post(`/juridico/atribuir-responsavel-agendamento`, { agendamentoId, responsavelId });
 }
 
 /**
  * Busca todos os funcionários do jurídico
  */
 export async function getFuncionariosJuridico(): Promise<FuncionarioJuridico[]> {
-
-  const response = await fetch(`${API_BASE_URL}/juridico/funcionarios`);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar funcionários do jurídico');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(`/juridico/funcionarios`);
   return result.data;
 }
 
@@ -203,13 +133,7 @@ export async function getFuncionariosJuridico(): Promise<FuncionarioJuridico[]> 
  * Busca clientes sem responsável (vagos)
  */
 export async function getClientesVagos(): Promise<ClienteComResponsavel[]> {
-  const response = await fetch(`${API_BASE_URL}/juridico/clientes/vagos`);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar clientes vagos');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(`/juridico/clientes/vagos`);
   return result.data;
 }
 
@@ -217,13 +141,7 @@ export async function getClientesVagos(): Promise<ClienteComResponsavel[]> {
  * Busca todos os clientes com seus responsáveis
  */
 export async function getAllClientesComResponsavel(): Promise<ClienteComResponsavel[]> {
-  const response = await fetch(`${API_BASE_URL}/juridico/clientes`);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar clientes');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(`/juridico/clientes`);
   return result.data;
 }
 
@@ -231,13 +149,7 @@ export async function getAllClientesComResponsavel(): Promise<ClienteComResponsa
  * Busca clientes de um responsável específico
  */
 export async function getClientesByResponsavel(responsavelId: string): Promise<ClienteComResponsavel[]> {
-  const response = await fetch(`${API_BASE_URL}/juridico/clientes/por-responsavel/${responsavelId}`);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar clientes do responsável');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(`/juridico/clientes/por-responsavel/${responsavelId}`);
   return result.data;
 }
 
@@ -245,17 +157,11 @@ export async function getClientesByResponsavel(responsavelId: string): Promise<C
  * Busca formulários com status de resposta (waiting/received)
  */
 export async function getFormulariosWithStatus(clienteId: string, membroId?: string): Promise<any[]> {
-  const url = membroId 
-    ? `${API_BASE_URL}/juridico/formularios-status/${clienteId}/${membroId}`
-    : `${API_BASE_URL}/juridico/formularios-status/${clienteId}`;
-  
-  const response = await fetch(url);
+  const endpoint = membroId
+    ? `/juridico/formularios-status/${clienteId}/${membroId}`
+    : `/juridico/formularios-status/${clienteId}`;
 
-  if (!response.ok) {
-    throw new Error('Erro ao buscar formulários com status');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(endpoint);
   return result.data || [];
 }
 
@@ -263,40 +169,21 @@ export async function getFormulariosWithStatus(clienteId: string, membroId?: str
  * Atualiza o status do formulário do cliente (aprovar/rejeitar)
  */
 export async function updateFormularioClienteStatus(
-  formularioClienteId: string, 
-  status: 'pendente' | 'aprovado' | 'rejeitado', 
+  formularioClienteId: string,
+  status: 'pendente' | 'aprovado' | 'rejeitado',
   motivoRejeicao?: string
 ): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/juridico/formulario-cliente/${formularioClienteId}/status`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      status,
-      motivoRejeicao
-    }),
+  return apiClient.patch(`/juridico/formulario-cliente/${formularioClienteId}/status`, {
+    status,
+    motivoRejeicao
   });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Erro ao atualizar status do formulário');
-  }
-
-  return response.json();
 }
 
 /**
  * Busca documentos de um cliente específico
  */
 export async function getDocumentosCliente(clienteId: string): Promise<any[]> {
-  const response = await fetch(`${API_BASE_URL}/cliente/${clienteId}/documentos`);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar documentos');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(`/cliente/${clienteId}/documentos`);
   return result.data || [];
 }
 
@@ -304,13 +191,7 @@ export async function getDocumentosCliente(clienteId: string): Promise<any[]> {
  * Busca documentos de um processo específico (inclui todos os membros da família)
  */
 export async function getDocumentosByProcesso(processoId: string): Promise<any[]> {
-  const response = await fetch(`${API_BASE_URL}/cliente/processo/${processoId}/documentos`);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar documentos do processo');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(`/cliente/processo/${processoId}/documentos`);
   return result.data || [];
 }
 
@@ -318,13 +199,7 @@ export async function getDocumentosByProcesso(processoId: string): Promise<any[]
  * Busca o catálogo de serviços
  */
 export async function getCatalogServices(): Promise<any[]> {
-  const response = await fetch(`${API_BASE_URL}/adm/catalog`);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar catálogo de serviços');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(`/adm/catalog`);
   return result.data || [];
 }
 
@@ -332,13 +207,7 @@ export async function getCatalogServices(): Promise<any[]> {
  * Busca dependentes de um cliente
  */
 export async function getDependentes(clienteId: string): Promise<any[]> {
-  const response = await fetch(`${API_BASE_URL}/cliente/${clienteId}/dependentes`);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar dependentes');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(`/cliente/${clienteId}/dependentes`);
   return result.data || [];
 }
 
@@ -346,32 +215,20 @@ export async function getDependentes(clienteId: string): Promise<any[]> {
  * Atualiza o status de um documento
  */
 export async function updateDocumentStatus(
-  documentoId: string, 
-  status: string, 
+  documentoId: string,
+  status: string,
   motivoRejeicao?: string,
   solicitado_pelo_juridico?: boolean,
   prazo?: number,
   analisadoPor?: string
 ): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/cliente/documento/${documentoId}/status`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      status,
-      motivoRejeicao,
-      solicitado_pelo_juridico,
-      prazo,
-      analisadoPor
-    }),
+  return apiClient.patch(`/cliente/documento/${documentoId}/status`, {
+    status,
+    motivoRejeicao,
+    solicitado_pelo_juridico,
+    prazo,
+    analisadoPor
   });
-
-  if (!response.ok) {
-    throw new Error('Erro ao atualizar status do documento');
-  }
-
-  return response.json();
 }
 
 /**
@@ -386,19 +243,7 @@ export async function requestDocument(payload: {
   notificar?: boolean;
   prazo?: number;
 }): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/juridico/documentos/solicitar`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    throw new Error('Erro ao solicitar documento');
-  }
-
-  return response.json();
+  return apiClient.post(`/juridico/documentos/solicitar`, payload);
 }
 
 /**
@@ -412,54 +257,21 @@ export async function requestRequirement(payload: {
   documentosAcoplados?: any[];
   files?: File[];
 } | FormData): Promise<any> {
-  const isFormData = payload instanceof FormData;
-
-  const response = await fetch(`${API_BASE_URL}/juridico/requerimentos/solicitar`, {
-    method: 'POST',
-    headers: isFormData ? {} : {
-      'Content-Type': 'application/json',
-    },
-    body: isFormData ? payload : JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Erro ao solicitar requerimento');
-  }
-
-  return response.json();
+  return apiClient.post(`/juridico/requerimentos/solicitar`, payload);
 }
 
 /**
  * Atualiza a etapa (fase) de um processo
  */
 export async function updateProcessEtapa(processoId: string, etapa: number): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/juridico/processo/${processoId}/etapa`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ etapa }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Erro ao atualizar etapa do processo');
-  }
-
-  return response.json();
+  return apiClient.patch(`/juridico/processo/${processoId}/etapa`, { etapa });
 }
 
 /**
  * Busca requerimentos de um processo específico
  */
 export async function getRequerimentosByProcesso(processoId: string): Promise<any[]> {
-  const response = await fetch(`${API_BASE_URL}/juridico/requerimentos/processo/${processoId}`);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar requerimentos do processo');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(`/juridico/requerimentos/processo/${processoId}`);
   return result.data || [];
 }
 
@@ -467,17 +279,11 @@ export async function getRequerimentosByProcesso(processoId: string): Promise<an
  * Busca requerimentos de um cliente específico
  */
 export async function getRequerimentosByCliente(clienteId: string, membroId?: string): Promise<any[]> {
-  const url = membroId 
-    ? `${API_BASE_URL}/juridico/requerimentos/cliente/${clienteId}/${membroId}`
-    : `${API_BASE_URL}/juridico/requerimentos/cliente/${clienteId}`;
+  const endpoint = membroId
+    ? `/juridico/requerimentos/cliente/${clienteId}/${membroId}`
+    : `/juridico/requerimentos/cliente/${clienteId}`;
 
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar requerimentos do cliente');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(endpoint);
   return result.data || [];
 }
 
@@ -485,40 +291,22 @@ export async function getRequerimentosByCliente(clienteId: string, membroId?: st
  * Atualiza o status de um requerimento
  */
 export async function updateRequerimentoStatus(
-  requerimentoId: string, 
-  status: string, 
+  requerimentoId: string,
+  status: string,
   observacoes?: string
 ): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/juridico/requerimentos/${requerimentoId}/status`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      status,
-      observacoes
-    }),
+  return apiClient.patch(`/juridico/requerimentos/${requerimentoId}/status`, {
+    status,
+    observacoes
   });
-
-  if (!response.ok) {
-    throw new Error('Erro ao atualizar status do requerimento');
-  }
-
-  return response.json();
 }
 
 /**
  * Busca estatísticas globais do jurídico
  */
 export async function getEstatisticas(): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/juridico/estatisticas`);
-
-    if (!response.ok) {
-        throw new Error('Erro ao buscar estatísticas');
-    }
-
-    const result = await response.json();
-    return result.data;
+  const result = await apiClient.get(`/juridico/estatisticas`);
+  return result.data;
 }
 
 /**
@@ -532,20 +320,7 @@ export async function createProcess(payload: {
   responsavelId?: string;
   vendedor_id?: string;
 }): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/juridico/processo`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Erro ao criar processo');
-  }
-
-  return response.json();
+  return apiClient.post(`/juridico/processo`, payload);
 }
 
 /**
@@ -558,33 +333,14 @@ export async function createAssessoria(payload: {
   responsavelId?: string;
   servicoId?: string;
 }): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/juridico/assessoria`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Erro ao criar assessoria jurídica');
-  }
-
-  return response.json();
+  return apiClient.post(`/juridico/assessoria`, payload);
 }
 
 /**
  * Busca a última assessoria de um cliente
  */
 export async function getLatestAssessoria(clienteId: string): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/juridico/assessoria/${clienteId}`);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar assessoria');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(`/juridico/assessoria/${clienteId}`);
   return result.data;
 }
 
@@ -592,13 +348,7 @@ export async function getLatestAssessoria(clienteId: string): Promise<any> {
  * Busca o processo ativo de um cliente
  */
 export async function getProcessoByCliente(clienteId: string): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/juridico/processo-cliente/${clienteId}`);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar processo do cliente');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(`/juridico/processo-cliente/${clienteId}`);
   return result.data;
 }
 
@@ -606,27 +356,14 @@ export async function getProcessoByCliente(clienteId: string): Promise<any> {
  * Busca todos os agendamentos (Consultorias)
  */
 export async function getAgendamentos(): Promise<any[]> {
-  const response = await fetch(`${API_BASE_URL}/comercial/agendamentos`);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar agendamentos');
-  }
-
-  const result = await response.json();
-  return result; // ComercialController returns blood array directly (not wrapped in data for this one, based on code check)
+  return apiClient.get(`/comercial/agendamentos`);
 }
 
 /**
  * Busca assessorias delegadas a um responsável
  */
 export async function getAssessoriasByResponsavel(responsavelId: string): Promise<any[]> {
-  const response = await fetch(`${API_BASE_URL}/juridico/assessorias/por-responsavel/${responsavelId}`);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar assessorias do responsável');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(`/juridico/assessorias/por-responsavel/${responsavelId}`);
   return result.data;
 }
 
@@ -634,13 +371,7 @@ export async function getAssessoriasByResponsavel(responsavelId: string): Promis
  * Busca agendamentos delegados a um responsável
  */
 export async function getAgendamentosByResponsavel(responsavelId: string): Promise<any[]> {
-  const response = await fetch(`${API_BASE_URL}/juridico/agendamentos/por-responsavel/${responsavelId}`);
-
-  if (!response.ok) {
-    throw new Error('Erro ao buscar agendamentos do responsável');
-  }
-
-  const result = await response.json();
+  const result = await apiClient.get(`/juridico/agendamentos/por-responsavel/${responsavelId}`);
   return result.data;
 }
 
@@ -648,51 +379,27 @@ export async function getAgendamentosByResponsavel(responsavelId: string): Promi
  * Solicita o apostilamento de um documento ao administrativo
  */
 export async function requestApostille(documentoId: string, documentoUrl?: string, observacoes?: string): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/apostilamentos/solicitar`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ documentoId, documentoUrl, observacoes }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Erro ao solicitar apostilamento');
-  }
-
-  return response.json();
+  return apiClient.post(`/apostilamentos/solicitar`, { documentoId, documentoUrl, observacoes });
 }
 
 /**
  * Busca um perfil pelo ID
  */
 export async function getProfileById(profileId: string): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/juridico/funcionario/${profileId}`);
-
-  if (!response.ok) {
-    if (response.status === 404) return null;
-    throw new Error('Erro ao buscar perfil');
+  try {
+    const result = await apiClient.get(`/juridico/funcionario/${profileId}`);
+    return result.data;
+  } catch (error) {
+    // Handle 404 errors gracefully
+    return null;
   }
-
-  const result = await response.json();
-  return result.data;
 }
 
 /**
  * Verifica se o cliente já preencheu o formulário
  */
 export async function verificarFormularioPreenchido(clienteId: string): Promise<boolean> {
-  const token = localStorage.getItem('auth_token');
-  const response = await fetch(`${API_BASE_URL}/juridico/formulario-preenchido/${clienteId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
-  if (!response.ok) {
-    throw new Error('Erro ao verificar formulário');
-  }
-  const result = await response.json();
+  const result = await apiClient.get(`/juridico/formulario-preenchido/${clienteId}`);
   return result.preenchido === true;
 }
 
@@ -700,25 +407,11 @@ export async function verificarFormularioPreenchido(clienteId: string): Promise<
  * Registra pedido de reagendamento
  */
 export async function pedidoReagendamento(agendamentoId: string, mensagem: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/juridico/agendamentos/pedido-reagendamento`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ agendamentoId, mensagem }),
-  });
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Erro ao registrar pedido de reagendamento');
-  }
+  await apiClient.post(`/juridico/agendamentos/pedido-reagendamento`, { agendamentoId, mensagem });
 }
 
 export async function getAllSubservices(): Promise<any[]> {
-  const response = await fetch(`${API_BASE_URL}/juridico/subservicos`);
-  if (!response.ok) {
-    const errorBody = await response.text();
-    console.error('Erro ao buscar subservicos:', errorBody);
-    throw new Error('Falha ao buscar subserviços');
-  }
-  const result = await response.json();
+  const result = await apiClient.get(`/juridico/subservicos`);
   return result.data;
 }
 
@@ -756,11 +449,11 @@ export default {
     getAssessoriasByResponsavel,
     getAgendamentosByResponsavel,
     createDependent: async (
-      clienteId: string, 
-      nomeCompleto: string, 
-      parentesco: string, 
+      clienteId: string,
+      nomeCompleto: string,
+      parentesco: string,
       extra?: {
-        documento?: string, 
+        documento?: string,
         dataNascimento?: string,
         rg?: string,
         passaporte?: string,
@@ -770,23 +463,11 @@ export default {
         isAncestralDireto?: boolean
       }
     ) => {
-      const response = await fetch(`${API_BASE_URL}/cliente/${clienteId}/dependentes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          nomeCompleto, 
-          parentesco, 
-          ...extra 
-        }),
+      const result = await apiClient.post(`/cliente/${clienteId}/dependentes`, {
+        nomeCompleto,
+        parentesco,
+        ...extra
       });
-
-      if (!response.ok) {
-        throw new Error('Erro ao criar dependente');
-      }
-
-      const result = await response.json();
       return result.data;
     },
     requestApostille,
