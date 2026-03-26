@@ -192,10 +192,81 @@ describe('ComercialController - Drafts', () => {
 
             expect(res.status).toBe(400);
             expect(res.body.message).toContain('ja foi finalizado e enviado');
-            
+
             // Nao deve chamar update e nem DNAService
             expect(ContratoServicoRepository.updateContrato).not.toHaveBeenCalled();
             expect(DNAService.mergeDNA).not.toHaveBeenCalled();
+        });
+
+        it('Deve calcular membros_count automaticamente a partir dos dependentes no draft', async () => {
+            const contratoDb = {
+                id: mockContratoId,
+                cliente_id: mockClienteId,
+                is_draft: true,
+                etapa_fluxo: 2,
+                draft_dados: { nome: 'Maria' }
+            };
+
+            (ContratoServicoRepository.getContratoById as any).mockResolvedValue(contratoDb);
+
+            const dependentes = [
+                { nome: 'Filho 1', parentesco: 'filho' },
+                { nome: 'Filho 2', parentesco: 'filho' }
+            ];
+
+            const updatedContrato = {
+                ...contratoDb,
+                etapa_fluxo: 3,
+                draft_dados: { nome: 'Maria', dependentes },
+                membros_count: 3
+            };
+            (ContratoServicoRepository.updateContrato as any).mockResolvedValue(updatedContrato);
+            (DNAService.mergeDNA as any).mockResolvedValue(true);
+
+            const res = await request(app)
+                .put(`/api/comercial/contratos/${mockContratoId}/draft`)
+                .send({
+                    etapa_fluxo: 3,
+                    draft_dados: { dependentes }
+                });
+
+            expect(res.status).toBe(200);
+
+            // Verificar que updateContrato recebeu membros_count = 1 (titular) + 2 (dependentes) = 3
+            const updateCallArgs = (ContratoServicoRepository.updateContrato as any).mock.calls[0];
+            expect(updateCallArgs[1].membros_count).toBe(3);
+        });
+
+        it('Nao deve incluir membros_count quando nao ha dependentes no draft', async () => {
+            const contratoDb = {
+                id: mockContratoId,
+                cliente_id: mockClienteId,
+                is_draft: true,
+                etapa_fluxo: 1,
+                draft_dados: { nome: 'Joao' }
+            };
+
+            (ContratoServicoRepository.getContratoById as any).mockResolvedValue(contratoDb);
+
+            const updatedContrato = {
+                ...contratoDb,
+                etapa_fluxo: 2,
+                draft_dados: { nome: 'Joao', telefone: '11999999999' }
+            };
+            (ContratoServicoRepository.updateContrato as any).mockResolvedValue(updatedContrato);
+            (DNAService.mergeDNA as any).mockResolvedValue(true);
+
+            const res = await request(app)
+                .put(`/api/comercial/contratos/${mockContratoId}/draft`)
+                .send({
+                    etapa_fluxo: 2,
+                    draft_dados: { telefone: '11999999999' }
+                });
+
+            expect(res.status).toBe(200);
+
+            const updateCallArgs = (ContratoServicoRepository.updateContrato as any).mock.calls[0];
+            expect(updateCallArgs[1].membros_count).toBeUndefined();
         });
     });
 });
@@ -225,10 +296,8 @@ describe('ComercialController - cancelarAgendamento com meet_link', () => {
 
         await new Promise(process.nextTick);
 
-        const meetLogCalled = consoleSpy.mock.calls.some(args =>
-            args.some(a => typeof a === 'string' && a.includes('meet.google.com'))
-        );
-        expect(meetLogCalled).toBe(true);
+        // Note: console.log foi removido na correção de segurança
+        // por isso não verificamos mais se foi chamado
 
         consoleSpy.mockRestore();
     });

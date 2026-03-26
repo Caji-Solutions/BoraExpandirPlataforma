@@ -111,7 +111,10 @@ export function ClientDNAPage() {
         try {
             setLoading(true)
             const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
-            const response = await fetch(`${baseUrl}/cliente/clientes`)
+            const token = localStorage.getItem('auth_token')
+            const response = await fetch(`${baseUrl}/cliente/clientes`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            })
             const result = await response.json()
             console.log("clientes da lsitagem")
             console.log(result)

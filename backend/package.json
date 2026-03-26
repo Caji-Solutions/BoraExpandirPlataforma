@@ -28,9 +28,12 @@
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.2",
+    "pdf-lib": "^1.17.1",
     "prisma": "^5.15.0",
     "stripe": "^20.3.0",
-    "supabase": "^2.58.5"
+    "supabase": "^2.58.5",
+    "winston": "^3.19.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

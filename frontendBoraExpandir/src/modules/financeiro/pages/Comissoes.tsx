@@ -40,141 +40,11 @@ interface Comissionado {
   joinDate: string;
 }
 
-// Mock Data - Parceiros
-const mockParceiros: Comissionado[] = [
-  {
-    id: "p1",
-    name: "Dr. Carlos Mendes",
-    tipo: "parceiro",
-    status: "active",
-    totalReferrals: 45,
-    lastMonthReferrals: 8,
-    totalCommission: 67500.0,
-    lastMonthCommission: 12000.0,
-    pendingCommission: 4500.0,
-    email: "carlos.mendes@example.com",
-    joinDate: "2024-01-15",
-  },
-  {
-    id: "p2",
-    name: "Dra. Maria Silva",
-    tipo: "parceiro",
-    status: "active",
-    totalReferrals: 62,
-    lastMonthReferrals: 12,
-    totalCommission: 93000.0,
-    lastMonthCommission: 18000.0,
-    pendingCommission: 7500.0,
-    email: "maria.silva@example.com",
-    joinDate: "2023-08-20",
-  },
-  {
-    id: "p3",
-    name: "João Pedro Santos",
-    tipo: "parceiro",
-    status: "active",
-    totalReferrals: 28,
-    lastMonthReferrals: 5,
-    totalCommission: 42000.0,
-    lastMonthCommission: 7500.0,
-    pendingCommission: 3000.0,
-    email: "joao.santos@example.com",
-    joinDate: "2024-03-10",
-  },
-  {
-    id: "p4",
-    name: "Ana Paula Costa",
-    tipo: "parceiro",
-    status: "inactive",
-    totalReferrals: 15,
-    lastMonthReferrals: 0,
-    totalCommission: 22500.0,
-    lastMonthCommission: 0,
-    pendingCommission: 0,
-    email: "ana.costa@example.com",
-    joinDate: "2023-11-05",
-  },
-  {
-    id: "p5",
-    name: "Roberto Almeida",
-    tipo: "parceiro",
-    status: "pending",
-    totalReferrals: 3,
-    lastMonthReferrals: 3,
-    totalCommission: 0,
-    lastMonthCommission: 0,
-    pendingCommission: 4500.0,
-    email: "roberto.almeida@example.com",
-    joinDate: "2024-10-28",
-  },
-];
-
-// Mock Data - Funcionários Internos
-const mockFuncionarios: Comissionado[] = [
-  {
-    id: "f1",
-    name: "Lucas Oliveira",
-    tipo: "funcionario",
-    status: "active",
-    cargo: "Consultor Comercial",
-    departamento: "Vendas",
-    totalReferrals: 85,
-    lastMonthReferrals: 15,
-    totalCommission: 127500.0,
-    lastMonthCommission: 22500.0,
-    pendingCommission: 8500.0,
-    email: "lucas.oliveira@empresa.com",
-    joinDate: "2022-05-10",
-  },
-  {
-    id: "f2",
-    name: "Fernanda Lima",
-    tipo: "funcionario",
-    status: "active",
-    cargo: "Gerente de Contas",
-    departamento: "Comercial",
-    totalReferrals: 120,
-    lastMonthReferrals: 18,
-    totalCommission: 180000.0,
-    lastMonthCommission: 27000.0,
-    pendingCommission: 12000.0,
-    email: "fernanda.lima@empresa.com",
-    joinDate: "2021-02-15",
-  },
-  {
-    id: "f3",
-    name: "Ricardo Souza",
-    tipo: "funcionario",
-    status: "active",
-    cargo: "Analista de Negócios",
-    departamento: "Vendas",
-    totalReferrals: 55,
-    lastMonthReferrals: 10,
-    totalCommission: 82500.0,
-    lastMonthCommission: 15000.0,
-    pendingCommission: 6000.0,
-    email: "ricardo.souza@empresa.com",
-    joinDate: "2023-01-20",
-  },
-  {
-    id: "f4",
-    name: "Camila Ferreira",
-    tipo: "funcionario",
-    status: "pending",
-    cargo: "Consultora Jr.",
-    departamento: "Vendas",
-    totalReferrals: 12,
-    lastMonthReferrals: 4,
-    totalCommission: 0,
-    lastMonthCommission: 0,
-    pendingCommission: 6000.0,
-    email: "camila.ferreira@empresa.com",
-    joinDate: "2024-10-01",
-  },
-];
-
-// Combinar todos
-const allComissionados = [...mockParceiros, ...mockFuncionarios];
+// TODO: dados mock - usar query real de comissoes
+// Dados serão carregados da API
+const mockParceiros: Comissionado[] = [];
+const mockFuncionarios: Comissionado[] = [];
+const allComissionados: Comissionado[] = [];
 
 const getStatusBadge = (status: StatusComissao) => {
   const variants = {
@@ -585,7 +455,17 @@ const Comissoes = () => {
                   </TableCell>
                 </TableRow>
               ))}
-              {dadosFiltrados.length === 0 && (
+              {allComissionados.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8">
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <Users className="h-8 w-8 opacity-50" />
+                      <span>Em desenvolvimento - Nenhum dado disponível</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+              {allComissionados.length > 0 && dadosFiltrados.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     Nenhum resultado encontrado para os filtros selecionados.

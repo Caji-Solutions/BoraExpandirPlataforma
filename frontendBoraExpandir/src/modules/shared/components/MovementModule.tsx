@@ -23,35 +23,9 @@ interface Movement {
     email: string;
 }
 
-const mockMovements: Movement[] = [
-    {
-        id: "1",
-        processo: "Railson Rames Sou...",
-        data: "02/07/2025",
-        tipoMovimento: "Pedido Protocolado",
-        descricao: "",
-        cliente: "Railson Rames Sou...",
-        email: "railson@msn.com",
-    },
-    {
-        id: "2",
-        processo: "Railson Rames Sou...",
-        data: "08/07/2025",
-        tipoMovimento: "Subsanación",
-        descricao: "",
-        cliente: "Railson Rames Sou...",
-        email: "railson@msn.com",
-    },
-    {
-        id: "3",
-        processo: "Railson Rames Sou...",
-        data: "",
-        tipoMovimento: "",
-        descricao: "",
-        cliente: "Railson Rames Sou...",
-        email: "railson@msn.com",
-    },
-];
+// TODO: dados mock - usar query real de movimentos
+// Dados serão carregados da API
+const mockMovements: Movement[] = [];
 
 export function MovementModule() {
     const [filterText, setFilterText] = useState("");
@@ -93,32 +67,45 @@ export function MovementModule() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredMovements.map((mov) => (
-                                <TableRow key={mov.id} className="hover:bg-muted/50">
-                                    <TableCell>
-                                        <Badge variant="secondary" className="font-normal bg-muted">
-                                            {mov.processo}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-sm">{mov.data}</TableCell>
-                                    <TableCell>
-                                        {mov.tipoMovimento && (
-                                            <Badge variant="secondary" className="font-normal">
-                                                {mov.tipoMovimento}
-                                            </Badge>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="text-sm text-muted-foreground">{mov.descricao}</TableCell>
-                                    <TableCell className="text-sm">{mov.cliente}</TableCell>
-                                    <TableCell className="text-sm text-muted-foreground">{mov.email}</TableCell>
-                                </TableRow>
-                            ))}
-                            {filteredMovements.length === 0 && (
+                            {filteredMovements.length === 0 && mockMovements.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
-                                        Nenhum movimento encontrado.
+                                    <TableCell colSpan={6} className="text-center h-24">
+                                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                                            <Search className="h-8 w-8 opacity-50" />
+                                            <span>Em desenvolvimento - Nenhum movimento registrado</span>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
+                            ) : (
+                                <>
+                                    {filteredMovements.map((mov) => (
+                                        <TableRow key={mov.id} className="hover:bg-muted/50">
+                                            <TableCell>
+                                                <Badge variant="secondary" className="font-normal bg-muted">
+                                                    {mov.processo}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-sm">{mov.data}</TableCell>
+                                            <TableCell>
+                                                {mov.tipoMovimento && (
+                                                    <Badge variant="secondary" className="font-normal">
+                                                        {mov.tipoMovimento}
+                                                    </Badge>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{mov.descricao}</TableCell>
+                                            <TableCell className="text-sm">{mov.cliente}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{mov.email}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {filteredMovements.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
+                                                Nenhum resultado encontrado para a busca.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </>
                             )}
                         </TableBody>
                     </Table>

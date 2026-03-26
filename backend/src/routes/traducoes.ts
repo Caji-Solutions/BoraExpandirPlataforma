@@ -1,6 +1,6 @@
 import { Router, Request } from 'express'
 import multer, { FileFilterCallback } from 'multer'
-import TraducoesController from '../controllers/TraducoesController'
+import TraducoesController from '../controllers/traducoes/TraducoesController'
 
 const router = Router()
 

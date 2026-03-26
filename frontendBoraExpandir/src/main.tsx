@@ -10,7 +10,7 @@ import AdmApp from '@/modules/adm/AdmApp'
 import CadastroParceiro from './modules/shared/components/parceiro/CadastroParceiro'
 import TelaIndicado from './modules/shared/components/parceiro/TelaIndicado'
 import Comercial from './modules/comercial/pages/vendas/Comercial'
-import Tradutora from './modules/tradutora/tradutora'
+import TradutoraApp from './modules/tradutora/TradutoraApp'
 import { ThemeProvider } from '@/components/ui/ThemeProvider'
 import { Toaster } from '@/modules/shared/components/ui/toaster'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
@@ -101,7 +101,7 @@ function AppRouter() {
           } />
           <Route path="/tradutor/*" element={
             <ProtectedRoute allowedRoles={['tradutor', 'super_admin']}>
-              <Tradutora />
+              <TradutoraApp />
             </ProtectedRoute>
           } />
           <Route path="/adm/*" element={

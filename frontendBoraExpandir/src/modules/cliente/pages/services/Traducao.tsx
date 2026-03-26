@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { FamilyFolders } from '../../components/documents/FamilyFolders'
 // import { TraducaoModal } from '../../components/services/TraducaoModal'
 import { TraducaoModal } from '../../components/services/TraducaoModal'
-import { mockRequiredDocuments } from '../../lib/mock-data'
 import { Document, RequiredDocument, ApprovedDocument, TranslatedDocument } from '../../types'
 
 interface TraduzaoProps {

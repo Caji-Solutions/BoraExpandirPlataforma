@@ -22,48 +22,6 @@ interface AuditLog {
   details: string;
 }
 
-const mockLogs: AuditLog[] = [
-  {
-    id: "1",
-    timestamp: "2024-01-15 14:32:10",
-    user: "Dra. Ana Silva",
-    action: "Deletou Documento",
-    target: "Cliente: João Santos",
-    details: "Documento: Passaporte.pdf",
-  },
-  {
-    id: "2",
-    timestamp: "2024-01-15 14:15:22",
-    user: "Carlos Santos",
-    action: "Criou Cliente",
-    target: "Cliente: Maria Costa",
-    details: "Novo cliente adicionado ao sistema",
-  },
-  {
-    id: "3",
-    timestamp: "2024-01-15 13:45:33",
-    user: "Marina Costa",
-    action: "Atualizou Status",
-    target: "Processo: #1234",
-    details: "Status alterado: Em Análise → Aprovado",
-  },
-  {
-    id: "4",
-    timestamp: "2024-01-15 12:30:45",
-    user: "Dra. Ana Silva",
-    action: "Upload de Documento",
-    target: "Cliente: Pedro Lima",
-    details: "Documento: Certidão.pdf",
-  },
-  {
-    id: "5",
-    timestamp: "2024-01-15 11:20:15",
-    user: "Carlos Santos",
-    action: "Alterou Permissões",
-    target: "Usuário: João Admin",
-    details: "Adicionou permissão: Gerenciar Serviços",
-  },
-];
 
 const getActionBadge = (action: string) => {
   if (action.includes("Deletou")) return <Badge variant="destructive">{action}</Badge>;
@@ -75,7 +33,7 @@ const getActionBadge = (action: string) => {
 
 export default function AuditLogs() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [logs] = useState<AuditLog[]>(mockLogs);
+  const [logs] = useState<AuditLog[]>([]);
 
   const filteredLogs = logs.filter(
     (log) =>

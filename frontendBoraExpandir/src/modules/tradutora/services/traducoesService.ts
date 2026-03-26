@@ -1,14 +1,9 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+import { apiClient } from '@/modules/shared/services/api';
 
 class TraducoesService {
   async getOrcamentosPendentes() {
     try {
-      console.log(`${API_URL}/traducoes/orcamentos/pendentes`)
-      const response = await fetch(`${API_URL}/traducoes/orcamentos/pendentes`)
-      if (!response.ok) {
-        throw new Error('Erro ao buscar orçamentos pendentes')
-      }
-      return await response.json()
+      return await apiClient.get(`/traducoes/orcamentos/pendentes`)
     } catch (error) {
       console.error('TraducoesService.getOrcamentosPendentes error:', error)
       throw error
@@ -22,20 +17,7 @@ class TraducoesService {
     observacoes?: string
   }) {
     try {
-      const response = await fetch(`${API_URL}/traducoes/orcamentos`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(dados)
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Erro ao enviar resposta do orçamento')
-      }
-
-      return await response.json()
+      return await apiClient.post(`/traducoes/orcamentos`, dados)
     } catch (error) {
       console.error('TraducoesService.responderOrcamento error:', error)
       throw error
@@ -44,15 +26,7 @@ class TraducoesService {
 
   async getOrcamentoByDocumento(documentoId: string) {
     try {
-      const response = await fetch(`${API_URL}/traducoes/orcamentos/documento/${documentoId}`)
-
-      if (!response.ok) {
-        if (response.status === 404) return null
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Erro ao buscar orçamento')
-      }
-
-      return await response.json()
+      return await apiClient.get(`/traducoes/orcamentos/documento/${documentoId}`)
     } catch (error) {
       console.error('TraducoesService.getOrcamentoByDocumento error:', error)
       throw error
@@ -67,20 +41,7 @@ class TraducoesService {
     manualPrice?: number
   }) {
     try {
-      const response = await fetch(`${API_URL}/traducoes/checkout/stripe`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(dados)
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Erro ao criar sessão de pagamento')
-      }
-
-      return await response.json()
+      return await apiClient.post(`/traducoes/checkout/stripe`, dados)
     } catch (error) {
       console.error('TraducoesService.createCheckoutSession error:', error)
       throw error
@@ -89,20 +50,7 @@ class TraducoesService {
 
   async aprovarOrcamento(orcamentoId: string, documentoId: string) {
     try {
-      const response = await fetch(`${API_URL}/traducoes/orcamentos/${orcamentoId}/aprovar`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ documentoId })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Erro ao aprovar orçamento')
-      }
-
-      return await response.json()
+      return await apiClient.post(`/traducoes/orcamentos/${orcamentoId}/aprovar`, { documentoId })
     } catch (error) {
       console.error('TraducoesService.aprovarOrcamento error:', error)
       throw error
@@ -115,20 +63,7 @@ class TraducoesService {
     valorFinal: number
   }) {
     try {
-      const response = await fetch(`${API_URL}/traducoes/orcamentos/${orcamentoId}/aprovar-adm`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(dados)
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Erro ao aprovar orçamento (ADM)')
-      }
-
-      return await response.json()
+      return await apiClient.post(`/traducoes/orcamentos/${orcamentoId}/aprovar-adm`, dados)
     } catch (error) {
       console.error('TraducoesService.aprovarOrcamentoAdm error:', error)
       throw error
@@ -137,11 +72,7 @@ class TraducoesService {
 
   async getFilaDeTrabalho() {
     try {
-      const response = await fetch(`${API_URL}/traducoes/fila`)
-      if (!response.ok) {
-        throw new Error('Erro ao buscar fila de trabalho')
-      }
-      return await response.json()
+      return await apiClient.get(`/traducoes/fila`)
     } catch (error) {
       console.error('TraducoesService.getFilaDeTrabalho error:', error)
       throw error
@@ -150,11 +81,7 @@ class TraducoesService {
 
   async getEntregues() {
     try {
-      const response = await fetch(`${API_URL}/traducoes/entregues`)
-      if (!response.ok) {
-        throw new Error('Erro ao buscar traduções entregues')
-      }
-      return await response.json()
+      return await apiClient.get(`/traducoes/entregues`)
     } catch (error) {
       console.error('TraducoesService.getEntregues error:', error)
       throw error
@@ -167,17 +94,7 @@ class TraducoesService {
       formData.append('file', file)
       formData.append('documentoId', documentoId)
 
-      const response = await fetch(`${API_URL}/traducoes/submit`, {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Erro ao enviar tradução')
-      }
-
-      return await response.json()
+      return await apiClient.post(`/traducoes/submit`, formData)
     } catch (error) {
       console.error('TraducoesService.submitTraducao error:', error)
       throw error
@@ -189,17 +106,7 @@ class TraducoesService {
       const formData = new FormData()
       formData.append('file', file)
 
-      const response = await fetch(`${API_URL}/traducoes/orcamento/${orcamentoId}/comprovante`, {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Erro ao enviar comprovante')
-      }
-
-      return await response.json()
+      return await apiClient.post(`/traducoes/orcamento/${orcamentoId}/comprovante`, formData)
     } catch (error) {
       console.error('TraducoesService.submitComprovante error:', error)
       throw error

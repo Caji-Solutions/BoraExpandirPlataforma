@@ -138,8 +138,7 @@ export function AdminApostilamento() {
             await new Promise(resolve => setTimeout(resolve, 1500))
 
             // In a real app, upload file to storage first
-            const mockUrl = 'https://exemplo.com/arquivo-apostilado.pdf'
-            await handleUpdateStatus(id, 'concluido', mockUrl)
+            await handleUpdateStatus(id, 'concluido', '')
             
         } catch (error) {
             console.error(error)

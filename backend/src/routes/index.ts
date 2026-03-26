@@ -1,7 +1,7 @@
 import { Router } from 'express'
-import { healthController } from '../controllers/health.controller'
-import { documentsController } from '../controllers/DocumentsController'
-import ParceiroController from '../controllers/ParceiroController'
+import { healthController } from '../controllers/health/health.controller'
+import { documentsController } from '../controllers/documents/DocumentsController'
+import ParceiroController from '../controllers/parceiro/ParceiroController'
 import calendarRoutes from './calendar'
 
 const router = Router()

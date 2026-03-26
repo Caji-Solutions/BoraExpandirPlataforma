@@ -32,47 +32,9 @@ interface Document {
   status: "aprovado" | "pendente" | "rejeitado";
 }
 
-const processes: Process[] = [
-  {
-    id: 1,
-    cliente: "Carlos Mendes",
-    tipoVisto: "Visto Nômade",
-    etapa: "Etapa 1/4",
-    diasEspera: 2,
-    status: "pendente",
-  },
-  {
-    id: 2,
-    cliente: "Maria Souza",
-    tipoVisto: "Visto D7",
-    etapa: "Etapa 3/4",
-    diasEspera: 1,
-    status: "analise",
-  },
-  {
-    id: 3,
-    cliente: "João Silva",
-    tipoVisto: "Cidadania Portuguesa",
-    etapa: "Etapa 2/4",
-    diasEspera: 5,
-    status: "rejeitado",
-  },
-  {
-    id: 4,
-    cliente: "Ana Costa",
-    tipoVisto: "Green Card EB-2",
-    etapa: "Etapa 1/4",
-    diasEspera: 3,
-    status: "pendente",
-  },
-];
-
-const documents: Document[] = [
-  { nome: "Passaporte", status: "aprovado" },
-  { nome: "Antecedentes Criminais", status: "pendente" },
-  { nome: "Extrato Bancário", status: "rejeitado" },
-  { nome: "Comprovante de Residência", status: "aprovado" },
-];
+// TODO: dados mock - usar query real de processos e documentos
+const processes: Process[] = [];
+const documents: Document[] = [];
 
 const getStatusIcon = (status: string) => {
   switch (status) {
@@ -112,45 +74,54 @@ export function ProcessQueue() {
       </div>
 
       <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead className="w-12">Status</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Tipo de Visto</TableHead>
-              <TableHead>Etapa</TableHead>
-              <TableHead>Dias em Espera</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {processes.map((process) => (
-              <TableRow
-                key={process.id}
-                className="cursor-pointer hover:bg-muted/50"
-                onClick={() => setSelectedProcess(process)}
-              >
-                <TableCell>{getStatusIcon(process.status)}</TableCell>
-                <TableCell className="font-medium">{process.cliente}</TableCell>
-                <TableCell>{process.tipoVisto}</TableCell>
-                <TableCell>{process.etapa}</TableCell>
-                <TableCell>{process.diasEspera} dias</TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedProcess(process);
-                    }}
-                  >
-                    Analisar
-                  </Button>
-                </TableCell>
+        {processes.length === 0 ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg">Em desenvolvimento - Nenhum processo na fila</p>
+            </div>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="w-12">Status</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Tipo de Visto</TableHead>
+                <TableHead>Etapa</TableHead>
+                <TableHead>Dias em Espera</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {processes.map((process) => (
+                <TableRow
+                  key={process.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => setSelectedProcess(process)}
+                >
+                  <TableCell>{getStatusIcon(process.status)}</TableCell>
+                  <TableCell className="font-medium">{process.cliente}</TableCell>
+                  <TableCell>{process.tipoVisto}</TableCell>
+                  <TableCell>{process.etapa}</TableCell>
+                  <TableCell>{process.diasEspera} dias</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedProcess(process);
+                      }}
+                    >
+                      Analisar
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </div>
 
       {/* Document Analysis Drawer */}

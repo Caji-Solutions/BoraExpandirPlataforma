@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import multer, { FileFilterCallback } from 'multer'
-import FormularioController from '../controllers/FormularioController'
+import FormularioController from '../controllers/formulario/FormularioController'
 
 const formulario = Router()
 

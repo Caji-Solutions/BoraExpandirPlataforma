@@ -30,28 +30,9 @@ const metrics = {
     metaAnual: { meta: 120000.0, realizado: 0.0 },
 };
 
-const monthlyData = [
-    { month: "01/2025", novos: 0, valorNovos: 0, meta: 10000, realizado: 0 },
-    { month: "02/2025", novos: 0, valorNovos: 0, meta: 10000, realizado: 0 },
-    { month: "03/2025", novos: 0, valorNovos: 0, meta: 10000, realizado: 0 },
-    { month: "04/2025", novos: 0, valorNovos: 0, meta: 10000, realizado: 0 },
-    { month: "05/2025", novos: 0, valorNovos: 0, meta: 10000, realizado: 0 },
-    { month: "06/2025", novos: 0, valorNovos: 0, meta: 10000, realizado: 0 },
-    { month: "07/2025", novos: 0, valorNovos: 0, meta: 10000, realizado: 0 },
-    { month: "08/2025", novos: 0, valorNovos: 0, meta: 10000, realizado: 0 },
-    { month: "09/2025", novos: 0, valorNovos: 0, meta: 10000, realizado: 0 },
-    { month: "10/2025", novos: 0, valorNovos: 0, meta: 10000, realizado: 0 },
-    { month: "11/2025", novos: 0, valorNovos: 0, meta: 10000, realizado: 0 },
-    { month: "12/2025", novos: 0, valorNovos: 0, meta: 10000, realizado: 0 },
-];
-
-const pendingValues = [
-    { client: "Ana Paula Lima Dos Santos", ref: "Total Ana Paula Lima Dos Santos", value: 250.0 },
-    { client: "Antônio Marcos Viana Antunes", ref: "Total Antônio Marcos Viana Antunes", value: 450.0 },
-    { client: "Camile Khristime Souza Da S", ref: "Total Camile Khristime Souza Da S", value: 450.0 },
-    { client: "Clistenes Fernandes Dos Reis", ref: "Total Clistenes Fernandes Dos Reis", value: 1600.0 },
-    { client: "Cristiane Germano Paes", ref: "Total Cristiane Germano Paes", value: 600.0 },
-];
+// TODO: dados mock - usar query real de relatórios financeiros
+const monthlyData = [];
+const pendingValues = [];
 
 export function Relatorios() {
     const formatCurrency = (value: number) =>

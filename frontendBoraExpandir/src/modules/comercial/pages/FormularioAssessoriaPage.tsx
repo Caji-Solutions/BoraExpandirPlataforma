@@ -32,7 +32,7 @@ type FormularioDraft = {
   valor_consultoria: string
   forma_pagamento: string
   formaPagamento: string
-  pendencias?: string
+  dependentes?: string
 }
 
 const emptyFormData: FormularioDraft = {
@@ -50,8 +50,7 @@ const emptyFormData: FormularioDraft = {
   valor_desconto: '',
   valor_consultoria: '',
   forma_pagamento: '',
-  formaPagamento: '',
-  pendencias: ''
+  formaPagamento: ''
 }
 
 export default function FormularioAssessoriaPage() {
@@ -65,7 +64,7 @@ export default function FormularioAssessoriaPage() {
   const [formData, setFormData] = useState<FormularioDraft>(emptyFormData)
   const [contrato, setContrato] = useState<ContratoServico | null>(null)
   const [erroGeracao, setErroGeracao] = useState<any>(null)
-  const [pendencias, setPendencias] = useState<Array<{nome: string, parentesco: string, valor: string}>>([])
+  const [dependentes, setDependentes] = useState<Array<{nome: string, grau: string, data_nascimento: string}>>([])
 
   const initializedRef = useRef(false)
   const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -103,11 +102,13 @@ export default function FormularioAssessoriaPage() {
     })
 
     try {
-      const pendenciasData = draft.pendencias ? JSON.parse(draft.pendencias) : []
-      setPendencias(Array.isArray(pendenciasData) ? pendenciasData : [])
+      const depsData = draft.dependentes ? JSON.parse(draft.dependentes) : []
+      setDependentes(Array.isArray(depsData) ? depsData : [])
     } catch {
-      setPendencias([])
+      setDependentes([])
     }
+
+
 
     const etapaErro = Number(erro?.etapa || 4)
     const etapaPersistida = Number(data.etapa_fluxo || 1)
@@ -170,7 +171,11 @@ export default function FormularioAssessoriaPage() {
       payload.documento = normalizeCpf(payload.documento)
     }
 
-    payload.pendencias = JSON.stringify(pendencias)
+    const depText = dependentes.length > 0 
+      ? `; ` + dependentes.map(d => `${d.nome} (${d.grau})`).filter(Boolean).join(' / ')
+      : ''
+    payload.descricao_pessoas = `${payload.nome} (Titular)${depText}`
+    payload.dependentes = JSON.stringify(dependentes)
 
     return payload
   }
@@ -306,10 +311,10 @@ export default function FormularioAssessoriaPage() {
 
     try {
       setSaving(true)
-      await comercialService.enviarContratoAssinatura(id, formData.email)
+      const contratoAtualizado = await comercialService.enviarContratoAssinatura(id, formData.email)
 
-      // Download automatico do contrato gerado
-      const pdfUrl = contrato?.contrato_gerado_url
+      // Download automatico do contrato com a assinatura da empresa (Bora Expandir)
+      const pdfUrl = contratoAtualizado?.contrato_gerado_url || contrato?.contrato_gerado_url
       if (pdfUrl) {
         const link = document.createElement('a')
         link.href = pdfUrl
@@ -455,8 +460,68 @@ export default function FormularioAssessoriaPage() {
               <input type="text" disabled={saving || isLockedByGeracaoErro} value={formData.tipo_servico} onChange={(e) => setFormData({ ...formData, tipo_servico: e.target.value })} className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Titulares e Dependentes (Descricao)</label>
-              <textarea rows={3} disabled={saving || isLockedByGeracaoErro} value={formData.descricao_pessoas} onChange={(e) => setFormData({ ...formData, descricao_pessoas: e.target.value })} placeholder="Ex: Fulano de Tal, titular, 600 euros." className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm" />
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Titulares e Dependentes (Descrição)</label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-md">Total Membros: {1 + dependentes.length}</span>
+                  <button
+                    type="button"
+                    disabled={saving || isLockedByGeracaoErro}
+                    onClick={() => setDependentes(prev => [...prev, { nome: '', grau: '', data_nascimento: '' }])}
+                    className="text-emerald-600 hover:text-emerald-700 font-medium text-sm disabled:opacity-50 flex items-center gap-1"
+                  >
+                    + Adicionar Dependente
+                  </button>
+                </div>
+              </div>
+              {dependentes.length > 0 && (
+                <div className="bg-gray-50 dark:bg-neutral-800/50 p-3 rounded-xl border border-gray-200 dark:border-neutral-700 space-y-3 mt-1">
+                  {dependentes.map((dep, i) => (
+                    <div key={i} className="flex flex-col sm:flex-row gap-3 items-end bg-white dark:bg-neutral-800 p-3 rounded-lg border border-gray-100 dark:border-neutral-700 relative group">
+                      <div className="flex-1 w-full">
+                        <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Nome Completo</label>
+                        <input
+                          type="text"
+                          disabled={saving || isLockedByGeracaoErro}
+                          value={dep.nome}
+                          onChange={(e) => setDependentes(prev => prev.map((x, idx) => idx === i ? { ...x, nome: e.target.value } : x))}
+                          className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-neutral-900"
+                        />
+                      </div>
+                      <div className="flex-1 w-full">
+                        <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Grau de Dependencia</label>
+                        <input
+                          type="text"
+                          placeholder="Ex: Filho(a)"
+                          disabled={saving || isLockedByGeracaoErro}
+                          value={dep.grau}
+                          onChange={(e) => setDependentes(prev => prev.map((x, idx) => idx === i ? { ...x, grau: e.target.value } : x))}
+                          className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-neutral-900"
+                        />
+                      </div>
+                      <div className="w-full sm:w-auto">
+                        <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Nascimento</label>
+                        <input
+                          type="date"
+                          disabled={saving || isLockedByGeracaoErro}
+                          value={dep.data_nascimento}
+                          onChange={(e) => setDependentes(prev => prev.map((x, idx) => idx === i ? { ...x, data_nascimento: e.target.value } : x))}
+                          className="w-full sm:w-36 border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-neutral-900"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        disabled={saving || isLockedByGeracaoErro}
+                        onClick={() => setDependentes(prev => prev.filter((_, idx) => idx !== i))}
+                        className="text-gray-400 hover:text-red-500 p-2 font-bold disabled:opacity-50 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 absolute -right-2 top-2 sm:relative sm:-right-0 sm:-top-0"
+                        title="Remover dependente"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -472,60 +537,7 @@ export default function FormularioAssessoriaPage() {
                 <input type="text" disabled={saving || isLockedByGeracaoErro} placeholder="Ex: 200 (duzentos euros)" value={formData.valor_consultoria} onChange={(e) => setFormData({ ...formData, valor_consultoria: e.target.value })} className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm" />
               </div>
             </div>
-            {/* Pendencias */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Pendentes / Dependentes com Pendencia</label>
-                <button
-                  type="button"
-                  disabled={saving || isLockedByGeracaoErro}
-                  onClick={() => setPendencias(prev => [...prev, { nome: '', parentesco: '', valor: '' }])}
-                  className="text-blue-600 hover:text-blue-700 font-medium text-sm disabled:opacity-50"
-                >
-                  + Adicionar Pendente
-                </button>
-              </div>
-              {pendencias.length > 0 && (
-                <div className="bg-gray-50 dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700 divide-y divide-gray-200 dark:divide-neutral-700">
-                  {pendencias.map((p, i) => (
-                    <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 p-3 items-center">
-                      <input
-                        type="text"
-                        placeholder="Nome"
-                        disabled={saving || isLockedByGeracaoErro}
-                        value={p.nome}
-                        onChange={(e) => setPendencias(prev => prev.map((x, idx) => idx === i ? { ...x, nome: e.target.value } : x))}
-                        className="border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-neutral-900"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Vinculo/Parentesco"
-                        disabled={saving || isLockedByGeracaoErro}
-                        value={p.parentesco}
-                        onChange={(e) => setPendencias(prev => prev.map((x, idx) => idx === i ? { ...x, parentesco: e.target.value } : x))}
-                        className="border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-neutral-900"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Valor R$"
-                        disabled={saving || isLockedByGeracaoErro}
-                        value={p.valor}
-                        onChange={(e) => setPendencias(prev => prev.map((x, idx) => idx === i ? { ...x, valor: e.target.value } : x))}
-                        className="border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-neutral-900"
-                      />
-                      <button
-                        type="button"
-                        disabled={saving || isLockedByGeracaoErro}
-                        onClick={() => setPendencias(prev => prev.filter((_, idx) => idx !== i))}
-                        className="text-red-500 hover:text-red-700 px-2 font-bold disabled:opacity-50"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* Pendencias removida */}
 
             <div className="pt-4 flex justify-between">
               <button onClick={handleBack} disabled={saving || isLockedByGeracaoErro} className="px-6 py-2.5 border border-gray-300 dark:border-neutral-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-neutral-800 disabled:opacity-50 transition-all">Anterior</button>
@@ -594,8 +606,11 @@ export default function FormularioAssessoriaPage() {
               <div className="flex flex-col gap-3">
                 <p className="text-sm text-gray-500">Tudo pronto para gerar o contrato preenchido.</p>
                 <button onClick={handleGerarContrato} disabled={saving} className="w-full py-3.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-60 flex justify-center items-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-emerald-600/20">
-                  <FileText className="w-5 h-5" /> Gerar Contrato (DOCX)
-                  {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {saving ? (
+                    <><Loader2 className="w-5 h-5 animate-spin" /> Gerando contrato...</>
+                  ) : (
+                    <><FileText className="w-5 h-5" /> Gerar Contrato (DOCX)</>
+                  )}
                 </button>
                 {!isLockedByGeracaoErro && (
                   <button onClick={handleBack} disabled={saving} className="w-full py-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white font-medium">Editar dados</button>

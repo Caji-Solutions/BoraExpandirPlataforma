@@ -1,6 +1,6 @@
-import { supabase } from '../config/SupabaseClient'
-import EmailService from '../services/EmailService'
-import DNAService from '../services/DNAService'
+import { supabase } from '../../config/SupabaseClient'
+import EmailService from '../../services/EmailService'
+import DNAService from '../../services/DNAService'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 
@@ -97,7 +97,7 @@ class FormularioController {
                 .select('id')
                 .ilike('email', email)
                 .maybeSingle()
-                
+
             if (existingProfile) {
                 userId = existingProfile.id
             } else {
@@ -115,7 +115,7 @@ class FormularioController {
                     password_hash,
                     telefone: whatsapp
                 })
-                
+
             if (profileError) {
                 console.error('[FormularioController] Erro ao criar/atualizar profile:', profileError)
                 return res.status(400).json({
@@ -271,8 +271,8 @@ class FormularioController {
                 if (isPago && !agendamentoAtual?.meet_link) {
                     try {
                         console.log(`[GoogleMeet] Agendamento ${agendamento_id} confirmado via Formulario. Gerando link...`)
-                        const ComposioService = (await import('../services/ComposioService')).default
-                        const { getSuperAdminId } = await import('../utils/calendarHelpers')
+                        const ComposioService = (await import('../../services/ComposioService')).default
+                        const { getSuperAdminId } = await import('../../utils/calendarHelpers')
                         const superAdminId = await getSuperAdminId()
                         const calendarUserId = superAdminId || 'default'
                         const eventResult = await ComposioService.createCalendarEvent(
@@ -287,7 +287,7 @@ class FormularioController {
                             }
                         )
                         if (eventResult.success && eventResult.eventLink) {
-                            const { default: ComercialRepository } = await import('../repositories/ComercialRepository')
+                            const { default: ComercialRepository } = await import('../../repositories/ComercialRepository')
                             await ComercialRepository.updateMeetLink(agendamento_id, eventResult.eventLink)
                             console.log('[GoogleMeet] Link salvo:', eventResult.eventLink)
                         }
@@ -312,7 +312,7 @@ class FormularioController {
                         .from('clientes')
                         .update({ status: 'cliente', atualizado_em: new Date().toISOString() })
                         .eq('id', clienteId)
-                        
+
                     if (clienteUpdateError) {
                         console.error('[FormularioController] Erro ao converter lead em cliente:', clienteUpdateError)
                     } else {
@@ -460,7 +460,7 @@ class FormularioController {
                                 lida: false,
                                 criado_em: new Date().toISOString()
                             }])
-                        
+
                         if (notifError) {
                             console.error('Erro notificando admin:', notifError)
                         }
@@ -518,7 +518,7 @@ class FormularioController {
                     .select('perfil_unificado')
                     .eq('id', agendamento.cliente_id)
                     .maybeSingle()
-                
+
                 if (clienteData?.perfil_unificado?.data) {
                     dnaData = clienteData.perfil_unificado.data
                 }

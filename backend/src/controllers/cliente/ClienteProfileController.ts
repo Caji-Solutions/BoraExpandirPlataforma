@@ -246,8 +246,6 @@ class ClienteProfileController {
       const supabase = (await import('../../config/SupabaseClient')).supabase;
       const normalizedEmail = email.trim().toLowerCase();
 
-      console.log('[ClienteProfileController.register] Iniciando registro completo:', { nome, normalizedEmail });
-
       // 1. Verificar se o cliente já existe na tabela 'clientes'
       const { data: existingCliente } = await supabase
         .from('clientes')
@@ -266,16 +264,18 @@ class ClienteProfileController {
       if (profileData && profileData.id) {
           usuarioId = profileData.id;
           console.log('[ClienteProfileController.register] Atualizando senha de profile existente:', usuarioId);
-          await supabase.from('profiles').update({
-            password_hash,
-            cpf: cpfNormalizado || undefined,
-            telefone: whatsappNormalizado || undefined
-          }).eq('id', usuarioId);
+          await ClienteRepository.upsertProfile(usuarioId, {
+              id: usuarioId,
+              email: normalizedEmail,
+              password_hash,
+              cpf: cpfNormalizado || undefined,
+              telefone: whatsappNormalizado || undefined
+          });
       } else {
           if (!usuarioId) usuarioId = crypto.randomUUID();
 
           console.log('[ClienteProfileController.register] Criando novo profile (Auth):', usuarioId);
-          const { error: insertError } = await supabase.from('profiles').insert({
+          await ClienteRepository.upsertProfile(usuarioId, {
               id: usuarioId,
               full_name: nome,
               email: normalizedEmail,
@@ -284,11 +284,6 @@ class ClienteProfileController {
               cpf: cpfNormalizado || null,
               telefone: whatsappNormalizado || null
           });
-
-          if (insertError) {
-              console.error('Erro ao criar profile:', insertError.message);
-              return res.status(400).json({ message: 'Erro ao criar perfil de acesso' });
-          }
       }
 
       // 3. Upsert na tabela clientes (Apenas colunas válidas)
@@ -325,8 +320,6 @@ class ClienteProfileController {
       if (!nome || !whatsappNormalizado) {
         return res.status(400).json({ message: 'Nome e WhatsApp são obrigatórios' })
       }
-
-      console.log('[ClienteProfileController.registerLead] Criando Lead (Apenas Clientes):', { nome, email });
 
       const leadData = {
         id: crypto.randomUUID(),

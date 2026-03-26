@@ -10,13 +10,6 @@ import { DocumentModal } from './components/uploads/DocumentModal'
 import { Traducao } from './pages/services/Traducao'
 import Parceiro from './components/contracts/Parceiro'
 import { ClienteAgendamento } from './pages/scheduling/ClienteAgendamento'
-import {
-  mockNotifications,
-  mockRequiredDocuments,
-  mockApprovedDocuments,
-  mockTranslatedDocuments,
-  mockPendingActions,
-} from './lib/mock-data'
 import { Client, Document, Notification, ApprovedDocument, TranslatedDocument, Process, ProcessStep } from './types'
 import { Apostilamento } from './pages/services/Apostilamento'
 import { DocumentUploadFlow } from './components/uploads/DocumentUploadFlow'
@@ -67,7 +60,7 @@ export function ClienteApp() {
       const result = await apiClient.get<{ data: any[] }>(`/cliente/${clientId}/documentos`)
       const apiDocs = result.data || []
 
-      const currentReqDocs = reqDocs && reqDocs.length > 0 ? reqDocs : (requiredDocuments.length > 0 ? requiredDocuments : mockRequiredDocuments)
+      const currentReqDocs = reqDocs && reqDocs.length > 0 ? reqDocs : (requiredDocuments.length > 0 ? requiredDocuments : [])
 
       // Map API documents to frontend format and infer memberId
       const mappedDocs: Document[] = apiDocs.map((doc: any) => {
@@ -310,7 +303,7 @@ export function ClienteApp() {
     const newDocument: Document = {
       id: Date.now().toString(),
       clientId: client.id,
-      name: mockRequiredDocuments.find(req => req.type === documentType)?.name || 'Documento',
+      name: 'Documento',
       type: documentType,
       status: 'analyzing',
       uploadDate: new Date(),

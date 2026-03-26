@@ -175,16 +175,12 @@ class ClienteRepository {
     }
 
     async register(cliente: ClienteDTO) {
-        console.log('ClienteRepository.register - Payload inicial:', cliente)
-
         // 1. Verificar se já existe um registro com este e-mail ou WhatsApp
         const { data: existing } = await supabase
             .from('clientes')
             .select('id, email, whatsapp')
             .or(`email.eq.${cliente.email},whatsapp.eq.${cliente.whatsapp}`)
             .maybeSingle()
-
-        console.log('ClienteRepository.register - Registro existente encontrado:', existing)
 
         if (existing) {
             // 2. Se existe, atualiza (Upsert manual)
@@ -196,10 +192,6 @@ class ClienteRepository {
                 atualizado_em: new Date().toISOString()
             }
 
-            console.log('ClienteRepository.register - ID existente:', existing.id)
-            console.log('ClienteRepository.register - Campos originais do cliente:', Object.keys(cliente))
-            console.log('ClienteRepository.register - Payload para UPDATE (filtrado):', dataToUpdate)
-
             const { data: updatedData, error } = await supabase
                 .from('clientes')
                 .update(dataToUpdate)
@@ -208,17 +200,11 @@ class ClienteRepository {
                 .single()
 
             if (error) {
-                console.error('CRITICAL ERROR in ClienteRepository.register (UPDATE):')
-                console.error('- Message:', error.message)
-                console.error('- Code:', error.code)
-                console.error('- Details:', error.details)
-                console.error('- Hint:', error.hint)
-                console.error('- Full Payload attempted:', JSON.stringify(dataToUpdate, null, 2))
+                console.error('ClienteRepository.register - Erro ao atualizar cliente:', error)
                 throw error
             }
             return updatedData
         } else {
-            console.log('ClienteRepository.register - Executando INSERT novo registro')
             // 3. Se não existe, cria novo
             const { data: createdData, error } = await supabase
                 .from('clientes')
@@ -797,6 +783,44 @@ class ClienteRepository {
 
     async markAllNotificacoesAsRead(clienteId: string): Promise<any> {
         return NotificationService.markAllAsRead(clienteId);
+    }
+
+    async upsertProfile(profileId: string, profileData: { id: string, email: string, full_name?: string, cpf?: string, telefone?: string, horario_trabalho?: string, [key: string]: any }): Promise<{ id: string }> {
+        // Verifica se o profile já existe
+        const { data: existing } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', profileId)
+            .maybeSingle()
+
+        if (existing) {
+            // UPDATE
+            const { error } = await supabase
+                .from('profiles')
+                .update(profileData)
+                .eq('id', profileId)
+
+            if (error) {
+                console.error('ClienteRepository.upsertProfile - Erro ao atualizar:', error.message)
+                throw error
+            }
+
+            return { id: profileId }
+        } else {
+            // INSERT
+            const { data, error } = await supabase
+                .from('profiles')
+                .insert([{ ...profileData }])
+                .select('id')
+                .single()
+
+            if (error) {
+                console.error('ClienteRepository.upsertProfile - Erro ao inserir:', error.message)
+                throw error
+            }
+
+            return data
+        }
     }
 }
 

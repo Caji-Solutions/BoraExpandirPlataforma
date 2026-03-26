@@ -53,6 +53,7 @@ interface Produto {
   isEuro?: boolean
   duracaoMinutos?: number
   requiresLegalDelegation: boolean
+  type?: string
 }
 
 interface Agendamento {
@@ -125,16 +126,10 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
         }))
         setClientes(mappedClientes)
 
-        // Map Produtos (Services) transformando para a interface Produto
-        // Se for visualização do cliente (isClientView), filtrar APENAS por showToClient
-        // Se for visualização administrativa, filtrar por showInCommercial
+        // Map Produtos (Services) — inclui fixo e agendavel (verificacao de permissao feita na exibicao)
         const mappedProdutos = produtosData
           .filter((s: Service) => {
-            const tipo = s.type || 'agendavel'
-            if (tipo !== 'agendavel') return false
-            if (isClientView) {
-              return s.showToClient
-            }
+            if (isClientView) return s.showToClient
             return s.showInCommercial
           })
           .map((s: Service) => ({
@@ -145,9 +140,10 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
               : `Duração estimada: ${s.duration}`,
             valor: Number(s.value),
             show: s.showInCommercial,
-            isEuro: true, // No catálogo atual os valores são em Euro
+            isEuro: true,
             duracaoMinutos: parseDurationToMinutes(s.duration) || 60,
-            requiresLegalDelegation: s.requiresLegalDelegation
+            requiresLegalDelegation: s.requiresLegalDelegation,
+            type: s.type || 'agendavel'
           }))
         setProdutos(mappedProdutos)
 
@@ -190,18 +186,60 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const [emailTemporario, setEmailTemporario] = useState<string>('')
   const [showEmailPopup, setShowEmailPopup] = useState(false)
 
-  // Novo fluxo: Produto -> Cliente -> Data/Hora (ou Produto -> Data/Hora se for cliente)
-  const [passo, setPasso] = useState<
-    'produto' | 'data_hora' | 'cliente'
-  >(navigationState?.step || 'produto')
+  // Fluxo: Cliente -> Data/Hora (ou direto Data/Hora se cliente portal ou vem de contrato)
+  const [passo, setPasso] = useState<'cliente' | 'data_hora'>(
+    navigationState?.step === 'data_hora' ? 'data_hora' : isClientView ? 'data_hora' : 'cliente'
+  )
 
   const { id: editId } = useParams<{ id: string }>()
   const [loadingEdit, setLoadingEdit] = useState(false)
-  const preselectedProdutoHandledRef = useRef(false)
 
+  // Guard: sem serviço pré-selecionado e sem edição, redirecionar
   useEffect(() => {
-    preselectedProdutoHandledRef.current = false
-  }, [navigationState?.preSelectedProduto])
+    if (!isClientView && !editId && !navigationState?.preSelectedProduto) {
+      error('Selecione um serviço antes de agendar.')
+      navigate(-1)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pré-selecionar cliente via navigation state ou props
+  useEffect(() => {
+    if (navigationState?.preSelectedClient) {
+      setClienteSelecionado(navigationState.preSelectedClient)
+      if (navigationState.preSelectedClient.email && !navigationState.preSelectedClient.email.includes('lead_')) {
+        setEmailTemporario(navigationState.preSelectedClient.email)
+      }
+    } else if (preSelectedClient) {
+      setClienteSelecionado(preSelectedClient as Cliente)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pré-selecionar produto quando catálogo carregar
+  useEffect(() => {
+    if (!navigationState?.preSelectedProduto || produtos.length === 0) return
+
+    const preSelectedValue = String(navigationState.preSelectedProduto).trim()
+    const pEncontrado = produtos.find(p => p.id === preSelectedValue)
+
+    if (pEncontrado) {
+      if (pEncontrado.type === 'fixo' && !isClientView) {
+        const nivel = activeProfile?.nivel
+        const isSupervisor = activeProfile?.is_supervisor
+        const role = activeProfile?.role
+        const podeAgendar = nivel === 'C2' || isSupervisor || role === 'super_admin'
+        if (!podeAgendar) {
+          error('Apenas colaboradores C2 podem agendar assessorias. Solicite ao seu supervisor.')
+          navigate(-1)
+          return
+        }
+      }
+      setProdutoSelecionado(pEncontrado)
+      setDuracaoMinutos(pEncontrado.duracaoMinutos || 60)
+    } else {
+      error('Servico nao encontrado no catalogo.')
+      navigate(-1)
+    }
+  }, [produtos]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Carregar dados para edição se ID estiver presente
   useEffect(() => {
@@ -214,42 +252,27 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
         if (response.ok) {
           const ag = await response.json()
 
-          // Preencher Data e Hora
           if (ag.data_hora) {
             const dt = parseBackendDate(ag.data_hora)
-            // Agora garantimos o local time direto pelo dateUtils
             setDataSelecionada(dt)
             setHoraSelecionada(ag.data_hora.includes('T') ? ag.data_hora.split('T')[1].substring(0, 5) : '')
           }
 
-          // Preencher Produto (do catálogo carregado)
           if (ag.produto_id) {
             const pEncontrado = produtos.find(p => p.id === ag.produto_id)
             if (pEncontrado) setProdutoSelecionado(pEncontrado)
           }
 
-          // Preencher Cliente (da lista de clientes carregada via props)
           if (ag.cliente_id) {
             const cEncontrado = clientes.find(c => c.id === ag.cliente_id)
             if (cEncontrado) {
               setClienteSelecionado(cEncontrado)
-            } else if (ag.nome) { // Fallback se não estiver na lista de props
-              setClienteSelecionado({
-                id: ag.cliente_id,
-                nome: ag.nome,
-                email: ag.email,
-                telefone: ag.telefone || ''
-              })
+            } else if (ag.nome) {
+              setClienteSelecionado({ id: ag.cliente_id, nome: ag.nome, email: ag.email, telefone: ag.telefone || '' })
             }
-          } else if (ag.nome) { // Caso seja lead sem ID fixo
-            setClienteSelecionado({
-              id: 'lead_temporario',
-              nome: ag.nome,
-              email: ag.email,
-              telefone: ag.telefone || ''
-            })
+          } else if (ag.nome) {
+            setClienteSelecionado({ id: 'lead_temporario', nome: ag.nome, email: ag.email, telefone: ag.telefone || '' })
           }
-
         }
       } catch (err) {
         console.error('Erro ao carregar agendamento para edicao', err)
@@ -260,39 +283,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
     carregarAgendamento()
   }, [editId, produtos, clientes])
-
-  // Initialize with location state or props if provided
-  useEffect(() => {
-    if (navigationState?.preSelectedClient) {
-      setClienteSelecionado(navigationState.preSelectedClient)
-      if (navigationState?.preSelectedClient.email && !navigationState.preSelectedClient.email.includes('lead_')) {
-        setEmailTemporario(navigationState.preSelectedClient.email)
-      }
-    } else if (preSelectedClient) {
-      setClienteSelecionado(preSelectedClient as Cliente)
-      // Se não vier via state.step de dentro, vai para produto
-      if (!navigationState?.step) setPasso('produto')
-    }
-
-    if (navigationState?.preSelectedProduto && produtos.length > 0 && !preselectedProdutoHandledRef.current) {
-      preselectedProdutoHandledRef.current = true
-      const preSelectedValue = String(navigationState.preSelectedProduto).trim()
-      const normalizedPreSelected = preSelectedValue.toLowerCase()
-
-      const pEncontrado = produtos.find((p) => {
-        const nomeProduto = String(p.nome || '').trim().toLowerCase()
-        return p.id === preSelectedValue || p.nome === preSelectedValue || nomeProduto === normalizedPreSelected
-      })
-
-      if (pEncontrado) {
-        setProdutoSelecionado(pEncontrado)
-        setDuracaoMinutos(pEncontrado.duracaoMinutos || 60)
-      } else if (navigationState?.step === 'data_hora') {
-        setPasso('produto')
-        error('Nao encontramos o servico para este agendamento. Selecione o produto para continuar.')
-      }
-    }
-  }, [preSelectedClient, navigationState, produtos, error])
 
   const [searchCliente, setSearchCliente] = useState('')
   const [mostrarListaClientes, setMostrarListaClientes] = useState(false)
@@ -355,15 +345,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   }, [searchCliente])
 
   const agendamentoPreview = useMemo<Agendamento | null>(() => {
-    // Debug log para identificar campos faltando
-    console.log('DEBUG Agendamento Preview State:', {
-      cliente: !!clienteSelecionado,
-      data: !!dataSelecionada,
-      hora: !!horaSelecionada,
-      produto: !!produtoSelecionado,
-      emailCheck: clienteSelecionado?.email || !!emailTemporario
-    })
-
     if (!clienteSelecionado || !dataSelecionada || !horaSelecionada || !produtoSelecionado) return null
 
     const dataIso = dataSelecionada.toISOString().split('T')[0]
@@ -476,15 +457,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
   const handleProxPasso = () => {
     switch (passo) {
-      case 'produto':
-        if (produtoSelecionado) {
-          if (isClientView) {
-            setPasso('data_hora')
-          } else {
-            setPasso('cliente')
-          }
-        }
-        break
       case 'cliente':
         if (clienteSelecionado) {
           const temEmailReal = emailTemporario || (clienteSelecionado.email && !clienteSelecionado.email.includes('lead_'))
@@ -500,24 +472,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
           error('Selecione data e horario para continuar.')
           return
         }
-
-        if (!agendamentoPreview) {
-          if (!produtoSelecionado) {
-            setPasso('produto')
-            error('Selecione o produto para finalizar o agendamento.')
-            return
-          }
-
-          if (!isClientView && !clienteSelecionado) {
-            setPasso('cliente')
-            error('Selecione o cliente para finalizar o agendamento.')
-            return
-          }
-
-          error('Nao foi possivel montar o agendamento. Revise os dados e tente novamente.')
-          return
-        }
-
         handleFinalizarAgendamento()
         break
       default:
@@ -527,13 +481,8 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
   const handleVoltar = () => {
     switch (passo) {
-      case 'cliente':
-        setPasso('produto')
-        break
       case 'data_hora':
-        if (isClientView) {
-          setPasso('produto')
-        } else {
+        if (!isClientView) {
           setPasso('cliente')
         }
         break
@@ -613,42 +562,43 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   }
 
   const handleFinalizarAgendamento = async () => {
-    if (!agendamentoPreview) {
+    if (!clienteSelecionado || !dataSelecionada || !horaSelecionada || !produtoSelecionado) {
       error('Nao foi possivel finalizar o agendamento. Revise os dados e tente novamente.')
       return
     }
 
-    const emailFinal = emailTemporario || (agendamentoPreview.cliente.email && !agendamentoPreview.cliente.email.includes('lead_') ? agendamentoPreview.cliente.email : '');
+    const dataIso = dataSelecionada.toISOString().split('T')[0]
+    const emailFinal = emailTemporario || (clienteSelecionado.email && !clienteSelecionado.email.includes('lead_') ? clienteSelecionado.email : '');
 
     const payload = {
-      nome: agendamentoPreview.cliente.nome,
+      nome: clienteSelecionado.nome,
       email: emailFinal,
-      telefone: agendamentoPreview.cliente.telefone,
-      data_hora: `${agendamentoPreview.data}T${agendamentoPreview.hora}:00`,
-      produto_id: agendamentoPreview.produto.id,
-      produto_nome: agendamentoPreview.produto.nome,
-      valor: agendamentoPreview.produto.valor,
-      isEuro: (agendamentoPreview.produto as any).isEuro,
-      duracao_minutos: agendamentoPreview.duracaoMinutos,
-      status: agendamentoPreview.status,
+      telefone: clienteSelecionado.telefone,
+      data_hora: `${dataIso}T${horaSelecionada}:00`,
+      produto_id: produtoSelecionado.id,
+      produto_nome: produtoSelecionado.nome,
+      valor: produtoSelecionado.valor,
+      isEuro: (produtoSelecionado as any).isEuro,
+      duracao_minutos: duracaoMinutos,
+      status: isPaidFromContrato ? 'confirmado' : 'agendado',
       pagamento_status: isPaidFromContrato ? 'aprovado' : undefined,
       usuario_id: activeProfile?.id,
-      cliente_id: agendamentoPreview.cliente.id,
-      requer_delegacao: agendamentoPreview.produto.requiresLegalDelegation,
+      cliente_id: clienteSelecionado.id,
+      requer_delegacao: produtoSelecionado.requiresLegalDelegation,
       id: editId || undefined
     }
 
     setAgendamentoPayload(payload)
 
     console.log('DEBUG AGENDAMENTO: Iniciando processo de finalizacao. Payload gerado:', {
-      nome: agendamentoPreview.cliente.nome,
+      nome: clienteSelecionado.nome,
       email: emailFinal,
-      telefone: agendamentoPreview.cliente.telefone,
-      data_hora: `${agendamentoPreview.data}T${agendamentoPreview.hora}:00`,
-      produto_nome: agendamentoPreview.produto.nome,
-      valor: agendamentoPreview.produto.valor,
+      telefone: clienteSelecionado.telefone,
+      data_hora: `${dataIso}T${horaSelecionada}:00`,
+      produto_nome: produtoSelecionado.nome,
+      valor: produtoSelecionado.valor,
       usuario_id: activeProfile?.id,
-      cliente_id: agendamentoPreview.cliente.id
+      cliente_id: clienteSelecionado.id
     })
 
     if (isPaidFromContrato) {
@@ -775,7 +725,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   // Componente Reutilizável de Botões de Navegação
   const BotoesNavegacao = ({ canNext = false }: { canNext?: boolean }) => (
     <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-100 dark:border-neutral-800">
-      {passo !== 'produto' ? (
+      {passo !== 'cliente' && !isClientView ? (
         <button
           onClick={handleVoltar}
           className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-gray-300 dark:border-neutral-600 font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-800 transition"
@@ -784,7 +734,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
           Voltar
         </button>
       ) : (
-        <div /> // Espaçador
+        <div />
       )}
       <button
         onClick={handleProxPasso}
@@ -803,65 +753,23 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   return (
     <div className="w-full bg-gray-50 dark:bg-neutral-900 min-h-screen">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Agendamento de Vendas</h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-8">Escolha o produto, identifique o lead e agende horário para finalizar</p>
+        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Agendamento</h1>
+        {produtoSelecionado && (
+          <p className="text-gray-600 dark:text-gray-400 mb-8">
+            Serviço: <span className="font-semibold text-emerald-600 dark:text-emerald-400">{produtoSelecionado.nome}</span>
+          </p>
+        )}
+        {!produtoSelecionado && loadingProdutos && (
+          <div className="flex items-center gap-2 mb-8 text-gray-500">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm">Carregando serviço...</span>
+          </div>
+        )}
 
-
-        {/* Fluxo de agendamento: Produto → Lead → Data e Hora (ou apenas Produto → Data/Hora se for cliente) */}
+        {/* Fluxo de agendamento: Lead → Data e Hora */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            {/* PASSO 1: Seleção de Produto */}
-            {passo === 'produto' && (
-              <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Selecione o Serviço</h3>
-                {loadingProdutos ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                    <Loader2 className="h-10 w-10 animate-spin mb-4 opacity-20" />
-                    <p>Carregando catálogo de serviços...</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {produtos.map((produto: any) => (
-                      <button
-                        key={produto.id}
-                        onClick={() => handleSelecionarProduto(produto)}
-                        className={`w-full p-4 rounded-lg border-2 text-left transition-all ${produtoSelecionado?.id === produto.id
-                          ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 shadow-sm'
-                          : 'border-gray-200 dark:border-neutral-600 hover:border-emerald-300 bg-gray-50 dark:bg-neutral-700 hover:bg-white dark:hover:bg-neutral-600'}`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h4 className="font-semibold text-gray-900 dark:text-white">{produto.nome}</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{produto.descricao}</p>
-                          </div>
-                          <div className="text-right">
-                            {produto.isEuro ? (
-                              <>
-                                <p className="text-xl font-bold text-emerald-600">€ {produto.valor.toFixed(2)}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                  (Aprox. R$ {(produto.valor * (exchangeRate || 6.27)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
-                                </p>
-                              </>
-                            ) : (
-                              <p className="text-xl font-bold text-emerald-600">R$ {produto.valor}</p>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                    {produtos.length === 0 && (
-                      <div className="text-center py-12 border-2 border-dashed rounded-xl opacity-30">
-                        <Search className="h-12 w-12 mx-auto mb-2" />
-                        <p className="font-bold">Nenhum serviço disponível no catálogo.</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-                <BotoesNavegacao canNext={!!produtoSelecionado} />
-              </div>
-            )}
-
-            {/* PASSO 2: Seleção de Data e Hora */}
+            {/* PASSO 1: Seleção de Data e Hora */}
             {passo === 'data_hora' && (
               <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm space-y-6">
                 <div>
@@ -1020,11 +928,11 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                   </div>
                 )}
 
-                <BotoesNavegacao canNext={!!dataSelecionada && !!horaSelecionada && !!agendamentoPreview} />
+                <BotoesNavegacao canNext={!!dataSelecionada && !!horaSelecionada && !!clienteSelecionado && !!produtoSelecionado} />
               </div>
             )}
 
-            {/* PASSO 4: Seleção de Lead (apenas no módulo comercial) */}
+            {/* PASSO 2: Seleção de Lead (apenas no módulo comercial) */}
             {passo === 'cliente' && !isClientView && !preSelectedClient && (
               <div className="bg-white dark:bg-neutral-800 rounded-xl border border-gray-200 dark:border-neutral-700 p-6 shadow-sm">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
@@ -1144,7 +1052,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
               {/* Header com Voltar e Título */}
               <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-neutral-800 pb-4">
-                {passo !== 'produto' && (
+                {passo !== 'cliente' && !isClientView && (
                   <button
                     onClick={handleVoltar}
                     className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-500 transition-colors"
@@ -1212,13 +1120,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                       </p>
                     )}
                   </div>
-                  <button
-                    onClick={handleRemoverProduto}
-                    className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
-                    aria-label="Alterar produto"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {/* produto fixo — alteracao feita na pagina de servicos */}
                 </div>
               ) : (
                 <div className="mb-4 pb-4 border-b border-dashed border-gray-200 dark:border-neutral-700">

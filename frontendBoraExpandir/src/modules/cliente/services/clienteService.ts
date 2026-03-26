@@ -1,144 +1,53 @@
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+import { apiClient } from '@/modules/shared/services/api';
 
 export const clienteService = {
   async getFormularioResponses(clienteId: string) {
-    const response = await fetch(`${API_BASE_URL}/cliente/${clienteId}/formulario-responses`);
-    
-    if (!response.ok) {
-      throw new Error('Falha ao buscar formulários enviados');
-    }
-    
-    const result = await response.json();
+    const result = await apiClient.get(`/cliente/${clienteId}/formulario-responses`);
     return result.data || [];
   },
 
   async updateDocumentoStatus(documentoId: string, status: string) {
-    const response = await fetch(`${API_BASE_URL}/cliente/documento/${documentoId}/status`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ status }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Falha ao atualizar status do documento');
-    }
-
-    return response.json();
+    return apiClient.patch(`/cliente/documento/${documentoId}/status`, { status });
   },
 
   async getNotificacoes(clienteId: string) {
-    const response = await fetch(`${API_BASE_URL}/cliente/${clienteId}/notificacoes`);
-    
-    if (!response.ok) {
-      throw new Error('Falha ao buscar notificações');
-    }
-    
-    const result = await response.json();
+    const result = await apiClient.get(`/cliente/${clienteId}/notificacoes`);
     return result.data || [];
   },
 
   async getRequerimentos(clienteId: string) {
-    const response = await fetch(`${API_BASE_URL}/cliente/${clienteId}/requerimentos`);
-    
-    if (!response.ok) {
-      throw new Error('Falha ao buscar requerimentos');
-    }
-    
-    const result = await response.json();
+    const result = await apiClient.get(`/cliente/${clienteId}/requerimentos`);
     return result.data || [];
   },
 
   async updateNotificacaoStatus(notificacaoId: string, lida: boolean) {
-    const response = await fetch(`${API_BASE_URL}/cliente/notificacoes/${notificacaoId}/status`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ lida }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Falha ao atualizar status da notificação');
-    }
-
-    return response.json();
+    return apiClient.patch(`/cliente/notificacoes/${notificacaoId}/status`, { lida });
   },
 
   async markAllNotificacoesAsRead(clienteId: string) {
-    const response = await fetch(`${API_BASE_URL}/cliente/${clienteId}/notificacoes/read-all`, {
-      method: 'POST',
-    });
-
-    if (!response.ok) {
-      throw new Error('Falha ao marcar notificações como lidas');
-    }
-
-    return response.json();
+    return apiClient.post(`/cliente/${clienteId}/notificacoes/read-all`);
   },
 
   async getDocumentosRequeridos(clienteId: string) {
-    const response = await fetch(`${API_BASE_URL}/cliente/${clienteId}/documentos-requeridos`);
-    
-    if (!response.ok) {
-      throw new Error('Falha ao buscar documentos requeridos');
-    }
-    
-    const result = await response.json();
+    const result = await apiClient.get(`/cliente/${clienteId}/documentos-requeridos`);
     return result.data || [];
   },
-  
+
   async getAgendamentos(clienteId: string) {
-    const response = await fetch(`${API_BASE_URL}/comercial/agendamentos/cliente/${clienteId}`);
-    
-    if (!response.ok) {
-      throw new Error('Falha ao buscar agendamentos');
-    }
-    
-    return response.json();
+    return apiClient.get(`/comercial/agendamentos/cliente/${clienteId}`);
   },
 
   async recreateCheckout(agendamentoId: string) {
-    const response = await fetch(`${API_BASE_URL}/comercial/agendamento/${agendamentoId}/checkout`, {
-      method: 'POST',
-    });
-    
-    if (!response.ok) {
-      throw new Error('Falha ao gerar link de pagamento');
-    }
-    
-    const result = await response.json();
+    const result = await apiClient.post(`/comercial/agendamento/${agendamentoId}/checkout`);
     return result.checkoutUrl;
   },
 
   async solicitarApostilamento(documentoId: string, documentoUrl: string, observacoes?: string) {
-    const response = await fetch(`${API_BASE_URL}/apostilamentos/solicitar`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ documentoId, documentoUrl, observacoes }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Falha ao solicitar apostilamento');
-    }
-
-    return response.json();
+    return apiClient.post(`/apostilamentos/solicitar`, { documentoId, documentoUrl, observacoes });
   },
 
-
   async getContratos(clienteId: string) {
-    const response = await fetch(`${API_BASE_URL}/cliente/contratos?clienteId=${encodeURIComponent(clienteId)}`);
-    
-    if (!response.ok) {
-      throw new Error('Falha ao buscar contratos');
-    }
-    
-    const result = await response.json();
+    const result = await apiClient.get(`/cliente/contratos?clienteId=${encodeURIComponent(clienteId)}`);
     return result.data || [];
   },
 
@@ -147,16 +56,7 @@ export const clienteService = {
     formData.append('file', file);
     formData.append('cliente_id', clienteId);
 
-    const response = await fetch(`${API_BASE_URL}/cliente/contratos/${contratoId}/upload`, {
-      method: 'POST',
-      body: formData
-    });
-
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(result.message || 'Falha ao enviar contrato');
-    }
-
+    const result = await apiClient.post(`/cliente/contratos/${contratoId}/upload`, formData);
     return result.data;
   },
 
@@ -165,52 +65,30 @@ export const clienteService = {
     formData.append('file', file);
     formData.append('cliente_id', clienteId);
 
-    const response = await fetch(`${API_BASE_URL}/cliente/contratos/${contratoId}/comprovante`, {
-      method: 'POST',
-      body: formData
-    });
-
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(result.message || 'Falha ao enviar comprovante');
-    }
-
+    const result = await apiClient.post(`/cliente/contratos/${contratoId}/comprovante`, formData);
     return result.data;
   },
 
   async submitApostilleComprovante(orcamentoIds: string | string[], file: File) {
     const formData = new FormData();
     formData.append('comprovante', file);
-    
+
     // Se for array, enviamos no body também para o controller bulk
     if (Array.isArray(orcamentoIds)) {
         orcamentoIds.forEach(id => formData.append('orcamentoIds[]', id));
     }
 
     const primaryId = Array.isArray(orcamentoIds) ? orcamentoIds[0] : orcamentoIds;
-    const response = await fetch(`${API_BASE_URL}/apostilamentos/${primaryId}/submit-comprovante`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao enviar comprovante');
-    }
-
-    return response.json();
+    return apiClient.post(`/apostilamentos/${primaryId}/submit-comprovante`, formData);
   },
 
   async getOrcamentoByDocumento(documentoId: string) {
-    const response = await fetch(`${API_BASE_URL}/traducoes/orcamentos/documento/${documentoId}`);
-    
-    if (!response.ok) {
-      if (response.status === 444) return null; // Or handle not found
+    try {
+      const result = await apiClient.get(`/traducoes/orcamentos/documento/${documentoId}`);
+      return result.data;
+    } catch (error) {
+      // Handle not found errors gracefully
       return null;
     }
-    
-    const result = await response.json();
-
-    return result.data;
   }
 };
