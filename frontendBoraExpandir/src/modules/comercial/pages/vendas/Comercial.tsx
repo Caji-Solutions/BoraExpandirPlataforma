@@ -13,6 +13,7 @@ import AgendamentosPage from '@/modules/comercial/pages/agendamentos/Agendamento
 import { AgendamentoEditPage } from '../agendamentos/AgendamentoEditPage'
 import GanhosPage from '../financeiro/Ganhos'
 import ComissaoColaborador from '../financeiro/ComissaoColaborador'
+import SupervisorComercialPage from '../supervisor/SupervisorComercialPage'
 import ServicosComerciais from './ServicosComerciais'
 import SelecaoLeadCliente from '../cadastro/SelecaoLeadCliente'
 import ContratosFixosPage from '../contratos/ContratosFixosPage'
@@ -676,14 +677,18 @@ export default function Comercial() {
   const nivel = activeProfile?.nivel || 'C1'
   const isC1 = nivel === 'C1'
 
+  const isSupervisor = activeProfile?.is_supervisor || false
+
   const sidebarItems = [
     { label: 'Dashboard', to: '/comercial', icon: Home },
     { label: 'DNA do Cliente', to: '/comercial/dna', icon: Dna },
     { label: 'Leads', to: '/comercial/leads', icon: Users },
-    { label: 'Servicos', to: '/comercial/servicos', icon: FileText },
-    { label: 'Meus Agendamentos', to: '/comercial/meus-agendamentos', icon: Calendar },
+    ...(!isSupervisor ? [
+      { label: 'Servicos', to: '/comercial/servicos', icon: FileText },
+      { label: 'Meus Agendamentos', to: '/comercial/meus-agendamentos', icon: Calendar },
+    ] : []),
     { label: 'Minhas Comissoes', to: '/comercial/comissoes', icon: DollarSign },
-    ...(!isC1 ? [
+    ...(!isC1 && !isSupervisor ? [
       { label: 'Contratos', to: '/comercial/contratos', icon: FileText },
     ] : []),
   ]
@@ -693,6 +698,12 @@ export default function Comercial() {
       label: 'Menu Principal',
       items: sidebarItems,
     },
+    ...(isSupervisor ? [{
+      label: 'Supervisão',
+      items: [
+        { label: 'Minha Equipe', to: '/comercial/supervisor', icon: Users },
+      ],
+    }] : []),
   ]
 
   const toast = useToast()
@@ -804,6 +815,9 @@ export default function Comercial() {
             element={<SelecaoLeadCliente />}
           />
           <Route path="/dna" element={<ClientDNAPage />} />
+          {isSupervisor && (
+            <Route path="/supervisor" element={<SupervisorComercialPage />} />
+          )}
           <Route path="*" element={<Navigate to="/comercial" replace />} />
         </Routes>
       </main>

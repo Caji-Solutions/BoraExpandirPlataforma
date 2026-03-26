@@ -55,7 +55,10 @@ export default function LeadsPage() {
   const fetchLeads = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await fetch(`${backendUrl}/cliente/clientes`)
+      const token = localStorage.getItem('auth_token')
+      const response = await fetch(`${backendUrl}/cliente/clientes`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
       if (!response.ok) throw new Error('Erro ao buscar')
       const result = await response.json()
       const all = result.data || []
@@ -174,11 +177,14 @@ export default function LeadsPage() {
 
     setSaving(true)
     try {
+      const token = localStorage.getItem('auth_token')
+      const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
+
       if (editingLead) {
         // Atualizar no backend (PATCH)
         const response = await fetch(`${backendUrl}/cliente/clientes/${editingLead.id}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeader },
           body: JSON.stringify({ nome: formNome, whatsapp: formTelefone })
         })
         if (response.ok) {
@@ -194,7 +200,7 @@ export default function LeadsPage() {
         // Criar novo lead
         const response = await fetch(`${backendUrl}/cliente/register-lead`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeader },
           body: JSON.stringify({
             nome: formNome,
             whatsapp: formTelefone,
@@ -216,8 +222,10 @@ export default function LeadsPage() {
 
   const handleDeleteLead = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este lead?')) return
+    const token = localStorage.getItem('auth_token')
+    const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
     try {
-      await fetch(`${backendUrl}/cliente/clientes/${id}`, { method: 'DELETE' })
+      await fetch(`${backendUrl}/cliente/clientes/${id}`, { method: 'DELETE', headers: authHeader })
       setLeads(prev => prev.filter(l => l.id !== id))
     } catch (err) {
       console.error('Erro ao deletar lead:', err)
@@ -229,8 +237,10 @@ export default function LeadsPage() {
     setNotesModalLead(lead)
     setNewLeadNote('')
     setLoadingNotes(true)
+    const token = localStorage.getItem('auth_token')
+    const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
     try {
-      const response = await fetch(`${backendUrl}/cliente/lead-notas/${lead.id}`)
+      const response = await fetch(`${backendUrl}/cliente/lead-notas/${lead.id}`, { headers: authHeader })
       if (response.ok) {
         const result = await response.json()
         setLeadNotes(result.data || [])
@@ -245,10 +255,12 @@ export default function LeadsPage() {
   const handleSaveNote = async () => {
     if (!newLeadNote.trim() || !notesModalLead) return
     setSavingNote(true)
+    const token = localStorage.getItem('auth_token')
+    const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
     try {
       const response = await fetch(`${backendUrl}/cliente/lead-notas`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify({
           leadId: notesModalLead.id,
           texto: newLeadNote,
@@ -270,8 +282,10 @@ export default function LeadsPage() {
   }
 
   const handleDeleteNote = async (noteId: string) => {
+    const token = localStorage.getItem('auth_token')
+    const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
     try {
-      const response = await fetch(`${backendUrl}/cliente/lead-notas/${noteId}?userId=${activeProfile?.id}`, { method: 'DELETE' })
+      const response = await fetch(`${backendUrl}/cliente/lead-notas/${noteId}?userId=${activeProfile?.id}`, { method: 'DELETE', headers: authHeader })
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.message || 'Erro ao deletar nota')

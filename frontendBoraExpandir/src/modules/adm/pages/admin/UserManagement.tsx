@@ -43,7 +43,9 @@ interface TeamMember {
   email: string;
   role: UserRole;
   nivel?: string | null;
+  cargo?: string | null;
   is_supervisor?: boolean;
+  supervisor_id?: string | null;
   cpf?: string | null;
   telefone?: string | null;
   horario_trabalho?: string | null;
@@ -119,6 +121,7 @@ export default function UserManagement() {
   const [formRole, setFormRole] = useState("");
   const [formNivel, setFormNivel] = useState<string | null>(null);
   const [formIsSupervisor, setFormIsSupervisor] = useState(false);
+  const [formSupervisorId, setFormSupervisorId] = useState<string | null>(null);
   const [formCpf, setFormCpf] = useState("");
   const [formTelefone, setFormTelefone] = useState("");
   const [formHorarioEntrada, setFormHorarioEntrada] = useState("");
@@ -165,6 +168,7 @@ export default function UserManagement() {
     setFormPassword("");
     setFormRole("");
     setFormNivel(null);
+    setFormSupervisorId(null);
     setFormTelefone("");
     setFormHorarioEntrada("");
     setFormHorarioSaida("");
@@ -196,6 +200,7 @@ export default function UserManagement() {
     setFormRole(member.role || "");
     setFormNivel(member.nivel || null);
     setFormIsSupervisor(member.is_supervisor || false);
+    setFormSupervisorId(member.supervisor_id || null);
     setFormCpf(member.cpf || "");
     setFormTelefone(member.telefone || "");
     
@@ -255,6 +260,7 @@ export default function UserManagement() {
           role: formRole,
           nivel: formNivel,
           is_supervisor: formIsSupervisor,
+          supervisor_id: formSupervisorId,
           cpf: formCpf,
           telefone: formTelefone,
           horario_trabalho: horarioCombinado,
@@ -302,6 +308,19 @@ export default function UserManagement() {
   };
 
   const showSupervisorCheckbox = formRole !== "tradutor" && formRole !== "";
+
+  // Supervisores disponiveis para atribuicao (mesma role, is_supervisor = true, nao pode ser ele mesmo)
+  const availableSupervisors = members.filter(
+    (m) => m.is_supervisor && m.id !== editId && (
+      // Comercial pode ser supervisionado por comercial supervisor
+      (formRole === "comercial" && m.role === "comercial") ||
+      // Juridico por juridico supervisor
+      (formRole === "juridico" && m.role === "juridico") ||
+      // Administrativo por administrativo supervisor
+      (formRole === "administrativo" && m.role === "administrativo")
+    )
+  );
+  const showSupervisorSelect = !formIsSupervisor && availableSupervisors.length > 0;
 
   const openDetail = (member: TeamMember) => {
     setSelectedMember(member);
@@ -462,7 +481,10 @@ export default function UserManagement() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role" className="text-foreground">Função</Label>
-                <Select value={formRole} onValueChange={handleRoleChange}>
+                <Select 
+                  value={formNivel ? formNivel : formRole === 'comercial' ? '' : formRole} 
+                  onValueChange={handleRoleChange}
+                >
                   <SelectTrigger className="bg-input border-border text-foreground">
                     <SelectValue placeholder="Selecione a função" />
                   </SelectTrigger>
@@ -480,9 +502,30 @@ export default function UserManagement() {
                   <Checkbox
                     id="supervisor"
                     checked={formIsSupervisor}
-                    onCheckedChange={(checked) => setFormIsSupervisor(checked as boolean)}
+                    onCheckedChange={(checked) => {
+                      setFormIsSupervisor(checked as boolean);
+                      if (checked) setFormSupervisorId(null);
+                    }}
                   />
                   <Label htmlFor="supervisor" className="text-foreground">Usuário é supervisor?</Label>
+                </div>
+              )}
+              {showSupervisorSelect && (
+                <div className="space-y-2">
+                  <Label htmlFor="supervisor_id" className="text-foreground">Supervisor Responsável</Label>
+                  <Select value={formSupervisorId || "none"} onValueChange={(v) => setFormSupervisorId(v === "none" ? null : v)}>
+                    <SelectTrigger className="bg-input border-border text-foreground">
+                      <SelectValue placeholder="Selecione o supervisor" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border">
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {availableSupervisors.map((sup) => (
+                        <SelectItem key={sup.id} value={sup.id}>
+                          {sup.full_name} ({getRoleLabel(sup.role, sup.nivel)})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4">
@@ -591,6 +634,16 @@ export default function UserManagement() {
                 <span className="text-sm text-muted-foreground">Telefone</span>
                 <span className="text-sm text-foreground font-medium">{selectedMember?.telefone || "—"}</span>
               </div>
+
+              {/* Supervisor */}
+              {selectedMember?.supervisor_id && (
+                <div className="flex items-center justify-between py-3 border-b border-border">
+                  <span className="text-sm text-muted-foreground">Supervisor</span>
+                  <span className="text-sm text-foreground font-medium">
+                    {members.find(m => m.id === selectedMember.supervisor_id)?.full_name || "—"}
+                  </span>
+                </div>
+              )}
 
               {/* Horário de Trabalho */}
               <div className="flex items-center justify-between py-3 border-b border-border">

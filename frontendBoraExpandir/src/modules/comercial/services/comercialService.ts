@@ -3,13 +3,19 @@ import { formatCpfDisplay, formatPhoneDisplay, normalizePhone } from '../../../u
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
+function getAuthHeaders(extra: Record<string, string> = {}): Record<string, string> {
+    const token = localStorage.getItem('auth_token')
+    return token ? { Authorization: `Bearer ${token}`, ...extra } : extra
+}
+
 export async function getAllClientes(): Promise<Cliente[]> {
-    const response = await fetch(`${API_BASE_URL}/cliente/clientes`);
+    const response = await fetch(`${API_BASE_URL}/cliente/clientes`, {
+        headers: getAuthHeaders()
+    });
     if (!response.ok) {
         throw new Error('Erro ao buscar clientes');
     }
     const result = await response.json();
-    // Garantir que os dados batem com a interface (fallback para campos obrigatórios)
     return (result.data || []).map((c: any) => ({
         ...c,
         telefone: formatPhoneDisplay(c.whatsapp || c.telefone || ''),
@@ -22,7 +28,9 @@ export async function getAllClientes(): Promise<Cliente[]> {
 }
 
 export async function getClienteCredentials(email: string): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/cliente/credentials/${email}`);
+    const response = await fetch(`${API_BASE_URL}/cliente/credentials/${email}`, {
+        headers: getAuthHeaders()
+    });
     if (!response.ok) {
         throw new Error('Erro ao buscar credenciais');
     }
@@ -30,7 +38,9 @@ export async function getClienteCredentials(email: string): Promise<any> {
 }
 
 export async function getAgendamentosByUsuario(usuarioId: string): Promise<any[]> {
-    const response = await fetch(`${API_BASE_URL}/comercial/agendamentos/usuario/${usuarioId}`);
+    const response = await fetch(`${API_BASE_URL}/comercial/agendamentos/usuario/${usuarioId}`, {
+        headers: getAuthHeaders()
+    });
     if (!response.ok) {
         throw new Error('Erro ao buscar agendamentos do usuário');
     }
@@ -41,7 +51,7 @@ export async function getAgendamentosByUsuario(usuarioId: string): Promise<any[]
 export async function register(clienteData: any): Promise<any> {
     const response = await fetch(`${API_BASE_URL}/cliente/register`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(clienteData),
     });
     if (!response.ok) {
@@ -54,6 +64,7 @@ export async function register(clienteData: any): Promise<any> {
 export async function cancelarAgendamento(id: string): Promise<any> {
     const response = await fetch(`${API_BASE_URL}/comercial/agendamento/${id}/cancelar`, {
         method: 'POST',
+        headers: getAuthHeaders()
     });
     if (!response.ok) {
         const error = await response.json();
@@ -63,7 +74,9 @@ export async function cancelarAgendamento(id: string): Promise<any> {
 }
 
 export async function getAgendamentosByCliente(clienteId: string): Promise<any[]> {
-    const response = await fetch(`${API_BASE_URL}/comercial/agendamentos/cliente/${clienteId}`);
+    const response = await fetch(`${API_BASE_URL}/comercial/agendamentos/cliente/${clienteId}`, {
+        headers: getAuthHeaders()
+    });
     if (!response.ok) {
         throw new Error('Erro ao buscar agendamentos do cliente');
     }
@@ -73,7 +86,9 @@ export async function getAgendamentosByCliente(clienteId: string): Promise<any[]
 
 export async function getAllProcessos(): Promise<any[]> {
     try {
-        const response = await fetch(`${API_BASE_URL}/juridico/processos`);
+        const response = await fetch(`${API_BASE_URL}/juridico/processos`, {
+            headers: getAuthHeaders()
+        });
         if (!response.ok) return [];
         const result = await response.json();
         return Array.isArray(result) ? result : (result.data || []);
@@ -84,7 +99,9 @@ export async function getAllProcessos(): Promise<any[]> {
 
 export async function getAllRequerimentos(): Promise<any[]> {
     try {
-        const response = await fetch(`${API_BASE_URL}/juridico/requerimentos`);
+        const response = await fetch(`${API_BASE_URL}/juridico/requerimentos`, {
+            headers: getAuthHeaders()
+        });
         if (!response.ok) return [];
         const result = await response.json();
         return Array.isArray(result) ? result : (result.data || []);
@@ -98,7 +115,9 @@ export async function getContratosServicos(clienteId?: string, isDraft?: boolean
     if (clienteId) params.set('clienteId', clienteId)
     if (isDraft !== undefined) params.set('isDraft', String(isDraft))
     const query = params.toString()
-    const response = await fetch(`${API_BASE_URL}/comercial/contratos${query ? `?${query}` : ''}`)
+    const response = await fetch(`${API_BASE_URL}/comercial/contratos${query ? `?${query}` : ''}`, {
+        headers: getAuthHeaders()
+    })
     if (!response.ok) {
         throw new Error('Erro ao buscar contratos')
     }
@@ -107,7 +126,9 @@ export async function getContratosServicos(clienteId?: string, isDraft?: boolean
 }
 
 export async function getContratoServicoById(id: string): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/comercial/contratos/${id}`)
+    const response = await fetch(`${API_BASE_URL}/comercial/contratos/${id}`, {
+        headers: getAuthHeaders()
+    })
     if (!response.ok) {
         throw new Error('Erro ao buscar contrato')
     }
@@ -118,7 +139,7 @@ export async function getContratoServicoById(id: string): Promise<any> {
 export async function createContratoServico(payload: { cliente_id: string; servico_id: string; usuario_id?: string | null; subservico_id?: string; subservico_nome?: string }): Promise<any> {
     const response = await fetch(`${API_BASE_URL}/comercial/contratos`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(payload)
     })
     const result = await response.json().catch(() => ({}))
@@ -135,6 +156,7 @@ export async function uploadContratoAssinado(id: string, file: File, usuarioId?:
 
     const response = await fetch(`${API_BASE_URL}/comercial/contratos/${id}/upload`, {
         method: 'POST',
+        headers: getAuthHeaders(),
         body: formData
     })
     const result = await response.json().catch(() => ({}))
@@ -147,7 +169,7 @@ export async function uploadContratoAssinado(id: string, file: File, usuarioId?:
 export async function aprovarContratoServico(id: string, usuarioId?: string): Promise<any> {
     const response = await fetch(`${API_BASE_URL}/comercial/contratos/${id}/aprovar`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ usuario_id: usuarioId || null })
     })
     const result = await response.json().catch(() => ({}))
@@ -160,7 +182,7 @@ export async function aprovarContratoServico(id: string, usuarioId?: string): Pr
 export async function recusarContratoServico(id: string, nota: string): Promise<any> {
     const response = await fetch(`${API_BASE_URL}/comercial/contratos/${id}/recusar`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ nota })
     })
     const result = await response.json().catch(() => ({}))
@@ -176,6 +198,7 @@ export async function uploadComprovanteContrato(id: string, file: File): Promise
 
     const response = await fetch(`${API_BASE_URL}/comercial/contratos/${id}/comprovante`, {
         method: 'POST',
+        headers: getAuthHeaders(),
         body: formData
     })
     const result = await response.json().catch(() => ({}))
@@ -185,12 +208,10 @@ export async function uploadComprovanteContrato(id: string, file: File): Promise
     return result.data
 }
 
-
-// Novos métodos para o fluxo Draft / Assessoria
 export async function updateContratoDraft(id: string, payload: { etapa_fluxo: number; draft_dados: any }): Promise<any> {
     const response = await fetch(`${API_BASE_URL}/comercial/contratos/${id}/draft`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(payload)
     })
     const result = await response.json().catch(() => ({}))
@@ -203,19 +224,19 @@ export async function updateContratoDraft(id: string, payload: { etapa_fluxo: nu
 export async function gerarContratoPdf(id: string): Promise<{ url: string, data: any }> {
     const response = await fetch(`${API_BASE_URL}/comercial/contratos/${id}/gerar-pdf`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' })
     })
     const result = await response.json().catch(() => ({}))
     if (!response.ok) {
         throw new Error(result.message || 'Erro ao gerar PDF do contrato')
     }
-    return result // retorna { url, data }
+    return result
 }
 
 export async function enviarContratoAssinatura(id: string, email: string): Promise<any> {
     const response = await fetch(`${API_BASE_URL}/comercial/contratos/${id}/enviar-assinatura`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ email })
     })
     const result = await response.json().catch(() => ({}))

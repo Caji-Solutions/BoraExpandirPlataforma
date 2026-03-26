@@ -9,7 +9,9 @@ export interface UserProfile {
     telefone?: string
     role: 'comercial' | 'juridico' | 'administrativo' | 'tradutor' | 'super_admin' | 'cliente'
     nivel?: 'C1' | 'C2' | null
+    cargo?: 'C1' | 'C2' | 'HEAD' | null
     is_supervisor?: boolean
+    supervisor_id?: string | null
     avatar_url?: string
     created_at?: string
     updated_at?: string

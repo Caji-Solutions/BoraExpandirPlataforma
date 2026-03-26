@@ -35,7 +35,10 @@ export function Clientes() {
     const fetchClientes = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${backendUrl}/cliente/clientes`);
+            const token = localStorage.getItem('auth_token')
+            const response = await fetch(`${backendUrl}/cliente/clientes`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
             if (!response.ok) throw new Error('Erro ao buscar clientes');
             
             const result = await response.json();

@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { supabase } from '../config/SupabaseClient';
 import CambioService from '../services/CambioService';
+import ComissaoRepository from '../repositories/ComissaoRepository';
 
 /**
  * Job que roda a cada 30 minutos
@@ -116,5 +117,37 @@ export const startCronJobs = () => {
         });
 
         console.log('[CRON] Worker de cambio iniciado. (Atualizacao a cada 6 horas)');
+
+        // Job de Fechamento Mensal de Comissões - Dia 15 as 23:59
+        cron.schedule('59 23 15 * *', async () => {
+            try {
+                console.log('[CRON] Iniciando fechamento mensal de comissoes...');
+                
+                // Pega data de ontem (dia 14 ou anterior) para definir de qual mes estamos fechando
+                // Se rodou dia 15 de Abril, estamos fechando as estimativas de Abril (ou as pendentes anteriores).
+                // Muitas vezes o fechamento no dia 15 é do mês *anterior*.
+                const hoje = new Date()
+                let mes = hoje.getMonth() + 1 // 1 a 12
+                let ano = hoje.getFullYear()
+
+                // Regra de negocio: Dia 15 de um dado mes costuma fechar as comissoes *do proprio mes atual* (estimado -> fechado) 
+                // ou do *mes anterior* dependendo da definicao. Vamos usar o mes atual, iterar ou pedir pro cron fechar tudo que tiver open no passado.
+                // Mas de forma mais garantida, vamos fechar para o MES ANTERIOR:
+                if (mes === 1) {
+                    mes = 12
+                    ano -= 1
+                } else {
+                    mes -= 1
+                }
+
+                console.log(`[CRON] Fechando comissoes estimadas para Mes: ${mes} / Ano: ${ano}`)
+                await ComissaoRepository.fecharComissoesMensais(mes, ano);
+                
+                console.log(`[CRON] Comissoes do mes ${mes}/${ano} fechadas com sucesso.`);
+            } catch (err) {
+                console.error('[CRON] Erro ao executar fechamento mensal de comissoes:', err);
+            }
+        });
+        console.log('[CRON] Worker de fechamento de comissoes iniciado. (Execucao dia 15 as 23:59)');
     }
 };

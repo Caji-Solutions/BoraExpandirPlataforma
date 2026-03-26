@@ -1033,11 +1033,32 @@ class ComercialController {
                 }
             }
 
-                        const updatedData = await ContratoServicoRepository.updateContrato(id, {
+            let membrosCount: number | undefined = undefined
+            if (mergedDraft.dependentes) {
+                try {
+                    const deps = typeof mergedDraft.dependentes === 'string' 
+                        ? JSON.parse(mergedDraft.dependentes) 
+                        : mergedDraft.dependentes
+                    
+                    if (Array.isArray(deps)) {
+                        membrosCount = 1 + deps.length
+                    }
+                } catch (e) {
+                    console.error('[ComercialController] Erro ao parear dependentes para membros_count:', e)
+                }
+            }
+
+            const payloadUpdate: any = {
                 etapa_fluxo: etapaNumerica,
                 draft_dados: mergedDraft,
                 atualizado_em: new Date().toISOString()
-            })
+            }
+
+            if (membrosCount !== undefined) {
+                payloadUpdate.membros_count = membrosCount
+            }
+
+            const updatedData = await ContratoServicoRepository.updateContrato(id, payloadUpdate)
 
             if (contrato.cliente_id) {
                 await DNAService.mergeDNA(contrato.cliente_id, mergedDraft, 'MEDIUM')
@@ -1136,7 +1157,7 @@ class ComercialController {
     async enviarContratoAssinatura(req: any, res: any) {
         try {
             const { id } = req.params
-            const { email } = req.body
+            const { email, signaturePositions } = req.body
 
             const contrato = await ContratoServicoRepository.getContratoById(id)
             if (!contrato) {
@@ -1190,7 +1211,8 @@ class ComercialController {
                     `Contrato: ${contrato.servico_nome || 'Assessoria'} - ${contrato.cliente_nome || 'Cliente'}`,
                     contratoArquivoUrl,
                     contrato.cliente_nome || 'Cliente',
-                    emailDestino
+                    emailDestino,
+                    signaturePositions // Passando as coordenadas vindas do frontend
                 )
 
                 // Salvar o ID do documento da Autentique na coluna dedicada para rastreio e webhook

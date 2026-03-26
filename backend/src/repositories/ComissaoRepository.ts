@@ -178,6 +178,22 @@ class ComissaoRepository {
 
     return data || { membros_count: 1, valor_por_membro: 0 }
   }
+
+  async fecharComissoesMensais(mes: number, ano: number) {
+    const { error } = await supabase
+      .from('comissoes')
+      .update({ status: 'fechado' })
+      .eq('status', 'estimado')
+      .eq('mes', mes)
+      .eq('ano', ano)
+
+    if (error) {
+      console.error('[ComissaoRepository] Erro ao fechar comissoes:', error)
+      throw error
+    }
+    
+    return true
+  }
 }
 
 export default new ComissaoRepository()

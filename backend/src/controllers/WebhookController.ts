@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import ContratoServicoRepository from '../repositories/ContratoServicoRepository';
 import NotificationService from '../services/NotificationService';
+import DNAService from '../services/DNAService';
+import AutentiqueService from '../services/AutentiqueService';
+import { supabase } from '../config/SupabaseClient';
 
 class WebhookController {
     /**
@@ -28,18 +31,25 @@ class WebhookController {
             res.status(200).json({ received: true });
 
             const payload = req.body;
-            const eventType = payload?.event?.type;
-            const documentData = payload?.event?.data?.object;
 
-            if (!eventType || !documentData) {
-                console.warn('[WebhookController] Payload invalido recebido do Autentique:', JSON.stringify(payload));
+            // Log completo para diagnostico da estrutura do payload
+            console.log('[WebhookController] Payload completo Autentique:', JSON.stringify(payload, null, 2));
+
+            const eventType = payload?.event?.type;
+            const eventData = payload?.event?.data;
+
+            if (!eventType || !eventData) {
+                console.warn('[WebhookController] Payload invalido. eventType:', eventType, '| eventData:', JSON.stringify(eventData));
                 return;
             }
 
-            const autentiqueDocumentId = documentData.id;
+            // document.finished -> eventData.id
+            // signature.* -> eventData.document (o ID do documento pai)
+            const autentiqueDocumentId: string | undefined =
+                eventData.id || eventData.document || undefined;
 
             if (!autentiqueDocumentId) {
-                console.warn('[WebhookController] document.id ausente no payload do webhook Autentique');
+                console.warn('[WebhookController] document id ausente. eventData:', JSON.stringify(eventData));
                 return;
             }
 
@@ -47,7 +57,18 @@ class WebhookController {
 
             if (eventType === 'document.finished') {
                 // Todos os signatarios assinaram - contrato finalizado
-                const signedFileUrl = documentData.files?.signed || null;
+                let signedFileUrl: string | null = eventData.files?.signed || null;
+
+                // Fallback: se a Autentique nao enviou a URL no payload, busca via API
+                if (!signedFileUrl) {
+                    try {
+                        const docFromApi = await AutentiqueService.getDocument(autentiqueDocumentId);
+                        signedFileUrl = docFromApi?.files?.signed || null;
+                        console.log(`[WebhookController] URL assinada obtida via API Autentique: ${signedFileUrl}`);
+                    } catch (fetchErr) {
+                        console.error('[WebhookController] Falha ao buscar URL assinada via API Autentique:', fetchErr);
+                    }
+                }
 
                 const contrato = await ContratoServicoRepository.findByAutentiqueDocumentId(autentiqueDocumentId);
 
@@ -63,6 +84,63 @@ class WebhookController {
                 );
 
                 console.log(`[WebhookController] Contrato ${contrato.id} marcado como aprovado. PDF assinado: ${signedFileUrl}`);
+
+                // Merge no DNA do cliente
+                if (contrato.cliente_id) {
+                    try {
+                        await DNAService.mergeDNA(contrato.cliente_id, {
+                            contrato_assinado_url: signedFileUrl,
+                            contrato_assinado_em: new Date().toISOString(),
+                            contrato_id: contrato.id,
+                            contrato_servico_nome: contrato.servico_nome || null
+                        }, 'HIGH');
+                        console.log(`[WebhookController] DNA do cliente ${contrato.cliente_id} atualizado com contrato assinado.`);
+                    } catch (dnaErr) {
+                        console.error('[WebhookController] Erro ao fazer merge no DNA do cliente:', dnaErr);
+                    }
+                }
+
+                // Notificacao ao cliente no portal
+                if (contrato.cliente_id) {
+                    try {
+                        await NotificationService.createNotification({
+                            clienteId: contrato.cliente_id,
+                            titulo: 'Contrato assinado com sucesso',
+                            mensagem: `Seu contrato foi assinado por todas as partes e ja esta disponivel para download.`,
+                            tipo: 'success'
+                        });
+                    } catch (notifErr) {
+                        console.error('[WebhookController] Erro ao criar notificacao de contrato assinado:', notifErr);
+                    }
+                }
+
+                // Notificacao por email ao usuario comercial responsavel
+                if (contrato.usuario_id) {
+                    try {
+                        const { data: perfil } = await supabase
+                            .from('profiles')
+                            .select('full_name, email')
+                            .eq('id', contrato.usuario_id)
+                            .single();
+
+                        if (perfil?.email) {
+                            const EmailService = (await import('../services/EmailService')).default;
+                            await EmailService.sendEmail({
+                                to: perfil.email,
+                                subject: 'Contrato assinado pelo cliente',
+                                html: `
+                                    <p>Ola, ${perfil.full_name || 'colaborador'}!</p>
+                                    <p>O contrato de <strong>${contrato.cliente_nome || 'cliente'}</strong> foi assinado por todas as partes.</p>
+                                    ${signedFileUrl ? `<p><a href="${signedFileUrl}">Clique aqui para baixar o contrato assinado</a></p>` : ''}
+                                    <p>Voce pode acessar os detalhes no sistema.</p>
+                                `
+                            });
+                            console.log(`[WebhookController] Email de contrato assinado enviado para ${perfil.email}`);
+                        }
+                    } catch (emailErr) {
+                        console.error('[WebhookController] Erro ao enviar email ao comercial:', emailErr);
+                    }
+                }
 
             } else if (eventType === 'signature.rejected') {
                 // Um signatario recusou a assinatura

@@ -143,9 +143,12 @@ export function ComprovantesPage() {
             setAction(id, 'loading')
             const item = comprovantes.find(c => c.id === id)
             const isTraducao = item?.tipo_comprovante === 'traducao'
+            const isContrato = item?.tipo === 'contrato'
             const endpoint = isTraducao
                 ? `${API_BASE_URL}/financeiro/traducao/comprovante/${id}/aprovar`
-                : `${API_BASE_URL}/financeiro/comprovante/${id}/aprovar`
+                : isContrato
+                    ? `${API_BASE_URL}/financeiro/contratos/comprovante/${id}/aprovar`
+                    : `${API_BASE_URL}/financeiro/comprovante/${id}/aprovar`
 
             const res = await fetch(endpoint, {
                 method: 'POST',
@@ -180,9 +183,12 @@ export function ComprovantesPage() {
             setAction(id, 'loading')
             const item = comprovantes.find(c => c.id === id)
             const isTraducao = item?.tipo_comprovante === 'traducao'
+            const isContrato = item?.tipo === 'contrato'
             const endpoint = isTraducao
                 ? `${API_BASE_URL}/financeiro/traducao/comprovante/${id}/recusar`
-                : `${API_BASE_URL}/financeiro/comprovante/${id}/recusar`
+                : isContrato
+                    ? `${API_BASE_URL}/financeiro/contratos/comprovante/${id}/recusar`
+                    : `${API_BASE_URL}/financeiro/comprovante/${id}/recusar`
 
             const res = await fetch(endpoint, {
                 method: 'POST',

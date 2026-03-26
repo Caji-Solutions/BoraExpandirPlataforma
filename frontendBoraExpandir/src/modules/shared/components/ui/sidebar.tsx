@@ -204,12 +204,16 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen, children,
             <button
               onClick={() => {
                 setImpersonatedProfile(null)
-                navigate('/adm')
+                if (profile?.role === 'comercial' && profile?.is_supervisor) {
+                  navigate('/comercial/supervisor')
+                } else {
+                  navigate('/adm')
+                }
               }}
               className="mt-2 flex items-center gap-1 text-xs text-amber-600 hover:text-amber-800 font-medium transition-colors"
             >
               <ArrowLeft className="h-3 w-3" />
-              Voltar ao Admin
+              {profile?.role === 'comercial' ? 'Voltar a Minha Equipe' : 'Voltar ao Admin'}
             </button>
           </div>
         )}

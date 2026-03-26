@@ -135,10 +135,10 @@ export default function DelegacaoFila() {
     const status = item.status;
     
     // Lógica de "aguardando delegação"
-    const isAguardando = isProcesso 
+    const isAguardando = isProcesso
       ? (!responsavelId || status === 'waiting_delegation')
-      : (!responsavelId || status === 'confirmado');
-    
+      : !responsavelId;
+
     // Lógica de "delegado"
     const isDelegado = isProcesso
       ? (responsavelId !== null && status !== 'waiting_delegation')
@@ -167,9 +167,9 @@ export default function DelegacaoFila() {
     const isProcesso = item._tipoFila === 'processo';
     const responsavelId = isProcesso ? item.responsavel_id : item.responsavel_juridico_id;
     const status = item.status;
-    return isProcesso 
+    return isProcesso
       ? (!responsavelId || status === 'waiting_delegation')
-      : (!responsavelId || status === 'confirmado');
+      : !responsavelId;
   }).length;
 
   const delegados = items.filter(item => {
@@ -310,9 +310,9 @@ export default function DelegacaoFila() {
                 const isProcesso = item._tipoFila === 'processo';
                 const responsavelId = isProcesso ? item.responsavel_id : item.responsavel_juridico_id;
                 const status = item.status;
-                const isAguardando = isProcesso 
+                const isAguardando = isProcesso
                   ? (!responsavelId || status === 'waiting_delegation')
-                  : (!responsavelId || status === 'confirmado');
+                  : !responsavelId;
 
                 return (
                   <tr key={item.id} className="hover:bg-muted/20 transition-colors group">

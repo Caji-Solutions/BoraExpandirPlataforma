@@ -9,11 +9,19 @@ const router = Router()
 function buildFullProfile(profile: any) {
     return {
         ...profile,
-        // Agora o profile carrega is_supervisor e nivel se forem persistidos na tabela
         is_supervisor: profile?.is_supervisor || false,
         nivel: profile?.nivel || null,
+        cargo: profile?.cargo || null,
+        supervisor_id: profile?.supervisor_id || null,
         horario_trabalho: profile?.horario_trabalho || null,
     }
+}
+
+// Helper: determina o cargo baseado em nivel e is_supervisor
+function determineCargo(role: string, nivel: string | null, isSupervisor: boolean): string | null {
+    if (role !== 'comercial') return null
+    if (isSupervisor) return 'HEAD'
+    return nivel || 'C1'
 }
 
 // Helper: buscar usuário a partir do token (Bearer UUID)
@@ -159,7 +167,7 @@ router.post('/register', async (req: Request, res: Response) => {
             return res.status(403).json({ error: 'Apenas Super Admin pode registrar colaboradores' })
         }
 
-        const { name, email, password, role, nivel, is_supervisor, cpf, telefone, horario_trabalho } = req.body
+        const { name, email, password, role, nivel, is_supervisor, supervisor_id, cpf, telefone, horario_trabalho } = req.body
 
         if (!name || !email || !password || !role) {
             return res.status(400).json({ error: 'Nome, email, senha e função são obrigatórios' })
@@ -171,6 +179,7 @@ router.post('/register', async (req: Request, res: Response) => {
         }
 
         const isSupervisor = role === 'tradutor' ? false : (is_supervisor || false)
+        const cargo = determineCargo(role, nivel || null, isSupervisor)
 
         const salt = await bcrypt.genSalt(10)
         const password_hash = await bcrypt.hash(password, salt)
@@ -187,13 +196,16 @@ router.post('/register', async (req: Request, res: Response) => {
                 telefone: telefone || null,
                 horario_trabalho: horario_trabalho || null,
                 password_hash,
-                is_supervisor: isSupervisor, // Note: certifique-se que o profile aceita adds sem dar erro nas colunas q faltam
-                nivel: nivel || null
+                is_supervisor: isSupervisor,
+                nivel: nivel || null,
+                cargo,
+                supervisor_id: supervisor_id || null
             })
             .select()
             .single()
 
         if (profileError) {
+            console.error('Erro Supabase ao criar perfil:', profileError.code, profileError.message, profileError.details)
             if (profileError.code === '23505') {
                 return res.status(409).json({ error: 'Já existe um usuário com esse email' })
             }
@@ -202,6 +214,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
         return res.status(201).json({ user: { id: profile.id, email: profile.email }, profile: buildFullProfile(profile) })
     } catch (error: any) {
+        console.error('Erro inesperado no register:', error)
         return res.status(500).json({ error: 'Erro interno do servidor' })
     }
 })
@@ -225,6 +238,29 @@ router.get('/team', async (req: Request, res: Response) => {
         return res.json(fullProfiles)
     } catch (error: any) {
         return res.status(500).json({ error: 'Erro ao listar equipe' })
+    }
+})
+
+// ============================================
+// GET /auth/team/delegados/:supervisorId — Listar delegados de um supervisor
+// ============================================
+router.get('/team/delegados/:supervisorId', async (req: Request, res: Response) => {
+    try {
+        const { supervisorId } = req.params
+
+        const { data: delegados, error } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, role, nivel, cargo, is_supervisor, telefone, horario_trabalho, created_at')
+            .eq('supervisor_id', supervisorId)
+            .order('full_name', { ascending: true })
+
+        if (error) {
+            return res.status(500).json({ error: 'Erro ao buscar delegados' })
+        }
+
+        return res.json(delegados || [])
+    } catch (error: any) {
+        return res.status(500).json({ error: 'Erro interno do servidor' })
     }
 })
 
@@ -336,7 +372,10 @@ router.patch('/team/:id', async (req: Request, res: Response) => {
         }
 
         const { id } = req.params
-        const { name, email, role, nivel, is_supervisor, cpf, telefone, horario_trabalho } = req.body
+        const { name, email, role, nivel, is_supervisor, supervisor_id, cpf, telefone, horario_trabalho } = req.body
+
+        const isSupervisor = role === 'tradutor' ? false : (is_supervisor || false)
+        const cargo = determineCargo(role, nivel || null, isSupervisor)
 
         const { error: profileError } = await supabase
             .from('profiles')
@@ -346,8 +385,10 @@ router.patch('/team/:id', async (req: Request, res: Response) => {
                 cpf: cpf || null,
                 telefone: telefone || null,
                 horario_trabalho: horario_trabalho || null,
-                is_supervisor: role === 'tradutor' ? false : (is_supervisor || false),
+                is_supervisor: isSupervisor,
                 nivel: nivel || null,
+                cargo,
+                supervisor_id: supervisor_id || null,
                 ...(email ? { email } : {})
             })
             .eq('id', id)

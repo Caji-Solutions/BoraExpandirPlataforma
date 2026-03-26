@@ -409,13 +409,6 @@ export function DNAClientDetailView({
                     <div className="lg:col-span-8 space-y-6">
                         {activeTab === 'timeline' ? (
                             <div className="bg-card border border-border rounded-2xl p-8 relative">
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                                    <h3 className="text-xl font-bold text-foreground flex items-center gap-3">
-                                        <History className="h-6 w-6 text-primary" />
-                                        Timeline do Processo
-                                    </h3>
-                                </div>
-
                                 {/* Notas do Lead */}
                                 {leadNotesData.length > 0 && (
                                     <div className="mb-6 bg-amber-500/5 border border-amber-500/20 rounded-xl overflow-hidden">
@@ -461,6 +454,13 @@ export function DNAClientDetailView({
                                         )}
                                     </div>
                                 )}
+
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                                    <h3 className="text-xl font-bold text-foreground flex items-center gap-3">
+                                        <History className="h-6 w-6 text-primary" />
+                                        Timeline do Processo
+                                    </h3>
+                                </div>
 
                                 <div className="space-y-0 relative ml-4">
                                     {/* Linha vertical decorativa */}
