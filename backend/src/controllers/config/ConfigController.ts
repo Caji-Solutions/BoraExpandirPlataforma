@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import ConfigRepository from '../repositories/ConfigRepository'
+import ConfigRepository from '../../repositories/ConfigRepository'
 
 class ConfigController {
   async getConfig(req: Request, res: Response) {

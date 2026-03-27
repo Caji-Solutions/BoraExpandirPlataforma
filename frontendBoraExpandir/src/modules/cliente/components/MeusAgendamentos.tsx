@@ -234,7 +234,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
       case 'aguardando_verificacao':
         return <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100 border-none">Aguardando Verificação</Badge>;
       case 'realizado':
-        return <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100 border-none">Realizado</Badge>;
+        return <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none">Realizado</Badge>;
       case 'conflito':
         return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none">Conflito</Badge>;
       default:

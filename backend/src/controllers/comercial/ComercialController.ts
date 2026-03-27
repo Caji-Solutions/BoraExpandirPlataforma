@@ -738,6 +738,19 @@ class ComercialController {
 
             const contrato = await ContratoServicoRepository.createContrato(contratoPayload)
 
+            // Mover o cliente para aguardando_assessoria automaticamente
+            await supabase.from('clientes').update({ stage: 'aguardando_assessoria', status: 'aguardando_assessoria' }).eq('id', cliente_id);
+            const { data: processoAtivo } = await supabase
+                .from('processos')
+                .select('id')
+                .eq('cliente_id', cliente_id)
+                .order('criado_em', { ascending: false })
+                .limit(1)
+                .single();
+            if (processoAtivo && processoAtivo.id) {
+               await supabase.from('processos').update({ status: 'aguardando_assessoria' }).eq('id', processoAtivo.id);
+            }
+
             const contratoCompleto = await ContratoServicoRepository.getContratoById(contrato.id)
 
             return res.status(201).json({ data: contratoCompleto, is_draft: true })

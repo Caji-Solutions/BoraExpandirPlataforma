@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import TraducoesRepository from '../repositories/TraducoesRepository'
+import TraducoesRepository from '../../repositories/TraducoesRepository'
 
 class TraducoesController {
   async getOrcamentos(req: Request, res: Response) {

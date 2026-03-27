@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import AdmRepository from '../repositories/AdmRepository';
+import AdmRepository from '../../repositories/AdmRepository';
 
 export class AdmController {
   async getCatalog(req: Request, res: Response) {

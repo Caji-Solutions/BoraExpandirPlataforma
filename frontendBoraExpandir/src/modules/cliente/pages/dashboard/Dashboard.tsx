@@ -112,9 +112,15 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
   // Encontra o agendamento mais próximo no futuro (ou o atual)
   const nextAppointmentData = useMemo(() => {
     if (!agendamentos || agendamentos.length === 0) return null;
+
+    const now = new Date().getTime();
     
     return agendamentos
-      .filter(a => a.status !== 'cancelada' && a.status !== 'cancelado')
+      .filter(a => {
+        if (a.status === 'cancelada' || a.status === 'cancelado') return false;
+        // Keep appointments that are today or in the future
+        return new Date(a.data_hora).getTime() >= now - (24 * 60 * 60 * 1000); 
+      })
       .sort((a, b) => new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime())[0];
   }, [agendamentos]);
 
@@ -126,12 +132,21 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
     const fetchDashboardData = async () => {
       try {
         setIsLoadingData(true)
-        const [notifsRaw, reqs, agendamentosData, contratosData] = await Promise.all([
+        const results = await Promise.allSettled([
           clienteService.getNotificacoes(client.id),
           clienteService.getRequerimentos(client.id),
           clienteService.getAgendamentos(client.id),
           clienteService.getContratos(client.id)
         ])
+
+        const notifsRaw = results[0].status === 'fulfilled' ? results[0].value : []
+        const reqs = results[1].status === 'fulfilled' ? results[1].value : []
+        const agendamentosData = results[2].status === 'fulfilled' ? results[2].value : []
+        const contratosData = results[3].status === 'fulfilled' ? results[3].value : []
+
+        if (results[2].status !== 'fulfilled') {
+            console.error('Failed to fetch agendamentos:', results[2].reason);
+        }
 
         // Map notifications... (existing logic)
         const mappedNotifs = notifsRaw.map((n: any) => {
@@ -148,8 +163,8 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
 
         setNotifications(mappedNotifs)
         setRealRequerimentos(reqs)
-        setAgendamentos(Array.isArray(agendamentosData) ? agendamentosData : [])
-        setContratos(Array.isArray(contratosData) ? contratosData : [])
+        setAgendamentos(Array.isArray(agendamentosData) ? agendamentosData : (agendamentosData?.data && Array.isArray(agendamentosData.data) ? agendamentosData.data : []))
+        setContratos(Array.isArray(contratosData) ? contratosData : (contratosData?.data && Array.isArray(contratosData.data) ? contratosData.data : []))
       } catch (error) {
         console.error('Erro ao buscar dados do dashboard:', error)
       } finally {
@@ -295,13 +310,25 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
       return !matchesDocType
     })
 
-    return [...filteredReminders, ...docReminders, ...reqReminders, ...contratoReminders].sort((a, b) => {
+    const agendamentoReminders = agendamentos
+      .filter(a => a.status === 'confirmado' || a.status === 'agendado')
+      .filter(a => new Date(a.data_hora).getTime() >= new Date().getTime() - (24 * 60 * 60 * 1000))
+      .map(a => ({
+        id: `agenda-${a.id}`,
+        title: a.produto_nome ? `Agendamento: ${a.produto_nome}` : 'Agendamento de Consultoria',
+        message: `Sua consultoria está agendada para ${formatDateSimple(a.data_hora)} às ${new Date(a.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
+        date: new Date(a.data_hora),
+        type: 'agendamento' as const,
+        actionLink: '#'
+      }));
+
+    return [...filteredReminders, ...docReminders, ...reqReminders, ...contratoReminders, ...agendamentoReminders].sort((a, b) => {
       // Prioritize urgent
       if (a.type === 'urgent' && b.type !== 'urgent') return -1
       if (a.type !== 'urgent' && b.type === 'urgent') return 1
       return new Date(b.date).getTime() - new Date(a.date).getTime()
     })
-  }, [realPendingActions, documents, uniqueRequerimentos, contratos])
+  }, [realPendingActions, documents, uniqueRequerimentos, contratos, agendamentos])
 
   const [showRequiredActionModal, setShowRequiredActionModal] = useState(false)
 

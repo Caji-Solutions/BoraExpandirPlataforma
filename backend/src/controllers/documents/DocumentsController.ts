@@ -1,6 +1,6 @@
-import { supabase } from '../config/SupabaseClient'
+import { supabase } from '../../config/SupabaseClient'
 import { Request, Response } from 'express'
-import { documentsRepository } from '../repositories/DocumentsRepository'
+import { documentsRepository } from '../../repositories/DocumentsRepository'
 
 class DocumentsController {
   async uploadDocument(req: Request, res: Response) {

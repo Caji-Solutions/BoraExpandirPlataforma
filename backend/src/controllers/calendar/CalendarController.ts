@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import composioService from '../services/ComposioService';
+import composioService from '../../services/ComposioService';
 
 class CalendarController {
   /**

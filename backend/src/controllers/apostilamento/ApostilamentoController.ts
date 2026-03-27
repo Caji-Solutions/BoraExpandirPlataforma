@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import ApostilamentoRepository from '../repositories/ApostilamentoRepository';
+import ApostilamentoRepository from '../../repositories/ApostilamentoRepository';
 
 class ApostilamentoController {
   async solicitar(req: Request, res: Response) {

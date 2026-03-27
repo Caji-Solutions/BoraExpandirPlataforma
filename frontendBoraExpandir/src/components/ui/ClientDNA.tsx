@@ -71,9 +71,8 @@ export type DNACategory = {
 }
 
 export const CATEGORIAS_LIST: Omit<DNACategory, 'count'>[] = [
-    { id: 'formularios', label: 'Formularios Consultoria Imigracao', icon: <ClipboardList className="h-6 w-6" />, color: 'bg-gray-500' },
     { id: 'aguardando_consultoria', label: 'Aguardando consultoria', icon: <FolderOpen className="h-6 w-6" />, color: 'bg-amber-600' },
-    { id: 'clientes_c2', label: 'Pos Consultoria', icon: <ClipboardList className="h-6 w-6" />, color: 'bg-slate-600' },
+    { id: 'clientes_c2', label: 'Pós Consultoria', icon: <ClipboardList className="h-6 w-6" />, color: 'bg-slate-600' },
     { id: 'aguardando_assessoria', label: 'Aguardando Assessoria', icon: <CheckSquare className="h-6 w-6 text-green-500" />, color: 'bg-green-600' },
     { id: 'assessoria_andamento', label: 'Assessoria em Andamento', icon: <Plane className="h-6 w-6 text-blue-500" />, color: 'bg-blue-600' },
     { id: 'assessoria_finalizada', label: 'Assessoria finalizada', icon: <Flag className="h-6 w-6" />, color: 'bg-slate-700' },
@@ -97,7 +96,7 @@ export function ClientDNAPage() {
     const { activeProfile } = useAuth()
     const [searchParams] = useSearchParams()
     const queryClienteId = searchParams.get('clienteId')
-    const queryTab = searchParams.get('tab') as 'timeline' | 'formularios' | 'contrato_comprovantes' | 'notas' | null
+    const queryTab = searchParams.get('tab') as 'timeline' | 'formularios' | 'contrato_comprovantes' | null
     const queryArea = searchParams.get('area') as 'todos' | 'juridico' | 'comercial' | 'administrativo' | null
     const [view, setView] = useState<DNAView>('list')
     const [selectedClient, setSelectedClient] = useState<ClientDNAData | null>(null)
@@ -123,14 +122,36 @@ export function ClientDNAPage() {
             if (result.data) {
                 // const clientesReais = result.data.filter((item: any) => item.status !== 'LEAD')
                 const mappedClientes: ClientDNAData[] = result.data.map((item: any) => {
-                    // Encontra o processo mais recente para determinar o responsável e status
-                    const lastProcess = item.processos?.[0]
+                    // Ordena processos por criado_em desc para pegar o mais recente
+                    const processosOrdenados = (item.processos || []).sort((a: any, b: any) =>
+                        new Date(b.criado_em || 0).getTime() - new Date(a.criado_em || 0).getTime()
+                    )
+                    const lastProcess = processosOrdenados[0] || null
                     const agendamentos = item.agendamentos || []
                     const lastAgendamento = agendamentos.length > 0 ? agendamentos.reduce((latest: any, current: any) => new Date(latest.data_hora) > new Date(current.data_hora) ? latest : current) : null
                     const agendamentosPagos = agendamentos.filter((a: any) => a.pagamento_status === 'aprovado')
                     const firstPaidAgendamento = agendamentosPagos.length > 0
                         ? agendamentosPagos.reduce((earliest: any, current: any) => new Date(earliest.data_hora) < new Date(current.data_hora) ? earliest : current)
                         : null
+
+                    // Determina o servico a partir do agendamento realizado ou mais recente
+                    const agendamentoRealizado = agendamentos.find((a: any) => a.status === 'realizado')
+                    const melhorAgendamento = agendamentoRealizado || firstPaidAgendamento || lastAgendamento
+
+                    let computedCategoria = lastProcess?.status || item.stage || (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status || 'aguardando_consultoria'))
+
+                    if (['formularios', 'lead', 'novo', 'captado'].includes(computedCategoria)) {
+                        const temAgendamento = agendamentos.some((a: any) =>
+                            a.status === 'agendado' || a.status === 'confirmado' || a.status === 'pendente' || a.status === 'reagendado'
+                        )
+                        if (temAgendamento) {
+                            computedCategoria = 'aguardando_consultoria'
+                        }
+                        // Se tem agendamento realizado mas categoria ainda nao reflete, forcar pos consultoria
+                        if (agendamentoRealizado && ['formularios', 'lead', 'novo', 'captado'].includes(computedCategoria)) {
+                            computedCategoria = 'clientes_c2'
+                        }
+                    }
 
                     return {
                         id: item.client_id || item.id,
@@ -139,9 +160,9 @@ export function ClientDNAPage() {
                         nome: item.nome || 'Sem nome',
                         email: item.email || 'Sem e-mail',
                         telefone: item.whatsapp || '',
-                        tipoAssessoria: lastProcess?.tipo_servico || firstPaidAgendamento?.produto_nome || lastAgendamento?.produto_nome || 'Assessoria',
+                        tipoAssessoria: lastProcess?.tipo_servico || melhorAgendamento?.produto_nome || 'Consultoria',
                         contratoAtivo: true, // Padronizado para true para evitar quebras, mas não é mais usado na listagem
-                        categoria: lastProcess?.status || item.stage || (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status || 'formularios')),
+                        categoria: computedCategoria,
                         previsaoChegada: item.previsao_chegada || '',
                         priority: 'medium',
                         notes: [],

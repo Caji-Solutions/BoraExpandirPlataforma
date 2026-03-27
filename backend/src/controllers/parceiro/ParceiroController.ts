@@ -1,5 +1,5 @@
-import { ParceiroRepository } from '../repositories';
-import type { RegisterParceiroDTO } from '../types/parceiro';
+import { ParceiroRepository } from '../../repositories';
+import type { RegisterParceiroDTO } from '../../types/parceiro';
 
 
 

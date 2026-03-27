@@ -679,7 +679,8 @@ class ClienteRepository {
                     tipo_servico,
                     status,
                     etapa_atual,
-                    responsavel_id
+                    responsavel_id,
+                    criado_em
                 ),
                 agendamentos (
                     id,

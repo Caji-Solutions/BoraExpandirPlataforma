@@ -58,6 +58,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
   const [hasFormulario, setHasFormulario] = useState<boolean | null>(null);
   const [checkingSecurity, setCheckingSecurity] = useState(false);
   const [isReagendamentoOpen, setIsReagendamentoOpen] = useState(false);
+  const [isMarkingRealizada, setIsMarkingRealizada] = useState(false);
   const [cachedProfiles, setCachedProfiles] = useState<Record<string, string>>({});
   const [servicosCatalogo, setServicosCatalogo] = useState<Service[]>([]);
 
@@ -234,7 +235,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
       case 'aguardando_verificacao':
         return <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100 border-none">Aguardando Verificação</Badge>;
       case 'realizado':
-        return <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100 border-none">Realizado</Badge>;
+        return <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none">Realizado</Badge>;
       case 'conflito':
         return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none">Conflito</Badge>;
       default:
@@ -341,8 +342,6 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
               onDateSelect={setDataSelecionada}
               selectedDate={dataSelecionada}
               disabledDates={[]}
-              disablePastDates={false}
-              disableWeekends={true}
               occupancyData={occupancyData}
             />
           </div>
@@ -388,11 +387,13 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                   if (isOcupado) {
                      const isInicio = isInicioAgendamento(hora, itemNoHorario);
                      if (!isInicio) {
+                        const contRealizado = itemNoHorario.status === 'realizado';
                         return (
-                          <button 
+                          <button
                             key={hora}
                             onClick={() => setSelectedItem(itemNoHorario)}
                             className={`py-3 px-3 rounded-xl flex flex-col items-center justify-center border border-dashed opacity-50 transition-all hover:opacity-100 hover:shadow-md ${
+                              contRealizado ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800 text-green-400' :
                               activeTab === 'consultorias' ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 text-blue-400' : 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800 text-indigo-400'
                             }`}
                           >
@@ -406,14 +407,17 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                        ? itemNoHorario.nome 
                        : (itemNoHorario.clientes?.nome || 'Assessoria');
 
+                     const isRealizado = itemNoHorario.status === 'realizado';
                      return (
                        <button
                          key={hora}
                          onClick={() => setSelectedItem(itemNoHorario)}
                          className={`py-3 px-3 rounded-xl font-medium border shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 flex flex-col items-start gap-1.5 w-full text-left overflow-hidden ${
-                           activeTab === 'consultorias' 
-                             ? 'bg-blue-600 text-white border-blue-500 shadow-blue-500/20' 
-                             : 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-500/20'
+                           isRealizado
+                             ? 'bg-green-600 text-white border-green-500 shadow-green-500/20'
+                             : activeTab === 'consultorias'
+                               ? 'bg-blue-600 text-white border-blue-500 shadow-blue-500/20'
+                               : 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-500/20'
                          }`}
                        >
                          <div className="flex items-center justify-between w-full opacity-90 text-sm">
@@ -449,292 +453,298 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
         </div>
       </div>
 
-      {/* Popup / Modal de Detalhes com Portal */}
+      {/* Modal de Detalhes do Agendamento */}
       {selectedItem && createPortal(
-        <div className="fixed inset-0 z-[1000] w-screen h-screen bg-black/20 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-500">
-          <div className="bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md rounded-[3rem] border border-gray-100 dark:border-neutral-800 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col max-h-[90vh]">
-            <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-neutral-800">
-              {/* Header */}
-              <div className="sticky top-0 z-30 p-8 pt-12 pb-8 border-b border-gray-100/30 dark:border-neutral-800/30 flex justify-between items-start bg-white/40 dark:bg-neutral-900/40 backdrop-blur-2xl">
-                 <div>
-                   <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Detalhes do Agendamento</h2>
-                   <div className="flex items-center gap-4 mt-2 overflow-hidden">
-                     <p className="text-[10px] font-mono text-gray-400 uppercase tracking-[0.1em] opacity-80 border-r border-gray-100 dark:border-neutral-800 pr-4">
-                       ID: {selectedItem.id}
-                     </p>
-                     <button 
-                       onClick={() => {
-                         const currentArea = window.location.pathname.split('/')[1] || 'juridico';
-                         // Resolvemos para o ID unificado se disponível, fallback para o ID do item
-                         const targetId = selectedItem.cliente_id || selectedItem.id;
-                         navigate(`/${currentArea}/dna?clienteId=${targetId}&area=${currentArea}`);
-                       }}
-                       className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400 flex items-center gap-2 hover:text-blue-700 transition-colors group"
-                     >
-                       <Fingerprint className="h-4 w-4 transition-transform group-hover:scale-110" />
-                       DNA do Cliente
-                     </button>
-                   </div>
-                 </div>
-                 <button 
-                   onClick={() => setSelectedItem(null)}
-                   className="p-2.5 text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-2xl transition-all duration-200"
-                 >
-                   <X className="h-6 w-6" />
-                 </button>
+        <div className="fixed inset-0 z-[1000] w-screen h-screen bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" style={{ animation: 'fadeIn 0.2s ease-out' }}>
+          <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-200 dark:border-neutral-800 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]" style={{ animation: 'slideUp 0.25s ease-out' }}>
+
+            {/* Header compacto */}
+            <div className="sticky top-0 z-30 px-6 py-4 border-b border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-950 flex justify-between items-center">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white truncate">Detalhes do Agendamento</h2>
+                  <div className="shrink-0">
+                    {getStatusBadge(activeTab === 'consultorias' ? selectedItem.status : 'confirmado')}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 mt-1">
+                  <p className="text-[10px] font-mono text-gray-400 uppercase tracking-wider truncate">
+                    {selectedItem.id?.substring(0, 8)}...
+                  </p>
+                  <button
+                    onClick={() => {
+                      const currentArea = window.location.pathname.split('/')[1] || 'juridico';
+                      const targetId = selectedItem.cliente_id || selectedItem.id;
+                      navigate(`/${currentArea}/dna?clienteId=${targetId}&area=${currentArea}`);
+                    }}
+                    className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1 hover:text-blue-700 transition-colors shrink-0"
+                  >
+                    <Fingerprint className="h-3 w-3" />
+                    DNA do Cliente
+                  </button>
+                </div>
               </div>
-              
-              {/* Body */}
-              <div className="p-8 pt-6 space-y-10">
-                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-gray-400 uppercase font-bold tracking-[0.2em]">Serviço / Produto</p>
-                      <p className="text-2xl font-black text-blue-600 dark:text-blue-400 tracking-tight">
-                        {activeTab === 'consultorias' 
-                          ? (selectedItem.produto?.nome || selectedItem.produto_nome || 'Consultoria') 
-                          : (selectedItem.produto?.nome || selectedItem.servico_nome || 'Assessoria Jurídica')}
-                      </p>
-                    </div>
-                    <div className="flex-shrink-0">
-                      {getStatusBadge(activeTab === 'consultorias' ? selectedItem.status : 'confirmado')}
-                    </div>
-                 </div>
+              <button
+                onClick={() => setSelectedItem(null)}
+                className="ml-3 p-2 text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-all"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div className="bg-gray-50/50 dark:bg-neutral-800/30 p-5 rounded-3xl border border-gray-100/50 dark:border-neutral-800/50 transition-all hover:border-blue-200 dark:hover:border-blue-900/50 group">
-                      <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-2 flex items-center gap-2">
-                        <Calendar className="h-3.5 w-3.5 text-blue-500" /> Data
-                      </p>
-                      <p className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                         {selectedItem.data_hora || selectedItem.criado_em ? parseBackendDate(selectedItem.data_hora || selectedItem.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
-                      </p>
-                    </div>
-                    
-                    <div className="bg-gray-50/50 dark:bg-neutral-800/30 p-5 rounded-3xl border border-gray-100/50 dark:border-neutral-800/50 transition-all hover:border-blue-200 dark:hover:border-blue-900/50 group">
-                      <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mb-2 flex items-center gap-2">
-                        <Clock className="h-3.5 w-3.5 text-blue-500" /> Horário
-                      </p>
-                      <p className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                         {(() => {
-                            const timeValue = selectedItem.data_hora || selectedItem.criado_em;
-                            if (!timeValue) return '—';
-                            const normalizedDate = parseBackendDate(timeValue);
-                            return formatHoraOnly(normalizedDate);
-                         })()}
-                         <span className="text-xs text-gray-400 ml-2 font-medium">({selectedItem.duracao_minutos || 40}m)</span>
-                      </p>
-                    </div>
-                 </div>
+            {/* Body scrollable */}
+            <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-neutral-800">
+              <div className="px-6 py-5 space-y-5">
 
-                 {selectedItem.meet_link && (
-                    <div className="bg-emerald-500/10 dark:bg-emerald-500/5 p-6 rounded-[2rem] border border-emerald-500/20 dark:border-emerald-500/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div className="flex items-center gap-4">
-                        <div className="p-3 bg-emerald-500 rounded-2xl shadow-lg shadow-emerald-500/20">
-                          <Video className="h-6 w-6 text-white" />
+                {/* Servico + Data/Hora */}
+                <div>
+                  <p className="text-[10px] text-gray-400 dark:text-neutral-500 uppercase font-semibold tracking-widest mb-1.5">Servico Agendado</p>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight leading-tight">
+                    {activeTab === 'consultorias'
+                      ? (selectedItem.produto?.nome || selectedItem.produto_nome || 'Consultoria')
+                      : (selectedItem.produto?.nome || selectedItem.servico_nome || 'Assessoria Juridica')}
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gray-50 dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Calendar className="h-3.5 w-3.5 text-blue-500" />
+                      <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wider">Data</p>
+                    </div>
+                    <p className="text-base font-bold text-gray-900 dark:text-white">
+                      {selectedItem.data_hora || selectedItem.criado_em
+                        ? parseBackendDate(selectedItem.data_hora || selectedItem.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                        : '—'}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="h-3.5 w-3.5 text-amber-500" />
+                      <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wider">Horario</p>
+                    </div>
+                    <p className="text-base font-bold text-gray-900 dark:text-white">
+                      {(() => {
+                        const timeValue = selectedItem.data_hora || selectedItem.criado_em;
+                        if (!timeValue) return '—';
+                        return formatHoraOnly(parseBackendDate(timeValue));
+                      })()}
+                      <span className="text-xs text-gray-400 font-medium ml-1.5">({selectedItem.duracao_minutos || 40}min)</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Google Meet */}
+                {selectedItem.meet_link && (
+                  <a href={selectedItem.meet_link} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 hover:border-emerald-400 dark:hover:border-emerald-600 rounded-xl p-4 transition-all group">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-emerald-500 rounded-lg text-white shadow-sm">
+                        <Video className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-gray-900 dark:text-white">Google Meet</p>
+                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">Sala de Videoconferencia</p>
+                      </div>
+                    </div>
+                    <span className="px-3 py-1.5 bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg group-hover:bg-emerald-600 transition-colors shadow-sm">
+                      Entrar
+                    </span>
+                  </a>
+                )}
+
+                {/* Estado de Seguranca */}
+                <div>
+                  <p className="text-[10px] text-gray-400 dark:text-neutral-500 uppercase font-semibold tracking-widest mb-3 flex items-center gap-1.5">
+                    <AlertCircle className="w-3 h-3" /> Verificacoes
+                  </p>
+                  <div className="space-y-2">
+                    <div className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                      selectedItem.pagamento_status === 'aprovado'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/30'
+                        : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/30'
+                    }`}>
+                      <div className={`p-1.5 rounded-lg text-white ${selectedItem.pagamento_status === 'aprovado' ? 'bg-emerald-500' : 'bg-amber-500'}`}>
+                        {selectedItem.pagamento_status === 'aprovado' ? <CheckSquare className="h-3.5 w-3.5" /> : <CreditCard className="h-3.5 w-3.5" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-gray-900 dark:text-white">Autorizacao Financeira</p>
+                        <p className="text-[10px] font-medium text-gray-500 dark:text-neutral-400">
+                          {selectedItem.pagamento_status === 'aprovado' ? 'Pagamento confirmado' : 'Aguardando compensacao'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className={`rounded-xl border transition-all ${
+                      checkingSecurity ? 'bg-gray-50 dark:bg-neutral-900 border-gray-200 dark:border-neutral-800 animate-pulse' :
+                      hasFormulario ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/30' : 'bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/30'
+                    }`}>
+                      <div className="flex items-center gap-3 p-3">
+                        <div className={`p-1.5 rounded-lg text-white ${checkingSecurity ? 'bg-gray-400' : hasFormulario ? 'bg-blue-500' : 'bg-rose-500'}`}>
+                          <FileText className="h-3.5 w-3.5" />
                         </div>
-                        <div>
-                          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase font-black tracking-widest mb-0.5">Google Meet</p>
-                          <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">Reunião por Videoconferência</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-gray-900 dark:text-white">Coleta de Informacoes</p>
+                          <p className="text-[10px] font-medium text-gray-500 dark:text-neutral-400">
+                            {checkingSecurity ? 'Verificando...' : hasFormulario ? 'Formulario preenchido' : 'Dados pendentes'}
+                          </p>
                         </div>
                       </div>
-                      <a 
-                        href={selectedItem.meet_link} 
-                        target="_blank" 
-                        rel="noreferrer"
-                        className="w-full sm:w-auto px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-emerald-500/20 text-center text-sm"
-                      >
-                        Entrar Agora
-                      </a>
-                    </div>
-                 )}
-
-                 {/* Seção Condicional: Informações de Assessoria (Chamada) */}
-                 {activeTab === 'assessorias' && selectedItem.respostas && (
-                   <div className="space-y-4 pt-4">
-                      <p className="text-[10px] text-gray-400 uppercase font-black tracking-[0.2em]">Informações da Chamada</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                         <div className="p-4 bg-blue-50/30 dark:bg-blue-900/10 rounded-2xl border border-blue-100/50 dark:border-blue-900/20">
-                            <p className="text-[9px] text-blue-500 font-bold uppercase mb-1">Processos Ativos?</p>
-                            <p className="text-sm font-bold">{selectedItem.respostas.proc_ativos ? 'Sim' : 'Não'}</p>
-                         </div>
-                         <div className="p-4 bg-blue-50/30 dark:bg-blue-900/10 rounded-2xl border border-blue-100/50 dark:border-blue-900/20">
-                            <p className="text-[9px] text-blue-500 font-bold uppercase mb-1">Possui Dependentes?</p>
-                            <p className="text-sm font-bold">{selectedItem.respostas.possui_dependentes ? 'Sim' : 'Não'}</p>
-                         </div>
-                      </div>
-                      {selectedItem.respostas.proc_tipos && (
-                        <div className="p-4 bg-gray-50/50 dark:bg-neutral-800/30 rounded-2xl border border-gray-100/50 dark:border-neutral-800/30">
-                          <p className="text-[9px] text-gray-400 font-bold uppercase mb-1">Tipos de Processos</p>
-                          <p className="text-sm font-medium">{selectedItem.respostas.proc_tipos}</p>
+                      {activeTab === 'consultorias' && !checkingSecurity && (
+                        <div className="px-3 pb-3">
+                          <button
+                            onClick={() => {
+                              const targetId = selectedItem.cliente_id || selectedItem.id;
+                              navigate(`/juridico/dna?clienteId=${targetId}&tab=formularios`);
+                            }}
+                            className={`w-full py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex justify-center items-center gap-1.5 ${
+                              hasFormulario
+                                ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                                : 'bg-rose-500 hover:bg-rose-600 text-white'
+                            }`}
+                          >
+                            <Fingerprint className="h-3 w-3" />
+                            {hasFormulario ? 'Inspecionar Respostas' : 'Preencher Formulario'}
+                          </button>
                         </div>
                       )}
-                   </div>
-                 )}
-
-                 <div className="space-y-6 pt-4">
-                    <p className="text-[10px] text-gray-400 uppercase font-black tracking-[0.2em]">Dados do Cliente</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                      <div className="group">
-                        <span className="text-[10px] text-gray-400 font-bold block mb-1.5 group-hover:text-blue-500 transition-colors">Nome Completo</span>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">
-                           {activeTab === 'consultorias' ? selectedItem.nome : (selectedItem.clientes?.nome || '—')}
-                        </p>
-                      </div>
-                      <div className="group">
-                        <span className="text-[10px] text-gray-400 font-bold block mb-1.5 group-hover:text-blue-500 transition-colors">Telefone / WhatsApp</span>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">
-                           {selectedItem.telefone || selectedItem.clientes?.whatsapp || selectedItem.clientes?.telefone || '—'}
-                        </p>
-                      </div>
-                      <div className="sm:col-span-2 group">
-                        <span className="text-[10px] text-gray-400 font-bold block mb-1.5 group-hover:text-blue-500 transition-colors">E-mail de Contato</span>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white truncate">
-                           {selectedItem.email || selectedItem.clientes?.email || '—'}
-                        </p>
-                      </div>
                     </div>
-                 </div>
+                  </div>
+                </div>
 
-                 {selectedItem.observacoes && (
-                    <div className="p-6 bg-amber-500/5 dark:bg-amber-500/5 border border-amber-500/20 rounded-[2rem] relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <FileText className="h-12 w-12 text-amber-500" />
-                      </div>
-                      <p className="text-[10px] text-amber-600 dark:text-amber-400 uppercase font-black tracking-widest mb-3">Notas do Agendamento</p>
-                      <p className="text-sm text-gray-700 dark:text-gray-300 font-medium leading-relaxed italic">
-                        "{selectedItem.observacoes}"
+                {/* Identidade do Cliente */}
+                <div className="bg-gray-50 dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-xl p-4">
+                  <p className="text-[10px] text-gray-400 dark:text-neutral-500 uppercase font-semibold tracking-widest mb-3">Identidade do Cliente</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    <div>
+                      <p className="text-[10px] text-gray-400 font-medium mb-0.5">Nome</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                        {activeTab === 'consultorias' ? selectedItem.nome : (selectedItem.clientes?.nome || '—')}
                       </p>
                     </div>
-                 )}
-
-                 <div className="space-y-4 pt-4">
-                    <p className="text-[10px] text-gray-400 uppercase font-black tracking-[0.2em]">Responsáveis</p>
-                    <div className="bg-gray-50/50 dark:bg-neutral-800/30 p-5 rounded-3xl border border-gray-100/50 dark:border-neutral-800/50 flex items-center gap-4">
-                       <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-gray-200 to-gray-300 dark:from-neutral-700 dark:to-neutral-800 flex items-center justify-center font-bold text-gray-500">
-                         <User className="h-6 w-6" />
-                       </div>
-                       <div>
-                         <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-0.5">Criado Por</p>
-                         <p className="font-bold text-gray-900 dark:text-white">
-                           {(() => {
-                              const creatorId = selectedItem.usuario_id || selectedItem.responsavel_id;
-                              const user = usuariosSistema.find(u => u.id === creatorId);
-                              if (user?.full_name) return user.full_name;
-                              if (activeProfile?.id === creatorId) return activeProfile?.full_name;
-                              if (cachedProfiles[creatorId]) return cachedProfiles[creatorId];
-                              return creatorId ? 'Equipe Interna' : 'Sistema Automático';
-                            })()}
-                         </p>
-                       </div>
+                    <div>
+                      <p className="text-[10px] text-gray-400 font-medium mb-0.5">Telefone</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                        {selectedItem.telefone || selectedItem.clientes?.whatsapp || selectedItem.clientes?.telefone || '—'}
+                      </p>
                     </div>
-                 </div>
-
-                 {/* Segurança e Status */}
-                 <div className="space-y-4 pt-4">
-                    <p className="text-[10px] text-gray-400 uppercase font-black tracking-[0.2em]">Conferência de Segurança</p>
-                    <div className="grid grid-cols-1 gap-3">
-                        <div className={`p-5 rounded-3xl border flex items-center gap-4 transition-all ${
-                          selectedItem.pagamento_status === 'aprovado' 
-                            ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-700 dark:text-emerald-400' 
-                            : 'bg-amber-500/5 border-amber-500/20 text-amber-700 dark:text-amber-400'
-                        }`}>
-                          <div className={`p-2 rounded-xl scale-110 ${selectedItem.pagamento_status === 'aprovado' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
-                            {selectedItem.pagamento_status === 'aprovado' ? <CheckSquare className="h-4 w-4" /> : <CreditCard className="h-4 w-4" />}
-                          </div>
-                          <div>
-                            <p className="text-sm font-black">Pagamento: {selectedItem.pagamento_status === 'aprovado' ? 'Confirmado' : 'Aguardando'}</p>
-                            <p className="text-xs opacity-70 font-medium">
-                              {selectedItem.pagamento_status === 'aprovado' 
-                                ? 'Fluxo financeiro validado com sucesso.' 
-                                : 'A liberação automática aguarda processamento bancário.'}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className={`p-5 rounded-3xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all ${
-                          checkingSecurity ? 'bg-gray-50 dark:bg-neutral-800/50 border-gray-100 animate-pulse' :
-                          hasFormulario 
-                            ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-700 dark:text-emerald-400' 
-                            : 'bg-rose-500/5 border-rose-500/20 text-rose-700 dark:text-rose-400'
-                        }`}>
-                          <div className="flex items-center gap-4">
-                            <div className={`p-2 rounded-xl scale-110 ${hasFormulario ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                              {hasFormulario ? <FileText className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-                            </div>
-                            <div>
-                              <p className="text-sm font-black">Formulário Legal: {hasFormulario ? 'Preenchido' : 'Pendente'}</p>
-                              <p className="text-xs opacity-70 font-medium">
-                                {hasFormulario 
-                                  ? 'Dados carregados para o atendimento.' 
-                                  : 'Requer preenchimento para consultar.'}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          {activeTab === 'consultorias' && !checkingSecurity && (
-                            <button
-                               onClick={() => {
-                                 const targetId = selectedItem.cliente_id || selectedItem.id;
-                                 navigate(`/juridico/dna?clienteId=${targetId}&tab=formularios`);
-                               }}
-                               className={`w-full sm:w-auto px-5 py-2.5 rounded-2xl font-black text-sm transition-all shadow-sm flex items-center justify-center gap-2 border flex-shrink-0 ${
-                                 hasFormulario 
-                                   ? 'bg-emerald-500 text-white border-emerald-400 hover:bg-emerald-600 shadow-emerald-500/20' 
-                                   : 'bg-rose-500 text-white border-rose-400 hover:bg-rose-600 shadow-rose-500/20'
-                               }`}
-                            >
-                               <Fingerprint className="h-4 w-4" />
-                               Ver Formulários
-                            </button>
-                          )}
-                        </div>
+                    <div className="col-span-2">
+                      <p className="text-[10px] text-gray-400 font-medium mb-0.5">E-mail</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                        {selectedItem.email || selectedItem.clientes?.email || '—'}
+                      </p>
                     </div>
-                 </div>
-              </div>
+                  </div>
+                </div>
 
-              {/* Footer Sticky com Blur */}
-              <div className="sticky bottom-0 z-30 p-8 pt-6 border-t border-gray-100/50 dark:border-neutral-800/50 bg-white/60 dark:bg-neutral-900/60 backdrop-blur-xl flex flex-col sm:flex-row justify-between items-center gap-4">
-                  <div className="w-full sm:w-auto">
-                    {activeTab === 'consultorias' && (
-                      <div className="flex flex-col gap-2">
-                        <button 
-                          onClick={() => navigate(`/juridico/assessoria?clienteId=${selectedItem.cliente_id}`)}
-                          disabled={selectedItem.pagamento_status !== 'aprovado' || !hasFormulario}
-                          className={`px-10 py-4 font-black rounded-2xl transition-all shadow-xl flex items-center justify-center gap-3 text-base ${
-                            selectedItem.pagamento_status === 'aprovado' && hasFormulario
-                              ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20'
-                              : 'bg-gray-100 dark:bg-neutral-800 text-gray-400 cursor-not-allowed shadow-none'
-                          }`}
-                        >
-                          <Briefcase className="h-5 w-5" />
-                          Iniciar Atendimento
-                        </button>
-                        {(selectedItem.pagamento_status !== 'aprovado' || !hasFormulario) && (
-                          <p className="text-[9px] text-rose-500 font-black text-center uppercase tracking-widest mt-1">
-                            Bloqueado: Requer Pagamento e Formulário
-                          </p>
-                        )}
+                {/* Extra Context: Assessorias */}
+                {activeTab === 'assessorias' && selectedItem.respostas && (
+                  <div className="bg-gray-50 dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 rounded-xl p-4">
+                    <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-widest mb-3">Informacao Rapida</p>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-neutral-800">
+                        <span className="text-xs font-medium text-gray-500">Processos Ativos</span>
+                        <span className="text-xs font-bold text-gray-900 dark:text-white">{selectedItem.respostas.proc_ativos ? 'SIM' : 'NAO'}</span>
                       </div>
-                    )}
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-neutral-800">
+                        <span className="text-xs font-medium text-gray-500">Dependentes</span>
+                        <span className="text-xs font-bold text-gray-900 dark:text-white">{selectedItem.respostas.possui_dependentes ? 'SIM' : 'NAO'}</span>
+                      </div>
+                      {selectedItem.respostas.proc_tipos && (
+                        <div className="pt-1">
+                          <span className="text-[10px] font-medium text-gray-400 block mb-1">Tipos Cadastrados</span>
+                          <span className="text-xs font-semibold text-gray-900 dark:text-white">{selectedItem.respostas.proc_tipos}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <button
-                      onClick={() => setIsReagendamentoOpen(true)}
-                      className="flex-1 sm:flex-none px-6 py-4 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-500 font-bold rounded-2xl transition-all flex items-center justify-center gap-2 text-sm border border-amber-500/20"
-                    >
-                      <CalendarClock className="h-4 w-4" />
-                      Reagendar
-                    </button>
-                    <button
-                      onClick={() => setSelectedItem(null)}
-                      className="flex-1 sm:flex-none px-8 py-4 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-gray-300 font-bold rounded-2xl hover:bg-gray-200 dark:hover:bg-neutral-700 transition-all text-sm"
-                    >
-                      Fechar
-                    </button>
+                )}
+
+                {/* Observacoes */}
+                {selectedItem.observacoes && (
+                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/30 rounded-xl p-4">
+                    <p className="text-[10px] text-amber-600 uppercase font-semibold tracking-widest mb-2">Observacoes</p>
+                    <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed italic">
+                      "{selectedItem.observacoes}"
+                    </p>
                   </div>
+                )}
+
+                {/* Registrado por */}
+                <div className="flex items-center gap-3 pt-1">
+                  <div className="h-7 w-7 rounded-full bg-gray-200 dark:bg-neutral-800 flex items-center justify-center">
+                    <User className="h-3.5 w-3.5 text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 font-medium">Registrado por</p>
+                    <p className="text-xs font-semibold text-gray-900 dark:text-white">
+                      {(() => {
+                        const creatorId = selectedItem.usuario_id || selectedItem.responsavel_id;
+                        const user = usuariosSistema.find(u => u.id === creatorId);
+                        if (user?.full_name) return user.full_name;
+                        if (activeProfile?.id === creatorId) return activeProfile?.full_name;
+                        if (cachedProfiles[creatorId]) return cachedProfiles[creatorId];
+                        return creatorId ? 'Equipe Interna' : 'Sistema Automatico';
+                      })()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer com acoes */}
+            <div className="sticky bottom-0 z-40 px-6 py-4 border-t border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-950">
+              <div className="flex items-center gap-2">
+                {activeTab === 'consultorias' && (
+                  <>
+                    <button
+                      onClick={() => navigate(`/juridico/assessoria?clienteId=${selectedItem.cliente_id}`)}
+                      disabled={selectedItem.pagamento_status !== 'aprovado' || !hasFormulario}
+                      className={`flex-1 px-4 py-3 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 ${
+                        selectedItem.pagamento_status === 'aprovado' && hasFormulario
+                          ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
+                          : 'bg-gray-100 dark:bg-neutral-800 text-gray-400 cursor-not-allowed'
+                      }`}
+                    >
+                      <Briefcase className="h-3.5 w-3.5" /> Iniciar Atendimento
+                    </button>
+
+                    <button
+                      onClick={async () => {
+                        if (!selectedItem) return;
+                        try {
+                          setIsMarkingRealizada(true);
+                          await juridicoService.marcarConsultoriaRealizada(selectedItem.id);
+                          toast.success('Consultoria marcada como realizada e cliente movido para Pos Consultoria.');
+                          setSelectedItem(null);
+                          fetchData();
+                        } catch (err: any) {
+                          toast.error('Erro ao marcar consultoria: ' + (err.response?.data?.message || err.message));
+                        } finally {
+                          setIsMarkingRealizada(false);
+                        }
+                      }}
+                      disabled={isMarkingRealizada || selectedItem.status === 'realizado'}
+                      className="flex-1 px-4 py-3 font-bold text-xs bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      <CheckSquare className="h-3.5 w-3.5" />
+                      {isMarkingRealizada ? 'Salvando...' : 'Realizada'}
+                    </button>
+                  </>
+                )}
+
+                <button
+                  onClick={() => setIsReagendamentoOpen(true)}
+                  className="px-4 py-3 font-bold text-xs bg-white dark:bg-neutral-900 border border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-xl transition-all flex items-center justify-center gap-2"
+                >
+                  <CalendarClock className="h-3.5 w-3.5" /> Reagendar
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+          <style>{`
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes slideUp { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+          `}</style>
         </div>,
         document.body
       )}

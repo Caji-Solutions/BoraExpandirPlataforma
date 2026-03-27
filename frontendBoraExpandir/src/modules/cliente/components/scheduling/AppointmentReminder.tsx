@@ -124,38 +124,48 @@ export function AppointmentReminder({
               </p>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-sm text-gray-700 dark:text-gray-300">{formatTime(appointmentTime)}</span>
-                {meetLink && (
-                  <div className="ml-auto flex items-center gap-2">
-                    {/* Google Meet icon */}
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 87.5 72" className="h-4 w-4 shrink-0" aria-label="Google Meet">
-                      <path fill="#00832d" d="M49.5 36l8.53 9.75 11.47 7.33 2-17.08-2-16.75-11.69 6.44z"/>
-                      <path fill="#0066da" d="M0 51.5V66c0 3.315 2.685 6 6 6h14.5l3-10.96-3-9.54-9.95-3z"/>
-                      <path fill="#e94235" d="M20.5 0L0 20.5l10.55 3 9.95-3 2.95-9.41z"/>
-                      <path fill="#2684fc" d="M20.5 20.5H0v31h20.5z"/>
-                      <path fill="#00ac47" d="M82.6 8.68L69.5 19.25v33.83l13.16 10.61c1.98 1.54 4.84.135 4.84-2.37V11c0-2.535-2.9-3.925-4.9-2.32z"/>
-                      <path fill="#00ac47" d="M49.5 36v15.5h-29V72h43c3.315 0 6-2.685 6-6V45.08z"/>
-                      <path fill="#ffba00" d="M63.5 0h-43v20.5h29V36l20-16.75V6c0-3.315-2.685-6-6-6z"/>
-                    </svg>
-                    {/* Botao copiar link */}
-                    <button
-                      onClick={handleCopyLink}
-                      title={copied ? 'Copiado!' : 'Copiar link da reuniao'}
-                      className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition-colors"
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="h-3.5 w-3.5" />
-                          <span>Copiado!</span>
-                        </>
-                      ) : (
-                        <Copy className="h-3.5 w-3.5" />
-                      )}
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           </div>
+          
+          {meetLink && (
+            <div className="pt-3 flex flex-col space-y-2">
+              <a 
+                href={meetLink} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center justify-center space-x-2 w-full bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 text-blue-800 dark:text-blue-200 font-semibold py-2.5 px-4 rounded-xl transition-colors border border-blue-200 dark:border-blue-800 shadow-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 87.5 72" className="h-5 w-5 shrink-0" aria-label="Google Meet">
+                  <path fill="#00832d" d="M49.5 36l8.53 9.75 11.47 7.33 2-17.08-2-16.75-11.69 6.44z"/>
+                  <path fill="#0066da" d="M0 51.5V66c0 3.315 2.685 6 6 6h14.5l3-10.96-3-9.54-9.95-3z"/>
+                  <path fill="#e94235" d="M20.5 0L0 20.5l10.55 3 9.95-3 2.95-9.41z"/>
+                  <path fill="#2684fc" d="M20.5 20.5H0v31h20.5z"/>
+                  <path fill="#00ac47" d="M82.6 8.68L69.5 19.25v33.83l13.16 10.61c1.98 1.54 4.84.135 4.84-2.37V11c0-2.535-2.9-3.925-4.9-2.32z"/>
+                  <path fill="#00ac47" d="M49.5 36v15.5h-29V72h43c3.315 0 6-2.685 6-6V45.08z"/>
+                  <path fill="#ffba00" d="M63.5 0h-43v20.5h29V36l20-16.75V6c0-3.315-2.685-6-6-6z"/>
+                </svg>
+                <span>Entrar na Reunião</span>
+              </a>
+              <button
+                onClick={handleCopyLink}
+                className="flex items-center justify-center space-x-1.5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium py-1 transition-colors"
+                title={copied ? 'Copiado!' : 'Copiar link da reunião'}
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-3.5 w-3.5" />
+                    <span>Link copiado!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5" />
+                    <span>Copiar link alternativo</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
 
         {status === 'agendado' && (

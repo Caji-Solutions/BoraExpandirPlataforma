@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import ContratoServicoRepository from '../repositories/ContratoServicoRepository';
-import NotificationService from '../services/NotificationService';
+import ContratoServicoRepository from '../../repositories/ContratoServicoRepository';
+import NotificationService from '../../services/NotificationService';
 
 class WebhookController {
     /**

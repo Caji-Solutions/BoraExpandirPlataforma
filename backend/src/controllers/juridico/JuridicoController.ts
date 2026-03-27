@@ -1055,6 +1055,64 @@ class JuridicoController {
             return res.status(500).json({ message: 'Erro ao registrar pedido de reagendamento', error: error.message })
         }
     }
+
+    // POST /juridico/agendamentos/:id/realizada
+    async marcarConsultoriaRealizada(req: any, res: any) {
+        try {
+            const { id } = req.params;
+            if (!id) {
+                return res.status(400).json({ message: 'Agendamento ID é obrigatório' });
+            }
+
+            // 1. Marcar o agendamento como 'realizado'
+            const { data: agendamento, error: agError } = await supabase
+                .from('agendamentos')
+                .update({ status: 'realizado' })
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (agError) throw agError;
+            if (!agendamento) return res.status(404).json({ message: 'Agendamento não encontrado' });
+
+            const clienteId = agendamento.cliente_id;
+            const tipoServico = agendamento.produto_nome || 'Consultoria';
+            if (clienteId) {
+                // 2. Buscar um processo ativo para mudar para Pós Consultoria (clientes_c2)
+                const { data: processo } = await supabase
+                    .from('processos')
+                    .select('id, status, tipo_servico')
+                    .eq('cliente_id', clienteId)
+                    .order('criado_em', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                if (processo) {
+                    const updateData: any = { status: 'clientes_c2' };
+                    // Preencher tipo_servico se estiver vazio
+                    if (!processo.tipo_servico) {
+                        updateData.tipo_servico = tipoServico;
+                    }
+                    await supabase.from('processos').update(updateData).eq('id', processo.id);
+                } else {
+                    // Update fallback stage if process doesn't exist yet
+                    await supabase.from('clientes').update({ stage: 'clientes_c2', status: 'clientes_c2' }).eq('id', clienteId);
+                }
+
+                await NotificationService.createNotification({
+                    clienteId: clienteId,
+                    titulo: 'Consultoria Realizada',
+                    mensagem: 'A consultoria foi finalizada pelo Jurídico. Cliente agora em Pós Consultoria.',
+                    tipo: 'info'
+                });
+            }
+
+            return res.status(200).json({ success: true, message: 'Consultoria finalizada com sucesso.' });
+        } catch (error: any) {
+            console.error('Erro ao marcar consultoria realizada:', error);
+            return res.status(500).json({ message: 'Erro ao marcar consultoria realizada', error: error.message });
+        }
+    }
     // =============================================
     // VALIDACAO DE CONTRATOS
     // =============================================

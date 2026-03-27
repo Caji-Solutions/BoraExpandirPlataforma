@@ -415,6 +415,13 @@ export async function getAllSubservices(): Promise<any[]> {
   return result.data;
 }
 
+/**
+ * Marca uma consultoria/agendamento como realizada
+ */
+export async function marcarConsultoriaRealizada(agendamentoId: string): Promise<any> {
+  return apiClient.post(`/juridico/agendamentos/${agendamentoId}/realizada`);
+}
+
 export default {
     getProcessos,
     getProcessosByResponsavel,
@@ -475,4 +482,5 @@ export default {
     getAllSubservices,
     verificarFormularioPreenchido,
     pedidoReagendamento,
+    marcarConsultoriaRealizada,
 };
