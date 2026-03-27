@@ -122,8 +122,38 @@ export function Step3({
           <textarea name="area_formacao" value={formData.area_formacao} onChange={handleChange} className={_inputClass + ' min-h-[80px]'} placeholder="Ex: Engenharia de Software, Medicina, Direito..." />
         </div>
         <div>
-          <label className={_labelClass}>Qual sua profissão? Você trabalha Online ou Presencial? *</label>
-          <textarea name="profissao_online_presencial" value={formData.profissao_online_presencial} onChange={handleChange} className={_inputClass + ' min-h-[80px]'} placeholder="Ex: Desenvolvedor Frontend, trabalho 100% remoto" />
+          <label className={_labelClass}>Qual sua profissão? *</label>
+          <input name="profissao" value={formData.profissao} onChange={handleChange} className={_inputClass} placeholder="Ex: Desenvolvedor Frontend, Médico, Advogado..." />
+        </div>
+        <div>
+          <label className={_labelClass}>Como você trabalha? *</label>
+          <div className="grid grid-cols-3 gap-3">
+            {(['Remoto', 'Híbrido', 'Presencial'] as const).map(tipo => (
+              <button
+                key={tipo}
+                type="button"
+                onClick={() => setFormData((prev: any) => ({ ...prev, trabalho_tipo: tipo }))}
+                className={`py-3 px-4 rounded-xl font-medium text-sm text-center transition-all ${
+                  formData.trabalho_tipo === tipo
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'bg-white/5 text-gray-300 hover:bg-white/10 border border-white/10'
+                }`}
+              >
+                {tipo}
+              </button>
+            ))}
+          </div>
+          {formData.trabalho_tipo === 'Híbrido' && (
+            <div className="mt-3 animate-in fade-in duration-200">
+              <input
+                name="trabalho_hibrido_info"
+                value={formData.trabalho_hibrido_info}
+                onChange={handleChange}
+                className={_inputClass}
+                placeholder="Ex: 3 dias presencial, 2 dias remoto"
+              />
+            </div>
+          )}
         </div>
         <YesNoQuestion
           label="Você já tem ideia do tipo de visto ou residência que pretende solicitar? Se sim, qual?"

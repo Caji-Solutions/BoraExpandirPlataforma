@@ -243,12 +243,14 @@ class FormularioController {
 
             // 6. Confirmar o agendamento e verificar se já estava pago
             let isPago = false
+            let agendamentoProduto: string | null = null
             if (agendamento_id) {
                 const { data: agendamentoAtual } = await supabase
                     .from('agendamentos')
-                    .select('status, comprovante_url, pagamento_status, meet_link, nome, telefone, email, data_hora, duracao_minutos')
+                    .select('status, comprovante_url, pagamento_status, meet_link, nome, telefone, email, data_hora, duracao_minutos, produto')
                     .eq('id', agendamento_id)
                     .single()
+                agendamentoProduto = (agendamentoAtual as any)?.produto || null
 
                 isPago = (agendamentoAtual?.pagamento_status === 'aprovado') || (agendamentoAtual?.status === 'confirmado')
 
@@ -317,6 +319,14 @@ class FormularioController {
                         console.error('[FormularioController] Erro ao converter lead em cliente:', clienteUpdateError)
                     } else {
                         console.log(`[FormularioController] Lead convertido em cliente apos pagamento e formulario: ${clienteId}`)
+                        try {
+                            await DNAService.mergeDNA(clienteId, {
+                                servico_inicial: agendamentoProduto
+                            }, 'HIGH')
+                            console.log(`[FormularioController] DNA atualizado com servico_inicial: ${agendamentoProduto}`)
+                        } catch (dnaErr) {
+                            console.error('[FormularioController] Erro ao atualizar DNA com servico:', dnaErr)
+                        }
                     }
                 }
             }

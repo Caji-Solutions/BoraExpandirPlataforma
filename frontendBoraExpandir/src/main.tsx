@@ -18,7 +18,7 @@ import { ProtectedRoute, roleRouteMap } from './components/ProtectedRoute'
 import LoginPage from './modules/shared/pages/LoginPage'
 import PaymentSuccess from './modules/shared/pages/PaymentSuccess'
 import PaymentCancel from './modules/shared/pages/PaymentCancel'
-import FormularioConsultoria from './pages/FormularioConsultoria'
+import FormularioConsultoria from './modules/shared/pages/FormularioConsultoriaPage'
 import RedefinirSenha from './modules/shared/pages/RedefinirSenha'
 
 import { useParams } from 'react-router-dom'

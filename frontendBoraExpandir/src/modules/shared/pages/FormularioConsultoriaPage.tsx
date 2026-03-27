@@ -47,6 +47,9 @@ export default function FormularioConsultoria() {
     area_formacao: '',
     situacao_profissional: [] as string[],
     profissao_online_presencial: '',
+    profissao: '',
+    trabalho_tipo: '',
+    trabalho_hibrido_info: '',
     tipo_visto_planejado: '',
     duvidas_consultoria: '',
   })
@@ -59,17 +62,22 @@ export default function FormularioConsultoria() {
   const [residenciaAnswer, setResidenciaAnswer] = useState<'yes' | 'no' | null>(
     formData.cidade_pais_residencia ? 'yes' : null
   )
-  const [semFilhos, setSemFilhos] = useState(
-    formData.filhos_qtd_idades.toLowerCase().includes('nao tenho')
+  const [parceiroAnswer, setParceiroAnswer] = useState<'yes' | 'no' | null>(null)
+  const [filhosAnswer, setFilhosAnswer] = useState<'yes' | 'no' | null>(
+    formData.filhos_qtd_idades.toLowerCase().includes('nao tenho') ? 'no' :
+    formData.filhos_qtd_idades ? 'yes' : null
   )
-  const [semFamiliaresEspanha, setSemFamiliaresEspanha] = useState(
-    formData.familiares_espanha.toLowerCase().includes('nao tenho')
+  const [familiaresEspanhaAnswer, setFamiliaresEspanhaAnswer] = useState<'yes' | 'no' | null>(
+    formData.familiares_espanha.toLowerCase().includes('nao tenho') ? 'no' :
+    formData.familiares_espanha ? 'yes' : null
   )
-  const [semVistoUe, setSemVistoUe] = useState(
-    formData.visto_ue.toLowerCase().includes('nao tenho')
+  const [vistoUeAnswer, setVistoUeAnswer] = useState<'yes' | 'no' | null>(
+    formData.visto_ue.toLowerCase().includes('nao tenho') ? 'no' :
+    formData.visto_ue ? 'yes' : null
   )
-  const [semFilhosEuropeus, setSemFilhosEuropeus] = useState(
-    formData.filhos_nacionalidade_europeia.toLowerCase().includes('nao tenho')
+  const [filhosEuropeusAnswer, setFilhosEuropeusAnswer] = useState<'yes' | 'no' | null>(
+    formData.filhos_nacionalidade_europeia.toLowerCase().includes('nao tenho') ? 'no' :
+    formData.filhos_nacionalidade_europeia ? 'yes' : null
   )
   const [cnhAnswer, setCnhAnswer] = useState<'yes' | 'no' | null>(
     formData.possui_cnh_categoria_ano.toLowerCase().includes('não possuo') ? 'no' :
@@ -115,7 +123,8 @@ export default function FormularioConsultoria() {
     formData.escolaridade.length > 0 &&
     formData.area_formacao.trim() &&
     formData.situacao_profissional.length > 0 &&
-    formData.profissao_online_presencial.trim() &&
+    formData.profissao.trim() &&
+    formData.trabalho_tipo.trim() &&
     formData.tipo_visto_planejado.trim() &&
     formData.duvidas_consultoria.trim()
   ), [formData])
@@ -240,10 +249,14 @@ export default function FormularioConsultoria() {
     }
 
     try {
+      const trabalhotipoInfo = formData.trabalho_tipo === 'Híbrido' && formData.trabalho_hibrido_info
+        ? `${formData.trabalho_tipo} (${formData.trabalho_hibrido_info})`
+        : formData.trabalho_tipo
+      const profissaoOlinePresencial = `${formData.profissao} - ${trabalhotipoInfo}`
       const response = await fetch(`${backendUrl}/formulario/consultoria`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, agendamento_id: agendamentoId || null })
+        body: JSON.stringify({ ...formData, profissao_online_presencial: profissaoOlinePresencial, agendamento_id: agendamentoId || null })
       })
 
       const data = await response.json()
@@ -348,6 +361,8 @@ export default function FormularioConsultoria() {
             setEuropeAnswer={setEuropeAnswer}
             residenciaAnswer={residenciaAnswer}
             setResidenciaAnswer={setResidenciaAnswer}
+            parceiroAnswer={parceiroAnswer}
+            setParceiroAnswer={setParceiroAnswer}
             setFormData={setFormData}
           />
         )}
@@ -359,20 +374,20 @@ export default function FormularioConsultoria() {
             handleCheckboxChange={handleCheckboxChange}
             prevStep={prevStep}
             nextStep={nextStep}
-            semFilhos={semFilhos}
-            setSemFilhos={setSemFilhos}
-            semFamiliaresEspanha={semFamiliaresEspanha}
-            setSemFamiliaresEspanha={setSemFamiliaresEspanha}
+            filhosAnswer={filhosAnswer}
+            setFilhosAnswer={setFilhosAnswer}
+            familiaresEspanhaAnswer={familiaresEspanhaAnswer}
+            setFamiliaresEspanhaAnswer={setFamiliaresEspanhaAnswer}
             cnhAnswer={cnhAnswer}
             setCnhAnswer={setCnhAnswer}
             propostaTrabalhoAnswer={propostaTrabalhoAnswer}
             setPropostaTrabalhoAnswer={setPropostaTrabalhoAnswer}
-            semVistoUe={semVistoUe}
-            setSemVistoUe={setSemVistoUe}
+            vistoUeAnswer={vistoUeAnswer}
+            setVistoUeAnswer={setVistoUeAnswer}
             trabalhoDestacadoAnswer={trabalhoDestacadoAnswer}
             setTrabalhoDestacadoAnswer={setTrabalhoDestacadoAnswer}
-            semFilhosEuropeus={semFilhosEuropeus}
-            setSemFilhosEuropeus={setSemFilhosEuropeus}
+            filhosEuropeusAnswer={filhosEuropeusAnswer}
+            setFilhosEuropeusAnswer={setFilhosEuropeusAnswer}
             setFormData={setFormData}
           />
         )}

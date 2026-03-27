@@ -111,14 +111,7 @@ class AutentiqueService {
                 signers: [
                     {
                         email: signerEmail,
-                        action: "SIGN",
-                        positions: positions || [
-                            {
-                                x: 25,
-                                y: 30,
-                                z: 0 // Placeholder: 0 will be replaced by total pages in a more robust way, or handled as "last page" by some APIs
-                            }
-                        ]
+                        action: "SIGN"
                     }
                 ],
                 file: null
@@ -229,25 +222,11 @@ class AutentiqueService {
                 signers: [
                     {
                         email: this.companyEmail,
-                        action: "SIGN",
-                        positions: [
-                            {
-                                x: empresaPos.x.toString(),
-                                y: empresaPos.y.toString(),
-                                z: empresaPos.z
-                            }
-                        ]
+                        action: "SIGN"
                     },
                     {
                         email: signerEmail,
-                        action: "SIGN",
-                        positions: [
-                            {
-                                x: clientePos.x.toString(),
-                                y: clientePos.y.toString(),
-                                z: clientePos.z
-                            }
-                        ]
+                        action: "SIGN"
                     }
                 ],
                 file: null

@@ -486,17 +486,20 @@ export function AgendamentoEditPage() {
                     </div>
                 )}
 
-                {/* ═══ LINK DO FORMULÁRIO (visível quando pagamento aprovado E não preenchido) ═══ */}
-                {agendamento.pagamento_status === 'aprovado' && !agendamento.formulario_preenchido && (
+                {/* ═══ LINK DO FORMULÁRIO (visível quando pagamento aprovado E não preenchido E não é Assessoria/Contratos) ═══ */}
+                {agendamento.pagamento_status === 'aprovado' && !agendamento.formulario_preenchido && !(
+                    agendamento.produto?.toLowerCase().includes('assessoria') ||
+                    agendamento.tipo_servico?.toLowerCase().includes('assessoria') ||
+                    agendamento.servico_nome?.toLowerCase().includes('assessoria') ||
+                    agendamento.tipo_servico?.toLowerCase().includes('contratos') ||
+                    agendamento.tipo_servico?.toLowerCase() === 'fixo'
+                ) && (
                     <div className="bg-white dark:bg-neutral-900 rounded-2xl p-6 border border-gray-100 dark:border-neutral-800 shadow-sm mb-6">
                         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                             <FileText className="w-5 h-5 text-blue-600" />
                             Formulário de Consultoria
                         </h2>
                         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
-                            <p className="text-sm text-blue-800 dark:text-blue-300 mb-3 font-medium">
-                                📋 Link do formulário para enviar ao cliente:
-                            </p>
                             {(() => {
                                 const frontendUrl = import.meta.env.VITE_FRONTEND_URL?.trim() || window.location.origin
                                 const params = new URLSearchParams()
@@ -504,31 +507,32 @@ export function AgendamentoEditPage() {
                                 if (agendamento.email) params.set('email', agendamento.email)
                                 if (agendamento.telefone) params.set('telefone', agendamento.telefone)
                                 const formLink = `${frontendUrl}/formulario/consultoria/${agendamento.id}?${params.toString()}`
-                                
+                                const mensagem = `✅ Olá, ${agendamento.nome || 'cliente'}! Sua conta já foi criada, verifique seu email! 📝 Aqui está o formulário que precisa ser preenchido para continuarmos com seu agendamento:\n\n${formLink}`
+
                                 return (
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="text"
+                                    <div className="space-y-3">
+                                        <p className="text-sm text-blue-800 dark:text-blue-300 font-medium">
+                                            📋 Mensagem pronta para enviar ao cliente:
+                                        </p>
+                                        <textarea
                                             readOnly
-                                            value={formLink}
-                                            className="flex-1 text-xs bg-white dark:bg-neutral-800 border border-blue-200 dark:border-blue-700 rounded-lg px-3 py-2 text-gray-700 dark:text-gray-200 font-mono"
-                                            onClick={(e) => (e.target as HTMLInputElement).select()}
+                                            value={mensagem}
+                                            rows={5}
+                                            className="w-full text-xs bg-white dark:bg-neutral-800 border border-blue-200 dark:border-blue-700 rounded-lg px-3 py-2 text-gray-700 dark:text-gray-200 resize-none"
+                                            onClick={(e) => (e.target as HTMLTextAreaElement).select()}
                                         />
                                         <button
                                             onClick={() => {
-                                                navigator.clipboard.writeText(formLink)
-                                                toast.success('Link copiado!')
+                                                navigator.clipboard.writeText(mensagem)
+                                                toast.success('Mensagem copiada!')
                                             }}
-                                            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors whitespace-nowrap"
+                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors"
                                         >
-                                            Copiar Link
+                                            Copiar Mensagem
                                         </button>
                                     </div>
                                 )
                             })()}
-                            <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
-                                Este link já foi enviado por email ao cliente. Use-o para enviar manualmente se necessário.
-                            </p>
                         </div>
                     </div>
                 )}

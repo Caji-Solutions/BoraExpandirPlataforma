@@ -7,20 +7,20 @@ interface Step2Props {
   handleCheckboxChange: (field: string, value: string) => void;
   prevStep: () => void;
   nextStep: () => void;
-  semFilhos: boolean;
-  setSemFilhos: (v: boolean) => void;
-  semFamiliaresEspanha: boolean;
-  setSemFamiliaresEspanha: (v: boolean) => void;
+  filhosAnswer: 'yes' | 'no' | null;
+  setFilhosAnswer: (v: 'yes' | 'no' | null) => void;
+  familiaresEspanhaAnswer: 'yes' | 'no' | null;
+  setFamiliaresEspanhaAnswer: (v: 'yes' | 'no' | null) => void;
   cnhAnswer: 'yes' | 'no' | null;
   setCnhAnswer: (v: 'yes' | 'no' | null) => void;
   propostaTrabalhoAnswer: 'yes' | 'no' | null;
   setPropostaTrabalhoAnswer: (v: 'yes' | 'no' | null) => void;
-  semVistoUe: boolean;
-  setSemVistoUe: (v: boolean) => void;
+  vistoUeAnswer: 'yes' | 'no' | null;
+  setVistoUeAnswer: (v: 'yes' | 'no' | null) => void;
   trabalhoDestacadoAnswer: 'yes' | 'no' | null;
   setTrabalhoDestacadoAnswer: (v: 'yes' | 'no' | null) => void;
-  semFilhosEuropeus: boolean;
-  setSemFilhosEuropeus: (v: boolean) => void;
+  filhosEuropeusAnswer: 'yes' | 'no' | null;
+  setFilhosEuropeusAnswer: (v: 'yes' | 'no' | null) => void;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
@@ -30,20 +30,20 @@ export function Step2({
   handleCheckboxChange,
   prevStep,
   nextStep,
-  semFilhos,
-  setSemFilhos,
-  semFamiliaresEspanha,
-  setSemFamiliaresEspanha,
+  filhosAnswer,
+  setFilhosAnswer,
+  familiaresEspanhaAnswer,
+  setFamiliaresEspanhaAnswer,
   cnhAnswer,
   setCnhAnswer,
   propostaTrabalhoAnswer,
   setPropostaTrabalhoAnswer,
-  semVistoUe,
-  setSemVistoUe,
+  vistoUeAnswer,
+  setVistoUeAnswer,
   trabalhoDestacadoAnswer,
   setTrabalhoDestacadoAnswer,
-  semFilhosEuropeus,
-  setSemFilhosEuropeus,
+  filhosEuropeusAnswer,
+  setFilhosEuropeusAnswer,
   setFormData
 }: Step2Props) {
   return (
@@ -54,71 +54,51 @@ export function Step2({
         <select
           value={formData.estado_civil[0] || ''}
           onChange={e => setFormData((prev: any) => ({ ...prev, estado_civil: [e.target.value] }))}
-          className={_inputClass + ' cursor-pointer appearance-none'}
+          className="w-full bg-neutral-800 border border-white/10 rounded-xl px-4 py-3 text-white cursor-pointer focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
         >
-          <option value="">Selecione...</option>
-          <option value="Solteiro(a)">Solteiro(a)</option>
-          <option value="Namorando">Namorando</option>
-          <option value="Noivo(a)">Noivo(a)</option>
-          <option value="Casado(a)">Casado(a)</option>
-          <option value="Amasiado">Amasiado (sem registro)</option>
-          <option value="União Estável">União Estável (com registro em cartório)</option>
-          <option value="Divorciado(a)">Divorciado(a)</option>
-          <option value="Separado(a)">Separado(a) (sem divórcio)</option>
+          <option value="" className="bg-neutral-800 text-white">Selecione...</option>
+          <option value="Solteiro(a)" className="bg-neutral-800 text-white">Solteiro(a)</option>
+          <option value="Namorando" className="bg-neutral-800 text-white">Namorando</option>
+          <option value="Noivo(a)" className="bg-neutral-800 text-white">Noivo(a)</option>
+          <option value="Casado(a)" className="bg-neutral-800 text-white">Casado(a)</option>
+          <option value="Amasiado" className="bg-neutral-800 text-white">Amasiado (sem registro)</option>
+          <option value="União Estável" className="bg-neutral-800 text-white">União Estável (com registro em cartório)</option>
+          <option value="Divorciado(a)" className="bg-neutral-800 text-white">Divorciado(a)</option>
+          <option value="Separado(a)" className="bg-neutral-800 text-white">Separado(a) (sem divórcio)</option>
         </select>
       </div>
 
       {/* Família e Documentos */}
       <div className="space-y-4 p-6 bg-white/[0.03] rounded-2xl border border-white/5">
         <h2 className="text-lg font-bold text-white flex items-center gap-2">👨‍👩‍👧 Família e Documentos</h2>
-        <div>
-          <label className={_labelClass}>Possui filhos? Se sim, quantos e idade? *</label>
-          <div className="flex items-center gap-3 mb-2">
-            <input
-              type="checkbox"
-              id="sem_filhos"
-              checked={semFilhos}
-              onChange={e => {
-                setSemFilhos(e.target.checked)
-                setFormData((prev: any) => ({
-                  ...prev,
-                  filhos_qtd_idades: e.target.checked ? 'Não tenho filhos' : ''
-                }))
-              }}
-              className="w-4 h-4 accent-blue-500"
-            />
-            <label htmlFor="sem_filhos" className="text-sm font-medium text-gray-300 cursor-pointer">Não tenho filhos</label>
-          </div>
-          {!semFilhos && (
-            <div className="animate-in fade-in duration-200">
-              <textarea name="filhos_qtd_idades" value={formData.filhos_qtd_idades} onChange={handleChange} className={_inputClass + ' min-h-[80px]'} placeholder="Ex: 2 filhos, 5 e 8 anos" />
-            </div>
-          )}
-        </div>
-        <div>
-          <label className={_labelClass}>Possui familiares que mora na Espanha? Se sim qual o grau de parentesco e qual tipo de residência eles possuem aqui? *</label>
-          <div className="flex items-center gap-3 mb-2">
-            <input
-              type="checkbox"
-              id="sem_familiares_espanha"
-              checked={semFamiliaresEspanha}
-              onChange={e => {
-                setSemFamiliaresEspanha(e.target.checked)
-                setFormData((prev: any) => ({
-                  ...prev,
-                  familiares_espanha: e.target.checked ? 'Não tenho familiares na Espanha' : ''
-                }))
-              }}
-              className="w-4 h-4 accent-blue-500"
-            />
-            <label htmlFor="sem_familiares_espanha" className="text-sm font-medium text-gray-300 cursor-pointer">Não tenho familiares na Espanha</label>
-          </div>
-          {!semFamiliaresEspanha && (
-            <div className="animate-in fade-in duration-200">
-              <textarea name="familiares_espanha" value={formData.familiares_espanha} onChange={handleChange} className={_inputClass + ' min-h-[80px]'} placeholder="Ex: Irmão com residência permanente" />
-            </div>
-          )}
-        </div>
+        <YesNoQuestion
+          label="Possui filhos? Se sim, quantos e idade? *"
+          value={filhosAnswer}
+          onYes={() => {
+            setFilhosAnswer('yes')
+            setFormData((prev: any) => ({ ...prev, filhos_qtd_idades: '' }))
+          }}
+          onNo={() => {
+            setFilhosAnswer('no')
+            setFormData((prev: any) => ({ ...prev, filhos_qtd_idades: 'Não tenho filhos' }))
+          }}
+        >
+          <textarea name="filhos_qtd_idades" value={formData.filhos_qtd_idades} onChange={handleChange} className={_inputClass + ' min-h-[80px]'} placeholder="Ex: 2 filhos, 5 e 8 anos" />
+        </YesNoQuestion>
+        <YesNoQuestion
+          label="Possui familiares que mora na Espanha? Se sim qual o grau de parentesco e qual tipo de residência eles possuem aqui? *"
+          value={familiaresEspanhaAnswer}
+          onYes={() => {
+            setFamiliaresEspanhaAnswer('yes')
+            setFormData((prev: any) => ({ ...prev, familiares_espanha: '' }))
+          }}
+          onNo={() => {
+            setFamiliaresEspanhaAnswer('no')
+            setFormData((prev: any) => ({ ...prev, familiares_espanha: 'Não tenho familiares na Espanha' }))
+          }}
+        >
+          <textarea name="familiares_espanha" value={formData.familiares_espanha} onChange={handleChange} className={_inputClass + ' min-h-[80px]'} placeholder="Ex: Irmão com residência permanente" />
+        </YesNoQuestion>
         <YesNoQuestion
           label="Você possui CNH? Se sim, informe qual a categoria e qual ano você obteve."
           value={cnhAnswer}
@@ -159,30 +139,20 @@ export function Step2({
             placeholder="Ex: Contrato CLT, 2000€/mês, cargo de Engenheiro"
           />
         </YesNoQuestion>
-        <div>
-          <label className={_labelClass}>Você tem algum tipo de visto, residência ou nacionalidade de outro país da União Europeia? *</label>
-          <div className="flex items-center gap-3 mb-2">
-            <input
-              type="checkbox"
-              id="sem_visto_ue"
-              checked={semVistoUe}
-              onChange={e => {
-                setSemVistoUe(e.target.checked)
-                setFormData((prev: any) => ({
-                  ...prev,
-                  visto_ue: e.target.checked ? 'Não tenho' : ''
-                }))
-              }}
-              className="w-4 h-4 accent-blue-500"
-            />
-            <label htmlFor="sem_visto_ue" className="text-sm font-medium text-gray-300 cursor-pointer">Não tenho</label>
-          </div>
-          {!semVistoUe && (
-            <div className="animate-in fade-in duration-200">
-              <textarea name="visto_ue" value={formData.visto_ue} onChange={handleChange} className={_inputClass + ' min-h-[80px]'} placeholder="Ex: Tenho residência portuguesa" />
-            </div>
-          )}
-        </div>
+        <YesNoQuestion
+          label="Você tem algum tipo de visto, residência ou nacionalidade de outro país da União Europeia? *"
+          value={vistoUeAnswer}
+          onYes={() => {
+            setVistoUeAnswer('yes')
+            setFormData((prev: any) => ({ ...prev, visto_ue: '' }))
+          }}
+          onNo={() => {
+            setVistoUeAnswer('no')
+            setFormData((prev: any) => ({ ...prev, visto_ue: 'Não tenho' }))
+          }}
+        >
+          <textarea name="visto_ue" value={formData.visto_ue} onChange={handleChange} className={_inputClass + ' min-h-[80px]'} placeholder="Ex: Tenho residência portuguesa" />
+        </YesNoQuestion>
         <YesNoQuestion
           label="Você trabalha na Espanha como destacado/transladado por uma empresa de outro país da União Europeia?"
           value={trabalhoDestacadoAnswer}
@@ -203,30 +173,20 @@ export function Step2({
             placeholder="Ex: Empresa portuguesa prestando serviço na Espanha"
           />
         </YesNoQuestion>
-        <div>
-          <label className={_labelClass}>Você tem algum filho menor de idade que tem nacionalidade europeia? *</label>
-          <div className="flex items-center gap-3 mb-2">
-            <input
-              type="checkbox"
-              id="sem_filhos_europeus"
-              checked={semFilhosEuropeus}
-              onChange={e => {
-                setSemFilhosEuropeus(e.target.checked)
-                setFormData((prev: any) => ({
-                  ...prev,
-                  filhos_nacionalidade_europeia: e.target.checked ? 'Não tenho' : ''
-                }))
-              }}
-              className="w-4 h-4 accent-blue-500"
-            />
-            <label htmlFor="sem_filhos_europeus" className="text-sm font-medium text-gray-300 cursor-pointer">Não tenho</label>
-          </div>
-          {!semFilhosEuropeus && (
-            <div className="animate-in fade-in duration-200">
-              <textarea name="filhos_nacionalidade_europeia" value={formData.filhos_nacionalidade_europeia} onChange={handleChange} className={_inputClass + ' min-h-[80px]'} placeholder="Ex: Sim, filho de 7 anos com passaporte espanhol" />
-            </div>
-          )}
-        </div>
+        <YesNoQuestion
+          label="Você tem algum filho menor de idade que tem nacionalidade europeia? *"
+          value={filhosEuropeusAnswer}
+          onYes={() => {
+            setFilhosEuropeusAnswer('yes')
+            setFormData((prev: any) => ({ ...prev, filhos_nacionalidade_europeia: '' }))
+          }}
+          onNo={() => {
+            setFilhosEuropeusAnswer('no')
+            setFormData((prev: any) => ({ ...prev, filhos_nacionalidade_europeia: 'Não tenho' }))
+          }}
+        >
+          <textarea name="filhos_nacionalidade_europeia" value={formData.filhos_nacionalidade_europeia} onChange={handleChange} className={_inputClass + ' min-h-[80px]'} placeholder="Ex: Sim, filho de 7 anos com passaporte espanhol" />
+        </YesNoQuestion>
       </div>
 
       {/* Pretende Autônomo */}

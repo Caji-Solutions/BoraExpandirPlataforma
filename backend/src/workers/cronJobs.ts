@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import { supabase } from '../config/SupabaseClient';
 import CambioService from '../services/CambioService';
 import ComissaoRepository from '../repositories/ComissaoRepository';
+import EmailService from '../services/EmailService';
 
 /**
  * Job que roda a cada 30 minutos
@@ -48,8 +49,108 @@ export const startCronJobs = () => {
                     }
 
                     // 2b. Se o pagamento já foi aprovado, NUNCA cancela automaticamente.
+                    // Em vez disso, verifica se o formulário foi preenchido e envia lembrete se necessário.
                     if (agendamento.pagamento_status === 'aprovado') {
-                        console.log(`[CRON] Poupando agendamento ${agendamento.id}: Pagamento ja aprovado.`);
+                        // Formulario ja preenchido — sem acao
+                        if (agendamento.cliente_is_user === true) {
+                            console.log(`[CRON] Agendamento ${agendamento.id}: Pagamento aprovado e formulario ja preenchido. Sem acao.`);
+                            continue;
+                        }
+
+                        // Rate limiting: maximo de 3 lembretes por agendamento
+                        const reminderCount: number = agendamento.email_reminders_count || 0;
+                        if (reminderCount >= 3) {
+                            console.log(`[CRON] Agendamento ${agendamento.id}: Limite de lembretes atingido (${reminderCount}/3). Sem envio.`);
+                            continue;
+                        }
+
+                        // Verifica se formulario ja existe em formularios_cliente
+                        const { data: formulario } = await supabase
+                            .from('formularios_cliente')
+                            .select('id')
+                            .eq('agendamento_id', agendamento.id)
+                            .maybeSingle();
+
+                        if (formulario) {
+                            console.log(`[CRON] Agendamento ${agendamento.id}: Formulario encontrado em formularios_cliente. Sem envio.`);
+                            continue;
+                        }
+
+                        const clientEmail = agendamento.email;
+                        if (!clientEmail) {
+                            console.warn(`[CRON] Agendamento ${agendamento.id}: Email nao encontrado. Pulando lembrete.`);
+                            continue;
+                        }
+
+                        const clientName = agendamento.nome || 'Cliente';
+                        const servicoNome = agendamento.produto || agendamento.servico_nome || 'consultoria';
+                        const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '');
+                        const queryParams = new URLSearchParams();
+                        if (agendamento.nome) queryParams.set('nome', agendamento.nome);
+                        if (agendamento.email) queryParams.set('email', agendamento.email);
+                        if (agendamento.telefone) queryParams.set('telefone', agendamento.telefone);
+                        const formLink = `${frontendUrl}/formulario/consultoria/${agendamento.id}?${queryParams.toString()}`;
+
+                        const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lembrete - Bora Expandir</title>
+</head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+    <div style="max-width:600px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <div style="background:linear-gradient(135deg,#076CA5 0%,#0A8FD4 100%);padding:40px 32px;text-align:center;">
+            <h1 style="color:#ffffff;margin:0;font-size:28px;font-weight:700;">Bora Expandir 🚀</h1>
+            <p style="color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;">Lembrete Importante ⏰</p>
+        </div>
+        <div style="padding:32px;">
+            <h2 style="color:#1a1a1a;margin:0 0 16px;font-size:22px;">Olá, ${clientName}! 👋</h2>
+            <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 16px;">
+                Você iniciou seu processo com a <strong>Bora Expandir</strong>, mas ainda não completou o formulário de avaliação.
+            </p>
+            <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 24px;">
+                Para continuar com seu agendamento de <strong>${servicoNome}</strong>, é necessário preencher o formulário.
+            </p>
+            <div style="text-align:center;margin:32px 0;">
+                <a href="${formLink}"
+                   style="display:inline-block;background:#076CA5;color:#ffffff;text-decoration:none;padding:14px 40px;border-radius:10px;font-size:16px;font-weight:700;letter-spacing:0.5px;">
+                    📋 Preencher Formulário Agora
+                </a>
+            </div>
+            <p style="color:#888;font-size:13px;line-height:1.6;margin:0 0 16px;text-align:center;">
+                Precisa de ajuda? Responda este email ou fale conosco pelo WhatsApp.
+            </p>
+            <p style="color:#999;font-size:12px;text-align:center;margin:24px 0 0;">
+                Atenciosamente, Equipe Bora Expandir
+            </p>
+        </div>
+        <div style="background:#f9f9f9;padding:20px 32px;text-align:center;border-top:1px solid #eee;">
+            <p style="color:#aaa;font-size:12px;margin:0;">
+                © ${new Date().getFullYear()} Bora Expandir — Todos os direitos reservados.
+            </p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+                        try {
+                            await EmailService.sendEmail({
+                                to: clientEmail,
+                                subject: 'Lembrete: Complete seu formulário para acessar o sistema',
+                                html
+                            });
+
+                            await supabase
+                                .from('agendamentos')
+                                .update({ email_reminders_count: reminderCount + 1 })
+                                .eq('id', agendamento.id);
+
+                            console.log(`[CRON] Lembrete ${reminderCount + 1}/3 enviado para ${clientEmail} (agendamento ${agendamento.id}).`);
+                        } catch (emailErr) {
+                            console.error(`[CRON] Erro ao enviar lembrete para agendamento ${agendamento.id}:`, emailErr);
+                        }
+
                         continue;
                     }
 

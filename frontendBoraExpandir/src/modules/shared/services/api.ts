@@ -42,9 +42,9 @@ class ApiClient {
 
     // ✅ Adicionar token de autenticação automaticamente
     const token = this.getAuthToken();
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...fetchOptions.headers,
+      ...(fetchOptions.headers as Record<string, string>),
     };
 
     // Se tem token e não é FormData, adicionar Authorization
@@ -118,7 +118,7 @@ class ApiClient {
     return this.request<T>(endpoint, {
       ...options,
       method: 'POST',
-      body: body ? JSON.stringify(body) : undefined,
+      body: body ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
     });
   }
 
@@ -133,7 +133,7 @@ class ApiClient {
     return this.request<T>(endpoint, {
       ...options,
       method: 'PUT',
-      body: body ? JSON.stringify(body) : undefined,
+      body: body ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
     });
   }
 
@@ -148,7 +148,7 @@ class ApiClient {
     return this.request<T>(endpoint, {
       ...options,
       method: 'PATCH',
-      body: body ? JSON.stringify(body) : undefined,
+      body: body ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
     });
   }
 

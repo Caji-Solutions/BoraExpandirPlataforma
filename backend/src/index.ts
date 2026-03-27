@@ -25,7 +25,7 @@ const app = express()
 
 app.use(cors())
 app.post('/webhooks/autentique', express.json(), (req, res) => {
-  const WebhookController = require('./controllers/webhook/WebhookController').default
+  const WebhookController = require('./controllers/WebhookController').default
   WebhookController.handleAutentiqueWebhook(req, res)
 })
 app.use(express.json())

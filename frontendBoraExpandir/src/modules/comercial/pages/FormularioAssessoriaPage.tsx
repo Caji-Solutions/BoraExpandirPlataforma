@@ -60,6 +60,7 @@ export default function FormularioAssessoriaPage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [contratoGerado, setContratoGerado] = useState(false)
   const [etapaAtual, setEtapaAtual] = useState(1)
   const [formData, setFormData] = useState<FormularioDraft>(emptyFormData)
   const [contrato, setContrato] = useState<ContratoServico | null>(null)
@@ -265,7 +266,7 @@ export default function FormularioAssessoriaPage() {
 
     try {
       setSaving(true)
-      await persistDraft(4, formData)
+      await persistDraft(4, formData, { silent: true })
       const res = await comercialService.gerarContratoPdf(id)
 
       const updatedData = res?.data || null
@@ -279,6 +280,7 @@ export default function FormularioAssessoriaPage() {
         throw new Error('Nao foi possivel gerar o contrato neste momento.')
       }
 
+      setContratoGerado(true)
       toast.success('Contrato gerado com sucesso!')
     } catch (err: any) {
       toast.error('Erro ao gerar contrato: ' + err.message)
@@ -605,9 +607,11 @@ export default function FormularioAssessoriaPage() {
             {!contrato?.contrato_gerado_url || isLockedByGeracaoErro ? (
               <div className="flex flex-col gap-3">
                 <p className="text-sm text-gray-500">Tudo pronto para gerar o contrato preenchido.</p>
-                <button onClick={handleGerarContrato} disabled={saving} className="w-full py-3.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-60 flex justify-center items-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-emerald-600/20">
+                <button onClick={handleGerarContrato} disabled={saving || contratoGerado} className="w-full py-3.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-60 flex justify-center items-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-emerald-600/20">
                   {saving ? (
                     <><Loader2 className="w-5 h-5 animate-spin" /> Gerando contrato...</>
+                  ) : contratoGerado ? (
+                    <><CheckCircle2 className="w-5 h-5" /> Contrato Gerado</>
                   ) : (
                     <><FileText className="w-5 h-5" /> Gerar Contrato (DOCX)</>
                   )}

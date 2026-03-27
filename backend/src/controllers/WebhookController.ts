@@ -92,7 +92,8 @@ class WebhookController {
                             contrato_assinado_url: signedFileUrl,
                             contrato_assinado_em: new Date().toISOString(),
                             contrato_id: contrato.id,
-                            contrato_servico_nome: contrato.servico_nome || null
+                            contrato_servico_nome: contrato.servico_nome || null,
+                            servico_inicial: contrato.servico_nome || null
                         }, 'HIGH');
                         console.log(`[WebhookController] DNA do cliente ${contrato.cliente_id} atualizado com contrato assinado.`);
                     } catch (dnaErr) {

@@ -12,6 +12,8 @@ interface Step1Props {
   setEuropeAnswer: (v: 'yes' | 'no' | null) => void;
   residenciaAnswer: 'yes' | 'no' | null;
   setResidenciaAnswer: (v: 'yes' | 'no' | null) => void;
+  parceiroAnswer: 'yes' | 'no' | null;
+  setParceiroAnswer: (v: 'yes' | 'no' | null) => void;
   setFormData: React.Dispatch<React.SetStateAction<any>>;
 }
 
@@ -26,6 +28,8 @@ export function Step1({
   setEuropeAnswer,
   residenciaAnswer,
   setResidenciaAnswer,
+  parceiroAnswer,
+  setParceiroAnswer,
   setFormData
 }: Step1Props) {
   return (
@@ -37,10 +41,26 @@ export function Step1({
           <label className={_labelClass}>Nome completo *</label>
           <input name="nome_completo" value={formData.nome_completo} onChange={handleChange} className={_inputClass + (preNome ? ' opacity-70' : '')} placeholder="Seu nome completo" readOnly={!!preNome} />
         </div>
-        <div>
-          <label className={_labelClass}>Você foi indicado(a) por algum parceiro(a)? Se sim, qual nome dele(a)?</label>
-          <input name="parceiro_indicador" value={formData.parceiro_indicador} onChange={handleChange} className={_inputClass} placeholder="Deixe em branco se não foi indicado" />
-        </div>
+        <YesNoQuestion
+          label="Você foi indicado(a) por algum parceiro(a)? Se sim, qual nome dele(a)?"
+          value={parceiroAnswer}
+          onYes={() => {
+            setParceiroAnswer('yes')
+            setFormData((prev: any) => ({ ...prev, parceiro_indicador: '' }))
+          }}
+          onNo={() => {
+            setParceiroAnswer('no')
+            setFormData((prev: any) => ({ ...prev, parceiro_indicador: 'Não' }))
+          }}
+        >
+          <input
+            name="parceiro_indicador"
+            value={formData.parceiro_indicador}
+            onChange={handleChange}
+            className={_inputClass}
+            placeholder="Nome do parceiro que indicou"
+          />
+        </YesNoQuestion>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className={_labelClass}>Qual seu email? *</label>

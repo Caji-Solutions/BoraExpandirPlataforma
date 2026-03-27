@@ -1103,7 +1103,7 @@ class JuridicoController {
                     clienteId: clienteId,
                     titulo: 'Consultoria Realizada',
                     mensagem: 'A consultoria foi finalizada pelo Jurídico. Cliente agora em Pós Consultoria.',
-                    tipo: 'info'
+                    tipo: 'success'
                 });
             }
 

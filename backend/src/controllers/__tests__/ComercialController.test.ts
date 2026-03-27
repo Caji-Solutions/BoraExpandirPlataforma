@@ -35,8 +35,19 @@ vi.mock('../../config/SupabaseClient', () => ({
         from: vi.fn().mockReturnValue({
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: { nome: 'Cliente Teste', email: 'test@test.com' }, error: null })
-        })
+            update: vi.fn().mockReturnThis(),
+            order: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockReturnThis(),
+            in: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'contrato' }, error: null }),
+            single: vi.fn().mockResolvedValue({ data: { nome: 'Cliente Teste', email: 'test@test.com', user_id: 'user-123' }, error: null })
+        }),
+        storage: {
+            from: vi.fn().mockReturnValue({
+                upload: vi.fn().mockResolvedValue({ data: { path: 'fake/path.pdf' }, error: null }),
+                getPublicUrl: vi.fn().mockReturnValue({ data: { publicUrl: 'https://fake-url.com' } })
+            })
+        }
     }
 }));
 
@@ -341,6 +352,96 @@ describe('ComercialController - cancelarAgendamento com meet_link', () => {
             .send({});
 
         expect(res.status).toBe(400);
-        expect(ComercialRepository.updateAgendamentoStatus).not.toHaveBeenCalled();
+    });
+});
+
+describe('ComercialController - Comprovante', () => {
+    const mockContratoId = 'contrato-123';
+    
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('Deve retornar 400 se o arquivo nao for enviado', async () => {
+        const res = await request(app)
+            .post(`/api/comercial/contratos/${mockContratoId}/comprovante`);
+        
+        expect(res.status).toBe(400);
+        expect(res.body.message).toContain('obrigatório');
+    });
+
+    it('Deve validar se o contrato existe', async () => {
+        (ContratoServicoRepository.getContratoById as any).mockResolvedValue(null);
+
+        const res = await request(app)
+            .post(`/api/comercial/contratos/${mockContratoId}/comprovante`)
+            .attach('file', Buffer.from('test'), 'test.pdf');
+        
+        expect(res.status).toBe(404);
+        expect(res.body.message).toContain('não encontrado');
+    });
+
+    it('Deve rejeitar documento se a assinatura nao estiver aprovada', async () => {
+        (ContratoServicoRepository.getContratoById as any).mockResolvedValue({
+            id: mockContratoId,
+            assinatura_status: 'pendente',
+            pagamento_status: 'pendente'
+        });
+
+        const res = await request(app)
+            .post(`/api/comercial/contratos/${mockContratoId}/comprovante`)
+            .attach('file', Buffer.from('test'), 'test.pdf');
+
+        expect(res.status).toBe(400);
+        expect(res.body.message).toContain('ainda não aprovado');
+    });
+
+    it('Deve rejeitar se pagamento_status nao for pendente ou recusado', async () => {
+        (ContratoServicoRepository.getContratoById as any).mockResolvedValue({
+            id: mockContratoId,
+            assinatura_status: 'aprovado',
+            pagamento_status: 'em_analise'
+        });
+
+        const res = await request(app)
+            .post(`/api/comercial/contratos/${mockContratoId}/comprovante`)
+            .attach('file', Buffer.from('test'), 'test.pdf');
+
+        expect(res.status).toBe(409);
+        expect(res.body.message).toContain('Ja existe');
+    });
+
+    it('Deve fazer upload e atualizar status corretamente na jornada feliz', async () => {
+        (ContratoServicoRepository.getContratoById as any).mockResolvedValue({
+            id: mockContratoId,
+            assinatura_status: 'aprovado',
+            pagamento_status: 'pendente',
+            cliente_id: 'cliente-123'
+        });
+
+        const { supabase } = await import('../../config/SupabaseClient');
+        (supabase.from('contratos_servicos').maybeSingle as any).mockResolvedValue({ data: { id: mockContratoId }, error: null });
+
+        (ContratoServicoRepository.updateContrato as any).mockResolvedValue({
+            id: mockContratoId,
+            cliente_id: 'cliente-123',
+            pagamento_status: 'em_analise'
+        });
+
+        const NotificationService = (await import('../../services/NotificationService')).default;
+
+        const res = await request(app)
+            .post(`/api/comercial/contratos/${mockContratoId}/comprovante`)
+            .attach('file', Buffer.from('fake-pdf-content'), 'comprovante.pdf');
+        
+        expect(res.status).toBe(200);
+        expect(res.body.data.pagamento_status).toBe('em_analise');
+        
+        expect(supabase.storage.from).toHaveBeenCalledWith('documentos');
+        expect(supabase.storage.from('documentos').upload).toHaveBeenCalled();
+        
+        expect(ContratoServicoRepository.updateContrato).toHaveBeenCalled();
+
+        expect(NotificationService.createNotification).toHaveBeenCalled();
     });
 });

@@ -3,6 +3,7 @@ import ComercialRepository from '../../repositories/ComercialRepository'
 
 import ContratoServicoRepository from '../../repositories/ContratoServicoRepository'
 import NotificationService from '../../services/NotificationService'
+import DNAService from '../../services/DNAService'
 
 import TraducoesRepository from '../../repositories/TraducoesRepository'
 import FinanceiroDashboardRepository from '../../repositories/FinanceiroDashboardRepository'
@@ -221,11 +222,19 @@ class FinanceiroController {
                         .from('clientes')
                         .update({ status: 'cliente', atualizado_em: new Date().toISOString() })
                         .eq('id', agendamento.cliente_id)
-                        
+
                     if (clienteUpdateError) {
                         console.error('[FinanceiroController] Erro ao converter lead em cliente (agendamento):', clienteUpdateError)
                     } else {
                         console.log(`[FinanceiroController] Lead convertido em cliente (agendamento aprovado): ${agendamento.cliente_id}`)
+                        try {
+                            await DNAService.mergeDNA(agendamento.cliente_id, {
+                                servico_inicial: agendamento.produto || null
+                            }, 'HIGH')
+                            console.log(`[FinanceiroController] DNA atualizado com servico_inicial: ${agendamento.produto}`)
+                        } catch (dnaErr) {
+                            console.error('[FinanceiroController] Erro ao atualizar DNA com servico:', dnaErr)
+                        }
                     }
                 }
             }
@@ -456,6 +465,15 @@ class FinanceiroController {
 
                 if (clienteUpdateError) {
                     console.error('[FinanceiroController] Erro ao converter lead em cliente:', clienteUpdateError)
+                } else {
+                    try {
+                        await DNAService.mergeDNA(contrato.cliente_id, {
+                            servico_inicial: (contrato as any).servico_nome || null
+                        }, 'HIGH')
+                        console.log(`[FinanceiroController] DNA atualizado com servico_inicial: ${(contrato as any).servico_nome}`)
+                    } catch (dnaErr) {
+                        console.error('[FinanceiroController] Erro ao atualizar DNA com servico:', dnaErr)
+                    }
                 }
             }
 
