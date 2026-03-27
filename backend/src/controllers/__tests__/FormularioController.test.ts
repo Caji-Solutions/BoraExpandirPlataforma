@@ -102,7 +102,7 @@ function buildSupabaseMock(opts: {
                         telefone: '5511999999999',
                         duracao_minutos: 60,
                         comprovante_url: null,
-                        produto: null
+                        produto_id: null
                     },
                     error: null
                 });
@@ -301,7 +301,7 @@ describe('FormularioController - submitConsultoria - status do agendamento', () 
                         telefone: '5511999999999',
                         duracao_minutos: 60,
                         comprovante_url: null,
-                        produto: null
+                        produto_id: null
                     },
                     error: null
                 });
@@ -364,7 +364,7 @@ describe('FormularioController - submitConsultoria - status do agendamento', () 
                         telefone: '5511999999999',
                         duracao_minutos: 60,
                         comprovante_url: null,
-                        produto: null
+                        produto_id: null
                     },
                     error: null
                 });
@@ -378,5 +378,667 @@ describe('FormularioController - submitConsultoria - status do agendamento', () 
         await FormularioController.submitConsultoria(req, res);
 
         expect(res.status).toHaveBeenCalledWith(403);
+    });
+
+    it('deve retornar 403 se agendamento estiver expirado (menos de 1h)', async () => {
+        const PAST_DATE = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 min no futuro
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'agendamentos') {
+                const single = vi.fn().mockResolvedValue({
+                    data: {
+                        status: 'agendado',
+                        data_hora: PAST_DATE,
+                        pagamento_status: 'pendente',
+                        meet_link: null,
+                        nome: 'Joao Silva',
+                        email: 'joao@test.com',
+                        telefone: '5511999999999',
+                        duracao_minutos: 60,
+                        comprovante_url: null,
+                        produto_id: null
+                    },
+                    error: null
+                });
+                const eq = vi.fn().mockReturnValue({ single });
+                const select = vi.fn().mockReturnValue({ eq });
+                return { select };
+            }
+            return {};
+        });
+
+        await FormularioController.submitConsultoria(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(403);
+        expect(res.json).toHaveBeenCalledWith(
+            expect.objectContaining({ message: expect.stringContaining('1 hora') })
+        );
+    });
+
+    it('deve retornar 400 se faltar agendamento_id', async () => {
+        req.body = { nome_completo: 'Joao', email: 'j@t.com', whatsapp: '123' };
+        await FormularioController.submitConsultoria(req, res);
+        expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('deve retornar 400 se profile upsert falhar', async () => {
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'agendamentos') {
+                const single = vi.fn().mockResolvedValue({
+                    data: {
+                        status: 'agendado', data_hora: FUTURE_DATE, pagamento_status: 'pendente',
+                        meet_link: null, nome: 'Joao', email: 'j@t.com', telefone: '123',
+                        duracao_minutos: 60, comprovante_url: null, produto_id: null
+                    },
+                    error: null
+                });
+                const eq = vi.fn().mockReturnValue({ single });
+                const select = vi.fn().mockReturnValue({ eq });
+                return { select };
+            }
+            if (table === 'profiles') {
+                const maybeSingle = vi.fn().mockResolvedValue({ data: null });
+                const ilike = vi.fn().mockReturnValue({ maybeSingle });
+                const select = vi.fn().mockReturnValue({ ilike });
+                const upsert = vi.fn().mockResolvedValue({ error: { message: 'unique violation' } });
+                return { select, upsert };
+            }
+            return {};
+        });
+
+        await FormularioController.submitConsultoria(req, res);
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith(
+            expect.objectContaining({ message: expect.stringContaining('conta') })
+        );
+    });
+
+    it('deve criar novo cliente quando nao existe por email/whatsapp', async () => {
+        let insertedCliente = false;
+        let agCallCount = 0;
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'agendamentos') {
+                agCallCount++;
+                if (agCallCount === 1) {
+                    const single = vi.fn().mockResolvedValue({
+                        data: {
+                            status: 'agendado', data_hora: FUTURE_DATE, pagamento_status: 'pendente',
+                            meet_link: null, nome: 'Joao', email: 'j@t.com', telefone: '123',
+                            duracao_minutos: 60, comprovante_url: null, produto_id: null
+                        }, error: null
+                    });
+                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single }) }) };
+                }
+                const eq = vi.fn().mockResolvedValue({ error: null });
+                if (agCallCount === 3) {
+                    const single = vi.fn().mockResolvedValue({ data: { pagamento_status: 'pendente', comprovante_url: null }, error: null });
+                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single }) }) };
+                }
+                return { update: vi.fn().mockReturnValue({ eq }) };
+            }
+            if (table === 'profiles') {
+                const maybeSingle = vi.fn().mockResolvedValue({ data: null });
+                const ilike = vi.fn().mockReturnValue({ maybeSingle });
+                return { select: vi.fn().mockReturnValue({ ilike }), upsert: vi.fn().mockResolvedValue({ error: null }) };
+            }
+            if (table === 'clientes') {
+                const maybeSingle = vi.fn().mockResolvedValue({ data: null }); // cliente NAO existe
+                const or = vi.fn().mockReturnValue({ maybeSingle });
+                const single = vi.fn().mockResolvedValue({ data: { status: 'LEAD' }, error: null });
+                const eqSingle = vi.fn().mockReturnValue({ single });
+                const select = vi.fn().mockImplementation((col: string) => {
+                    if (col === 'status') return { eq: eqSingle };
+                    return { or };
+                });
+                const insertSingle = vi.fn().mockResolvedValue({ data: { id: 'cliente-novo-123' }, error: null });
+                const insertSelect = vi.fn().mockReturnValue({ single: insertSingle });
+                const insert = vi.fn().mockImplementation(() => { insertedCliente = true; return { select: insertSelect }; });
+                const eqUpdate = vi.fn().mockResolvedValue({ error: null });
+                const update = vi.fn().mockReturnValue({ eq: eqUpdate });
+                return { select, insert, update };
+            }
+            if (table === 'formularios_cliente') {
+                return { insert: vi.fn().mockResolvedValue({ error: null }) };
+            }
+            return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null, error: null }) }) }) };
+        });
+
+        await FormularioController.submitConsultoria(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+        expect(insertedCliente).toBe(true);
+    });
+
+    it('deve chamar DNAService.mergeDNA com dados do formulario quando cliente existe', async () => {
+        buildSupabaseMock({ pagamentoStatus: 'pendente' });
+
+        await FormularioController.submitConsultoria(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+        expect(DNAService.mergeDNA).toHaveBeenCalledWith(
+            'cliente-001',
+            expect.objectContaining({
+                nome_completo: 'Joao Silva',
+                email: 'joao@test.com',
+                whatsapp: '5511999999999',
+            }),
+            'HIGH'
+        );
+    });
+
+    it('deve enviar email de boas-vindas quando pagamento aprovado', async () => {
+        buildSupabaseMock({ pagamentoStatus: 'aprovado' });
+
+        await FormularioController.submitConsultoria(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+        expect(EmailService.sendWelcomeEmail).toHaveBeenCalledWith(
+            expect.objectContaining({
+                to: 'joao@test.com',
+                clientName: 'Joao Silva',
+                email: 'joao@test.com',
+            })
+        );
+        expect(res.json).toHaveBeenCalledWith(
+            expect.objectContaining({ emailEnviado: true })
+        );
+    });
+
+    it('nao deve enviar email quando pagamento pendente', async () => {
+        buildSupabaseMock({ pagamentoStatus: 'pendente' });
+
+        await FormularioController.submitConsultoria(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+        expect(EmailService.sendWelcomeEmail).not.toHaveBeenCalled();
+        expect(res.json).toHaveBeenCalledWith(
+            expect.objectContaining({ emailEnviado: false })
+        );
+    });
+
+    it('deve converter LEAD em cliente quando pagamento aprovado', async () => {
+        let clienteUpdatedToCliente = false;
+        let agCallCount = 0;
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'agendamentos') {
+                agCallCount++;
+                if (agCallCount === 1) {
+                    const single = vi.fn().mockResolvedValue({
+                        data: {
+                            status: 'agendado', data_hora: FUTURE_DATE, pagamento_status: 'aprovado',
+                            meet_link: 'https://meet.google.com/existing', nome: 'Joao', email: 'j@t.com',
+                            telefone: '123', duracao_minutos: 60, comprovante_url: null, produto_id: 'prod-001'
+                        }, error: null
+                    });
+                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single }) }) };
+                }
+                if (agCallCount === 3) {
+                    const single = vi.fn().mockResolvedValue({ data: { pagamento_status: 'aprovado', comprovante_url: null }, error: null });
+                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single }) }) };
+                }
+                return { update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }) };
+            }
+            if (table === 'profiles') {
+                const maybeSingle = vi.fn().mockResolvedValue({ data: null });
+                return { select: vi.fn().mockReturnValue({ ilike: vi.fn().mockReturnValue({ maybeSingle }) }), upsert: vi.fn().mockResolvedValue({ error: null }) };
+            }
+            if (table === 'clientes') {
+                const maybeSingle = vi.fn().mockResolvedValue({ data: { id: 'cliente-001' } });
+                const or = vi.fn().mockReturnValue({ maybeSingle });
+                const single = vi.fn().mockResolvedValue({ data: { status: 'LEAD' }, error: null });
+                const eqSingle = vi.fn().mockReturnValue({ single });
+                const select = vi.fn().mockImplementation((col: string) => {
+                    if (col === 'status') return { eq: eqSingle };
+                    return { or };
+                });
+                const eqUpdate = vi.fn().mockImplementation(() => {
+                    clienteUpdatedToCliente = true;
+                    return Promise.resolve({ error: null });
+                });
+                const update = vi.fn().mockReturnValue({ eq: eqUpdate });
+                return { select, update };
+            }
+            if (table === 'formularios_cliente') {
+                return { insert: vi.fn().mockResolvedValue({ error: null }) };
+            }
+            return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null, error: null }) }) }) };
+        });
+
+        await FormularioController.submitConsultoria(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+        expect(clienteUpdatedToCliente).toBe(true);
+    });
+
+    it('deve retornar 500 se erro inesperado no fluxo', async () => {
+        (supabase.from as any).mockImplementation(() => {
+            throw new Error('Conexao perdida');
+        });
+
+        await FormularioController.submitConsultoria(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(500);
+        expect(res.json).toHaveBeenCalledWith(
+            expect.objectContaining({ message: expect.stringContaining('Erro') })
+        );
+    });
+
+    it('deve selecionar produto_id e nao produto do agendamento', async () => {
+        let selectFields = '';
+        let agCallCount = 0;
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'agendamentos') {
+                agCallCount++;
+                if (agCallCount === 1) {
+                    const single = vi.fn().mockResolvedValue({
+                        data: {
+                            status: 'agendado', data_hora: FUTURE_DATE, pagamento_status: 'pendente',
+                            meet_link: null, nome: 'Joao', email: 'j@t.com', telefone: '123',
+                            duracao_minutos: 60, comprovante_url: null, produto_id: 'prod-xyz'
+                        }, error: null
+                    });
+                    const eq = vi.fn().mockReturnValue({ single });
+                    const select = vi.fn().mockImplementation((fields: string) => {
+                        selectFields = fields;
+                        return { eq };
+                    });
+                    return { select };
+                }
+                if (agCallCount === 3) {
+                    const single = vi.fn().mockResolvedValue({ data: { pagamento_status: 'pendente', comprovante_url: null }, error: null });
+                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single }) }) };
+                }
+                return { update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }) };
+            }
+            if (table === 'profiles') {
+                return { select: vi.fn().mockReturnValue({ ilike: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }), upsert: vi.fn().mockResolvedValue({ error: null }) };
+            }
+            if (table === 'clientes') {
+                const maybeSingle = vi.fn().mockResolvedValue({ data: { id: 'c-1' } });
+                const or = vi.fn().mockReturnValue({ maybeSingle });
+                const single = vi.fn().mockResolvedValue({ data: { status: 'LEAD' }, error: null });
+                const eqSingle = vi.fn().mockReturnValue({ single });
+                const select = vi.fn().mockImplementation((col: string) => {
+                    if (col === 'status') return { eq: eqSingle };
+                    return { or };
+                });
+                return { select, update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }) };
+            }
+            if (table === 'formularios_cliente') {
+                return { insert: vi.fn().mockResolvedValue({ error: null }) };
+            }
+            return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null }) }) }) };
+        });
+
+        await FormularioController.submitConsultoria(req, res);
+
+        expect(selectFields).toContain('produto_id');
+        expect(selectFields).not.toMatch(/\bproduto\b(?!_)/); // nao deve conter 'produto' sem sufixo
+    });
+
+    it('deve inserir dados do formulario em formularios_cliente com todos os campos', async () => {
+        let insertedData: any = null;
+        let agCallCount = 0;
+        req.body = {
+            ...BASE_BODY,
+            estado_civil: ['Solteiro'],
+            escolaridade: ['Superior'],
+            area_formacao: 'Engenharia',
+            duvidas_consultoria: 'Quanto tempo demora?'
+        };
+
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'agendamentos') {
+                agCallCount++;
+                if (agCallCount === 1) {
+                    const single = vi.fn().mockResolvedValue({
+                        data: {
+                            status: 'agendado', data_hora: FUTURE_DATE, pagamento_status: 'pendente',
+                            meet_link: null, nome: 'Joao', email: 'j@t.com', telefone: '123',
+                            duracao_minutos: 60, comprovante_url: null, produto_id: null
+                        }, error: null
+                    });
+                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single }) }) };
+                }
+                if (agCallCount === 3) {
+                    const single = vi.fn().mockResolvedValue({ data: { pagamento_status: 'pendente', comprovante_url: null }, error: null });
+                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single }) }) };
+                }
+                return { update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }) };
+            }
+            if (table === 'profiles') {
+                return { select: vi.fn().mockReturnValue({ ilike: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }), upsert: vi.fn().mockResolvedValue({ error: null }) };
+            }
+            if (table === 'clientes') {
+                const maybeSingle = vi.fn().mockResolvedValue({ data: { id: 'c-1' } });
+                const or = vi.fn().mockReturnValue({ maybeSingle });
+                const single = vi.fn().mockResolvedValue({ data: { status: 'LEAD' }, error: null });
+                const eqSingle = vi.fn().mockReturnValue({ single });
+                const select = vi.fn().mockImplementation((col: string) => {
+                    if (col === 'status') return { eq: eqSingle };
+                    return { or };
+                });
+                return { select, update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }) };
+            }
+            if (table === 'formularios_cliente') {
+                const insert = vi.fn().mockImplementation((data: any) => {
+                    insertedData = data[0];
+                    return Promise.resolve({ error: null });
+                });
+                return { insert };
+            }
+            return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null }) }) }) };
+        });
+
+        await FormularioController.submitConsultoria(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+        expect(insertedData).toBeTruthy();
+        expect(insertedData.nome_completo).toBe('Joao Silva');
+        expect(insertedData.email).toBe('joao@test.com');
+        expect(insertedData.agendamento_id).toBe('ag-001');
+        expect(insertedData.estado_civil).toEqual(['Solteiro']);
+        expect(insertedData.escolaridade).toEqual(['Superior']);
+        expect(insertedData.area_formacao).toBe('Engenharia');
+        expect(insertedData.duvidas_consultoria).toBe('Quanto tempo demora?');
+    });
+});
+
+// ============================================================
+// uploadComprovante
+// ============================================================
+describe('FormularioController - uploadComprovante', () => {
+    let req: any;
+    let res: any;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+    });
+
+    it('deve retornar 400 se arquivo nao for enviado', async () => {
+        req = { body: { agendamento_id: 'ag-001' }, file: undefined };
+        await FormularioController.uploadComprovante(req, res);
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('obrigatório') }));
+    });
+
+    it('deve retornar 400 se nem agendamento_id nem cliente_id forem fornecidos', async () => {
+        req = { body: {}, file: { buffer: Buffer.from('x'), mimetype: 'image/png', originalname: 'comp.png' } };
+        await FormularioController.uploadComprovante(req, res);
+        expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('deve retornar 500 se upload para storage falhar', async () => {
+        req = {
+            body: { agendamento_id: 'ag-001', cliente_id: 'cl-001' },
+            file: { buffer: Buffer.from('data'), mimetype: 'image/png', originalname: 'comp.png' }
+        };
+
+        (supabase as any).storage = {
+            from: vi.fn().mockReturnValue({
+                upload: vi.fn().mockResolvedValue({ data: null, error: { message: 'storage full' } }),
+            })
+        };
+
+        await FormularioController.uploadComprovante(req, res);
+        expect(res.status).toHaveBeenCalledWith(500);
+    });
+
+    it('deve fazer upload, atualizar agendamento e notificar admins com sucesso', async () => {
+        req = {
+            body: { agendamento_id: 'ag-001', cliente_id: 'cl-001' },
+            file: { buffer: Buffer.from('pdf-data'), mimetype: 'application/pdf', originalname: 'comprovante.pdf' }
+        };
+
+        (supabase as any).storage = {
+            from: vi.fn().mockReturnValue({
+                upload: vi.fn().mockResolvedValue({ data: { path: 'comprovantes/test' }, error: null }),
+                getPublicUrl: vi.fn().mockReturnValue({ data: { publicUrl: 'https://storage.com/comprovante.pdf' } })
+            })
+        };
+
+        let agendamentoUpdated = false;
+        let adminNotified = false;
+
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'agendamentos') {
+                const eq = vi.fn().mockImplementation(() => {
+                    agendamentoUpdated = true;
+                    return Promise.resolve({ error: null });
+                });
+                return { update: vi.fn().mockReturnValue({ eq }) };
+            }
+            if (table === 'profiles') {
+                const inFn = vi.fn().mockResolvedValue({ data: [{ id: 'admin-001' }] });
+                return { select: vi.fn().mockReturnValue({ in: inFn }) };
+            }
+            if (table === 'notificacoes') {
+                return {
+                    insert: vi.fn().mockImplementation(() => {
+                        adminNotified = true;
+                        return Promise.resolve({ error: null });
+                    })
+                };
+            }
+            return {};
+        });
+
+        await FormularioController.uploadComprovante(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith(
+            expect.objectContaining({ success: true, url: 'https://storage.com/comprovante.pdf' })
+        );
+        expect(agendamentoUpdated).toBe(true);
+        expect(adminNotified).toBe(true);
+    });
+
+    it('deve retornar 500 se update do agendamento falhar apos upload', async () => {
+        req = {
+            body: { agendamento_id: 'ag-001', cliente_id: 'cl-001' },
+            file: { buffer: Buffer.from('data'), mimetype: 'image/png', originalname: 'comp.png' }
+        };
+
+        (supabase as any).storage = {
+            from: vi.fn().mockReturnValue({
+                upload: vi.fn().mockResolvedValue({ data: { path: 'ok' }, error: null }),
+                getPublicUrl: vi.fn().mockReturnValue({ data: { publicUrl: 'https://storage.com/ok.png' } })
+            })
+        };
+
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'agendamentos') {
+                return { update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: { message: 'db error' } }) }) };
+            }
+            return {};
+        });
+
+        await FormularioController.uploadComprovante(req, res);
+        expect(res.status).toHaveBeenCalledWith(500);
+    });
+});
+
+// ============================================================
+// getAgendamentoStatus
+// ============================================================
+describe('FormularioController - getAgendamentoStatus', () => {
+    let req: any;
+    let res: any;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+    });
+
+    it('deve retornar 400 se agendamento_id nao fornecido', async () => {
+        req = { params: {} };
+        await FormularioController.getAgendamentoStatus(req, res);
+        expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('deve retornar 404 se agendamento nao existe', async () => {
+        req = { params: { agendamento_id: 'nao-existe' } };
+
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'agendamentos') {
+                const single = vi.fn().mockResolvedValue({ data: null, error: { message: 'not found' } });
+                const eq = vi.fn().mockReturnValue({ single });
+                const select = vi.fn().mockReturnValue({ eq });
+                return { select };
+            }
+            return {};
+        });
+
+        await FormularioController.getAgendamentoStatus(req, res);
+        expect(res.status).toHaveBeenCalledWith(404);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ found: false }));
+    });
+
+    it('deve retornar status completo com formulario preenchido e DNA', async () => {
+        req = { params: { agendamento_id: 'ag-001' } };
+
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'agendamentos') {
+                const single = vi.fn().mockResolvedValue({
+                    data: {
+                        id: 'ag-001',
+                        status: 'confirmado',
+                        data_hora: FUTURE_DATE,
+                        pagamento_status: 'aprovado',
+                        pagamento_nota_recusa: null,
+                        email: 'joao@test.com',
+                        telefone: '5511999999999',
+                        cliente_id: 'cl-001'
+                    },
+                    error: null
+                });
+                const eq = vi.fn().mockReturnValue({ single });
+                const select = vi.fn().mockReturnValue({ eq });
+                return { select };
+            }
+            if (table === 'clientes') {
+                const maybeSingle = vi.fn().mockResolvedValue({
+                    data: { perfil_unificado: { data: { nome_completo: 'Joao Silva', nacionalidade: 'Brasileira' } } }
+                });
+                const eq = vi.fn().mockReturnValue({ maybeSingle });
+                const select = vi.fn().mockReturnValue({ eq });
+                return { select };
+            }
+            if (table === 'formularios_cliente') {
+                const maybeSingle = vi.fn().mockResolvedValue({ data: { id: 'form-001' } });
+                const eq = vi.fn().mockReturnValue({ maybeSingle });
+                const select = vi.fn().mockReturnValue({ eq });
+                return { select };
+            }
+            return {};
+        });
+
+        await FormularioController.getAgendamentoStatus(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(200);
+        const jsonCall = res.json.mock.calls[0][0];
+        expect(jsonCall.found).toBe(true);
+        expect(jsonCall.status).toBe('confirmado');
+        expect(jsonCall.pagamento_status).toBe('aprovado');
+        expect(jsonCall.formulario_preenchido).toBe(true);
+        expect(jsonCall.expirado).toBe(false);
+        expect(jsonCall.cancelado).toBe(false);
+        expect(jsonCall.dna).toEqual({ nome_completo: 'Joao Silva', nacionalidade: 'Brasileira' });
+    });
+
+    it('deve retornar formulario_preenchido=false e dna=null quando nao preenchido', async () => {
+        req = { params: { agendamento_id: 'ag-002' } };
+
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'agendamentos') {
+                const single = vi.fn().mockResolvedValue({
+                    data: {
+                        id: 'ag-002', status: 'agendado', data_hora: FUTURE_DATE,
+                        pagamento_status: 'pendente', pagamento_nota_recusa: null,
+                        email: 'j@t.com', telefone: '123', cliente_id: null
+                    }, error: null
+                });
+                const eq = vi.fn().mockReturnValue({ single });
+                return { select: vi.fn().mockReturnValue({ eq }) };
+            }
+            if (table === 'formularios_cliente') {
+                const maybeSingle = vi.fn().mockResolvedValue({ data: null });
+                const eq = vi.fn().mockReturnValue({ maybeSingle });
+                return { select: vi.fn().mockReturnValue({ eq }) };
+            }
+            return {};
+        });
+
+        await FormularioController.getAgendamentoStatus(req, res);
+
+        const jsonCall = res.json.mock.calls[0][0];
+        expect(jsonCall.formulario_preenchido).toBe(false);
+        expect(jsonCall.dna).toBeNull();
+    });
+
+    it('deve detectar agendamento expirado (menos de 1h)', async () => {
+        req = { params: { agendamento_id: 'ag-003' } };
+        const SOON_DATE = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 min
+
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'agendamentos') {
+                const single = vi.fn().mockResolvedValue({
+                    data: {
+                        id: 'ag-003', status: 'agendado', data_hora: SOON_DATE,
+                        pagamento_status: 'pendente', pagamento_nota_recusa: null,
+                        email: 'j@t.com', telefone: '123', cliente_id: null
+                    }, error: null
+                });
+                return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single }) }) };
+            }
+            if (table === 'formularios_cliente') {
+                return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+            }
+            return {};
+        });
+
+        await FormularioController.getAgendamentoStatus(req, res);
+
+        const jsonCall = res.json.mock.calls[0][0];
+        expect(jsonCall.expirado).toBe(true);
+    });
+
+    it('deve detectar bloqueio por CRON (cancelado com nota [SISTEMA])', async () => {
+        req = { params: { agendamento_id: 'ag-004' } };
+
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'agendamentos') {
+                const single = vi.fn().mockResolvedValue({
+                    data: {
+                        id: 'ag-004', status: 'cancelado', data_hora: FUTURE_DATE,
+                        pagamento_status: 'pendente',
+                        pagamento_nota_recusa: '[SISTEMA] Cancelado automaticamente',
+                        email: 'j@t.com', telefone: '123', cliente_id: null
+                    }, error: null
+                });
+                return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single }) }) };
+            }
+            if (table === 'formularios_cliente') {
+                return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+            }
+            return {};
+        });
+
+        await FormularioController.getAgendamentoStatus(req, res);
+
+        const jsonCall = res.json.mock.calls[0][0];
+        expect(jsonCall.cancelado).toBe(true);
+        expect(jsonCall.bloqueado_cron).toBe(true);
+    });
+
+    it('deve retornar 500 se erro inesperado', async () => {
+        req = { params: { agendamento_id: 'ag-005' } };
+
+        (supabase.from as any).mockImplementation(() => {
+            throw new Error('DB crash');
+        });
+
+        await FormularioController.getAgendamentoStatus(req, res);
+        expect(res.status).toHaveBeenCalledWith(500);
     });
 });
