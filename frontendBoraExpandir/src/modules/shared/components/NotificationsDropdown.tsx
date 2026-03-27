@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext'
 // Interface e dados de notificações
 interface Notificacao {
   id: string
-  tipo: 'vencido' | 'urgente' | 'aviso' | 'info'
+  tipo: 'vencido' | 'urgente' | 'aviso' | 'info' | 'success'
   titulo: string
   descricao: string
   valor?: number
@@ -55,6 +55,13 @@ const tipoConfig = {
     badgeBg: 'bg-blue-100 text-blue-700 border-blue-200',
     badgeText: 'INFO',
   },
+  success: {
+    icon: CheckCircle,
+    iconBg: 'bg-green-100',
+    iconColor: 'text-green-600',
+    badgeBg: 'bg-green-100 text-green-700 border-green-200',
+    badgeText: 'SUCESSO',
+  },
 }
 
 export function NotificationsDropdown() {
@@ -66,19 +73,38 @@ export function NotificationsDropdown() {
 
   const fetchNotificacoes = async () => {
     const userId = activeProfile?.id
-    if (!userId) return
+    console.log('🔔 [NotificationsDropdown] fetchNotificacoes iniciado')
+    console.log('📱 [NotificationsDropdown] userId:', userId)
+    console.log('👤 [NotificationsDropdown] activeProfile:', activeProfile)
+
+    if (!userId) {
+      console.warn('⚠️ [NotificationsDropdown] userId não encontrado, retornando')
+      return
+    }
     try {
       setIsLoading(true)
+      console.log('⏳ [NotificationsDropdown] Buscando notificações...')
       const data = await clienteService.getNotificacoes(userId)
-      
+
+      console.log('✅ [NotificationsDropdown] Dados brutos recebidos:', data)
+      console.log('📊 [NotificationsDropdown] Quantidade de notificações:', data.length)
+
       const mapped = data.map((n: any) => {
         const isRead = n.lida === true || String(n.lida) === 'true' || n.lida === 1;
-        
+
         // Map backend types to local UI types
-        let tipo: 'vencido' | 'urgente' | 'aviso' | 'info' = 'info'
+        let tipo: 'vencido' | 'urgente' | 'aviso' | 'info' | 'success' = 'info'
         if (n.tipo === 'error') tipo = 'vencido'
         else if (n.tipo === 'warning') tipo = 'urgente'
-        else if (n.tipo === 'success') tipo = 'aviso'
+        else if (n.tipo === 'success') tipo = 'success'
+
+        console.log(`📌 [NotificationsDropdown] Mapeando notificação:`, {
+          id: n.id,
+          tipoOriginal: n.tipo,
+          tipoMapeado: tipo,
+          titulo: n.titulo,
+          lida: isRead
+        })
 
         return {
           id: n.id,
@@ -89,22 +115,29 @@ export function NotificationsDropdown() {
           lida: isRead
         }
       })
-      
+
+      console.log('🎯 [NotificationsDropdown] Notificações mapeadas:', mapped)
       setNotificacoes(mapped)
+      console.log('💾 [NotificationsDropdown] Estado de notificações atualizado')
     } catch (error) {
-      console.error('Erro ao buscar notificacoes no dropdown:', error)
+      console.error('❌ [NotificationsDropdown] Erro ao buscar notificacoes no dropdown:', error)
     } finally {
       setIsLoading(false)
     }
   }
 
   useEffect(() => {
+    console.log('🚀 [NotificationsDropdown] Componente montado, buscando notificações iniciais...')
     fetchNotificacoes()
   }, [])
 
   useEffect(() => {
+    console.log('🔄 [NotificationsDropdown] isOpen mudou para:', isOpen)
     if (isOpen) {
+      console.log('📂 [NotificationsDropdown] Central aberta, refetchando notificações...')
       fetchNotificacoes()
+    } else {
+      console.log('📁 [NotificationsDropdown] Central fechada')
     }
   }, [isOpen])
 
@@ -113,9 +146,27 @@ export function NotificationsDropdown() {
   const vencidos = notificacoes.filter(n => n.tipo === 'vencido').length
   const urgentes = notificacoes.filter(n => n.tipo === 'urgente').length
 
+  console.log('📊 [NotificationsDropdown] Estado atual:', {
+    totalNotificacoes: notificacoes.length,
+    naoLidas,
+    lidas: lidasCount,
+    vencidos,
+    urgentes,
+    isOpen,
+    isLoading,
+    filterAtivo: filter,
+    notificacoes
+  })
+
   const filteredNotificacoes = notificacoes
     .filter(n => filter === 'unread' ? !n.lida : n.lida)
     .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+
+  console.log('🎬 [NotificationsDropdown] Notificações filtradas:', {
+    filtro: filter,
+    quantidade: filteredNotificacoes.length,
+    dados: filteredNotificacoes
+  })
 
   const marcarTodasComoLidas = async () => {
     if (!activeProfile?.id) return
