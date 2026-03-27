@@ -51,3 +51,4 @@ Thumbs.db
 # Temporary/WIP files
 backend/test_agendamentos.ts
 frontendBoraExpandir/new_modal.tsx
+.github
