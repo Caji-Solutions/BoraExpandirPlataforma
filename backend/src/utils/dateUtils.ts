@@ -1,10 +1,13 @@
 export function toUtcFromBrt(dateStr: string): string {
     if (!dateStr) return dateStr;
     // Remove qualquer Z ou indicativo de timezone existente para forçar a leitura cega
-    // Pega apenas a parte YYYY-MM-DDTHH:mm:ss 
+    // Pega apenas a parte YYYY-MM-DDTHH:mm:ss
     const clean = dateStr.replace('Z', '').substring(0, 19);
     // Assume que a string de entrada está em America/Sao_Paulo (UTC-3)
-    return `${clean}-03:00`;
+    // Converte para UTC somando 3 horas
+    const date = new Date(clean);
+    const utcDate = new Date(date.getTime() + 3 * 60 * 60 * 1000);
+    return utcDate.toISOString();
 }
 
 export function toBrtFromUtc(dateObjOrStr: string | Date | null | undefined): string | null {

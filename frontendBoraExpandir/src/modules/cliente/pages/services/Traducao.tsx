@@ -10,7 +10,7 @@ interface TraduzaoProps {
     members: { id: string, name: string, type: string }[]
     documents: Document[]
     requiredDocuments: RequiredDocument[]
-    approvedDocuments: ApprovedDocument[]
+    approvedDocuments?: ApprovedDocument[]
     translatedDocuments: TranslatedDocument[]
     onUploadTranslation: (file: File, approvedDocumentId: string, targetLanguage: string) => void
     onRequestQuote: (documentIds: string[], targetLanguages: string[]) => void
@@ -22,7 +22,7 @@ export function Traducao({
     members,
     documents,
     requiredDocuments,
-    approvedDocuments,
+    approvedDocuments = [],
     translatedDocuments,
     onUploadTranslation,
     onRequestQuote,

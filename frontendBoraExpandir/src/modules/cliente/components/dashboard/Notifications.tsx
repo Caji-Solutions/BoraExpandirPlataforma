@@ -51,37 +51,61 @@ const notificationConfig = {
   },
 }
 
-export function Notifications({ 
-  notifications, 
-  onMarkAsRead, 
-  onMarkAllAsRead, 
-  onDismiss 
+export function Notifications({
+  notifications,
+  onMarkAsRead,
+  onMarkAllAsRead,
+  onDismiss
 }: NotificationsProps) {
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('unread')
 
-  const isNotificationRead = (n: Notification) => n.read === true || n.lida === true;
+  console.log('[Notifications] Component received notifications:', notifications)
+  console.log('[Notifications] Notifications length:', notifications?.length)
+  if (notifications && notifications.length > 0) {
+    console.log('[Notifications] First notification:', notifications[0])
+  }
+
+  const isNotificationRead = (n: Notification) => {
+    const result = n.read === true || n.lida === true
+    if (notifications.length > 0 && notifications[0].id === n.id) {
+      console.log('[Notifications] isNotificationRead for first notification:', {
+        id: n.id,
+        read: n.read,
+        lida: n.lida,
+        result
+      })
+    }
+    return result
+  };
 
   const unreadCount = notifications.filter(n => !isNotificationRead(n)).length
   const readCount = notifications.filter(n => isNotificationRead(n)).length
+
+  console.log('[Notifications] Counts - unread:', unreadCount, 'read:', readCount, 'total:', notifications.length)
   
-  const filteredNotifications = filter === 'unread' 
+  const filteredNotifications = filter === 'unread'
     ? notifications.filter(n => !isNotificationRead(n))
     : filter === 'read'
     ? notifications.filter(n => isNotificationRead(n))
     : notifications
 
+  console.log('[Notifications] Filter:', filter)
+  console.log('[Notifications] Filtered notifications:', filteredNotifications)
+
   const sortedNotifications = [...filteredNotifications].sort((a, b) => {
     const aRead = isNotificationRead(a)
     const bRead = isNotificationRead(b)
-    
+
     // Unread first if in "all" view
     if (filter === 'all' && aRead !== bRead) {
       return aRead ? 1 : -1
     }
-    
+
     // Then by date (newest first)
     return new Date(b.createdAt || b.criado_em || 0).getTime() - new Date(a.createdAt || a.criado_em || 0).getTime()
   })
+
+  console.log('[Notifications] Sorted notifications:', sortedNotifications)
 
   const unreadNotifications = sortedNotifications.filter(n => !isNotificationRead(n))
   const readNotifications = sortedNotifications.filter(n => isNotificationRead(n))
@@ -91,18 +115,39 @@ export function Notifications({
     const config = notificationConfig[type as keyof typeof notificationConfig] || notificationConfig.info
     const NotificationIcon = config.icon
 
+    // Define border and dot colors by type
+    const getBorderColor = (notificationType: string) => {
+      switch (notificationType) {
+        case 'success': return 'border-l-emerald-500 hover:border-l-emerald-600'
+        case 'warning': return 'border-l-amber-500 hover:border-l-amber-600'
+        case 'error': return 'border-l-rose-500 hover:border-l-rose-600'
+        case 'agendamento': return 'border-l-indigo-500 hover:border-l-indigo-600'
+        default: return 'border-l-blue-500 hover:border-l-blue-600'
+      }
+    }
+
+    const getDotColor = (notificationType: string) => {
+      switch (notificationType) {
+        case 'success': return 'bg-emerald-500'
+        case 'warning': return 'bg-amber-500'
+        case 'error': return 'bg-rose-500'
+        case 'agendamento': return 'bg-indigo-500'
+        default: return 'bg-blue-500'
+      }
+    }
+
     return (
-      <Card 
-        key={notification.id} 
+      <Card
+        key={notification.id}
         className={cn(
           "group transition-all duration-300 border-l-4 overflow-hidden relative",
-          !isNotificationRead(notification) 
-            ? "border-l-blue-500 bg-white dark:bg-gray-800/50 shadow-md translate-x-1 cursor-pointer hover:shadow-lg hover:border-l-blue-600" 
+          !isNotificationRead(notification)
+            ? `${getBorderColor(type)} bg-white dark:bg-gray-800/50 shadow-md translate-x-1 cursor-pointer hover:shadow-lg`
             : "border-l-gray-300 bg-gray-50/50 dark:bg-gray-900/20 opacity-80"
         )}
       >
         {!isNotificationRead(notification) && (
-          <div className="absolute top-4 right-4 w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+          <div className={cn("absolute top-4 right-4 w-2 h-2 rounded-full animate-pulse", getDotColor(type))} />
         )}
         
         <CardContent className="p-5">

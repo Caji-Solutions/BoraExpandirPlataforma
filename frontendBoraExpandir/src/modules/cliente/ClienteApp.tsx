@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
-import { Sidebar } from '@/components/ui/Sidebar'
-import type { SidebarGroup } from '@/components/ui/Sidebar'
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { Sidebar } from '../../components/ui/Sidebar'
+import type { SidebarGroup } from '../../components/ui/Sidebar'
 import { Dashboard } from './pages/dashboard/Dashboard'
 import PartnerDashboard from './pages/dashboard/PartnerDashboard'
 import { ProcessTimeline } from './components/documents/ProcessTimeline'
@@ -10,11 +10,11 @@ import { DocumentModal } from './components/uploads/DocumentModal'
 import { Traducao } from './pages/services/Traducao'
 import Parceiro from './components/contracts/Parceiro'
 import { ClienteAgendamento } from './pages/scheduling/ClienteAgendamento'
-import { Client, Document, Notification, ApprovedDocument, TranslatedDocument, Process, ProcessStep } from './types'
+import { Client, Document, Notification, TranslatedDocument, Process, ProcessStep } from './types'
 import { Apostilamento } from './pages/services/Apostilamento'
 import { DocumentUploadFlow } from './components/uploads/DocumentUploadFlow'
 import ClienteContratos from './components/contracts/ClienteContratos'
-import { Home, FileText, Upload, GitBranch, Bell, Languages, Users, Calendar, Settings, Stamp } from 'lucide-react'
+import { Home, FileText, GitBranch, Users, Settings } from 'lucide-react'
 import { Config } from '../../components/ui/Config'
 import { RequiredActionModal } from './components/forms/RequiredActionModal'
 import { clienteService } from './services/clienteService'
@@ -22,8 +22,8 @@ import { useAuth } from '../../contexts/AuthContext'
 import { apiClient } from '@/modules/shared/services/api'
 
 export function ClienteApp() {
-  const location = useLocation()
   const navigate = useNavigate()
+  const location = useLocation()
   const [client, setClient] = useState<Client>({
     id: '',
     name: '',
@@ -42,18 +42,9 @@ export function ClienteApp() {
   const [processo, setProcesso] = useState<Process | null>(null)
   const [requerimentos, setRequerimentos] = useState<any[]>([])
   const [requiredDocuments, setRequiredDocuments] = useState<any[]>([])
+  const [agendamentos, setAgendamentos] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const { profile, activeProfile, isAuthenticated } = useAuth()
-
-  // Helper to sanitize name (same as backend)
-  const sanitizeName = (name: string) => {
-    return name
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-zA-Z0-9\s]/g, '')
-      .trim()
-      .replace(/\s+/g, '_');
-  }
+  const { activeProfile, isAuthenticated } = useAuth()
 
   const fetchDocuments = async (clientId: string = client.id, reqDocs?: any[]) => {
     try {
@@ -118,7 +109,16 @@ export function ClienteApp() {
   }
   const fetchNotificacoes = async (clientId: string = client.id) => {
     try {
+      console.log('[ClienteApp] Buscando notificações para cliente:', clientId)
       const result = await clienteService.getNotificacoes(clientId)
+      console.log('[ClienteApp] Resultado de notificações:', result)
+
+      if (!result || !Array.isArray(result)) {
+        console.warn('[ClienteApp] Notificações não é um array:', result)
+        setNotifications([])
+        return
+      }
+
       const backendNotifs = result.map((n: any) => {
         // Garantir que lida seja um booleano real (converte 1, 'true', etc)
         const isRead = n.lida === true || String(n.lida) === 'true' || n.lida === 1;
@@ -136,9 +136,11 @@ export function ClienteApp() {
         }
       })
 
+      console.log('[ClienteApp] Notificações mapeadas:', backendNotifs)
       setNotifications(backendNotifs)
     } catch (error) {
-      console.error('Erro ao buscar notificacoes:', error)
+      console.error('[ClienteApp] Erro ao buscar notificacoes:', error)
+      setNotifications([])
     }
   }
 
@@ -267,6 +269,18 @@ export function ClienteApp() {
         await fetchDocuments(finalActiveId, reqs)
         await fetchRequerimentos(finalActiveId)
         await fetchNotificacoes(finalActiveId)
+
+        // Fetch agendamentos para ProcessTimeline
+        try {
+          const agendamentosData = await clienteService.getAgendamentos(finalActiveId)
+          const agendamentosArray = Array.isArray((agendamentosData as any)?.data)
+            ? (agendamentosData as any).data
+            : (Array.isArray(agendamentosData) ? agendamentosData : [])
+          setAgendamentos(agendamentosArray)
+        } catch (error) {
+          console.warn('Erro ao buscar agendamentos:', error)
+          setAgendamentos([])
+        }
       } catch (error) {
         console.error('Erro ao buscar dados iniciais:', error)
       } finally {
@@ -274,17 +288,18 @@ export function ClienteApp() {
       }
     }
 
-    fetchInitialData()
+    // Só buscar dados se estiver autenticado e tiver perfil ativo
+    if (isAuthenticated && activeProfile) {
+      fetchInitialData()
+    }
   }, [isAuthenticated, activeProfile?.id, activeProfile?.role])
 
-  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
+  const [selectedDocument] = useState<Document | null>(null)
   const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [approvedDocuments, setApprovedDocuments] = useState<ApprovedDocument[]>([])
   const [translatedDocuments, setTranslatedDocuments] = useState<TranslatedDocument[]>([])
   const [isRequiredModalOpen, setIsRequiredModalOpen] = useState(false)
 
-  const unreadNotifications = notifications.filter(n => !n.read).length
   // Um usuário é considerado "Apenas Parceiro" se o seu status for 'parceiro'
   const isPartnerOnly = client.status === 'parceiro';
 
@@ -298,38 +313,6 @@ export function ClienteApp() {
     navigate('/cliente/agendamento')
   }
 
-  const handleUpload = (file: File, documentType: string) => {
-    // Simulate file upload
-    const newDocument: Document = {
-      id: Date.now().toString(),
-      clientId: client.id,
-      name: 'Documento',
-      type: documentType,
-      status: 'analyzing',
-      uploadDate: new Date(),
-      fileName: file.name,
-      fileSize: file.size,
-    }
-
-    setDocuments(prev => {
-      // Remove any existing document of the same type
-      const filtered = prev.filter(doc => doc.type !== documentType)
-      return [...filtered, newDocument]
-    })
-
-    // Add notification
-    const newNotification: Notification = {
-      id: Date.now().toString(),
-      clientId: client.id,
-      type: 'info',
-      title: 'Documento Recebido',
-      message: `Seu documento "${newDocument.name}" foi recebido e está sendo analisado.`,
-      read: false,
-      createdAt: new Date(),
-    }
-
-    setNotifications(prev => [newNotification, ...prev])
-  }
 
   const handleDeleteDocument = (documentId: string) => {
     setDocuments(prev => prev.filter(doc => doc.id !== documentId))
@@ -376,8 +359,8 @@ export function ClienteApp() {
       id: Date.now().toString(),
       clientId: client.id,
       approvedDocumentId,
-      documentName: approvedDocuments.find(d => d.id === approvedDocumentId)?.name || 'Documento',
-      sourceLanguage: approvedDocuments.find(d => d.id === approvedDocumentId)?.originalLanguage || 'PT',
+      documentName: 'Documento',
+      sourceLanguage: 'PT',
       targetLanguage,
       fileName: file.name,
       fileSize: file.size,
@@ -400,39 +383,18 @@ export function ClienteApp() {
   }
 
   const handleRequestQuote = (documentIds: string[], targetLanguages: string[]) => {
-    // Send to backend: POST /quotes with documentIds and targetLanguages
-    const selectedDocs = approvedDocuments.filter(d => documentIds.includes(d.id))
-    const docNames = selectedDocs.map(d => d.name).join(', ')
-
     const newNotification: Notification = {
       id: Date.now().toString(),
       clientId: client.id,
       type: 'info',
       title: 'Solicitação de Orçamento Enviada',
-      message: `Sua solicitação de orçamento para "${docNames}" foi enviada. Você receberá uma resposta em até 24 horas.`,
+      message: `Sua solicitação de orçamento foi enviada. Você receberá uma resposta em até 24 horas.`,
       read: false,
       createdAt: new Date(),
     }
 
     setNotifications(prev => [newNotification, ...prev])
     console.log('Quote request:', { documentIds, targetLanguages })
-  }
-
-  const handleViewDocument = (document: Document) => {
-    setSelectedDocument(document)
-    setIsDocumentModalOpen(true)
-  }
-
-  const handleUploadFromStatus = (documentType: string) => {
-    // Navigate to upload page for specific document type
-    window.location.href = '/cliente/upload'
-    // Scroll to the specific document section
-    setTimeout(() => {
-      const element = document.getElementById(`upload-${documentType}`)
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth' })
-      }
-    }, 100)
   }
 
   const handleSendForApostille = (documentIds: string[]) => {
@@ -455,14 +417,12 @@ export function ClienteApp() {
     setNotifications(prev => [newNotification, ...prev])
   }
 
-  // Removido marcação automática ao entrar na página
-  /*
+  // Recarregar notificações ao entrar na página de notificações
   useEffect(() => {
-    if (location.pathname === '/cliente/notificacoes') {
-      handleMarkAllAsRead()
+    if (client.id && location.pathname === '/cliente/notificacoes') {
+      fetchNotificacoes(client.id)
     }
-  }, [location.pathname])
-  */
+  }, [location.pathname, client.id])
 
   // Configuração da sidebar seguindo o padrão do projeto
   const sidebarGroups: SidebarGroup[] = isPartnerOnly
@@ -489,17 +449,6 @@ export function ClienteApp() {
           { label: 'Meu Processo', to: '/cliente/processo', icon: GitBranch },
           { label: 'Documentos', to: '/cliente/upload', icon: FileText },
           { label: 'Parceiro', to: '/cliente/parceiro', icon: Users },
-
-          {
-            label: 'Notificações',
-            to: '/cliente/notificacoes',
-            icon: Bell,
-            badge: unreadNotifications > 0 ? (
-              <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-red-500 text-white">
-                {unreadNotifications}
-              </span>
-            ) : undefined
-          },
         ],
       },
       {
@@ -601,7 +550,7 @@ export function ClienteApp() {
           />
           <Route
             path="processo"
-            element={<ProcessTimeline process={processo} requerimentos={requerimentos} familyMembers={familyMembers} />}
+            element={<ProcessTimeline process={processo} requerimentos={requerimentos} familyMembers={familyMembers} agendamentos={agendamentos} documents={documents} />}
           />
           <Route path="agendamento" element={<ClienteAgendamento client={client} />} />
           <Route
@@ -616,10 +565,13 @@ export function ClienteApp() {
                 documents={documents}
                 requiredDocuments={requiredDocuments}
                 requerimentos={requerimentos}
+                agendamentos={agendamentos}
                 onUploadSuccess={async (data) => {
                   console.log('Upload concluido:', data)
                   // Recarregar documentos do backend para obter o estado real
-                  await fetchDocuments()
+                  if (client.id) {
+                    await fetchDocuments(client.id)
+                  }
                 }}
                 onDelete={async (documentId) => {
                   try {
@@ -655,7 +607,6 @@ export function ClienteApp() {
                 members={familyMembers}
                 documents={documents}
                 requiredDocuments={requiredDocuments}
-                approvedDocuments={approvedDocuments}
                 translatedDocuments={translatedDocuments}
                 onUploadTranslation={handleUploadTranslation}
                 onRequestQuote={handleRequestQuote}
@@ -679,7 +630,7 @@ export function ClienteApp() {
               />
             }
           />
-          <Route path="configuracoes" element={<Config client={client} documents={documents} onRefresh={async () => { await fetchDocuments(); if (client.id) await fetchClientData(client.id); }} />} />
+          <Route path="configuracoes" element={<Config client={client} documents={documents} onRefresh={async () => { if (client.id) { await fetchDocuments(client.id); await fetchClientData(client.id); } }} />} />
         </Routes>
       </main>
 

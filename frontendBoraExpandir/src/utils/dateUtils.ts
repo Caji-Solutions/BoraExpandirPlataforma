@@ -6,9 +6,9 @@
 export function parseBackendDate(dateStr: string | Date): Date {
     if (!dateStr) return new Date();
     if (typeof dateStr === 'string') {
-        // Limpamos o Z ou offsets se existirem (fallback) para forçar leitura como local time nominais
-        const cleanStr = dateStr.replace('Z', '').split('-')[0].length === 4 ? dateStr.substring(0, 19) : dateStr;
-        return new Date(cleanStr);
+        // Se vier com Z (UTC), JavaScript interpreta automaticamente e converte para local
+        // Se vier sem Z, assume que é uma string que já foi convertida para BRT no frontend
+        return new Date(dateStr);
     }
     return new Date(dateStr);
 }

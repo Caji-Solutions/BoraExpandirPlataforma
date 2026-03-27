@@ -324,12 +324,7 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
           </div>
         )}
 
-        {client && (
-          <TimezoneSelector
-            clienteId={client.id}
-            isNonBrazilian={isNonBrazilian(client.phone)}
-          />
-        )}
+       
       </div>
 
       {onClose && (

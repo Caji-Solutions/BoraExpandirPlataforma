@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card'
-import { Bell, Briefcase, FileText, Scale, ArrowRight, Clock, Info, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
+import { Bell, Briefcase, FileText, Scale, ArrowRight, Clock, Info, AlertTriangle, CheckCircle, ChevronLeft, ChevronRight, Calendar, XCircle } from 'lucide-react'
 import { Reminder } from '../../types'
 import { Link } from 'react-router-dom'
 import { formatDateSimple } from '../../lib/utils'
@@ -41,6 +41,23 @@ export function ReminderCard({ title, type, reminders }: ReminderCardProps) {
         return 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800'
     }
 
+    const getCardBackgroundColor = (reminderType: Reminder['type']) => {
+        switch (reminderType) {
+            case 'success':
+                return 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800'
+            case 'warning':
+                return 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800'
+            case 'urgent':
+                return 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
+            case 'error':
+                return 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
+            case 'agendamento':
+                return 'bg-indigo-50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800'
+            default:
+                return 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
+        }
+    }
+
     const getStatusIcon = (reminderType: Reminder['type']) => {
         switch (reminderType) {
             case 'urgent':
@@ -49,6 +66,8 @@ export function ReminderCard({ title, type, reminders }: ReminderCardProps) {
                 return <Clock className="h-4 w-4 text-orange-500" />
             case 'success':
                 return <CheckCircle className="h-4 w-4 text-green-500" />
+            case 'error':
+                return <XCircle className="h-4 w-4 text-red-500" />
             case 'agendamento':
                 return <Calendar className="h-4 w-4 text-indigo-500" />
             default:
@@ -88,7 +107,7 @@ export function ReminderCard({ title, type, reminders }: ReminderCardProps) {
             <CardContent>
                 {reminders.length > 0 && currentReminder ? (
                     <div className="h-full flex flex-col justify-between">
-                        <div key={currentReminder.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-100 dark:border-gray-700 min-h-[120px]">
+                        <div key={currentReminder.id} className={`rounded-lg p-4 shadow-sm border min-h-[120px] ${getCardBackgroundColor(currentReminder.type)}`}>
                             <div className="flex items-start justify-between">
                                 <div className="flex items-start space-x-2 w-full">
                                     <div className="mt-0.5 flex-shrink-0">{getStatusIcon(currentReminder.type)}</div>

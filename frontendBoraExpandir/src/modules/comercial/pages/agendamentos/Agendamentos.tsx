@@ -182,7 +182,7 @@ export default function AgendamentosPage({ agendamentos, onRefresh }: Agendament
 												)}
 											</td>
 											<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 align-middle">
-												{new Date(agendamento.data).toLocaleDateString('pt-BR')}
+												{agendamento.data ? agendamento.data.split('-').reverse().join('/') : '—'}
 											</td>
 											<td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 align-middle">
 												<div className="flex items-center gap-1">

@@ -114,12 +114,13 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
     if (!agendamentos || agendamentos.length === 0) return null;
 
     const now = new Date().getTime();
-    
+
     return agendamentos
       .filter(a => {
-        if (a.status === 'cancelada' || a.status === 'cancelado') return false;
+        // Exclude cancelled and completed appointments
+        if (a.status === 'cancelada' || a.status === 'cancelado' || a.status === 'realizado') return false;
         // Keep appointments that are today or in the future
-        return new Date(a.data_hora).getTime() >= now - (24 * 60 * 60 * 1000); 
+        return new Date(a.data_hora).getTime() >= now - (24 * 60 * 60 * 1000);
       })
       .sort((a, b) => new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime())[0];
   }, [agendamentos]);
@@ -183,6 +184,13 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
       .filter(n => {
         const isRead = n.lida || n.read;
         const title = n.titulo || n.title;
+        const notificationType = (n.tipo || n.type || 'info').toLowerCase();
+
+        // Exclude informational notifications (success, info, agendamento) from actions
+        // These are only for display, not for requiring action
+        if (notificationType === 'success' || notificationType === 'info' || notificationType === 'agendamento') {
+          return false;
+        }
 
         // Find if this notification is linked to a document request
         const linkedDoc = documents.find(doc => doc.type === title);
@@ -193,7 +201,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
           return linkedDoc.status === 'pending' || linkedDoc.status === 'rejected';
         }
 
-        // For other types of notifications, follow the read status
+        // For other types of notifications (warning, error, urgent), follow the read status
         return !isRead;
       })
       .map(n => {
@@ -358,6 +366,26 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
 
   const legalReminders = useMemo(() => [...pendingActionReminders], [pendingActionReminders])
 
+  // Filter for informational notifications (success, info, agendamento) to display separately
+  const informationalNotifications = useMemo(() => {
+    return notifications
+      .filter(n => {
+        const notificationType = n.tipo || n.type || 'info';
+        return notificationType === 'success' || notificationType === 'info' || notificationType === 'agendamento';
+      })
+      .map(n => {
+        const createdAt = n.criado_em || n.createdAt || new Date();
+        return {
+          id: n.id,
+          title: n.titulo || n.title || 'Notificação',
+          message: n.mensagem || n.message || '',
+          date: new Date(createdAt),
+          type: n.tipo || n.type || 'info',
+          actionLink: undefined
+        };
+      });
+  }, [notifications])
+
   return (
     <div className="space-y-8">
 
@@ -373,7 +401,7 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
             <div className="text-center md:text-left flex-1">
               <div>
                 <h1 className="text-3xl font-bold mb-1">Bem-vindo, {client.name}!</h1>
-                <p className="text-blue-100 text-sm mb-2 opacity-80">ID: {client.id}</p>
+                {client.clientId && <p className="text-blue-100 text-sm mb-2 opacity-80">ID: {client.clientId}</p>}
                 <div className="flex items-center justify-center md:justify-start space-x-4">
                   <Badge variant="secondary" className="bg-white bg-opacity-20 text-white border-0 px-3 py-1">
                     Cliente desde {formatDateSimple(client.createdAt)}
@@ -445,8 +473,17 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
           />
         )}
 
+        {/* Informational Notifications (Success, Info, Agendamento) */}
+        {informationalNotifications.length > 0 && (
+          <ReminderCard
+            title="Notificações"
+            type="commercial"
+            reminders={informationalNotifications}
+          />
+        )}
+
         {/* Placeholder for future real data integration without mocks */}
-        {legalReminders.length === 0 && (
+        {legalReminders.length === 0 && informationalNotifications.length === 0 && (
           <div className="col-span-full text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
             <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
             <p className="text-gray-500 dark:text-gray-400">Nenhum lembrete ou ação pendente no momento.</p>

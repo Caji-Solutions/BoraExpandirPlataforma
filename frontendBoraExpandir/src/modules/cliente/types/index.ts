@@ -42,7 +42,7 @@ export interface Reminder {
   title: string;
   message: string;
   date: Date;
-  type: 'info' | 'warning' | 'urgent' | 'success' | 'agendamento';
+  type: 'info' | 'warning' | 'urgent' | 'success' | 'error' | 'agendamento';
   actionLink?: string;
 }
 

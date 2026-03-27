@@ -12,7 +12,10 @@ export const clienteService = {
 
   async getNotificacoes(clienteId: string) {
     const result = await apiClient.get(`/cliente/${clienteId}/notificacoes`);
-    return result.data || [];
+    console.log('[clienteService] getNotificacoes result:', result);
+    const notificacoes = result?.data || result || [];
+    console.log('[clienteService] notificacoes extraídas:', notificacoes);
+    return notificacoes;
   },
 
   async getRequerimentos(clienteId: string) {
