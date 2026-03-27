@@ -43,13 +43,31 @@ class WebhookController {
                 return;
             }
 
-            // document.finished -> eventData.id
-            // signature.* -> eventData.document (o ID do documento pai)
+            // Tenta múltiplas estruturas de payload que a Autentique pode enviar:
+            // Novo:        event.data.id (document.finished) | event.data.document string (signature.*)
+            // Objeto:      event.data.document.id (document como objeto) | event.data.signer.document.id
+            // Antigo:      event.data.object.id
+            // Top-level:   payload.document.id | payload.id
+            const docField = eventData?.document;
+            const signerDocField = eventData?.signer?.document;
             const autentiqueDocumentId: string | undefined =
-                eventData.id || eventData.document || undefined;
+                eventData?.id ||
+                (typeof docField === 'string' ? docField : undefined) ||
+                (typeof docField === 'object' && docField !== null ? docField?.id : undefined) ||
+                (typeof signerDocField === 'string' ? signerDocField : undefined) ||
+                (typeof signerDocField === 'object' && signerDocField !== null ? signerDocField?.id : undefined) ||
+                eventData?.object?.id ||
+                (payload as any)?.document?.id ||
+                (payload as any)?.id ||
+                undefined;
 
             if (!autentiqueDocumentId) {
-                console.warn('[WebhookController] document id ausente. eventData:', JSON.stringify(eventData));
+                console.warn(
+                    '[WebhookController] document.id ausente no payload do webhook Autentique.',
+                    '\n  eventType:', eventType,
+                    '\n  eventData:', JSON.stringify(eventData),
+                    '\n  payload keys:', Object.keys(payload || {})
+                );
                 return;
             }
 

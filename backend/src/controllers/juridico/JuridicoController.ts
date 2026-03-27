@@ -604,7 +604,9 @@ class JuridicoController {
                 return res.status(400).json({ message: 'clienteId é obrigatório' })
             }
 
+            console.log('[JuridicoController] Buscando notas para clienteId:', clienteId)
             const notas = await JuridicoRepository.getNotesByClienteId(clienteId)
+            console.log('[JuridicoController] Notas encontradas:', notas.length)
 
             return res.status(200).json({
                 message: 'Notas jurídicas recuperadas com sucesso',

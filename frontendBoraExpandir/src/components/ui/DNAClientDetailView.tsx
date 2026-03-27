@@ -82,7 +82,10 @@ export function DNAClientDetailView({
         try {
             setLoadingNotes(true)
             const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-            const response = await fetch(`${baseUrl}/juridico/notas/${client.true_id || client.id}`)
+            const token = localStorage.getItem('auth_token')
+            const response = await fetch(`${baseUrl}/juridico/notas/${client.true_id || client.id}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            })
             const result = await response.json()
 
             if (result.data) {
@@ -173,7 +176,10 @@ export function DNAClientDetailView({
                 try {
                     setLoadingLeadNotes(true)
                     const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-                    const response = await fetch(`${baseUrl}/cliente/lead-notas/${client.true_id || client.id}`)
+                    const leadToken = localStorage.getItem('auth_token')
+                    const response = await fetch(`${baseUrl}/cliente/lead-notas/${client.true_id || client.id}`, {
+                        headers: leadToken ? { Authorization: `Bearer ${leadToken}` } : {}
+                    })
                     const result = await response.json()
                     setLeadNotesData(result.data || [])
                 } catch (err) {
@@ -206,9 +212,13 @@ export function DNAClientDetailView({
 
         try {
             const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
+            const token = localStorage.getItem('auth_token')
             const response = await fetch(`${baseUrl}/juridico/notas`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                },
                 body: JSON.stringify({
                     clienteId: client.true_id || client.id,
                     processoId: client.processo_id,
@@ -244,7 +254,11 @@ export function DNAClientDetailView({
     const handleDeleteNote = async (noteId: string) => {
         try {
             const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-            const response = await fetch(`${baseUrl}/juridico/notas/${noteId}?userId=${activeProfile?.id}`, { method: 'DELETE' })
+            const token = localStorage.getItem('auth_token')
+            const response = await fetch(`${baseUrl}/juridico/notas/${noteId}?userId=${activeProfile?.id}`, {
+                method: 'DELETE',
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            })
             if (response.ok) {
                 setNotes(notes.filter(n => n.id !== noteId))
             } else {

@@ -1,12 +1,20 @@
 import { supabase } from '../../config/SupabaseClient'
 import ComercialRepository from '../../repositories/ComercialRepository'
-
 import ContratoServicoRepository from '../../repositories/ContratoServicoRepository'
 import NotificationService from '../../services/NotificationService'
 import DNAService from '../../services/DNAService'
-
 import TraducoesRepository from '../../repositories/TraducoesRepository'
 import FinanceiroDashboardRepository from '../../repositories/FinanceiroDashboardRepository'
+import bcrypt from 'bcryptjs'
+
+function generatePassword(length = 10): string {
+    const chars = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$'
+    let password = ''
+    for (let i = 0; i < length; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    return password
+}
 
 
 class FinanceiroController {
@@ -229,9 +237,9 @@ class FinanceiroController {
                         console.log(`[FinanceiroController] Lead convertido em cliente (agendamento aprovado): ${agendamento.cliente_id}`)
                         try {
                             await DNAService.mergeDNA(agendamento.cliente_id, {
-                                servico_inicial: agendamento.produto || null
+                                servico_inicial: agendamento.produto_nome || null
                             }, 'HIGH')
-                            console.log(`[FinanceiroController] DNA atualizado com servico_inicial: ${agendamento.produto}`)
+                            console.log(`[FinanceiroController] DNA atualizado com servico_inicial: ${agendamento.produto_nome}`)
                         } catch (dnaErr) {
                             console.error('[FinanceiroController] Erro ao atualizar DNA com servico:', dnaErr)
                         }
@@ -259,38 +267,82 @@ class FinanceiroController {
             await ComercialRepository.updateAgendamentoStatus(id, novoStatus)
             console.log(`[FinanceiroController] Status do agendamento atualizado para: ${novoStatus} (formulario: ${formularioPreenchido ? 'sim' : 'nao'})`)
 
-            // TASK 2: Se status virou 'confirmado', gera link do Meet
-            if (novoStatus === 'confirmado' && !agendamento.meet_link) {
-                try {
-                    console.log(`[GoogleMeet] Agendamento ${id} confirmado via Financeiro. Gerando link...`);
-                    const ComposioService = (await import('../../services/ComposioService')).default;
-                    const { getSuperAdminId } = await import('../../utils/calendarHelpers');
-                    const superAdminId = await getSuperAdminId();
-                    
-                    const calendarUserId = superAdminId || 'default';
-
-                    const eventResult = await ComposioService.createCalendarEvent(
-                        calendarUserId,
-                        {
-                            summary: `Consultoria - ${agendamento.nome}`,
-                            description: `Consultoria confirmada via PIX.\nTelefone: ${agendamento.telefone}\nEmail: ${agendamento.email}`,
-                            startTime: new Date(agendamento.data_hora),
-                            endTime: new Date(new Date(agendamento.data_hora).getTime() + (agendamento.duracao_minutos || 60) * 60000),
-                            attendees: [agendamento.email],
-                            location: 'Google Meet'
+            // 7. Se status virou 'confirmado' (formulario ja preenchido), gera link Meet e dispara email de boas-vindas
+            if (novoStatus === 'confirmado') {
+                // 7a. Gerar link do Meet se ainda nao existe
+                if (!agendamento.meet_link) {
+                    try {
+                        console.log(`[GoogleMeet] Agendamento ${id} confirmado via Financeiro. Gerando link...`)
+                        const ComposioService = (await import('../../services/ComposioService')).default
+                        const { getSuperAdminId } = await import('../../utils/calendarHelpers')
+                        const superAdminId = await getSuperAdminId()
+                        const calendarUserId = superAdminId || 'default'
+                        const eventResult = await ComposioService.createCalendarEvent(
+                            calendarUserId,
+                            {
+                                summary: `Consultoria - ${agendamento.nome}`,
+                                description: `Consultoria confirmada via PIX.\nTelefone: ${agendamento.telefone}\nEmail: ${agendamento.email}`,
+                                startTime: new Date(agendamento.data_hora),
+                                endTime: new Date(new Date(agendamento.data_hora).getTime() + (agendamento.duracao_minutos || 60) * 60000),
+                                attendees: [agendamento.email],
+                                location: 'Google Meet'
+                            }
+                        )
+                        if (eventResult.success && eventResult.eventLink) {
+                            await ComercialRepository.updateMeetLink(id, eventResult.eventLink)
+                            console.log('[GoogleMeet] Link salvo:', eventResult.eventLink)
                         }
-                    );
-
-                    if (eventResult.success && eventResult.eventLink) {
-                        await ComercialRepository.updateMeetLink(id, eventResult.eventLink);
-                        console.log('[GoogleMeet] Link salvo:', eventResult.eventLink);
+                    } catch (errMeet) {
+                        console.error('[GoogleMeet] Erro ao gerar link:', errMeet)
                     }
-                } catch (errMeet) {
-                    console.error('[GoogleMeet] Erro ao gerar link:', errMeet);
                 }
+
+                // 7b. Disparar email de boas-vindas com novas credenciais de acesso
+                if (agendamento.email) {
+                    try {
+                        // Buscar profile do cliente para obter o user_id
+                        const { data: profileData } = await supabase
+                            .from('profiles')
+                            .select('id')
+                            .ilike('email', agendamento.email)
+                            .maybeSingle()
+
+                        if (profileData?.id) {
+                            // Gerar nova senha e atualizar o hash no profile
+                            const senhaGerada = generatePassword()
+                            const salt = await bcrypt.genSalt(10)
+                            const password_hash = await bcrypt.hash(senhaGerada, salt)
+
+                            await supabase
+                                .from('profiles')
+                                .update({ password_hash })
+                                .eq('id', profileData.id)
+
+                            const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')
+                            const EmailService = (await import('../../services/EmailService')).default
+                            await EmailService.sendWelcomeEmail({
+                                to: agendamento.email,
+                                clientName: agendamento.nome || 'Cliente',
+                                loginUrl: `${frontendUrl}/login`,
+                                email: agendamento.email,
+                                senha: senhaGerada
+                            })
+                            console.log(`[FinanceiroController] Email de boas-vindas enviado para ${agendamento.email}`)
+                        } else {
+                            console.warn(`[FinanceiroController] Profile nao encontrado para email ${agendamento.email}. Email de boas-vindas nao enviado.`)
+                        }
+                    } catch (emailError: any) {
+                        console.error('[FinanceiroController] Erro ao enviar email de boas-vindas:', emailError)
+                    }
+                }
+
+                return res.status(200).json({
+                    success: true,
+                    message: 'Comprovante aprovado e agendamento confirmado! Email de boas-vindas enviado ao cliente.'
+                })
             }
 
-            // 7. Se formulário ainda não preenchido, enviar email com link do formulário
+            // 8. Formulario ainda nao preenchido: enviar email com link do formulario
             if (!agendamento.email) {
                 return res.status(200).json({
                     success: true,
@@ -298,43 +350,36 @@ class FinanceiroController {
                 })
             }
 
-            if (!formularioPreenchido) {
-                try {
-                    const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')
-                    const params = new URLSearchParams()
-                    if (agendamento.nome) params.set('nome', agendamento.nome)
-                    if (agendamento.email) params.set('email', agendamento.email)
-                    if (agendamento.telefone) params.set('telefone', agendamento.telefone)
-                    const formularioLink = `${frontendUrl}/formulario/consultoria/${id}?${params.toString()}`
+            try {
+                const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')
+                const params = new URLSearchParams()
+                if (agendamento.nome) params.set('nome', agendamento.nome)
+                if (agendamento.email) params.set('email', agendamento.email)
+                if (agendamento.telefone) params.set('telefone', agendamento.telefone)
+                const formularioLink = `${frontendUrl}/formulario/consultoria/${id}?${params.toString()}`
 
-                    const EmailService = (await import('../../services/EmailService')).default
-                    await EmailService.sendFormularioEmail({
-                        to: agendamento.email,
-                        clientName: agendamento.nome || 'Cliente',
-                        formularioLink,
-                        email: agendamento.email
-                    })
-                    console.log(`[FinanceiroController] Email com link do formulario enviado para ${agendamento.email}`)
+                const EmailService = (await import('../../services/EmailService')).default
+                await EmailService.sendFormularioEmail({
+                    to: agendamento.email,
+                    clientName: agendamento.nome || 'Cliente',
+                    formularioLink,
+                    email: agendamento.email
+                })
+                console.log(`[FinanceiroController] Email com link do formulario enviado para ${agendamento.email}`)
 
-                    return res.status(200).json({
-                        success: true,
-                        message: 'Comprovante aprovado e email com formulário enviado com sucesso!',
-                        formulario_link: formularioLink
-                    })
-                } catch (emailError: any) {
-                    console.error('[FinanceiroController] Erro ao enviar email:', emailError)
-                    return res.status(200).json({
-                        success: true,
-                        message: 'Comprovante aprovado, mas houve um erro ao enviar o email com formulário.',
-                        warning: emailError.message
-                    })
-                }
+                return res.status(200).json({
+                    success: true,
+                    message: 'Comprovante aprovado e email com formulário enviado com sucesso!',
+                    formulario_link: formularioLink
+                })
+            } catch (emailError: any) {
+                console.error('[FinanceiroController] Erro ao enviar email:', emailError)
+                return res.status(200).json({
+                    success: true,
+                    message: 'Comprovante aprovado, mas houve um erro ao enviar o email com formulário.',
+                    warning: emailError.message
+                })
             }
-
-            return res.status(200).json({
-                success: true,
-                message: 'Comprovante aprovado e agendamento confirmado com sucesso!'
-            })
 
         } catch (error: any) {
             console.error('[FinanceiroController] Erro ao aprovar comprovante:', error)

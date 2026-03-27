@@ -11,11 +11,11 @@ class EmailService {
             const pass = process.env.SMTP_PASS
 
             if (!host || !user || !pass) {
-                console.warn('[EmailService] Variaveis SMTP nao configuradas. Emails nao serao enviados.')
-                // Retorna um transporter "fantasma" que apenas faz log
+                const faltando = [!host && 'SMTP_HOST', !user && 'SMTP_USER', !pass && 'SMTP_PASS'].filter(Boolean)
+                console.warn(`[EmailService] SMTP NAO configurado. Variaveis ausentes: ${faltando.join(', ')}. Emails NAO serao enviados de verdade.`)
                 return {
                     sendMail: async (opts: any) => {
-                        console.log('[EmailService] (SMTP nao configurado) Email simulado:', {
+                        console.log('[EmailService] [SIMULADO - SEM SMTP REAL] Email NAO enviado:', {
                             to: opts.to,
                             subject: opts.subject
                         })
@@ -32,7 +32,7 @@ class EmailService {
             })
         }
 
-        return this.transporter
+        return this.transporter!
     }
 
     /**
@@ -88,7 +88,7 @@ class EmailService {
 
             <!-- CTA Button -->
             <div style="text-align:center;margin:32px 0;">
-                <a href="${loginLink}" 
+                <a href="${loginLink}"
                    style="display:inline-block;background:#076CA5;color:#ffffff;text-decoration:none;padding:14px 40px;border-radius:10px;font-size:16px;font-weight:700;letter-spacing:0.5px;">
                     Acessar Minha Área
                 </a>
@@ -186,13 +186,13 @@ class EmailService {
                 Seu pagamento foi <strong>confirmado com sucesso</strong>! 🎉
             </p>
             <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 24px;">
-                Para darmos continuidade à sua consultoria, precisamos que você preencha o formulário abaixo com seus dados. 
+                Para darmos continuidade à sua consultoria, precisamos que você preencha o formulário abaixo com seus dados.
                 Isso é essencial para que nosso time prepare tudo para o seu atendimento.
             </p>
 
             <!-- CTA Button -->
             <div style="text-align:center;margin:32px 0;">
-                <a href="${params.formularioLink}" 
+                <a href="${params.formularioLink}"
                    style="display:inline-block;background:#076CA5;color:#ffffff;text-decoration:none;padding:14px 40px;border-radius:10px;font-size:16px;font-weight:700;letter-spacing:0.5px;">
                     📋 Preencher Formulário
                 </a>

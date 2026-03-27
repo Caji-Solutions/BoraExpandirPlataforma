@@ -104,9 +104,6 @@ function calcularPosicoesAssinatura(
     const empresaX = Math.round((empresaCenterMm / pageWidthMm) * 1000) / 10;
     const roundedY = Math.round(sigY * 10) / 10;
 
-    console.log(`[HtmlPdfService] Pagina: ${pageWidthMm.toFixed(1)}x${pageHeightMm.toFixed(1)}mm`);
-    console.log(`[HtmlPdfService] Assinatura calculada -> Cliente: x=${clienteX}%, y=${roundedY}% | Empresa: x=${empresaX}%, y=${roundedY}% | Pagina: ${totalPages}`);
-
     return {
         cliente: { x: clienteX, y: roundedY, z: totalPages },
         empresa: { x: empresaX, y: roundedY, z: totalPages }

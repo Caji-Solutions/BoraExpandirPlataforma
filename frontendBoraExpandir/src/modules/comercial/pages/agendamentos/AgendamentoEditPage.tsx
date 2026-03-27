@@ -488,7 +488,7 @@ export function AgendamentoEditPage() {
 
                 {/* ═══ LINK DO FORMULÁRIO (visível quando pagamento aprovado E não preenchido E não é Assessoria/Contratos) ═══ */}
                 {agendamento.pagamento_status === 'aprovado' && !agendamento.formulario_preenchido && !(
-                    agendamento.produto?.toLowerCase().includes('assessoria') ||
+                    nomeProduto.toLowerCase().includes('assessoria') ||
                     agendamento.tipo_servico?.toLowerCase().includes('assessoria') ||
                     agendamento.servico_nome?.toLowerCase().includes('assessoria') ||
                     agendamento.tipo_servico?.toLowerCase().includes('contratos') ||

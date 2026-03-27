@@ -6,7 +6,13 @@ import ComposioService from '../../services/ComposioService';
 import EmailService from '../../services/EmailService';
 import DNAService from '../../services/DNAService';
 
-vi.mock('../../repositories/ComercialRepository');
+vi.mock('../../repositories/ComercialRepository', () => ({
+    default: {
+        updateMeetLink: vi.fn(),
+        createAgendamento: vi.fn(),
+        // Mock de outros metodos se necessario
+    }
+}));
 vi.mock('../../services/ComposioService', () => ({
     default: {
         createCalendarEvent: vi.fn().mockResolvedValue({ success: false }),
@@ -84,29 +90,19 @@ function buildSupabaseMock(opts: {
             agendamentosCallCount++;
 
             if (agendamentosCallCount === 1) {
-                // Validação inicial: status e data_hora
-                const single = vi.fn().mockResolvedValue({
-                    data: { status: agendamentoStatus, data_hora: FUTURE_DATE },
-                    error: null
-                });
-                const eq = vi.fn().mockReturnValue({ single });
-                const select = vi.fn().mockReturnValue({ eq });
-                return { select };
-            }
-
-            if (agendamentosCallCount === 2) {
-                // Busca status/pagamento para decisão de confirmado
+                // Validação inicial: agora retorna todos os campos necessários incluindo pagamento_status
                 const single = vi.fn().mockResolvedValue({
                     data: {
                         status: agendamentoStatus,
+                        data_hora: FUTURE_DATE,
                         pagamento_status: pagamentoStatus,
                         meet_link: meetLink,
                         nome: 'Joao Silva',
                         email: 'joao@test.com',
                         telefone: '5511999999999',
-                        data_hora: FUTURE_DATE,
                         duracao_minutos: 60,
-                        comprovante_url: null
+                        comprovante_url: null,
+                        produto: null
                     },
                     error: null
                 });
@@ -115,21 +111,28 @@ function buildSupabaseMock(opts: {
                 return { select };
             }
 
-            if (agendamentosCallCount === 3) {
-                // Chamada 3: update de status
+            if (agendamentosCallCount === 2) {
+                // Chamada 2: update de status do agendamento
                 const eq = vi.fn().mockResolvedValue({ error: null });
                 const update = vi.fn().mockReturnValue({ eq });
                 return { update };
             }
 
-            // Chamada 4: busca final de pagamento_status e comprovante_url
-            const single4 = vi.fn().mockResolvedValue({
-                data: { pagamento_status: pagamentoStatus, comprovante_url: null },
-                error: null
-            });
-            const eq4 = vi.fn().mockReturnValue({ single: single4 });
-            const select4 = vi.fn().mockReturnValue({ eq: eq4 });
-            return { select: select4 };
+            if (agendamentosCallCount === 3) {
+                // Chamada 3: select final para pagamento_status e comprovante_url (linha de resposta)
+                const single = vi.fn().mockResolvedValue({
+                    data: { pagamento_status: pagamentoStatus, comprovante_url: null },
+                    error: null
+                });
+                const eq = vi.fn().mockReturnValue({ single });
+                const select = vi.fn().mockReturnValue({ eq });
+                return { select };
+            }
+
+            // Chamadas adicionais
+            const eq = vi.fn().mockResolvedValue({ error: null });
+            const update = vi.fn().mockReturnValue({ eq });
+            return { update };
         }
 
         if (table === 'profiles') {
@@ -259,7 +262,7 @@ describe('FormularioController - submitConsultoria - status do agendamento', () 
         // A 3a chamada retorna { update } - verificar que update foi chamado com cliente_is_user: true
         // Como o mock e complexo, verificamos que o resultado final e 201 (sucesso)
         // e que o fluxo nao quebrou ao setar cliente_is_user
-        expect(agendamentoUpdateCalls.length).toBeGreaterThanOrEqual(3);
+        expect(agendamentoUpdateCalls.length).toBeGreaterThanOrEqual(2);
     });
 
     it('deve validar campos essenciais: nome, email, whatsapp (Task 001)', async () => {
@@ -288,7 +291,18 @@ describe('FormularioController - submitConsultoria - status do agendamento', () 
             // Reutiliza o mock padrao para outras tabelas
             if (table === 'agendamentos') {
                 const single = vi.fn().mockResolvedValue({
-                    data: { status: 'agendado', data_hora: FUTURE_DATE },
+                    data: {
+                        status: 'agendado',
+                        data_hora: FUTURE_DATE,
+                        pagamento_status: 'pendente',
+                        meet_link: null,
+                        nome: 'Joao Silva',
+                        email: 'joao@test.com',
+                        telefone: '5511999999999',
+                        duracao_minutos: 60,
+                        comprovante_url: null,
+                        produto: null
+                    },
                     error: null
                 });
                 const eq = vi.fn().mockReturnValue({ single });
@@ -340,7 +354,18 @@ describe('FormularioController - submitConsultoria - status do agendamento', () 
         (supabase.from as any).mockImplementation((table: string) => {
             if (table === 'agendamentos') {
                 const single = vi.fn().mockResolvedValue({
-                    data: { status: 'cancelado', data_hora: FUTURE_DATE },
+                    data: {
+                        status: 'cancelado',
+                        data_hora: FUTURE_DATE,
+                        pagamento_status: 'pendente',
+                        meet_link: null,
+                        nome: 'Joao Silva',
+                        email: 'joao@test.com',
+                        telefone: '5511999999999',
+                        duracao_minutos: 60,
+                        comprovante_url: null,
+                        produto: null
+                    },
                     error: null
                 });
                 const eq = vi.fn().mockReturnValue({ single });

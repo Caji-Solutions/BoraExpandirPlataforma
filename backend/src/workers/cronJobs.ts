@@ -83,7 +83,7 @@ export const startCronJobs = () => {
                         }
 
                         const clientName = agendamento.nome || 'Cliente';
-                        const servicoNome = agendamento.produto || agendamento.servico_nome || 'consultoria';
+                        const servicoNome = agendamento.produto_nome || agendamento.servico_nome || 'consultoria';
                         const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '');
                         const queryParams = new URLSearchParams();
                         if (agendamento.nome) queryParams.set('nome', agendamento.nome);

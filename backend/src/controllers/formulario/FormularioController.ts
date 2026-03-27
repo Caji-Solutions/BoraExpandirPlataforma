@@ -62,11 +62,12 @@ class FormularioController {
             // Validar se o agendamento existe e pode receber formulário
             const { data: agendamentoInfo, error: agInfoErr } = await supabase
                 .from('agendamentos')
-                .select('status, data_hora')
+                .select('status, data_hora, pagamento_status, comprovante_url, meet_link, nome, telefone, email, duracao_minutos, produto_id')
                 .eq('id', agendamento_id)
                 .single()
 
             if (agInfoErr || !agendamentoInfo) {
+                console.error('[FormularioController] Agendamento nao encontrado:', agInfoErr)
                 return res.status(404).json({ message: 'Agendamento não encontrado.' })
             }
 
@@ -242,17 +243,22 @@ class FormularioController {
             }
 
             // 6. Confirmar o agendamento e verificar se já estava pago
+            // Reutiliza agendamentoInfo (já carregado no início, campos agora incluem pagamento_status)
             let isPago = false
             let agendamentoProduto: string | null = null
-            if (agendamento_id) {
-                const { data: agendamentoAtual } = await supabase
-                    .from('agendamentos')
-                    .select('status, comprovante_url, pagamento_status, meet_link, nome, telefone, email, data_hora, duracao_minutos, produto')
-                    .eq('id', agendamento_id)
-                    .single()
-                agendamentoProduto = (agendamentoAtual as any)?.produto || null
 
-                isPago = (agendamentoAtual?.pagamento_status === 'aprovado') || (agendamentoAtual?.status === 'confirmado')
+            if (agendamento_id) {
+                agendamentoProduto = (agendamentoInfo as any)?.produto_id || null
+                console.log(`[FormularioController] [DEBUG] Status do agendamento ao processar formulario:`, {
+                    id: agendamento_id,
+                    encontrado: true,
+                    status: agendamentoInfo.status,
+                    pagamento_status: (agendamentoInfo as any).pagamento_status,
+                    comprovante_url: (agendamentoInfo as any).comprovante_url ? 'presente' : 'ausente'
+                })
+
+                isPago = ((agendamentoInfo as any).pagamento_status === 'aprovado') || (agendamentoInfo.status === 'confirmado')
+                console.log(`[FormularioController] [DEBUG] isPago calculado: ${isPago} (pagamento_status='${(agendamentoInfo as any).pagamento_status}', status='${agendamentoInfo.status}')`)
 
                 const { error: agUpdateError } = await supabase
                     .from('agendamentos')
@@ -270,7 +276,7 @@ class FormularioController {
                 console.log(`[FormularioController] Agendamento atualizado para: ${isPago ? 'confirmado' : 'pendente'}, ID: ${agendamento_id}`)
 
                 // Se status virou 'confirmado', gera link do Meet
-                if (isPago && !agendamentoAtual?.meet_link) {
+                if (isPago && !(agendamentoInfo as any).meet_link) {
                     try {
                         console.log(`[GoogleMeet] Agendamento ${agendamento_id} confirmado via Formulario. Gerando link...`)
                         const ComposioService = (await import('../../services/ComposioService')).default
@@ -283,7 +289,7 @@ class FormularioController {
                                 summary: `Consultoria - ${nome_completo}`,
                                 description: `Consultoria confirmada via Form.\nTelefone: ${whatsapp}\nEmail: ${email}`,
                                 startTime: new Date(agendamentoInfo.data_hora),
-                                endTime: new Date(new Date(agendamentoInfo.data_hora).getTime() + ((agendamentoAtual as any).duracao_minutos || 60) * 60000),
+                                endTime: new Date(new Date(agendamentoInfo.data_hora).getTime() + ((agendamentoInfo as any).duracao_minutos || 60) * 60000),
                                 attendees: [email],
                                 location: 'Google Meet'
                             }
@@ -301,6 +307,7 @@ class FormularioController {
                 // Se não há agendamento, assumimos que pode liberar o email
                 isPago = true
             }
+
 
             if (isPago && clienteId) {
                 const { data: clienteBanco } = await supabase
@@ -337,6 +344,8 @@ class FormularioController {
             // The following line from the instruction appears to be syntactically incorrect and has been omitted to maintain a valid code structure.
             // const formularioLink = `${frontendUrl}/formulario/consultoria/${agendamentoId}`) {
             if (isPago) {
+                console.log(`[FormularioController] [DEBUG] isPago=true, tentando enviar email SMTP para: ${email}`)
+                console.log(`[FormularioController] [DEBUG] SMTP config: host=${process.env.SMTP_HOST || 'NAO_DEFINIDO'}, user=${process.env.SMTP_USER ? 'definido' : 'NAO_DEFINIDO'}, pass=${process.env.SMTP_PASS ? 'definido' : 'NAO_DEFINIDO'}`)
                 try {
                     await EmailService.sendWelcomeEmail({
                         to: email,
@@ -346,6 +355,7 @@ class FormularioController {
                         senha: senhaGerada
                     })
                     emailEnviado = true
+                    console.log(`[FormularioController] [DEBUG] SMTP disparado com sucesso para: ${email}`)
                 } catch (err: any) {
                     console.error('[FormularioController] Erro ao enviar email', err)
                 }

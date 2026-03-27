@@ -1212,7 +1212,6 @@ class ComercialController {
             if (savedPositions?.cliente && savedPositions?.empresa) {
                 // Usar posicoes calculadas a partir das dimensoes reais do PDF
                 signaturesData = savedPositions
-                console.log(`[ComercialController] Usando posicoes de assinatura calculadas: Cliente(x=${signaturesData.cliente.x}, y=${signaturesData.cliente.y}, z=${signaturesData.cliente.z}) Empresa(x=${signaturesData.empresa.x}, y=${signaturesData.empresa.y}, z=${signaturesData.empresa.z})`)
             } else {
                 // Fallback: coordenadas padrao para A4 (caso o PDF tenha sido gerado antes desta mudanca)
                 console.warn('[ComercialController] Posicoes de assinatura nao encontradas no draft, usando fallback A4')
