@@ -4,6 +4,7 @@ import { supabase } from '../../config/SupabaseClient'
 import NotificationService from '../../services/NotificationService'
 import ComercialRepository from '../../repositories/ComercialRepository'
 import DNAService from '../../services/DNAService'
+import { toBrtFromUtc } from '../../utils/dateUtils'
 
 class JuridicoController {
 
@@ -165,10 +166,15 @@ class JuridicoController {
         try {
             const agendamentos = await JuridicoRepository.getAgendamentosDelegacao()
 
+            const agendamentosBrt = agendamentos.map((ag: any) => ({
+                ...ag,
+                data_hora: toBrtFromUtc(ag.data_hora)
+            }))
+
             return res.status(200).json({
                 message: 'Agendamentos para delegação recuperados com sucesso',
-                data: agendamentos,
-                total: agendamentos.length
+                data: agendamentosBrt,
+                total: agendamentosBrt.length
             })
         } catch (error: any) {
             console.error('Erro ao buscar agendamentos para delegacao:', error)
@@ -987,12 +993,17 @@ class JuridicoController {
 
             const agendamentos = await JuridicoRepository.getAgendamentosPorResponsavel(responsavelId)
 
-            console.log(`[JuridicoController] Agendamentos para responsavel ${responsavelId}: ${agendamentos.length} encontrados`);
-            
+            const agendamentosBrt = agendamentos.map((ag: any) => ({
+                ...ag,
+                data_hora: toBrtFromUtc(ag.data_hora)
+            }))
+
+            console.log(`[JuridicoController] Agendamentos para responsavel ${responsavelId}: ${agendamentosBrt.length} encontrados`);
+
             return res.status(200).json({
                 message: 'Agendamentos do responsável recuperados com sucesso',
-                data: agendamentos,
-                total: agendamentos.length
+                data: agendamentosBrt,
+                total: agendamentosBrt.length
             })
         } catch (error: any) {
             console.error('Erro ao buscar agendamentos do responsavel:', error)

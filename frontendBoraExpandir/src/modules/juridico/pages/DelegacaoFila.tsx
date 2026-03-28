@@ -16,8 +16,10 @@ import {
 import { ModalDelegacao, type MembroEquipe } from "../components/ModalDelegacao";
 import { ModalDetalhesItem } from "../components/ModalDetalhesItem";
 import juridicoService, { type Processo, type FuncionarioJuridico } from "../services/juridicoService";
+import { catalogService } from "@/modules/adm/services/catalogService";
 import { Badge } from '@/modules/shared/components/ui/badge';
 import { Button } from '@/modules/shared/components/ui/button';
+import { parseBackendDate } from "@/utils/dateUtils";
 
 // Componente de Status
 function StatusBadge({ status }: { status: string }) {
@@ -99,10 +101,11 @@ export default function DelegacaoFila() {
     setLoading(true);
     setError(null);
     try {
-      const [processosData, agendamentosData, funcionariosData] = await Promise.all([
+      const [processosData, agendamentosData, funcionariosData, catalogData] = await Promise.all([
         juridicoService.getProcessos(),
         juridicoService.getAgendamentosDelegacao(),
-        juridicoService.getFuncionariosJuridico()
+        juridicoService.getFuncionariosJuridico(),
+        catalogService.getCatalogServices().catch(() => [])
       ]);
 
       console.log('--- DEBUG DELEGACAO FILA ---');
@@ -111,12 +114,16 @@ export default function DelegacaoFila() {
       console.log('Funcionarios:', funcionariosData);
       console.log('----------------------------');
 
+      // Mapa de tipo por ID do catalogo para filtrar por tipo em vez de nome
+      const typeMap: Record<string, string> = {};
+      catalogData.forEach((s: any) => { typeMap[s.id] = s.type; });
+
       const processosMarcados = processosData.map(p => ({ ...p, _tipoFila: 'processo' }));
-      // Excluir assessorias e contratos da fila de delegação — eles são visíveis a todos os usuários
+      // Excluir servicos tipo 'fixo' (Contratos/Assessorias) da fila de delegacao
       const agendamentosMarcados = agendamentosData
         .filter((a: any) => {
-          const nomeServico = (a.catalogo_servicos?.nome || a.produto_nome || a.tipo_servico || '').toLowerCase();
-          return !nomeServico.includes('assessoria') && !nomeServico.includes('contrato');
+          const serviceType = typeMap[a.produto_id] || typeMap[a.servico_id];
+          return serviceType !== 'fixo';
         })
         .map((a: any) => ({ ...a, _tipoFila: 'agendamento' }));
 
@@ -346,11 +353,11 @@ export default function DelegacaoFila() {
                           {!isProcesso && item.data_hora && (
                             <span className="text-[10px] text-blue-600 font-bold flex items-center gap-1 mt-0.5">
                               <Clock className="h-3 w-3" />
-                              {new Date(item.data_hora).toLocaleString('pt-BR', { 
-                                day: '2-digit', 
-                                month: '2-digit', 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
+                              {parseBackendDate(item.data_hora).toLocaleString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
                               })}
                             </span>
                           )}

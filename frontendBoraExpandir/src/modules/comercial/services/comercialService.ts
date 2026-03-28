@@ -126,6 +126,11 @@ export async function getPosConsultoria(): Promise<any[]> {
     return result.data || [];
 }
 
+export async function getConsultoriasCount(clienteId: string): Promise<{ total_consultorias: number; valor_desconto: number; valor_por_consultoria: number }> {
+    const result = await apiClient.get(`/comercial/consultorias-count/${clienteId}`)
+    return result.data
+}
+
 export default {
     getAllClientes,
     getAgendamentosByUsuario,
@@ -145,7 +150,8 @@ export default {
     updateContratoDraft,
     gerarContratoPdf,
     enviarContratoAssinatura,
-    getPosConsultoria
+    getPosConsultoria,
+    getConsultoriasCount
 };
 
 

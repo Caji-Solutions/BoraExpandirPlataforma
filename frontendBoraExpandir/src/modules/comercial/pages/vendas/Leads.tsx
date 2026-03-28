@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
-import { Plus, Trash2, Phone, Search, Edit2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, X, User, Sparkles, Loader2, CheckCircle2, Copy, Key, Mail, StickyNote, Send } from 'lucide-react'
+import { Plus, Trash2, Phone, Search, Edit2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, X, User, Loader2, StickyNote, Send } from 'lucide-react'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import { PhoneInput } from '@/components/ui/PhoneInput'
 import { cn } from '@/lib/utils'
@@ -41,13 +41,6 @@ export default function LeadsPage() {
   const [loadingNotes, setLoadingNotes] = useState(false)
   const [savingNote, setSavingNote] = useState(false)
  
-  // Conversão de Lead em Cliente
-  const [showConvertModal, setShowConvertModal] = useState(false)
-  const [convertingLead, setConvertingLead] = useState<Lead | null>(null)
-  const [formEmail, setFormEmail] = useState('')
-  const [formCpf, setFormCpf] = useState('')
-  const [formEndereco, setFormEndereco] = useState('')
-  const [converting, setConverting] = useState(false)
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || ''
 
@@ -297,50 +290,6 @@ export default function LeadsPage() {
     }
   }
 
-  // ========= CONVERSÃO =========
-  const handleOpenConvert = (lead: Lead) => {
-    setConvertingLead(lead)
-    setFormEmail(lead.email || '')
-    setFormCpf('')
-    setFormEndereco('')
-    setShowConvertModal(true)
-  }
-
-  const handleConvertLead = async () => {
-    if (!convertingLead || !formEmail.trim()) return
-
-    setConverting(true)
-    try {
-      const response = await fetch(`${backendUrl}/cliente/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome: convertingLead.nome,
-          email: formEmail,
-          whatsapp: convertingLead.whatsapp,
-          documento: formCpf,
-          endereco: formEndereco,
-          status: 'cliente'
-        })
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        alert(`Lead convertido com sucesso!\n\nID: ${result.id}\nStatus: ${result.status}\n\nCredenciais Geradas:\nE-mail: ${result.loginInfo?.email}\nSenha Temporária: ${result.loginInfo?.password}`)
-        // Remover da lista de leads
-        setLeads(prev => prev.filter(l => l.id !== convertingLead.id))
-        setShowConvertModal(false)
-      } else {
-        const errData = await response.json()
-        alert(`Erro ao converter lead: ${errData.message}`)
-      }
-    } catch (err) {
-      console.error('Erro ao converter lead:', err)
-      alert('Erro interno ao converter lead')
-    } finally {
-      setConverting(false)
-    }
-  }
 
   const formatDate = (iso: string) => {
     try {
@@ -477,13 +426,6 @@ export default function LeadsPage() {
                           title="Notas do lead"
                         >
                           <StickyNote className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleOpenConvert(lead)}
-                          className="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-lg transition-colors border border-emerald-100 dark:border-emerald-500/20 shadow-sm"
-                          title="Transformar em Cliente"
-                        >
-                          <CheckCircle2 className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleOpenEdit(lead)}
@@ -711,85 +653,6 @@ export default function LeadsPage() {
                   </div>
                 ))
               )}
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Modal de Conversão de Lead para Cliente */}
-      {showConvertModal && convertingLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-gray-200 dark:border-neutral-700 p-6 relative">
-            <button
-              onClick={() => setShowConvertModal(false)}
-              className="absolute top-3 right-3 text-gray-500 hover:text-gray-800"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-emerald-500" />
-              Converter em Cliente
-            </h3>
-            <p className="text-sm text-gray-500 mb-6">
-              Ao converter, o sistema criará credenciais de login para <b>{convertingLead.nome}</b>.
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  E-mail <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={formEmail}
-                  onChange={e => setFormEmail(e.target.value)}
-                  placeholder="exemplo@gmail.com"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  CPF/NIF (Opcional)
-                </label>
-                <input
-                  type="text"
-                  value={formCpf}
-                  onChange={e => setFormCpf(e.target.value)}
-                  placeholder="000.000.000-00"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Endereço (Opcional)
-                </label>
-                <input
-                  type="text"
-                  value={formEndereco}
-                  onChange={e => setFormEndereco(e.target.value)}
-                  placeholder="Rua, Número, Cidade..."
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 flex gap-3 justify-end">
-              <button
-                onClick={() => setShowConvertModal(false)}
-                className="px-4 py-2 text-sm border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-gray-300 rounded-lg"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleConvertLead}
-                disabled={!formEmail.trim() || converting}
-                className="px-6 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2 disabled:opacity-50"
-              >
-                {converting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                <span>Converter Agora</span>
-              </button>
             </div>
           </div>
         </div>

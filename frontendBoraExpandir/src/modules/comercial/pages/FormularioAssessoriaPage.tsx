@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AlertTriangle, ArrowLeft, CheckCircle2, FileText, Loader2 } from 'lucide-react'
-import comercialService from '../services/comercialService'
+import comercialService, { getConsultoriasCount } from '../services/comercialService'
 import { useToast, ToastContainer } from '@/components/ui/Toast'
 import type { ContratoServico } from '../../../types/comercial'
 import {
@@ -13,6 +13,39 @@ import {
   normalizePhone,
   onlyDigits
 } from '../../../utils/formatters'
+
+function numberToPortuguese(n: number): string {
+  if (n === 0) return 'zero'
+  const units = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove']
+  const teens = ['dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove']
+  const tens = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa']
+  const hundreds = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos']
+  if (n === 100) return 'cem'
+  if (n >= 1000) {
+    const mil = Math.floor(n / 1000)
+    const rest = n % 1000
+    const milStr = mil === 1 ? 'mil' : `${numberToPortuguese(mil)} mil`
+    return rest === 0 ? milStr : `${milStr} e ${numberToPortuguese(rest)}`
+  }
+  if (n >= 100) {
+    const rest = n % 100
+    return rest === 0 ? hundreds[Math.floor(n / 100)] : `${hundreds[Math.floor(n / 100)]} e ${numberToPortuguese(rest)}`
+  }
+  if (n >= 20) {
+    const rest = n % 10
+    return rest === 0 ? tens[Math.floor(n / 10)] : `${tens[Math.floor(n / 10)]} e ${units[rest]}`
+  }
+  if (n >= 10) return teens[n - 10]
+  return units[n]
+}
+
+const ESTADOS_CIVIS = [
+  'Solteiro(a)',
+  'Casado(a)',
+  'Divorciado(a)',
+  'Viúvo(a)',
+  'União Estável'
+]
 
 // Steps: 1 - Dados Pessoais, 2 - Servicos e Valores, 3 - Pagamento e Data, 4 - Resumo/Gerar
 
@@ -66,6 +99,9 @@ export default function FormularioAssessoriaPage() {
   const [contrato, setContrato] = useState<ContratoServico | null>(null)
   const [erroGeracao, setErroGeracao] = useState<any>(null)
   const [dependentes, setDependentes] = useState<Array<{nome: string, grau: string, data_nascimento: string}>>([])
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [consultoriaDesconto, setConsultoriaDesconto] = useState<{ total: number; valor: number } | null>(null)
+  const [consultoriaOverride, setConsultoriaOverride] = useState('')
 
   const initializedRef = useRef(false)
   const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -101,6 +137,11 @@ export default function FormularioAssessoriaPage() {
       forma_pagamento: draft.forma_pagamento || draft.formaPagamento || '',
       formaPagamento: draft.forma_pagamento || draft.formaPagamento || ''
     })
+
+    // Se havia valor_consultoria manual salvo no draft, pre-preencher o override
+    if (draft.valor_consultoria) {
+      setConsultoriaOverride(String(draft.valor_consultoria))
+    }
 
     try {
       const depsData = draft.dependentes ? JSON.parse(draft.dependentes) : []
@@ -146,6 +187,16 @@ export default function FormularioAssessoriaPage() {
 
       hydrateFromContrato(data)
       initializedRef.current = true
+
+      // Buscar desconto de consultoria
+      if (data.cliente_id) {
+        try {
+          const descontoData = await getConsultoriasCount(data.cliente_id)
+          setConsultoriaDesconto({ total: descontoData.total_consultorias, valor: descontoData.valor_desconto })
+        } catch (err) {
+          console.error('[FormularioAssessoria] Erro ao buscar desconto consultoria:', err)
+        }
+      }
     } catch (err: any) {
       toast.error('Erro ao carregar rascunho: ' + err.message)
     } finally {
@@ -226,11 +277,47 @@ export default function FormularioAssessoriaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData, etapaAtual, id, isLockedByGeracaoErro])
 
+  const validateStep = (step: number): Record<string, string> => {
+    const errors: Record<string, string> = {}
+    if (step === 1) {
+      if (!formData.nome.trim()) errors.nome = 'Informe o nome'
+      const cpfDigits = onlyDigits(formData.documento)
+      if (!cpfDigits) {
+        errors.documento = 'Informe o CPF'
+      } else if (cpfDigits.length !== 11) {
+        errors.documento = 'CPF deve ter exatamente 11 dígitos'
+      }
+      if (!formData.nacionalidade.trim()) errors.nacionalidade = 'Informe a nacionalidade'
+      if (!formData.estado_civil) errors.estado_civil = 'Selecione o estado civil'
+      if (!formData.profissao.trim()) errors.profissao = 'Informe a profissão'
+      if (!formData.email.trim()) errors.email = 'Informe o email'
+      if (!formData.telefone.trim()) errors.telefone = 'Informe o telefone'
+      if (!formData.endereco.trim()) errors.endereco = 'Informe o endereço'
+    }
+    if (step === 2) {
+      if (!formData.tipo_servico.trim()) errors.tipo_servico = 'Informe o tipo de serviço'
+      if (!formData.valor_pavao.trim()) errors.valor_pavao = 'Informe o valor total'
+      if (!formData.valor_desconto.trim()) errors.valor_desconto = 'Informe o valor com desconto'
+    }
+    if (step === 3) {
+      if (!formData.forma_pagamento.trim()) errors.forma_pagamento = 'Informe a forma de pagamento'
+    }
+    return errors
+  }
+
   const handleNext = async () => {
     if (isLockedByGeracaoErro) {
       toast.warning('Este contrato esta bloqueado por erro de geracao. Tente gerar novamente para desbloquear.')
       return
     }
+
+    const errors = validateStep(etapaAtual)
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors)
+      toast.error('Preencha todos os campos obrigatórios antes de avançar')
+      return
+    }
+    setValidationErrors({})
 
     const proximaEtapa = Math.min(etapaAtual + 1, 4)
     try {
@@ -398,52 +485,72 @@ export default function FormularioAssessoriaPage() {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Dados Pessoais</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome Completo</label>
-                <input type="text" disabled={saving || isLockedByGeracaoErro} value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome Completo *</label>
+                <input type="text" disabled={saving || isLockedByGeracaoErro} value={formData.nome} onChange={(e) => { setFormData({ ...formData, nome: e.target.value }); if (e.target.value.trim()) setValidationErrors(prev => ({ ...prev, nome: '' })) }} className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm ${validationErrors.nome ? 'border-red-400' : 'border-gray-200 dark:border-neutral-700'}`} />
+                {validationErrors.nome && <p className="text-red-500 text-xs mt-1">{validationErrors.nome}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Documento (CPF / Passaporte)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CPF *</label>
                 <input
                   type="text"
                   disabled={saving || isLockedByGeracaoErro}
                   value={formData.documento}
                   onChange={(e) => {
                     const valor = e.target.value
-                    const masked = onlyDigits(valor).length <= 11 ? maskCpfInput(valor) : valor
+                    const digits = onlyDigits(valor)
+                    const masked = digits.length <= 11 ? maskCpfInput(valor) : valor
                     setFormData({ ...formData, documento: masked })
+                    if (digits.length === 11) setValidationErrors(prev => ({ ...prev, documento: '' }))
                   }}
-                  className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm"
+                  placeholder="000.000.000-00"
+                  className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm ${validationErrors.documento ? 'border-red-400' : 'border-gray-200 dark:border-neutral-700'}`}
                 />
+                {validationErrors.documento && <p className="text-red-500 text-xs mt-1">{validationErrors.documento}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nacionalidade</label>
-                <input type="text" disabled={saving || isLockedByGeracaoErro} value={formData.nacionalidade} onChange={(e) => setFormData({ ...formData, nacionalidade: e.target.value })} className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nacionalidade *</label>
+                <input type="text" disabled={saving || isLockedByGeracaoErro} value={formData.nacionalidade} onChange={(e) => { setFormData({ ...formData, nacionalidade: e.target.value }); if (e.target.value.trim()) setValidationErrors(prev => ({ ...prev, nacionalidade: '' })) }} className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm ${validationErrors.nacionalidade ? 'border-red-400' : 'border-gray-200 dark:border-neutral-700'}`} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estado Civil</label>
-                <input type="text" disabled={saving || isLockedByGeracaoErro} value={formData.estado_civil} onChange={(e) => setFormData({ ...formData, estado_civil: e.target.value })} className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estado Civil *</label>
+                <select
+                  disabled={saving || isLockedByGeracaoErro}
+                  value={formData.estado_civil}
+                  onChange={(e) => { setFormData({ ...formData, estado_civil: e.target.value }); if (e.target.value) setValidationErrors(prev => ({ ...prev, estado_civil: '' })) }}
+                  className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm ${validationErrors.estado_civil ? 'border-red-400' : 'border-gray-200 dark:border-neutral-700'}`}
+                >
+                  <option value="">Selecione...</option>
+                  {ESTADOS_CIVIS.map(ec => (
+                    <option key={ec} value={ec}>{ec}</option>
+                  ))}
+                </select>
+                {validationErrors.estado_civil && <p className="text-red-500 text-xs mt-1">{validationErrors.estado_civil}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Profissao</label>
-                <input type="text" disabled={saving || isLockedByGeracaoErro} value={formData.profissao} onChange={(e) => setFormData({ ...formData, profissao: e.target.value })} className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Profissão *</label>
+                <input type="text" disabled={saving || isLockedByGeracaoErro} value={formData.profissao} onChange={(e) => { setFormData({ ...formData, profissao: e.target.value }); if (e.target.value.trim()) setValidationErrors(prev => ({ ...prev, profissao: '' })) }} className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm ${validationErrors.profissao ? 'border-red-400' : 'border-gray-200 dark:border-neutral-700'}`} />
+                {validationErrors.profissao && <p className="text-red-500 text-xs mt-1">{validationErrors.profissao}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">E-mail</label>
-                <input type="email" disabled={saving || isLockedByGeracaoErro} value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">E-mail *</label>
+                <input type="email" disabled={saving || isLockedByGeracaoErro} value={formData.email} onChange={(e) => { setFormData({ ...formData, email: e.target.value }); if (e.target.value.trim()) setValidationErrors(prev => ({ ...prev, email: '' })) }} className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm ${validationErrors.email ? 'border-red-400' : 'border-gray-200 dark:border-neutral-700'}`} />
+                {validationErrors.email && <p className="text-red-500 text-xs mt-1">{validationErrors.email}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Telefone (DDD / DDI)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Telefone (DDD / DDI) *</label>
                 <input
                   type="text"
                   disabled={saving || isLockedByGeracaoErro}
                   value={formData.telefone}
-                  onChange={(e) => setFormData({ ...formData, telefone: maskPhoneInput(e.target.value) })}
-                  className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm"
+                  onChange={(e) => { setFormData({ ...formData, telefone: maskPhoneInput(e.target.value) }); if (e.target.value.trim()) setValidationErrors(prev => ({ ...prev, telefone: '' })) }}
+                  className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm ${validationErrors.telefone ? 'border-red-400' : 'border-gray-200 dark:border-neutral-700'}`}
                 />
+                {validationErrors.telefone && <p className="text-red-500 text-xs mt-1">{validationErrors.telefone}</p>}
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Endereco Completo</label>
-                <input type="text" disabled={saving || isLockedByGeracaoErro} value={formData.endereco} onChange={(e) => setFormData({ ...formData, endereco: e.target.value })} className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Endereço Completo *</label>
+                <input type="text" disabled={saving || isLockedByGeracaoErro} value={formData.endereco} onChange={(e) => { setFormData({ ...formData, endereco: e.target.value }); if (e.target.value.trim()) setValidationErrors(prev => ({ ...prev, endereco: '' })) }} className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm ${validationErrors.endereco ? 'border-red-400' : 'border-gray-200 dark:border-neutral-700'}`} />
+                {validationErrors.endereco && <p className="text-red-500 text-xs mt-1">{validationErrors.endereco}</p>}
               </div>
             </div>
             <div className="pt-4 flex justify-end">
@@ -534,9 +641,32 @@ export default function FormularioAssessoriaPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor com Desconto (em euros extenso)</label>
                 <input type="text" disabled={saving || isLockedByGeracaoErro} placeholder="Ex: 800 (oitocentos euros)" value={formData.valor_desconto} onChange={(e) => setFormData({ ...formData, valor_desconto: e.target.value })} className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm" />
               </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor da Consultoria a abater (em euros extenso)</label>
-                <input type="text" disabled={saving || isLockedByGeracaoErro} placeholder="Ex: 200 (duzentos euros)" value={formData.valor_consultoria} onChange={(e) => setFormData({ ...formData, valor_consultoria: e.target.value })} className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm" />
+              <div className="md:col-span-2 space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor da Consultoria a Abater</label>
+                {consultoriaDesconto && consultoriaDesconto.total > 0 ? (
+                  <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 text-sm">
+                    <p className="text-emerald-700 dark:text-emerald-300 font-medium">
+                      {consultoriaDesconto.total} consultoria(s) realizada(s) — Desconto calculado: {consultoriaDesconto.valor} ({numberToPortuguese(consultoriaDesconto.valor)} euros)
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-gray-400 text-xs">Nenhuma consultoria anterior encontrada para este cliente.</p>
+                )}
+                <div>
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Substituir valor (opcional)</label>
+                  <input
+                    type="text"
+                    disabled={saving || isLockedByGeracaoErro}
+                    placeholder="Ex: 200 (duzentos euros) — deixe vazio para usar o cálculo automático"
+                    value={consultoriaOverride}
+                    onChange={(e) => {
+                      setConsultoriaOverride(e.target.value)
+                      const valorFinal = e.target.value.trim() || (consultoriaDesconto ? `${consultoriaDesconto.valor} (${numberToPortuguese(consultoriaDesconto.valor)} euros)` : '')
+                      setFormData({ ...formData, valor_consultoria: valorFinal })
+                    }}
+                    className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm"
+                  />
+                </div>
               </div>
             </div>
             {/* Pendencias removida */}

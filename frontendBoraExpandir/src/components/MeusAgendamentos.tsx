@@ -62,8 +62,6 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
   const [isMarkingEmAndamento, setIsMarkingEmAndamento] = useState(false);
   const [cachedProfiles, setCachedProfiles] = useState<Record<string, string>>({});
   const [servicosCatalogo, setServicosCatalogo] = useState<Service[]>([]);
-  const [usuariosComerciaisC2, setUsuariosComerciaisC2] = useState<any[]>([]);
-  const [selectedVendedorId, setSelectedVendedorId] = useState<string>('');
 
   const effectiveUserId = userId || activeProfile?.id;
 
@@ -103,23 +101,23 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
         setUsuariosSistema(usuarios);
       } catch (e) { console.warn("Erro carregando funcionarios", e) }
 
-      // Fetch C2 commercial users for consultoria assignment
-      if (activeTab === 'consultorias') {
-        try {
-          const c2Users = await juridicoService.getUsuariosComerciaisC2();
-          setUsuariosComerciaisC2(c2Users);
-        } catch (e) { console.warn("Erro carregando usuarios C2", e) }
-      }
-
       if (activeTab === 'consultorias') {
         const data = await juridicoService.getAgendamentos();
         console.log("DEBUG: Consultorias (API Response):", data);
         const dataArr = Array.isArray(data) ? data : (data ? [data] : []);
         console.log("DEBUG: Consultorias (Array):", dataArr);
 
-        // Mostrar todos os agendamentos aprovados na aba de consultoria
+        // Mostrar apenas agendamentos aprovados de tipo 'agendavel' na aba de consultoria
+        const catalogData = await catalogService.getCatalogServices();
+        const typeMap: Record<string, string> = {};
+        catalogData.forEach(s => { typeMap[s.id] = s.type; });
+
         const filtered = dataArr
           .filter((item: any) => item.pagamento_status === 'aprovado')
+          .filter((item: any) => {
+            const serviceType = typeMap[item.produto_id];
+            return serviceType === 'agendavel' || !serviceType;
+          })
           .map((item: any) => {
             const req = item.requer_delegacao;
             console.log(`DEBUG: Item ${item.id} - requer_delegacao: ${req}`);
@@ -140,8 +138,19 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
         } else {
           dataArr = Array.isArray(data) ? data : (data ? [data] : []);
         }
-        console.log("DEBUG: Assessorias (Array):", dataArr);
-        setAssessorias(dataArr);
+
+        // Filtrar apenas serviços do tipo 'fixo' (Contratos/Assessorias)
+        const catalogData = await catalogService.getCatalogServices();
+        const typeMap: Record<string, string> = {};
+        catalogData.forEach(s => { typeMap[s.id] = s.type; });
+
+        const filteredAssessorias = dataArr.filter((item: any) => {
+          const serviceType = typeMap[item.produto_id] || typeMap[item.servico_id];
+          return serviceType === 'fixo';
+        });
+
+        console.log("DEBUG: Assessorias (Array):", filteredAssessorias);
+        setAssessorias(filteredAssessorias);
       }
 
       // Buscar catálogo de serviços para mapear nomes
@@ -159,7 +168,6 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
   // Efeito para verificar segurança quando um item é selecionado
   useEffect(() => {
     if (selectedItem) {
-      setSelectedVendedorId(''); // Reset seleção de vendedor ao abrir novo item
       console.log("DEBUG: Item Selecionado (Raw):", JSON.stringify(selectedItem, null, 2));
 
       const checkSecurity = async () => {
@@ -581,6 +589,35 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                       </div>
                     </div>
 
+                    {activeTab === 'consultorias' && selectedItem.status !== 'realizado' && (
+                      <div className="rounded-xl border border-blue-200 dark:border-blue-800/30 bg-blue-50 dark:bg-blue-950/20">
+                        <button
+                          onClick={async () => {
+                            if (!selectedItem) return;
+                            try {
+                              setIsMarkingEmAndamento(true);
+                              await juridicoService.marcarConsultoriaEmAndamento(selectedItem.id);
+                            } catch (err: any) {
+                              console.warn('Erro ao marcar em andamento:', err);
+                            } finally {
+                              setIsMarkingEmAndamento(false);
+                            }
+                            const targetId = selectedItem.cliente_id || selectedItem.id;
+                            navigate(`/juridico/dna?clienteId=${targetId}&tab=formularios`);
+                          }}
+                          disabled={selectedItem.pagamento_status !== 'aprovado' || isMarkingEmAndamento}
+                          className={`w-full py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex justify-center items-center gap-2 ${
+                            selectedItem.pagamento_status === 'aprovado'
+                              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
+                              : 'bg-gray-100 dark:bg-neutral-800 text-gray-400 cursor-not-allowed'
+                          }`}
+                        >
+                          <Briefcase className="h-3.5 w-3.5" />
+                          {isMarkingEmAndamento ? 'Iniciando...' : 'Iniciar Consultoria'}
+                        </button>
+                      </div>
+                    )}
+
                     <div className={`rounded-xl border transition-all ${checkingSecurity ? 'bg-gray-50 dark:bg-neutral-900 border-gray-200 dark:border-neutral-800 animate-pulse' :
                       hasFormulario ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/30' : 'bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/30'
                       }`}>
@@ -595,23 +632,6 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                           </p>
                         </div>
                       </div>
-                      {activeTab === 'consultorias' && !checkingSecurity && (
-                        <div className="px-3 pb-3">
-                          <button
-                            onClick={() => {
-                              const targetId = selectedItem.cliente_id || selectedItem.id;
-                              navigate(`/juridico/dna?clienteId=${targetId}&tab=formularios`);
-                            }}
-                            className={`w-full py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex justify-center items-center gap-1.5 ${hasFormulario
-                              ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                              : 'bg-rose-500 hover:bg-rose-600 text-white'
-                              }`}
-                          >
-                            <Fingerprint className="h-3 w-3" />
-                            {hasFormulario ? 'Inspecionar Respostas' : 'Preencher Formulario'}
-                          </button>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -698,44 +718,41 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
 
             {/* Footer com acoes */}
             <div className="sticky bottom-0 z-40 px-6 py-4 border-t border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-950">
-              {activeTab === 'consultorias' && selectedItem.status !== 'realizado' && (
-                <div className="mb-3">
-                  <label className="block text-[10px] text-gray-400 font-semibold uppercase tracking-widest mb-1">
-                    Selecione o vendedor C2 que receberá este cliente
-                  </label>
-                  <select
-                    value={selectedVendedorId}
-                    onChange={e => setSelectedVendedorId(e.target.value)}
-                    className="w-full bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-                  >
-                    <option value="">-- Selecionar vendedor C2 --</option>
-                    {usuariosComerciaisC2.map((u: any) => (
-                      <option key={u.id} value={u.id}>{u.full_name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
               <div className="flex items-center gap-2">
                 {activeTab === 'consultorias' && (
+                  <button
+                    onClick={async () => {
+                      if (!selectedItem) return;
+                      try {
+                        setIsMarkingRealizada(true);
+                        await juridicoService.marcarConsultoriaRealizada(selectedItem.id);
+                        toast.success('Consultoria marcada como realizada e cliente movido para Pos Consultoria.');
+                        setSelectedItem(null);
+                        fetchData();
+                      } catch (err: any) {
+                        toast.error('Erro ao marcar consultoria: ' + (err.response?.data?.message || err.message));
+                      } finally {
+                        setIsMarkingRealizada(false);
+                      }
+                    }}
+                    disabled={isMarkingRealizada || selectedItem.status === 'realizado'}
+                    className="flex-1 px-4 py-3 font-bold text-xs bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <CheckSquare className="h-3.5 w-3.5" />
+                    {isMarkingRealizada ? 'Salvando...' : 'Realizada'}
+                  </button>
+                )}
+
+                {activeTab === 'assessorias' && (
                   <>
                     <button
-                      onClick={async () => {
-                        if (!selectedItem) return;
-                        try {
-                          setIsMarkingEmAndamento(true);
-                          await juridicoService.marcarConsultoriaEmAndamento(selectedItem.id);
-                        } catch (err: any) {
-                          console.warn('Erro ao marcar em andamento:', err);
-                        } finally {
-                          setIsMarkingEmAndamento(false);
-                        }
-                        navigate(`/juridico/assessoria?clienteId=${selectedItem.cliente_id}`);
+                      onClick={() => {
+                        const clienteId = selectedItem.cliente_id;
+                        const produtoId = selectedItem.produto_id || selectedItem.servico_id || '';
+                        navigate(`/juridico/assessoria?clienteId=${clienteId}&produtoId=${produtoId}&agendamentoId=${selectedItem.id}`);
                       }}
-                      disabled={selectedItem.pagamento_status !== 'aprovado' || !hasFormulario}
-                      className={`flex-1 px-4 py-3 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 ${selectedItem.pagamento_status === 'aprovado' && hasFormulario
-                        ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
-                        : 'bg-gray-100 dark:bg-neutral-800 text-gray-400 cursor-not-allowed'
-                        }`}
+                      disabled={!selectedItem.cliente_id}
+                      className="flex-1 px-4 py-3 font-bold text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       <Briefcase className="h-3.5 w-3.5" /> Atendimento
                     </button>
@@ -745,17 +762,17 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                         if (!selectedItem) return;
                         try {
                           setIsMarkingRealizada(true);
-                          await juridicoService.marcarConsultoriaRealizada(selectedItem.id, selectedVendedorId || undefined);
-                          toast.success('Consultoria marcada como realizada e cliente movido para Pos Consultoria.');
+                          await juridicoService.marcarConsultoriaRealizada(selectedItem.id);
+                          toast.success('Assessoria marcada como realizada.');
                           setSelectedItem(null);
                           fetchData();
                         } catch (err: any) {
-                          toast.error('Erro ao marcar consultoria: ' + (err.response?.data?.message || err.message));
+                          toast.error('Erro ao marcar assessoria: ' + (err.response?.data?.message || err.message));
                         } finally {
                           setIsMarkingRealizada(false);
                         }
                       }}
-                      disabled={isMarkingRealizada || selectedItem.status === 'realizado' || !selectedVendedorId}
+                      disabled={isMarkingRealizada || selectedItem.status === 'realizado'}
                       className="flex-1 px-4 py-3 font-bold text-xs bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       <CheckSquare className="h-3.5 w-3.5" />

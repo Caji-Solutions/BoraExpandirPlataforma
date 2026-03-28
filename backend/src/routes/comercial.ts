@@ -39,6 +39,9 @@ comercial.post('/contratos/:id/cancelar', authMiddleware, ComercialController.ca
 // Upload comprovante de multa
 comercial.post('/contratos/:id/multa/comprovante', authMiddleware, upload.single('file'), ComercialController.uploadComprovanteMulta.bind(ComercialController))
 
+// Contagem de consultorias realizadas por cliente (para desconto)
+comercial.get('/consultorias-count/:clienteId', ComercialController.getConsultoriasCount.bind(ComercialController))
+
 // Pos-Consultoria (clientes delegados ao vendedor C2)
 comercial.get('/pos-consultoria', authMiddleware, ComercialController.getPosConsultoria.bind(ComercialController))
 

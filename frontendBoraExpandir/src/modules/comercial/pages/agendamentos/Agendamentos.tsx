@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import type { Agendamento } from '../../../types/comercial'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import { GerenciamentoAgendamentoModal } from '../../components/GerenciamentoAgendamentoModal'
+import { getCatalogServices } from '@/modules/adm/services/catalogService'
 
 const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'; label: string }> = {
 	agendado: {
@@ -49,9 +50,15 @@ export default function AgendamentosPage({ agendamentos, onRefresh }: Agendament
 	const [search, setSearch] = useState('')
 	const [status, setStatus] = useState<'todos' | Agendamento['status']>('todos')
 	const [agendamentoSelecionado, setAgendamentoSelecionado] = useState<Agendamento | null>(null)
+	const [serviceTypes, setServiceTypes] = useState<Record<string, string>>({})
 
 	useEffect(() => {
 		onRefresh?.()
+		getCatalogServices().then(services => {
+			const map: Record<string, string> = {}
+			services.forEach(s => { map[s.id] = s.type })
+			setServiceTypes(map)
+		}).catch(err => console.warn('Erro ao carregar catalogo:', err))
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
 
@@ -226,7 +233,9 @@ export default function AgendamentosPage({ agendamentos, onRefresh }: Agendament
 
 											{/* Coluna Formulário */}
 											<td className="px-6 py-4 align-middle text-center">
-												{agendamento.cliente_is_user ? (
+												{agendamento.produto_id && serviceTypes[agendamento.produto_id] === 'fixo' ? (
+													<span className="text-gray-400">----</span>
+												) : agendamento.cliente_is_user ? (
 													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
 														<span className="w-2 h-2 rounded-full bg-emerald-500" /> Preenchido
 													</span>

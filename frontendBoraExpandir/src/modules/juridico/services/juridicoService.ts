@@ -60,6 +60,7 @@ export interface ClienteComResponsavel {
   responsavel?: FuncionarioJuridico | null;
   data_agendamento?: string;
   status_agendamento?: string;
+  perfil_unificado?: { data: Record<string, any>; metadata?: Record<string, any> };
 }
 
 /**

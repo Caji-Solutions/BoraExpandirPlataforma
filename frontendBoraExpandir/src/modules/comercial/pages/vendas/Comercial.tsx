@@ -847,6 +847,7 @@ export default function Comercial() {
           hora: horaStr,
           duracao_minutos: b.duracao_minutos || 60,
           produto: catalogMap.get(b.produto_id) || b.produto_id || 'Serviço',
+          produto_id: b.produto_id || '',
           status: b.status as any,
           cliente_is_user: b.cliente_is_user,
           pagamento_status: b.pagamento_status || null,

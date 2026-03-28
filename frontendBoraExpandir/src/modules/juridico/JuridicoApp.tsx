@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { Home, FolderOpen, FileSearch, CheckSquare, Settings, Users, FileStack, Dna, ClipboardCheck, Clock } from "lucide-react";
+import { Home, FolderOpen, FileSearch, CheckSquare, Settings, Users, FileStack, Dna, Clock } from "lucide-react";
 import { Sidebar } from "@/components/ui/Sidebar";
 import type { SidebarGroup } from "@/components/ui/Sidebar";
 import { Dashboard } from "./pages/Dashboard";
@@ -116,7 +116,6 @@ const Index = () => {
         { label: "Meus Processos", to: "/juridico/processos", icon: FolderOpen },
         { label: "Fila de Análise", to: "/juridico/analise", icon: FileSearch },
         { label: "Tarefas", to: "/juridico/tarefas", icon: CheckSquare },
-        { label: "Assessoria Jurídica", to: "/juridico/assessoria", icon: ClipboardCheck },
         { label: "Agendamentos", to: "/juridico/meus-agendamentos", icon: Clock },
       ],
     },

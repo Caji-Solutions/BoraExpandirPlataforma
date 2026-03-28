@@ -557,9 +557,10 @@ export default function ServiceCatalog() {
                 />
               </div>
 
+              {formData.type !== 'fixo' && (
               <div className="space-y-2">
                 <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">
-                  Valor Unitario (EUR){formData.type === 'fixo' && <span className="ml-1 font-normal normal-case tracking-normal text-muted-foreground/70">— opcional para Contratos</span>}
+                  Valor Unitario (EUR)
                 </Label>
                 <div className="relative">
                   <Euro className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -572,6 +573,7 @@ export default function ServiceCatalog() {
                   />
                 </div>
               </div>
+              )}
 
               <div className="space-y-2">
                 <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Duracao Estimada</Label>

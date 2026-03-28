@@ -87,9 +87,20 @@ export function PhoneInput({ value, onChange, required, className, placeholder, 
     setIsOpen(false)
   }
 
+  const formatBrazilianNumber = (digits: string): string => {
+    const limited = digits.slice(0, 11)
+    if (limited.length <= 2) return limited.length > 0 ? `(${limited}` : ''
+    if (limited.length <= 7) return `(${limited.slice(0, 2)}) ${limited.slice(2)}`
+    return `(${limited.slice(0, 2)}) ${limited.slice(2, 7)}-${limited.slice(7)}`
+  }
+
+  const isBrazil = matchingCountry.code === 'BR'
+  const displayNumber = isBrazil && rawNumber ? formatBrazilianNumber(rawNumber) : rawNumber
+
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/\D/g, '')
-    onChange(`+${matchingCountry.ddi}${val}`)
+    const limited = isBrazil ? val.slice(0, 11) : val
+    onChange(`+${matchingCountry.ddi}${limited}`)
   }
 
   return (
@@ -145,7 +156,7 @@ export function PhoneInput({ value, onChange, required, className, placeholder, 
           type="tel"
           id={id}
           name={name}
-          value={rawNumber}
+          value={displayNumber}
           onChange={handleNumberChange}
           required={required}
           className="w-full py-2 px-3 text-sm bg-transparent text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none"

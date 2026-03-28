@@ -785,14 +785,6 @@ export default function UserManagement() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-blue-500 hover:text-blue-700"
-                            onClick={() => openEditModal(member)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
                             className="h-8 w-8 text-destructive hover:text-destructive/80"
                             onClick={() => handleDelete(member.id, member.full_name || "este colaborador")}
                           >

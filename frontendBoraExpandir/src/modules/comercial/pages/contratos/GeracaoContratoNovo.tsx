@@ -1,8 +1,10 @@
-import { useState } from 'react'
-import { X, Loader, Check, ArrowRight, Copy, Mail } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { X, Loader, Check, ArrowRight, Copy, Mail, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { CONTRATOS_PDF_MOCK } from '../../lib/pdfContratos'
-import type { Cliente, ContratoFormData } from '../../../types/comercial'
+import type { Cliente, ContratoFormData } from '../../../../types/comercial'
 import Toast, { useToast, ToastContainer } from '@/components/ui/Toast'
+import { getConsultoriasCount } from '../../services/comercialService'
+import { maskCpfInput, onlyDigits } from '../../../../utils/formatters'
 
 interface GeracaoContratoNovoProps {
   onClose: () => void
@@ -19,6 +21,47 @@ interface ContratoState {
   formaPagamento: 'stripe' | 'mercado_pago' | ''
   conteudo: string
   linkPagamento: string
+  cpf: string
+  email: string
+  estadoCivil: string
+  consultoriaDescontoSistema: number
+  consultoriaDescontoOverride: string
+}
+
+const ESTADOS_CIVIS = [
+  'Solteiro(a)',
+  'Casado(a)',
+  'Divorciado(a)',
+  'Viúvo(a)',
+  'União Estável'
+]
+
+const ITEMS_PER_PAGE = 10
+
+function numberToPortuguese(n: number): string {
+  if (n === 0) return 'zero'
+  const units = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove']
+  const teens = ['dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove']
+  const tens = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa']
+  const hundreds = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos']
+
+  if (n === 100) return 'cem'
+  if (n >= 1000) {
+    const mil = Math.floor(n / 1000)
+    const rest = n % 1000
+    const milStr = mil === 1 ? 'mil' : `${numberToPortuguese(mil)} mil`
+    return rest === 0 ? milStr : `${milStr} e ${numberToPortuguese(rest)}`
+  }
+  if (n >= 100) {
+    const rest = n % 100
+    return rest === 0 ? hundreds[Math.floor(n / 100)] : `${hundreds[Math.floor(n / 100)]} e ${numberToPortuguese(rest)}`
+  }
+  if (n >= 20) {
+    const rest = n % 10
+    return rest === 0 ? tens[Math.floor(n / 10)] : `${tens[Math.floor(n / 10)]} e ${units[rest]}`
+  }
+  if (n >= 10) return teens[n - 10]
+  return units[n]
 }
 
 
@@ -32,40 +75,114 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
     formaPagamento: '',
     conteudo: '',
     linkPagamento: '',
+    cpf: '',
+    email: '',
+    estadoCivil: '',
+    consultoriaDescontoSistema: 0,
+    consultoriaDescontoOverride: '',
   })
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const toast = useToast()
 
+  // Filters
+  const [filters, setFilters] = useState({
+    id: '',
+    nome: '',
+    servico: '',
+    prioridade: 'todos' as 'todos' | 'high' | 'medium' | 'low',
+  })
+  const [currentPage, setCurrentPage] = useState(1)
+
   const clientesDisponiveis = clientes || []
+
+  // Separate leads and clients
+  const leads = useMemo(() => clientesDisponiveis.filter(c => c.status === 'LEAD'), [clientesDisponiveis])
+  const clientesAtivos = useMemo(() => clientesDisponiveis.filter(c => c.status !== 'LEAD'), [clientesDisponiveis])
+
+  // Filtered list combining both
+  const filteredClientes = useMemo(() => {
+    const all = [...clientesAtivos, ...leads]
+    return all.filter(c => {
+      const matchesId = !filters.id || c.id.toLowerCase().includes(filters.id.toLowerCase()) || (c.client_id && c.client_id.toLowerCase().includes(filters.id.toLowerCase()))
+      const matchesNome = !filters.nome || c.nome.toLowerCase().includes(filters.nome.toLowerCase())
+      return matchesId && matchesNome
+    })
+  }, [clientesAtivos, leads, filters])
+
+  const totalPages = Math.max(1, Math.ceil(filteredClientes.length / ITEMS_PER_PAGE))
+  const paginatedClientes = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return filteredClientes.slice(start, start + ITEMS_PER_PAGE)
+  }, [filteredClientes, currentPage])
+
+  // Reset page on filter change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filters])
+
   const clienteSelecionado = clientesDisponiveis.find(c => c.id === contrato.clienteId)
   const templateSelecionado = CONTRATOS_PDF_MOCK.find(t => t.id === contrato.templateId)
+  const isLead = clienteSelecionado?.status === 'LEAD'
 
-  console.log('Clientes recebidos:', clientes);
-  console.log('Cliente selecionado:', clienteSelecionado);
-  console.log('Template selecionado:', templateSelecionado);
-  console.log('Estado do contrato:', contrato);
-  console.log('Etapa atual:', etapa);
+  // Fetch consultancy discount when client is selected
+  useEffect(() => {
+    if (!contrato.clienteId) return
+    getConsultoriasCount(contrato.clienteId)
+      .then(data => {
+        setContrato(prev => ({ ...prev, consultoriaDescontoSistema: data.valor_desconto }))
+      })
+      .catch(() => {
+        setContrato(prev => ({ ...prev, consultoriaDescontoSistema: 0 }))
+      })
+  }, [contrato.clienteId])
 
+  // Pre-fill email from selected client
+  useEffect(() => {
+    if (clienteSelecionado) {
+      setContrato(prev => ({
+        ...prev,
+        email: prev.email || clienteSelecionado.email || '',
+        cpf: prev.cpf || (clienteSelecionado.documento ? onlyDigits(clienteSelecionado.documento) : ''),
+      }))
+    }
+  }, [clienteSelecionado])
+
+  const consultoriaDescontoFinal = contrato.consultoriaDescontoOverride
+    ? parseFloat(contrato.consultoriaDescontoOverride) || 0
+    : contrato.consultoriaDescontoSistema
+
+  const consultoriaDescontoExtenso = consultoriaDescontoFinal > 0
+    ? `${consultoriaDescontoFinal} (${numberToPortuguese(Math.round(consultoriaDescontoFinal))} euros)`
+    : '0 (zero)'
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {}
+
+    if (!contrato.clienteId) errors.clienteId = 'Selecione um cliente'
+    if (!contrato.templateId) errors.templateId = 'Selecione um tipo de contrato'
+    if (!contrato.valor) errors.valor = 'Informe o valor'
+    if (!contrato.email?.trim()) errors.email = 'Informe o email'
+    if (!contrato.estadoCivil) errors.estadoCivil = 'Selecione o estado civil'
+
+    const cpfDigits = onlyDigits(contrato.cpf)
+    if (!cpfDigits) {
+      errors.cpf = 'Informe o CPF'
+    } else if (cpfDigits.length !== 11) {
+      errors.cpf = 'CPF deve ter exatamente 11 dígitos'
+    }
+
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
+  }
 
   const handleGerarContrato = async () => {
-    console.log('handleGerarContrato chamado');
-    console.log('contrato.clienteId:', contrato.clienteId);
-    console.log('contrato.templateId:', contrato.templateId);
-    console.log('contrato.valor:', contrato.valor);
-    
-    if (!contrato.clienteId || !contrato.templateId || !contrato.valor) {
-      console.log('Campos vazios detectados - exibindo aviso');
-      console.log('toast object:', toast);
-      toast.warning('⚠️ Preencha todos os campos')
-      console.log('Toast chamado com warning');
+    if (!validateForm()) {
+      toast.warning('Preencha todos os campos obrigatórios')
       return
     }
 
     setLoading(true)
-    console.log('Iniciando a geracao do contrato...');
-    console.log('Dados do contrato antes da geracao:', contrato);
-    console.log('Etapa atual antes da geracao:', etapa);
-    
     try {
       await new Promise(resolve => setTimeout(resolve, 1500))
 
@@ -76,7 +193,7 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
       const conteudo = templateSelecionado.gerar(
         {
           nome: clienteSelecionado.nome,
-          email: clienteSelecionado.email,
+          email: contrato.email,
           telefone: clienteSelecionado.telefone,
           endereco: clienteSelecionado.endereco,
           cidade: '',
@@ -90,21 +207,18 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
 
       setContrato(prev => ({ ...prev, conteudo }))
       setEtapa('pagamento')
-      toast.success('✅ Contrato gerado com sucesso!')
-      console.log('✅ Contrato gerado com sucesso!')
+      toast.success('Contrato gerado com sucesso!')
     } catch (err) {
-      console.error('❌ Erro:', err)
-      toast.error('❌ Erro ao gerar contrato')
-      console.log('Erro ao gerar contrato:');
+      console.error('Erro:', err)
+      toast.error('Erro ao gerar contrato')
     } finally {
       setLoading(false)
-      console.log('Geracao do contrato concluida.');
     }
   }
 
   const handleConfirmarPagamento = () => {
     if (!contrato.formaPagamento) {
-      toast.warning('⚠️ Selecione uma plataforma de pagamento')
+      toast.warning('Selecione uma plataforma de pagamento')
       return
     }
 
@@ -116,7 +230,7 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
   const handleCopyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text)
     setCopiedField(field)
-    toast.success('📋 Copiado para a área de transferência!')
+    toast.success('Copiado para a área de transferência!')
     setTimeout(() => setCopiedField(null), 2000)
   }
 
@@ -136,30 +250,51 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
         conteudo_html: contrato.conteudo,
       }
 
+      // Save lead data if contracting party is a LEAD
+      if (isLead && clienteSelecionado) {
+        const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || ''
+        const token = localStorage.getItem('auth_token')
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (token) headers.Authorization = `Bearer ${token}`
+        const updatePayload: Record<string, any> = {}
+        if (contrato.email) updatePayload.email = contrato.email
+        if (contrato.cpf) updatePayload.cpf = onlyDigits(contrato.cpf)
+        if (contrato.estadoCivil) updatePayload.estado_civil = contrato.estadoCivil
+
+        if (Object.keys(updatePayload).length > 0) {
+          await fetch(`${backendUrl}/cliente/clientes/${contrato.clienteId}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify(updatePayload)
+          }).catch(err => console.error('Erro ao salvar dados do lead:', err))
+        }
+      }
+
       await onSave(contratoData)
-      toast.success('✅ Contrato enviado ao cliente com sucesso!')
+      toast.success('Contrato enviado ao cliente com sucesso!')
       onClose()
     } catch (err) {
-      console.error('❌ Erro:', err)
-      toast.error('❌ Erro ao enviar contrato')
+      console.error('Erro:', err)
+      toast.error('Erro ao enviar contrato')
     } finally {
       setLoading(false)
     }
   }
-  const handleClientChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const clienteId = event.target.value;
-    const cliente = clientes?.find(c => c.id === clienteId);
-    console.log('Cliente selecionado no dropdown:', clienteId, cliente);
-    setContrato(prev => ({ ...prev, clienteId }));
-  };
+
+  const handleSelectCliente = (clienteId: string) => {
+    setContrato(prev => ({ ...prev, clienteId, email: '', cpf: '' }))
+    setValidationErrors(prev => ({ ...prev, clienteId: '' }))
+  }
+
+  const allRequiredFilled = contrato.clienteId && contrato.templateId && contrato.valor && contrato.email?.trim() && contrato.estadoCivil && onlyDigits(contrato.cpf).length === 11
 
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-          
+        <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+
           {/* Header com Etapas */}
-          <div className="sticky top-0 bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4">
+          <div className="sticky top-0 bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 z-10">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-white">Gerar Contrato</h2>
               <button onClick={onClose} className="hover:bg-white/20 p-2 rounded transition text-white">
@@ -193,26 +328,203 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
             {/* ETAPA 1: SELEÇÃO */}
             {etapa === 'selecao' && (
               <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Cliente */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Cliente *
-                    </label>
-                    <select
-                      value={contrato.clienteId}
-                      onChange={handleClientChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                    >
-                      <option value="">Selecione...</option>
-                      {clientes?.map(client => (
-                        <option key={client.id} value={client.id}>
-                          {client.nome}
-                        </option>
-                      ))}
-                    </select>
+
+                {/* Client Selection with Filters */}
+                <div className="border border-gray-200 rounded-lg p-4 space-y-4">
+                  <h3 className="font-semibold text-gray-800 text-lg">Selecionar Cliente *</h3>
+                  {validationErrors.clienteId && <p className="text-red-500 text-sm">{validationErrors.clienteId}</p>}
+
+                  {/* Filters */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">ID Cliente</label>
+                      <input
+                        value={filters.id}
+                        onChange={e => setFilters(f => ({ ...f, id: e.target.value }))}
+                        placeholder="Ex: 001"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Nome</label>
+                      <input
+                        value={filters.nome}
+                        onChange={e => setFilters(f => ({ ...f, nome: e.target.value }))}
+                        placeholder="Filtrar por nome..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Prioridade</label>
+                      <select
+                        value={filters.prioridade}
+                        onChange={e => setFilters(f => ({ ...f, prioridade: e.target.value as any }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      >
+                        <option value="todos">Todas</option>
+                        <option value="high">Alta</option>
+                        <option value="medium">Média</option>
+                        <option value="low">Baixa</option>
+                      </select>
+                    </div>
+                    <div className="flex items-end">
+                      {(filters.id || filters.nome || filters.prioridade !== 'todos') && (
+                        <button
+                          onClick={() => setFilters({ id: '', nome: '', servico: '', prioridade: 'todos' })}
+                          className="text-sm text-emerald-600 hover:text-emerald-700 font-semibold"
+                        >
+                          Limpar Filtros
+                        </button>
+                      )}
+                    </div>
                   </div>
 
+                  {/* Client List */}
+                  <div className="border border-gray-200 rounded-lg overflow-hidden max-h-64 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Tipo</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Nome</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Email</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Telefone</th>
+                          <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Ação</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {paginatedClientes.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                              Nenhum cliente encontrado
+                            </td>
+                          </tr>
+                        ) : (
+                          paginatedClientes.map(c => {
+                            const cIsLead = c.status === 'LEAD'
+                            const isSelected = contrato.clienteId === c.id
+                            return (
+                              <tr
+                                key={c.id}
+                                className={`cursor-pointer transition-colors ${isSelected ? 'bg-emerald-50 border-l-4 border-emerald-500' : cIsLead ? 'bg-amber-50/50 hover:bg-amber-50' : 'hover:bg-gray-50'}`}
+                                onClick={() => handleSelectCliente(c.id)}
+                              >
+                                <td className="px-4 py-2">
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${cIsLead ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                    {cIsLead ? '👤 Lead' : '👥 Cliente'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-2 font-medium text-gray-900">{c.nome}</td>
+                                <td className="px-4 py-2 text-gray-600">{c.email || '—'}</td>
+                                <td className="px-4 py-2 text-gray-600">{c.telefone || '—'}</td>
+                                <td className="px-4 py-2 text-center">
+                                  {isSelected && <Check size={18} className="text-emerald-600 mx-auto" />}
+                                </td>
+                              </tr>
+                            )
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination */}
+                  {filteredClientes.length > ITEMS_PER_PAGE && (
+                    <div className="flex items-center justify-between text-sm text-gray-600">
+                      <span>
+                        Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1} a {Math.min(currentPage * ITEMS_PER_PAGE, filteredClientes.length)} de {filteredClientes.length}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                          className="p-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-30 transition"
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum: number
+                          if (totalPages <= 5) pageNum = i + 1
+                          else if (currentPage <= 3) pageNum = i + 1
+                          else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i
+                          else pageNum = currentPage - 2 + i
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`w-8 h-8 rounded-lg text-sm font-medium transition ${currentPage === pageNum ? 'bg-emerald-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+                            >
+                              {pageNum}
+                            </button>
+                          )
+                        })}
+                        <button
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          disabled={currentPage === totalPages}
+                          className="p-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-30 transition"
+                        >
+                          <ChevronRight size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Form Fields */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* CPF */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">CPF *</label>
+                    <input
+                      type="text"
+                      value={maskCpfInput(contrato.cpf)}
+                      onChange={(e) => {
+                        const digits = onlyDigits(e.target.value).slice(0, 11)
+                        setContrato(prev => ({ ...prev, cpf: digits }))
+                        if (digits.length === 11) setValidationErrors(prev => ({ ...prev, cpf: '' }))
+                      }}
+                      placeholder="000.000.000-00"
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${validationErrors.cpf ? 'border-red-400' : 'border-gray-300'}`}
+                    />
+                    {validationErrors.cpf && <p className="text-red-500 text-xs mt-1">{validationErrors.cpf}</p>}
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Email *</label>
+                    <input
+                      type="email"
+                      value={contrato.email}
+                      onChange={(e) => {
+                        setContrato(prev => ({ ...prev, email: e.target.value }))
+                        if (e.target.value.trim()) setValidationErrors(prev => ({ ...prev, email: '' }))
+                      }}
+                      placeholder="email@exemplo.com"
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${validationErrors.email ? 'border-red-400' : 'border-gray-300'}`}
+                    />
+                    {validationErrors.email && <p className="text-red-500 text-xs mt-1">{validationErrors.email}</p>}
+                  </div>
+
+                  {/* Estado Civil */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Estado Civil *</label>
+                    <select
+                      value={contrato.estadoCivil}
+                      onChange={(e) => {
+                        setContrato(prev => ({ ...prev, estadoCivil: e.target.value }))
+                        if (e.target.value) setValidationErrors(prev => ({ ...prev, estadoCivil: '' }))
+                      }}
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${validationErrors.estadoCivil ? 'border-red-400' : 'border-gray-300'}`}
+                    >
+                      <option value="">Selecione...</option>
+                      {ESTADOS_CIVIS.map(ec => (
+                        <option key={ec} value={ec}>{ec}</option>
+                      ))}
+                    </select>
+                    {validationErrors.estadoCivil && <p className="text-red-500 text-xs mt-1">{validationErrors.estadoCivil}</p>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Valor */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -221,11 +533,15 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
                     <input
                       type="number"
                       value={contrato.valor}
-                      onChange={(e) => setContrato(prev => ({ ...prev, valor: e.target.value }))}
+                      onChange={(e) => {
+                        setContrato(prev => ({ ...prev, valor: e.target.value }))
+                        if (e.target.value) setValidationErrors(prev => ({ ...prev, valor: '' }))
+                      }}
                       placeholder="0,00"
                       step="0.01"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${validationErrors.valor ? 'border-red-400' : 'border-gray-300'}`}
                     />
+                    {validationErrors.valor && <p className="text-red-500 text-xs mt-1">{validationErrors.valor}</p>}
                   </div>
 
                   {/* Template */}
@@ -235,8 +551,11 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
                     </label>
                     <select
                       value={contrato.templateId}
-                      onChange={(e) => setContrato(prev => ({ ...prev, templateId: e.target.value }))}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      onChange={(e) => {
+                        setContrato(prev => ({ ...prev, templateId: e.target.value }))
+                        if (e.target.value) setValidationErrors(prev => ({ ...prev, templateId: '' }))
+                      }}
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${validationErrors.templateId ? 'border-red-400' : 'border-gray-300'}`}
                     >
                       <option value="">Selecione...</option>
                       {CONTRATOS_PDF_MOCK.map(template => (
@@ -245,29 +564,54 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
                         </option>
                       ))}
                     </select>
+                    {validationErrors.templateId && <p className="text-red-500 text-xs mt-1">{validationErrors.templateId}</p>}
+                  </div>
+
+                  {/* Consultancy Discount */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Valor da Consultoria a Abater
+                    </label>
+                    <div className="space-y-2">
+                      <div className="px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-700">
+                        <span className="font-medium">Sistema:</span> {consultoriaDescontoExtenso}
+                      </div>
+                      <input
+                        type="number"
+                        value={contrato.consultoriaDescontoOverride}
+                        onChange={(e) => setContrato(prev => ({ ...prev, consultoriaDescontoOverride: e.target.value }))}
+                        placeholder="Sobrescrever valor (opcional)"
+                        step="0.01"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* Informações do Cliente */}
+                {/* Informações do Cliente Selecionado */}
                 {clienteSelecionado && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h3 className="font-semibold text-blue-900 mb-3">Dados do Cliente</h3>
+                  <div className={`border rounded-lg p-4 ${isLead ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200'}`}>
+                    <h3 className={`font-semibold mb-3 ${isLead ? 'text-amber-900' : 'text-blue-900'}`}>
+                      Dados do {isLead ? 'Lead' : 'Cliente'} Selecionado
+                    </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                       <div>
                         <p className="text-gray-600 font-medium">Nome:</p>
-                        <p className="text-blue-900 break-words">{clienteSelecionado.nome}</p>
+                        <p className={`${isLead ? 'text-amber-900' : 'text-blue-900'} break-words`}>{clienteSelecionado.nome}</p>
                       </div>
                       <div>
                         <p className="text-gray-600 font-medium">Email:</p>
-                        <p className="text-blue-900 break-all">{clienteSelecionado.email}</p>
+                        <p className={`${isLead ? 'text-amber-900' : 'text-blue-900'} break-all`}>{clienteSelecionado.email || '—'}</p>
                       </div>
                       <div>
                         <p className="text-gray-600 font-medium">Telefone:</p>
-                        <p className="text-blue-900">{clienteSelecionado.telefone}</p>
+                        <p className={isLead ? 'text-amber-900' : 'text-blue-900'}>{clienteSelecionado.telefone}</p>
                       </div>
                       <div>
-                        <p className="text-gray-600 font-medium">Endereço:</p>
-                        <p className="text-blue-900 break-words">{clienteSelecionado.endereco}</p>
+                        <p className="text-gray-600 font-medium">Status:</p>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${isLead ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                          {isLead ? '👤 Lead' : '👥 Cliente'}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -283,7 +627,7 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
                   </button>
                   <button
                     onClick={handleGerarContrato}
-                    disabled={loading || !contrato.clienteId || !contrato.templateId || !contrato.valor}
+                    disabled={loading || !allRequiredFilled}
                     className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
                   >
                     {loading ? (
@@ -312,7 +656,9 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
                     <p><strong>Cliente:</strong> {clienteSelecionado?.nome}</p>
                     <p><strong>Template:</strong> {templateSelecionado?.nome}</p>
                     <p><strong>Valor:</strong> R$ {parseFloat(contrato.valor).toFixed(2)}</p>
-                    <p><strong>Status:</strong> Aguardando Pagamento</p>
+                    <p><strong>Desconto Consultoria:</strong> {consultoriaDescontoExtenso}</p>
+                    <p><strong>CPF:</strong> {maskCpfInput(contrato.cpf)}</p>
+                    <p><strong>Estado Civil:</strong> {contrato.estadoCivil}</p>
                   </div>
                 </div>
 
@@ -395,10 +741,13 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <h3 className="font-semibold text-blue-900 mb-3">Detalhes do Contrato</h3>
                     <div className="space-y-2 text-sm text-blue-800">
-                      <p><strong>Cliente:</strong> {clienteSelecionado?.nome}</p>
-                      <p><strong>Email:</strong> {clienteSelecionado?.email}</p>
+                      <p><strong>Cliente:</strong> {clienteSelecionado?.nome} {isLead && <span className="text-amber-600 font-bold">(Lead)</span>}</p>
+                      <p><strong>Email:</strong> {contrato.email}</p>
+                      <p><strong>CPF:</strong> {maskCpfInput(contrato.cpf)}</p>
+                      <p><strong>Estado Civil:</strong> {contrato.estadoCivil}</p>
                       <p><strong>Template:</strong> {templateSelecionado?.nome}</p>
                       <p><strong>Valor:</strong> R$ {parseFloat(contrato.valor).toFixed(2)}</p>
+                      <p><strong>Desconto Consultoria:</strong> {consultoriaDescontoExtenso}</p>
                       <p><strong>Plataforma:</strong> {contrato.formaPagamento === 'stripe' ? 'Stripe' : 'Mercado Pago'}</p>
                     </div>
                   </div>
@@ -422,7 +771,7 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
                         </button>
                       </div>
                       {copiedField === 'link' && (
-                        <p className="text-xs text-green-700 font-semibold">✅ Copiado!</p>
+                        <p className="text-xs text-green-700 font-semibold">Copiado!</p>
                       )}
                     </div>
                   </div>

@@ -738,17 +738,25 @@ class ComercialController {
 
             const contrato = await ContratoServicoRepository.createContrato(contratoPayload)
 
-            // Mover o cliente para aguardando_assessoria automaticamente
-            await supabase.from('clientes').update({ stage: 'aguardando_assessoria', status: 'aguardando_assessoria' }).eq('id', cliente_id);
-            const { data: processoAtivo } = await supabase
-                .from('processos')
-                .select('id')
+            // Verificar se e o primeiro contrato/produto do cliente
+            const { count: totalContratos } = await supabase
+                .from('contratos_servicos')
+                .select('id', { count: 'exact', head: true })
                 .eq('cliente_id', cliente_id)
-                .order('criado_em', { ascending: false })
-                .limit(1)
-                .single();
-            if (processoAtivo && processoAtivo.id) {
-               await supabase.from('processos').update({ status: 'aguardando_assessoria' }).eq('id', processoAtivo.id);
+
+            // Se for o primeiro contrato (assessoria), pular timeline para aguardando_assessoria
+            if ((totalContratos || 0) <= 1) {
+                await supabase.from('clientes').update({ stage: 'aguardando_assessoria', status: 'aguardando_assessoria' }).eq('id', cliente_id);
+                const { data: processoAtivo } = await supabase
+                    .from('processos')
+                    .select('id')
+                    .eq('cliente_id', cliente_id)
+                    .order('criado_em', { ascending: false })
+                    .limit(1)
+                    .single();
+                if (processoAtivo && processoAtivo.id) {
+                   await supabase.from('processos').update({ status: 'aguardando_assessoria' }).eq('id', processoAtivo.id);
+                }
             }
 
             const contratoCompleto = await ContratoServicoRepository.getContratoById(contrato.id)
@@ -1075,6 +1083,18 @@ class ComercialController {
 
             if (contrato.cliente_id) {
                 await DNAService.mergeDNA(contrato.cliente_id, mergedDraft, 'MEDIUM')
+
+                // Salvar CPF, Email e Estado Civil na tabela clientes
+                const clienteUpdate: Record<string, any> = {}
+                if (mergedDraft.email) clienteUpdate.email = mergedDraft.email
+                if (mergedDraft.estado_civil) clienteUpdate.estado_civil = mergedDraft.estado_civil
+                const docDigits = String(mergedDraft.documento || '').replace(/\D/g, '')
+                if (docDigits.length === 11) clienteUpdate.cpf = docDigits
+
+                if (Object.keys(clienteUpdate).length > 0) {
+                    const { supabase } = await import('../../config/SupabaseClient')
+                    await supabase.from('clientes').update(clienteUpdate).eq('id', contrato.cliente_id)
+                }
             }
 
             return res.status(200).json({ data: updatedData })
@@ -1403,6 +1423,38 @@ class ComercialController {
         }
     }
 
+    // GET /comercial/consultorias-count/:clienteId
+    async getConsultoriasCount(req: any, res: any) {
+        try {
+            const { clienteId } = req.params
+            if (!clienteId) {
+                return res.status(400).json({ message: 'clienteId e obrigatorio' })
+            }
+
+            const { count, error } = await supabase
+                .from('agendamentos')
+                .select('id', { count: 'exact', head: true })
+                .eq('cliente_id', clienteId)
+                .eq('status', 'realizado')
+
+            if (error) throw error
+
+            const totalConsultorias = count || 0
+            const valorDesconto = totalConsultorias * 50
+
+            return res.status(200).json({
+                data: {
+                    total_consultorias: totalConsultorias,
+                    valor_desconto: valorDesconto,
+                    valor_por_consultoria: 50
+                }
+            })
+        } catch (error: any) {
+            console.error('[ComercialController] Erro ao contar consultorias:', error)
+            return res.status(500).json({ message: 'Erro ao contar consultorias', error: error.message })
+        }
+    }
+
     // GET /comercial/pos-consultoria
     async getPosConsultoria(req: any, res: any) {
         try {
@@ -1439,7 +1491,12 @@ class ComercialController {
 
             if (error) throw error;
 
-            return res.status(200).json({ data: agendamentos || [] });
+            const agendamentosBrt = (agendamentos || []).map((ag: any) => ({
+                ...ag,
+                data_hora: toBrtFromUtc(ag.data_hora)
+            }));
+
+            return res.status(200).json({ data: agendamentosBrt });
         } catch (error: any) {
             console.error('Erro ao buscar pos-consultoria:', error);
             return res.status(500).json({ message: 'Erro ao buscar pos-consultoria', error: error.message });
