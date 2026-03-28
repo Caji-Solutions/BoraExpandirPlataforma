@@ -487,10 +487,11 @@ export function DNAClientDetailView({
                                         let stageNotes: any[] = []
                                         let isCurrent = stage.id === client.categoria
                                         let isCompleted = index < currentStageIndex
-                                        
+                                        const isEmConsultoria = stage.id === 'em_consultoria'
+
                                         // Verificar Consultorias Puladas
-                                        const skippedConsultoria = currentStageIndex >= 2 && !agendamentos.some(a => a.status === 'realizado')
-                                        const isSkippedNode = skippedConsultoria && (index === 0 || index === 1)
+                                        const skippedConsultoria = currentStageIndex >= 3 && !agendamentos.some(a => a.status === 'realizado')
+                                        const isSkippedNode = skippedConsultoria && (index === 0 || index === 1 || index === 2)
 
                                         stageNotes = notes.filter(n => {
                                             const matchesStage = n.stageId === stage.id
@@ -498,31 +499,53 @@ export function DNAClientDetailView({
                                             return matchesStage && matchesArea
                                         })
 
+                                        // Vendedor C2 para Pos Consultoria
+                                        const vendedorC2Nome = stage.id === 'clientes_c2'
+                                            ? (client.perfil_unificado?.data?.vendedor_c2_nome as string | undefined)
+                                            : undefined
+
                                         return (
                                             <div key={stage.id} className="relative pl-12 pb-10 group last:pb-0">
                                                 {/* Dot / Indicator */}
-                                                <div className={cn(
-                                                    "absolute left-0 top-1 w-8 h-8 rounded-full border-4 z-10 flex items-center justify-center transition-all",
-                                                    isCurrent ? "bg-primary border-primary-foreground shadow-[0_0_10px_rgba(var(--primary),0.5)] animate-pulse" :
-                                                    isSkippedNode ? "bg-red-500 border-red-200" :
-                                                    isCompleted ? "bg-green-500 border-green-200" : "bg-muted border-card"
-                                                )}>
-                                                    {isSkippedNode ? <XCircle className="h-4 w-4 text-white" /> :
-                                                     isCompleted ? <Check className="h-4 w-4 text-white" /> :
-                                                     isCurrent ? <Clock className="h-4 w-4 text-white" /> :
-                                                     <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />}
-                                                </div>
+                                                {isEmConsultoria && isCurrent ? (
+                                                    <div className="absolute left-0 top-1 w-6 h-6 rounded-full z-10 flex items-center justify-center bg-yellow-400 border-2 border-yellow-200 shadow-[0_0_12px_4px_rgba(234,179,8,0.5)] animate-pulse" style={{ top: '6px' }} />
+                                                ) : isEmConsultoria ? (
+                                                    <div className={cn(
+                                                        "absolute left-0 top-1 w-6 h-6 rounded-full z-10 flex items-center justify-center border-2 transition-all",
+                                                        isCompleted ? "bg-green-500 border-green-200" : "bg-muted border-card"
+                                                    )} style={{ top: '6px' }}>
+                                                        {isCompleted ? <Check className="h-3 w-3 text-white" /> : <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />}
+                                                    </div>
+                                                ) : (
+                                                    <div className={cn(
+                                                        "absolute left-0 top-1 w-8 h-8 rounded-full border-4 z-10 flex items-center justify-center transition-all",
+                                                        isCurrent ? "bg-primary border-primary-foreground shadow-[0_0_10px_rgba(var(--primary),0.5)] animate-pulse" :
+                                                        isSkippedNode ? "bg-red-500 border-red-200" :
+                                                        isCompleted ? "bg-green-500 border-green-200" : "bg-muted border-card"
+                                                    )}>
+                                                        {isSkippedNode ? <XCircle className="h-4 w-4 text-white" /> :
+                                                         isCompleted ? <Check className="h-4 w-4 text-white" /> :
+                                                         isCurrent ? <Clock className="h-4 w-4 text-white" /> :
+                                                         <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />}
+                                                    </div>
+                                                )}
 
                                                 <div className="flex flex-col gap-2">
                                                     <div className="flex items-center justify-between">
+                                                        <div>
                                                         <h4 className={cn(
                                                             "font-bold transition-colors",
+                                                            isCurrent && isEmConsultoria ? "text-yellow-500 text-base" :
                                                             isCurrent ? "text-primary text-lg" :
                                                             isSkippedNode ? "text-red-500 line-through opacity-70" :
                                                             isCompleted ? "text-foreground" : "text-muted-foreground"
                                                         )}>
                                                             {stage.label}
                                                         </h4>
+                                                        {vendedorC2Nome && (isCurrent || isCompleted) && (
+                                                            <p className="text-xs text-muted-foreground mt-0.5">Vendedor: <span className="font-semibold text-foreground">{vendedorC2Nome}</span></p>
+                                                        )}
+                                                        </div>
 
                                                         <div className="flex items-center gap-2">
                                                             {stageNotes.length > 0 && (

@@ -16,6 +16,9 @@ juridico.use(authMiddleware)
 // Lista todos os funcionários do jurídico
 juridico.get('/funcionarios', JuridicoController.getFuncionarios.bind(JuridicoController))
 
+// Lista usuários comerciais nível C2
+juridico.get('/usuarios-comerciais-c2', JuridicoController.getUsuariosComerciaisC2.bind(JuridicoController))
+
 // Buscar funcionário por ID
 juridico.get('/funcionario/:funcionarioId', JuridicoController.getFuncionarioById.bind(JuridicoController))
 
@@ -70,6 +73,7 @@ juridico.get('/agendamentos/delegacao', JuridicoController.getAgendamentosDelega
 juridico.post('/atribuir-responsavel-agendamento', JuridicoController.atribuirResponsavelAgendamento.bind(JuridicoController))
 juridico.get('/formulario-preenchido/:clienteId', JuridicoController.verificarFormularioPreenchido.bind(JuridicoController))
 juridico.post('/agendamentos/pedido-reagendamento', JuridicoController.pedidoReagendamento.bind(JuridicoController))
+juridico.post('/agendamentos/:id/em-andamento', JuridicoController.marcarConsultoriaEmAndamento.bind(JuridicoController))
 juridico.post('/agendamentos/:id/realizada', JuridicoController.marcarConsultoriaRealizada.bind(JuridicoController))
 
 

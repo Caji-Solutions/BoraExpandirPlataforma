@@ -44,23 +44,26 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
   const { activeProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('consultorias');
   const [dataSelecionada, setDataSelecionada] = useState<Date>(new Date());
-  
+
   const [consultorias, setConsultorias] = useState<any[]>([]);
   const [assessorias, setAssessorias] = useState<any[]>([]);
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [usuariosSistema, setUsuariosSistema] = useState<any[]>([]);
   const [isAssigning, setIsAssigning] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
-  
+
   // Checks de Segurança
   const [hasFormulario, setHasFormulario] = useState<boolean | null>(null);
   const [checkingSecurity, setCheckingSecurity] = useState(false);
   const [isReagendamentoOpen, setIsReagendamentoOpen] = useState(false);
   const [isMarkingRealizada, setIsMarkingRealizada] = useState(false);
+  const [isMarkingEmAndamento, setIsMarkingEmAndamento] = useState(false);
   const [cachedProfiles, setCachedProfiles] = useState<Record<string, string>>({});
   const [servicosCatalogo, setServicosCatalogo] = useState<Service[]>([]);
+  const [usuariosComerciaisC2, setUsuariosComerciaisC2] = useState<any[]>([]);
+  const [selectedVendedorId, setSelectedVendedorId] = useState<string>('');
 
   const effectiveUserId = userId || activeProfile?.id;
 
@@ -76,13 +79,13 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
     const timeValue = item.data_hora || item.criado_em;
     if (!timeValue) return acc;
     const dateKey = getLocalDateString(timeValue);
-    
+
     // Count occupied slots for this day
     const dayItems = (activeTab === 'consultorias' ? consultorias : assessorias).filter(i => {
       const iTime = i.data_hora || i.criado_em;
       return iTime && getLocalDateString(iTime) === dateKey;
     });
-    
+
     // Total slots is HORARIOS_DISPONIVEIS.length (10)
     acc[dateKey] = dayItems.length / HORARIOS_DISPONIVEIS.length;
     return acc;
@@ -93,19 +96,27 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
     try {
       setLoading(true);
       setError(null);
-      
+
       // Fetch usuarios for mapping IDs to Names
       try {
-         const usuarios = await juridicoService.getFuncionariosJuridico();
-         setUsuariosSistema(usuarios);
-      } catch(e) { console.warn("Erro carregando funcionarios", e) }
-      
+        const usuarios = await juridicoService.getFuncionariosJuridico();
+        setUsuariosSistema(usuarios);
+      } catch (e) { console.warn("Erro carregando funcionarios", e) }
+
+      // Fetch C2 commercial users for consultoria assignment
+      if (activeTab === 'consultorias') {
+        try {
+          const c2Users = await juridicoService.getUsuariosComerciaisC2();
+          setUsuariosComerciaisC2(c2Users);
+        } catch (e) { console.warn("Erro carregando usuarios C2", e) }
+      }
+
       if (activeTab === 'consultorias') {
         const data = await juridicoService.getAgendamentos();
         console.log("DEBUG: Consultorias (API Response):", data);
         const dataArr = Array.isArray(data) ? data : (data ? [data] : []);
         console.log("DEBUG: Consultorias (Array):", dataArr);
-        
+
         // Mostrar todos os agendamentos aprovados na aba de consultoria
         const filtered = dataArr
           .filter((item: any) => item.pagamento_status === 'aprovado')
@@ -120,9 +131,9 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
         // Buscar agendamentos que foram delegados a este responsável
         console.log(`DEBUG: Buscando agendamentos (${activeTab}) para user: ${effectiveUserId}`);
         const data: any = await juridicoService.getAgendamentosByResponsavel(effectiveUserId);
-      
+
         console.log(`DEBUG: Dados recebidos da API (${activeTab}):`, data);
-      
+
         let dataArr: any[] = [];
         if (data && !Array.isArray(data) && data.status === 'success') {
           dataArr = Array.isArray(data.data) ? data.data : (data.data ? [data.data] : []);
@@ -148,15 +159,16 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
   // Efeito para verificar segurança quando um item é selecionado
   useEffect(() => {
     if (selectedItem) {
+      setSelectedVendedorId(''); // Reset seleção de vendedor ao abrir novo item
       console.log("DEBUG: Item Selecionado (Raw):", JSON.stringify(selectedItem, null, 2));
-      
+
       const checkSecurity = async () => {
         try {
           setCheckingSecurity(true);
           setHasFormulario(null); // Reset
-          
+
           const clienteId = activeTab === 'consultorias' ? selectedItem.cliente_id : selectedItem.cliente_id;
-          
+
           if (clienteId) {
             console.log(`DEBUG: Verificando formularios para cliente: ${clienteId}`);
             if (activeTab === 'consultorias') {
@@ -171,8 +183,8 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
               setHasFormulario(!!selectedItem.respostas);
             }
           } else {
-             console.warn("DEBUG: Item selecionado nao possui cliente_id!");
-             setHasFormulario(false);
+            console.warn("DEBUG: Item selecionado nao possui cliente_id!");
+            setHasFormulario(false);
           }
 
           // Verificar nome de quem agendou se não estiver no cache
@@ -202,20 +214,20 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
 
   const handleAssign = async () => {
     if (!selectedItem || !activeProfile?.id) return;
-    
+
     try {
       setIsAssigning(true);
       await juridicoService.atribuirResponsavelAgendamento(selectedItem.id, activeProfile.id);
-      
+
       // Refresh current item data and list
       await fetchData();
-      
+
       // Update selectedItem to show new responsible
       setSelectedItem((prev: any) => ({
         ...prev,
         responsavel_juridico_id: activeProfile.id
       }));
-      
+
     } catch (err: any) {
       console.error("Erro ao atribuir consultoria:", err);
       alert("Erro ao atribuir consultoria: " + (err.message || "Tente novamente mais tarde."));
@@ -245,13 +257,13 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
 
   // Filtrar os dados pelo dia selecionado
   const dataSelecionadaIso = getLocalDateString(dataSelecionada);
-  
+
   const itemsDoDia = (activeTab === 'consultorias' ? consultorias : assessorias).filter(item => {
     if (!item.data_hora && !item.criado_em) return false;
     const dateStr = getLocalDateString(item.data_hora || item.criado_em);
     return dateStr === dataSelecionadaIso;
   });
-  
+
   console.log("DEBUG: Renderizando grade para:", dataSelecionadaIso);
   console.log("DEBUG: Items filtrados para o dia:", JSON.stringify(itemsDoDia));
 
@@ -262,28 +274,28 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
     const inicioSlot = new Date(dataSelecionada);
     inicioSlot.setHours(h, m, 0, 0);
     const inicioSlotTime = inicioSlot.getTime();
-    
+
     const found = itemsDoDia.find(item => {
       const timeValue = item.data_hora || item.criado_em;
       if (!timeValue) return false;
-      
+
       // Com as mudanças no backend, os dados agora chegam blindados em UTC-3
       const inicioAgendamento = parseBackendDate(timeValue);
-      
+
       const duracao = item.duracao_minutos || 60;
       const fimAgendamento = new Date(inicioAgendamento.getTime() + duracao * 60000);
-      
+
       // Margem de erro de 1 minuto para evitar bugs de arredondamento
       const match = inicioAgendamento.getTime() <= (inicioSlotTime + 60000) && inicioSlotTime < fimAgendamento.getTime();
       return match;
     });
 
     if (found) {
-       const rawVal = found.data_hora || found.criado_em;
-       const d = parseBackendDate(rawVal);
-       console.log(`DEBUG: Slot ${hora} ocupado por:`, found.id, 
-         "| Raw:", rawVal, 
-         "| LocalTime:", d.toLocaleTimeString());
+      const rawVal = found.data_hora || found.criado_em;
+      const d = parseBackendDate(rawVal);
+      console.log(`DEBUG: Slot ${hora} ocupado por:`, found.id,
+        "| Raw:", rawVal,
+        "| LocalTime:", d.toLocaleTimeString());
     }
     return found;
   };
@@ -291,7 +303,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
   const isInicioAgendamento = (hora: string, item: any) => {
     const timeValue = item.data_hora || item.criado_em;
     if (!item || !timeValue) return false;
-    
+
     // Normalização local 1:1
     const normalized = parseBackendDate(timeValue);
     const h = String(normalized.getHours()).padStart(2, '0');
@@ -311,22 +323,20 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
         <div className="flex bg-gray-100 dark:bg-neutral-900 p-1 rounded-lg w-full sm:w-auto">
           <button
             onClick={() => setActiveTab('consultorias')}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium rounded-md transition-all ${
-              activeTab === 'consultorias' 
-                ? 'bg-white dark:bg-neutral-700 text-blue-600 dark:text-blue-400 shadow-sm' 
-                : 'text-gray-500 hover:text-gray-700 dark:text-neutral-400 dark:hover:text-neutral-200'
-            }`}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium rounded-md transition-all ${activeTab === 'consultorias'
+              ? 'bg-white dark:bg-neutral-700 text-blue-600 dark:text-blue-400 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700 dark:text-neutral-400 dark:hover:text-neutral-200'
+              }`}
           >
             <Calendar className="h-4 w-4" />
             Consultorias
           </button>
           <button
             onClick={() => setActiveTab('assessorias')}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium rounded-md transition-all ${
-              activeTab === 'assessorias' 
-                ? 'bg-white dark:bg-neutral-700 text-blue-600 dark:text-blue-400 shadow-sm' 
-                : 'text-gray-500 hover:text-gray-700 dark:text-neutral-400 dark:hover:text-neutral-200'
-            }`}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium rounded-md transition-all ${activeTab === 'assessorias'
+              ? 'bg-white dark:bg-neutral-700 text-blue-600 dark:text-blue-400 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700 dark:text-neutral-400 dark:hover:text-neutral-200'
+              }`}
           >
             <Briefcase className="h-4 w-4" />
             Assessorias
@@ -360,11 +370,11 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                 {activeTab === 'consultorias' && (
-                   <div className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400 px-3 py-1.5 rounded-lg text-sm font-bold border border-emerald-200 dark:border-emerald-800">
-                     40 min
-                   </div>
-                 )}
+                {activeTab === 'consultorias' && (
+                  <div className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400 px-3 py-1.5 rounded-lg text-sm font-bold border border-emerald-200 dark:border-emerald-800">
+                    40 min
+                  </div>
+                )}
               </div>
             </div>
 
@@ -383,57 +393,55 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                 {HORARIOS_DISPONIVEIS.map((hora) => {
                   const itemNoHorario = getItemParaHorario(hora);
                   const isOcupado = !!itemNoHorario;
-                  
+
                   if (isOcupado) {
-                     const isInicio = isInicioAgendamento(hora, itemNoHorario);
-                     if (!isInicio) {
-                        const contRealizado = itemNoHorario.status === 'realizado';
-                        return (
-                          <button
-                            key={hora}
-                            onClick={() => setSelectedItem(itemNoHorario)}
-                            className={`py-3 px-3 rounded-xl flex flex-col items-center justify-center border border-dashed opacity-50 transition-all hover:opacity-100 hover:shadow-md ${
-                              contRealizado ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800 text-green-400' :
-                              activeTab === 'consultorias' ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 text-blue-400' : 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800 text-indigo-400'
+                    const isInicio = isInicioAgendamento(hora, itemNoHorario);
+                    if (!isInicio) {
+                      const contRealizado = itemNoHorario.status === 'realizado';
+                      return (
+                        <button
+                          key={hora}
+                          onClick={() => setSelectedItem(itemNoHorario)}
+                          className={`py-3 px-3 rounded-xl flex flex-col items-center justify-center border border-dashed opacity-50 transition-all hover:opacity-100 hover:shadow-md ${contRealizado ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800 text-green-400' :
+                            activeTab === 'consultorias' ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 text-blue-400' : 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800 text-indigo-400'
                             }`}
-                          >
-                             <div className="flex items-center gap-1.5 text-sm"><Clock className="h-4 w-4 opacity-50"/> {hora}</div>
-                             <span className="text-[10px] uppercase font-bold tracking-wider mt-1 opacity-70">Ocupado</span>
-                          </button>
-                        )
-                     }
+                        >
+                          <div className="flex items-center gap-1.5 text-sm"><Clock className="h-4 w-4 opacity-50" /> {hora}</div>
+                          <span className="text-[10px] uppercase font-bold tracking-wider mt-1 opacity-70">Ocupado</span>
+                        </button>
+                      )
+                    }
 
-                     const nomeCliente = activeTab === 'consultorias' 
-                       ? itemNoHorario.nome 
-                       : (itemNoHorario.clientes?.nome || 'Assessoria');
+                    const nomeCliente = activeTab === 'consultorias'
+                      ? itemNoHorario.nome
+                      : (itemNoHorario.clientes?.nome || 'Assessoria');
 
-                     const isRealizado = itemNoHorario.status === 'realizado';
-                     return (
-                       <button
-                         key={hora}
-                         onClick={() => setSelectedItem(itemNoHorario)}
-                         className={`py-3 px-3 rounded-xl font-medium border shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 flex flex-col items-start gap-1.5 w-full text-left overflow-hidden ${
-                           isRealizado
-                             ? 'bg-green-600 text-white border-green-500 shadow-green-500/20'
-                             : activeTab === 'consultorias'
-                               ? 'bg-blue-600 text-white border-blue-500 shadow-blue-500/20'
-                               : 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-500/20'
-                         }`}
-                       >
-                         <div className="flex items-center justify-between w-full opacity-90 text-sm">
-                           <div className="flex items-center gap-1.5"><Clock className="h-4 w-4"/> {hora}</div>
-                           <span className="text-[10px] font-bold bg-white/20 px-1.5 py-0.5 rounded-md">
-                             {itemNoHorario.duracao_minutos || 60}m
-                           </span>
-                         </div>
-                          <div className="text-xs font-bold truncate w-full px-0.5 mt-0.5">
-                            {nomeCliente}
-                          </div>
-                           <div className="text-[10px] opacity-80 truncate w-full px-0.5 font-semibold">
-                             {itemNoHorario.produto?.nome || servicosCatalogo.find(s => s.id === itemNoHorario.produto_id)?.name || 'Consultoria'}
-                           </div>
-                       </button>
-                     )
+                    const isRealizado = itemNoHorario.status === 'realizado';
+                    return (
+                      <button
+                        key={hora}
+                        onClick={() => setSelectedItem(itemNoHorario)}
+                        className={`py-3 px-3 rounded-xl font-medium border shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 flex flex-col items-start gap-1.5 w-full text-left overflow-hidden ${isRealizado
+                          ? 'bg-green-600 text-white border-green-500 shadow-green-500/20'
+                          : activeTab === 'consultorias'
+                            ? 'bg-blue-600 text-white border-blue-500 shadow-blue-500/20'
+                            : 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-500/20'
+                          }`}
+                      >
+                        <div className="flex items-center justify-between w-full opacity-90 text-sm">
+                          <div className="flex items-center gap-1.5"><Clock className="h-4 w-4" /> {hora}</div>
+                          <span className="text-[10px] font-bold bg-white/20 px-1.5 py-0.5 rounded-md">
+                            {itemNoHorario.duracao_minutos || 60}m
+                          </span>
+                        </div>
+                        <div className="text-xs font-bold truncate w-full px-0.5 mt-0.5">
+                          {nomeCliente}
+                        </div>
+                        <div className="text-[10px] opacity-80 truncate w-full px-0.5 font-semibold">
+                          {itemNoHorario.produto?.nome || servicosCatalogo.find(s => s.id === itemNoHorario.produto_id)?.name || 'Consultoria'}
+                        </div>
+                      </button>
+                    )
                   }
 
                   // Livre
@@ -442,7 +450,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                       key={hora}
                       className="py-4 px-3 rounded-xl font-medium border border-gray-200 dark:border-neutral-700 bg-gray-50/50 dark:bg-neutral-800/30 text-gray-500 dark:text-neutral-400 flex items-center justify-center gap-2 cursor-default"
                     >
-                      <Clock className="h-4 w-4 opacity-60"/> 
+                      <Clock className="h-4 w-4 opacity-60" />
                       <span>{hora}</span>
                     </div>
                   );
@@ -558,11 +566,10 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                     <AlertCircle className="w-3 h-3" /> Verificacoes
                   </p>
                   <div className="space-y-2">
-                    <div className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                      selectedItem.pagamento_status === 'aprovado'
-                        ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/30'
-                        : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/30'
-                    }`}>
+                    <div className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${selectedItem.pagamento_status === 'aprovado'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/30'
+                      : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/30'
+                      }`}>
                       <div className={`p-1.5 rounded-lg text-white ${selectedItem.pagamento_status === 'aprovado' ? 'bg-emerald-500' : 'bg-amber-500'}`}>
                         {selectedItem.pagamento_status === 'aprovado' ? <CheckSquare className="h-3.5 w-3.5" /> : <CreditCard className="h-3.5 w-3.5" />}
                       </div>
@@ -574,10 +581,9 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                       </div>
                     </div>
 
-                    <div className={`rounded-xl border transition-all ${
-                      checkingSecurity ? 'bg-gray-50 dark:bg-neutral-900 border-gray-200 dark:border-neutral-800 animate-pulse' :
+                    <div className={`rounded-xl border transition-all ${checkingSecurity ? 'bg-gray-50 dark:bg-neutral-900 border-gray-200 dark:border-neutral-800 animate-pulse' :
                       hasFormulario ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/30' : 'bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/30'
-                    }`}>
+                      }`}>
                       <div className="flex items-center gap-3 p-3">
                         <div className={`p-1.5 rounded-lg text-white ${checkingSecurity ? 'bg-gray-400' : hasFormulario ? 'bg-blue-500' : 'bg-rose-500'}`}>
                           <FileText className="h-3.5 w-3.5" />
@@ -596,11 +602,10 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                               const targetId = selectedItem.cliente_id || selectedItem.id;
                               navigate(`/juridico/dna?clienteId=${targetId}&tab=formularios`);
                             }}
-                            className={`w-full py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex justify-center items-center gap-1.5 ${
-                              hasFormulario
-                                ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                                : 'bg-rose-500 hover:bg-rose-600 text-white'
-                            }`}
+                            className={`w-full py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex justify-center items-center gap-1.5 ${hasFormulario
+                              ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                              : 'bg-rose-500 hover:bg-rose-600 text-white'
+                              }`}
                           >
                             <Fingerprint className="h-3 w-3" />
                             {hasFormulario ? 'Inspecionar Respostas' : 'Preencher Formulario'}
@@ -693,19 +698,46 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
 
             {/* Footer com acoes */}
             <div className="sticky bottom-0 z-40 px-6 py-4 border-t border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-950">
+              {activeTab === 'consultorias' && selectedItem.status !== 'realizado' && (
+                <div className="mb-3">
+                  <label className="block text-[10px] text-gray-400 font-semibold uppercase tracking-widest mb-1">
+                    Selecione o vendedor C2 que receberá este cliente
+                  </label>
+                  <select
+                    value={selectedVendedorId}
+                    onChange={e => setSelectedVendedorId(e.target.value)}
+                    className="w-full bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="">-- Selecionar vendedor C2 --</option>
+                    {usuariosComerciaisC2.map((u: any) => (
+                      <option key={u.id} value={u.id}>{u.full_name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 {activeTab === 'consultorias' && (
                   <>
                     <button
-                      onClick={() => navigate(`/juridico/assessoria?clienteId=${selectedItem.cliente_id}`)}
+                      onClick={async () => {
+                        if (!selectedItem) return;
+                        try {
+                          setIsMarkingEmAndamento(true);
+                          await juridicoService.marcarConsultoriaEmAndamento(selectedItem.id);
+                        } catch (err: any) {
+                          console.warn('Erro ao marcar em andamento:', err);
+                        } finally {
+                          setIsMarkingEmAndamento(false);
+                        }
+                        navigate(`/juridico/assessoria?clienteId=${selectedItem.cliente_id}`);
+                      }}
                       disabled={selectedItem.pagamento_status !== 'aprovado' || !hasFormulario}
-                      className={`flex-1 px-4 py-3 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 ${
-                        selectedItem.pagamento_status === 'aprovado' && hasFormulario
-                          ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
-                          : 'bg-gray-100 dark:bg-neutral-800 text-gray-400 cursor-not-allowed'
-                      }`}
+                      className={`flex-1 px-4 py-3 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 ${selectedItem.pagamento_status === 'aprovado' && hasFormulario
+                        ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
+                        : 'bg-gray-100 dark:bg-neutral-800 text-gray-400 cursor-not-allowed'
+                        }`}
                     >
-                      <Briefcase className="h-3.5 w-3.5" /> Iniciar Atendimento
+                      <Briefcase className="h-3.5 w-3.5" /> Atendimento
                     </button>
 
                     <button
@@ -713,7 +745,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                         if (!selectedItem) return;
                         try {
                           setIsMarkingRealizada(true);
-                          await juridicoService.marcarConsultoriaRealizada(selectedItem.id);
+                          await juridicoService.marcarConsultoriaRealizada(selectedItem.id, selectedVendedorId || undefined);
                           toast.success('Consultoria marcada como realizada e cliente movido para Pos Consultoria.');
                           setSelectedItem(null);
                           fetchData();
@@ -723,7 +755,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                           setIsMarkingRealizada(false);
                         }
                       }}
-                      disabled={isMarkingRealizada || selectedItem.status === 'realizado'}
+                      disabled={isMarkingRealizada || selectedItem.status === 'realizado' || !selectedVendedorId}
                       className="flex-1 px-4 py-3 font-bold text-xs bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       <CheckSquare className="h-3.5 w-3.5" />

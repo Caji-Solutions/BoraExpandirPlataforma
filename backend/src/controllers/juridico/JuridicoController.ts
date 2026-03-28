@@ -3,6 +3,7 @@ import AdmRepository from '../../repositories/AdmRepository'
 import { supabase } from '../../config/SupabaseClient'
 import NotificationService from '../../services/NotificationService'
 import ComercialRepository from '../../repositories/ComercialRepository'
+import DNAService from '../../services/DNAService'
 
 class JuridicoController {
 
@@ -1058,18 +1059,77 @@ class JuridicoController {
         }
     }
 
+    // GET /juridico/usuarios-comerciais-c2 - Lista usuários comerciais nível C2
+    async getUsuariosComerciaisC2(req: any, res: any) {
+        try {
+            const { data: usuarios, error } = await supabase
+                .from('usuarios')
+                .select('id, full_name, email, nivel, cargo')
+                .eq('setor', 'comercial')
+                .eq('nivel', 'C2')
+                .eq('status', 'active')
+                .order('full_name', { ascending: true });
+
+            if (error) throw error;
+
+            return res.status(200).json(usuarios || []);
+        } catch (error: any) {
+            console.error('Erro ao buscar usuários comerciais C2:', error);
+            return res.status(500).json({ message: 'Erro ao buscar usuários comerciais C2', error: error.message });
+        }
+    }
+
+    // POST /juridico/agendamentos/:id/em-andamento
+    async marcarConsultoriaEmAndamento(req: any, res: any) {
+        try {
+            const { id } = req.params;
+
+            if (!id) {
+                return res.status(400).json({ message: 'Agendamento ID e obrigatorio' });
+            }
+
+            const { data: agendamento, error: agError } = await supabase
+                .from('agendamentos')
+                .select('cliente_id')
+                .eq('id', id)
+                .single();
+
+            if (agError) throw agError;
+            if (!agendamento) return res.status(404).json({ message: 'Agendamento nao encontrado' });
+
+            if (agendamento.cliente_id) {
+                await supabase
+                    .from('clientes')
+                    .update({ stage: 'em_consultoria' })
+                    .eq('id', agendamento.cliente_id);
+            }
+
+            return res.status(200).json({ success: true });
+        } catch (error: any) {
+            console.error('Erro ao marcar consultoria em andamento:', error);
+            return res.status(500).json({ message: 'Erro ao marcar consultoria em andamento', error: error.message });
+        }
+    }
+
     // POST /juridico/agendamentos/:id/realizada
     async marcarConsultoriaRealizada(req: any, res: any) {
         try {
             const { id } = req.params;
+            const { vendedorId } = req.body;
+
             if (!id) {
                 return res.status(400).json({ message: 'Agendamento ID é obrigatório' });
             }
 
-            // 1. Marcar o agendamento como 'realizado'
+            // 1. Marcar o agendamento como 'realizado' e salvar vendedorId se fornecido
+            const updateData: any = { status: 'realizado' };
+            if (vendedorId) {
+                updateData.vendedor_id = vendedorId;
+            }
+
             const { data: agendamento, error: agError } = await supabase
                 .from('agendamentos')
-                .update({ status: 'realizado' })
+                .update(updateData)
                 .eq('id', id)
                 .select()
                 .single();
@@ -1079,8 +1139,20 @@ class JuridicoController {
 
             const clienteId = agendamento.cliente_id;
             const tipoServico = agendamento.produto_nome || 'Consultoria';
+
             if (clienteId) {
-                // 2. Buscar um processo ativo para mudar para Pós Consultoria (clientes_c2)
+                // 2. Buscar nome do vendedor C2 se fornecido
+                let vendedorNome: string | null = null;
+                if (vendedorId) {
+                    const { data: vendedor } = await supabase
+                        .from('usuarios')
+                        .select('full_name')
+                        .eq('id', vendedorId)
+                        .single();
+                    vendedorNome = vendedor?.full_name || null;
+                }
+
+                // 3. Buscar um processo ativo para mudar para Pós Consultoria (clientes_c2)
                 const { data: processo } = await supabase
                     .from('processos')
                     .select('id, status, tipo_servico')
@@ -1090,15 +1162,20 @@ class JuridicoController {
                     .single();
 
                 if (processo) {
-                    const updateData: any = { status: 'clientes_c2' };
-                    // Preencher tipo_servico se estiver vazio
+                    const processoUpdateData: any = { status: 'clientes_c2' };
                     if (!processo.tipo_servico) {
-                        updateData.tipo_servico = tipoServico;
+                        processoUpdateData.tipo_servico = tipoServico;
                     }
-                    await supabase.from('processos').update(updateData).eq('id', processo.id);
+                    await supabase.from('processos').update(processoUpdateData).eq('id', processo.id);
                 } else {
-                    // Update fallback stage if process doesn't exist yet
                     await supabase.from('clientes').update({ stage: 'clientes_c2', status: 'clientes_c2' }).eq('id', clienteId);
+                }
+
+                // 4. Salvar vendedor C2 no perfil_unificado via DNAService
+                if (vendedorId) {
+                    const dnaPayload: Record<string, any> = { vendedor_c2_id: vendedorId };
+                    if (vendedorNome) dnaPayload.vendedor_c2_nome = vendedorNome;
+                    await DNAService.mergeDNA(clienteId, dnaPayload, 'HIGH');
                 }
 
                 await NotificationService.createNotification({

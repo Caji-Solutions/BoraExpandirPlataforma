@@ -112,7 +112,13 @@ export default function DelegacaoFila() {
       console.log('----------------------------');
 
       const processosMarcados = processosData.map(p => ({ ...p, _tipoFila: 'processo' }));
-      const agendamentosMarcados = agendamentosData.map(a => ({ ...a, _tipoFila: 'agendamento' }));
+      // Excluir assessorias e contratos da fila de delegação — eles são visíveis a todos os usuários
+      const agendamentosMarcados = agendamentosData
+        .filter((a: any) => {
+          const nomeServico = (a.catalogo_servicos?.nome || a.produto_nome || a.tipo_servico || '').toLowerCase();
+          return !nomeServico.includes('assessoria') && !nomeServico.includes('contrato');
+        })
+        .map((a: any) => ({ ...a, _tipoFila: 'agendamento' }));
 
       setItems([...processosMarcados, ...agendamentosMarcados]);
       setMembrosEquipe(funcionariosData.map(adaptFuncionarioParaMembro));

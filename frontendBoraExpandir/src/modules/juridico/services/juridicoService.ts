@@ -416,10 +416,25 @@ export async function getAllSubservices(): Promise<any[]> {
 }
 
 /**
+ * Marca uma consultoria/agendamento como em andamento (atualiza stage do cliente para em_consultoria)
+ */
+export async function marcarConsultoriaEmAndamento(agendamentoId: string): Promise<any> {
+  return apiClient.post(`/juridico/agendamentos/${agendamentoId}/em-andamento`, {});
+}
+
+/**
  * Marca uma consultoria/agendamento como realizada
  */
-export async function marcarConsultoriaRealizada(agendamentoId: string): Promise<any> {
-  return apiClient.post(`/juridico/agendamentos/${agendamentoId}/realizada`);
+export async function marcarConsultoriaRealizada(agendamentoId: string, vendedorId?: string): Promise<any> {
+  return apiClient.post(`/juridico/agendamentos/${agendamentoId}/realizada`, { vendedorId });
+}
+
+/**
+ * Busca usuários comerciais nível C2
+ */
+export async function getUsuariosComerciaisC2(): Promise<any[]> {
+  const result = await apiClient.get(`/juridico/usuarios-comerciais-c2`);
+  return result.data || [];
 }
 
 export default {
@@ -482,5 +497,7 @@ export default {
     getAllSubservices,
     verificarFormularioPreenchido,
     pedidoReagendamento,
+    marcarConsultoriaEmAndamento,
     marcarConsultoriaRealizada,
+    getUsuariosComerciaisC2,
 };

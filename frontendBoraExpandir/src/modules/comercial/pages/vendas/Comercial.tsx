@@ -19,11 +19,12 @@ import ServicosComerciais from './ServicosComerciais'
 import SelecaoLeadCliente from '../cadastro/SelecaoLeadCliente'
 import ContratosFixosPage from '../contratos/ContratosFixosPage'
 import ContratoServicoDetailPage from '../contratos/ContratoServicoDetailPage'
+import PosConsultoria from '../PosConsultoria'
 import FormularioAssessoriaPage from '../FormularioAssessoriaPage'
 import ProximosAgendamentosCard from '../../components/ProximosAgendamentosCard'
 import CadastroRapidoLeadCard from '../../components/CadastroRapidoLeadCard'
 import { Config } from '@/components/ui/Config'
-import { Plus, Home, Users, FileText, CreditCard, AlertCircle, PenTool, CheckCircle, Calendar, Settings, Search, Filter, X, DollarSign, Dna } from 'lucide-react'
+import { Plus, Home, Users, FileText, CreditCard, AlertCircle, PenTool, CheckCircle, Calendar, Settings, Search, Filter, X, DollarSign, Dna, ClipboardCheck } from 'lucide-react'
 import { ClientDNAPage } from '@/components/ui/ClientDNA'
 import { TimeRangeFilter, filterByTimeRange, type TimeRange } from '@/components/ui/TimeRangeFilter'
 import { SortControl, sortData, type SortDirection, type SortOption } from '@/components/ui/SortControl'
@@ -943,6 +944,8 @@ export default function Comercial() {
 
   const isSupervisor = activeProfile?.is_supervisor || false
 
+  const isC2 = nivel === 'C2' || activeProfile?.role === 'super_admin'
+
   const sidebarItems = [
     { label: 'Dashboard', to: '/comercial', icon: Home },
     { label: 'DNA do Cliente', to: '/comercial/dna', icon: Dna },
@@ -954,6 +957,9 @@ export default function Comercial() {
     { label: 'Minhas Comissoes', to: '/comercial/comissoes', icon: DollarSign },
     ...(!isC1 && !isSupervisor ? [
       { label: 'Contratos', to: '/comercial/contratos', icon: FileText },
+    ] : []),
+    ...(isC2 && !isSupervisor ? [
+      { label: 'Pos-Consultoria', to: '/comercial/pos-consultoria', icon: ClipboardCheck },
     ] : []),
   ]
 
@@ -1081,6 +1087,9 @@ export default function Comercial() {
           <Route path="/dna" element={<ClientDNAPage />} />
           {isSupervisor && (
             <Route path="/supervisor" element={<SupervisorComercialPage />} />
+          )}
+          {isC2 && (
+            <Route path="/pos-consultoria" element={<PosConsultoria />} />
           )}
           <Route path="*" element={<Navigate to="/comercial" replace />} />
         </Routes>

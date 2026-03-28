@@ -1402,6 +1402,49 @@ class ComercialController {
             return res.status(500).json({ message: 'Erro ao enviar comprovante', error: error.message })
         }
     }
+
+    // GET /comercial/pos-consultoria
+    async getPosConsultoria(req: any, res: any) {
+        try {
+            const userId = req.userId;
+
+            if (!userId) {
+                return res.status(401).json({ message: 'Nao autenticado' });
+            }
+
+            // Verificar nivel do usuario: apenas C2 do setor comercial ou super_admin tem acesso
+            const { data: usuario, error: userError } = await supabase
+                .from('usuarios')
+                .select('nivel, setor, role')
+                .eq('id', userId)
+                .single();
+
+            if (userError || !usuario) {
+                return res.status(403).json({ message: 'Acesso negado: usuario nao encontrado' });
+            }
+
+            const isSuperAdmin = req.user?.role === 'super_admin' || usuario.role === 'super_admin';
+            const isC2Comercial = usuario.nivel === 'C2' && usuario.setor === 'comercial';
+
+            if (!isSuperAdmin && !isC2Comercial) {
+                return res.status(403).json({ message: 'Acesso negado: apenas usuarios C2 do setor comercial podem acessar pos-consultoria' });
+            }
+
+            const { data: agendamentos, error } = await supabase
+                .from('agendamentos')
+                .select('id, produto_nome, data_hora, criado_em, clientes(id, client_id, nome, email, whatsapp)')
+                .eq('vendedor_id', userId)
+                .eq('status', 'realizado')
+                .order('data_hora', { ascending: false });
+
+            if (error) throw error;
+
+            return res.status(200).json({ data: agendamentos || [] });
+        } catch (error: any) {
+            console.error('Erro ao buscar pos-consultoria:', error);
+            return res.status(500).json({ message: 'Erro ao buscar pos-consultoria', error: error.message });
+        }
+    }
 }
 
 export default new ComercialController()

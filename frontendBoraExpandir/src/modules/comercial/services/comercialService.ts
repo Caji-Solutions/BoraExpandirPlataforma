@@ -121,6 +121,11 @@ export async function enviarContratoAssinatura(id: string, email: string): Promi
     return result.data
 }
 
+export async function getPosConsultoria(): Promise<any[]> {
+    const result = await apiClient.get('/comercial/pos-consultoria');
+    return result.data || [];
+}
+
 export default {
     getAllClientes,
     getAgendamentosByUsuario,
@@ -139,7 +144,8 @@ export default {
     uploadComprovanteContrato,
     updateContratoDraft,
     gerarContratoPdf,
-    enviarContratoAssinatura
+    enviarContratoAssinatura,
+    getPosConsultoria
 };
 
 

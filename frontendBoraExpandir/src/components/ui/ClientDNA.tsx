@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import {
     AlertCircle,
     ClipboardList,
+    Clock,
     FolderOpen,
     Plane,
     CheckSquare,
@@ -72,6 +73,7 @@ export type DNACategory = {
 
 export const CATEGORIAS_LIST: Omit<DNACategory, 'count'>[] = [
     { id: 'aguardando_consultoria', label: 'Aguardando consultoria', icon: <FolderOpen className="h-6 w-6" />, color: 'bg-amber-600' },
+    { id: 'em_consultoria', label: 'Em Consultoria', icon: <Clock className="h-6 w-6 text-yellow-500" />, color: 'bg-yellow-500' },
     { id: 'clientes_c2', label: 'Pós Consultoria', icon: <ClipboardList className="h-6 w-6" />, color: 'bg-slate-600' },
     { id: 'aguardando_assessoria', label: 'Aguardando Assessoria', icon: <CheckSquare className="h-6 w-6 text-green-500" />, color: 'bg-green-600' },
     { id: 'assessoria_andamento', label: 'Assessoria em Andamento', icon: <Plane className="h-6 w-6 text-blue-500" />, color: 'bg-blue-600' },
