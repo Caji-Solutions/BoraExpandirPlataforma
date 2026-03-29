@@ -45,6 +45,7 @@ import type {
 import Toast, { useToast, ToastContainer } from '@/components/ui/Toast'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import comercialService from '../../services/comercialService'
+import { extractLocalTimeMapping } from '../../../../utils/dateUtils'
 
 // Componentes de página
 function DashboardPage({
@@ -825,10 +826,8 @@ export default function Comercial() {
       const catalogMap = new Map(catalog.map((s: any) => [s.id, s.nome || s.name]))
 
       const mapped = data.map((b: any) => {
-        // Parse data_hora corretamente (vem em UTC)
-        const dataHora = b.data_hora ? new Date(b.data_hora) : new Date();
-        const dataStr = dataHora.toLocaleDateString('pt-BR').split('/').reverse().join('-'); // Converte para YYYY-MM-DD
-        const horaStr = dataHora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        // Formatação universal isolada em utilitário coberto por teste para prevenir shifts de +3h
+        const { dataStr, horaStr } = extractLocalTimeMapping(b.data_hora);
 
         return {
           id: b.id,

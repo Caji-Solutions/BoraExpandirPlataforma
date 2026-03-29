@@ -13,7 +13,7 @@ export const authMiddleware = async (req: any, res: Response, next: NextFunction
         // Buscar o profile vinculado a esse token no banco
         const { data: profile, error } = await supabase
             .from('profiles')
-            .select('id, email, full_name, role, cargo, supervisor_id')
+            .select('id, email, full_name, role, cargo, nivel, supervisor_id')
             .eq('auth_token', token)
             .single()
 

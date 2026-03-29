@@ -3,10 +3,8 @@ import { supabase } from '../config/SupabaseClient'
 class ComissaoRepository {
 
   async getVendasMes(usuarioId: string, mes: number, ano: number) {
-    const inicioMes = `${ano}-${String(mes).padStart(2, '0')}-01`
-    const fimMes = mes === 12
-      ? `${ano + 1}-01-01`
-      : `${ano}-${String(mes + 1).padStart(2, '0')}-01`
+    const inicioMes = new Date(Date.UTC(ano, mes - 1, 1)).toISOString()
+    const fimMes = new Date(Date.UTC(ano, mes, 1)).toISOString()
 
     // Buscar agendamentos (Consultoria/Diversos) com pagamento aprovado
     const { data: agendamentos, error: errAg } = await supabase
@@ -26,10 +24,8 @@ class ComissaoRepository {
   }
 
   async getContratosAssinados(usuarioId: string, mes: number, ano: number) {
-    const inicioMes = `${ano}-${String(mes).padStart(2, '0')}-01`
-    const fimMes = mes === 12
-      ? `${ano + 1}-01-01`
-      : `${ano}-${String(mes + 1).padStart(2, '0')}-01`
+    const inicioMes = new Date(Date.UTC(ano, mes - 1, 1)).toISOString()
+    const fimMes = new Date(Date.UTC(ano, mes, 1)).toISOString()
 
     // Buscar contratos de assessoria assinados e validos
     const { data: contratos, error } = await supabase
@@ -71,10 +67,8 @@ class ComissaoRepository {
   async getVendasEquipe(subordinadoIds: string[], mes: number, ano: number) {
     if (subordinadoIds.length === 0) return []
 
-    const inicioMes = `${ano}-${String(mes).padStart(2, '0')}-01`
-    const fimMes = mes === 12
-      ? `${ano + 1}-01-01`
-      : `${ano}-${String(mes + 1).padStart(2, '0')}-01`
+    const inicioMes = new Date(Date.UTC(ano, mes - 1, 1)).toISOString()
+    const fimMes = new Date(Date.UTC(ano, mes, 1)).toISOString()
 
     const { data, error } = await supabase
       .from('agendamentos')

@@ -98,7 +98,7 @@ export function ComprovantesPage() {
                 telefone: c.cliente_telefone || c.cliente?.whatsapp || '',
                 produto_id: c.servico_id || c.servico?.id || '',
                 produto_nome: c.servico_nome || c.servico?.nome || 'Serviço',
-                valor: parseFloat(c.draft_dados?.valor_desconto) || parseFloat(c.draft_dados?.valor_pavao) || c.servico_valor || c.servico?.valor || 0,
+                valor: parseFloat(c.draft_dados?.valor_final) || parseFloat(c.draft_dados?.valor_desconto) || parseFloat(c.draft_dados?.valor_pavao) || c.servico_valor || c.servico?.valor || 0,
                 data_hora: c.criado_em || c.created_at || '',
                 comprovante_url: c.pagamento_comprovante_url,
                 comprovante_upload_em: c.pagamento_comprovante_upload_em,

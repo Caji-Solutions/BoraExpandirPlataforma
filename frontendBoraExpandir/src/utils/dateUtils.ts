@@ -5,12 +5,13 @@
 
 export function parseBackendDate(dateStr: string | Date): Date {
     if (!dateStr) return new Date();
-    if (typeof dateStr === 'string') {
-        // Se vier com Z (UTC), JavaScript interpreta automaticamente e converte para local
-        // Se vier sem Z, assume que é uma string que já foi convertida para BRT no frontend
-        return new Date(dateStr);
+    if (dateStr instanceof Date) return dateStr;
+    // Se não tiver indicador de timezone, assume Brazil (UTC-3)
+    let normalized = dateStr;
+    if (!dateStr.includes('Z') && !dateStr.match(/[+-]\d{2}:\d{2}$/)) {
+        normalized = dateStr + '-03:00';
     }
-    return new Date(dateStr);
+    return new Date(normalized);
 }
 
 export function formatDataHora(dateStr: string | Date): string {
@@ -32,3 +33,23 @@ export function formatHoraOnly(dateStr: string | Date): string {
         return String(dateStr);
     }
 }
+
+/**
+ * Função testável para extrair de forma estrita Date e Time forçando leitura UTC (caso ausente) 
+ * e saída local cravada no timezone 'America/Sao_Paulo', evitando offsets por relógios do sistema host.
+ */
+export function extractLocalTimeMapping(rawDate: string | undefined | null): { dataStr: string, horaStr: string } {
+    let dateStr = rawDate || '';
+    if (dateStr && !dateStr.includes('Z') && !dateStr.match(/[+-]\d\d:\d\d$/)) {
+        dateStr += 'Z';
+    }
+    const dataHora = dateStr ? new Date(dateStr) : new Date();
+
+    const optsDate: Intl.DateTimeFormatOptions = { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' };
+    const baseDateStr = dataHora.toLocaleDateString('pt-BR', optsDate);
+    const dataStrResult = baseDateStr.split('/').reverse().join('-');
+    const horaStr = dataHora.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
+
+    return { dataStr: dataStrResult, horaStr };
+}
+

@@ -218,6 +218,29 @@ class FinanceiroController {
                 return res.status(500).json({ message: 'Erro ao aprovar comprovante' })
             }
 
+            // Recalcular comissão do usuário comercial associado ao agendamento
+            if (agendamento.usuario_id) {
+                try {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('cargo')
+                        .eq('id', agendamento.usuario_id)
+                        .single()
+
+                    if (profile) {
+                        const dataAgend = new Date(agendamento.data_hora)
+                        const mes = dataAgend.getMonth() + 1
+                        const ano = dataAgend.getFullYear()
+                        
+                        const ComissaoService = (await import('../../services/ComissaoService')).default
+                        await ComissaoService.calcularComissao(agendamento.usuario_id, profile.cargo || 'C1', mes, ano)
+                        console.log(`[FinanceiroController] Comissao recalculada para usuario ${agendamento.usuario_id} (Agendamento aprovado)`)
+                    }
+                } catch (errComissao) {
+                    console.error('[FinanceiroController] Erro ao recalcular comissao (Agendamento):', errComissao)
+                }
+            }
+
             if (agendamento.cliente_id) {
                 const { data: clienteBanco } = await supabase
                     .from('clientes')
@@ -497,6 +520,29 @@ class FinanceiroController {
                 pagamento_nota_recusa: null,
                 atualizado_em: new Date().toISOString()
             })
+
+            // Recalcular comissão do usuário comercial associado ao contrato
+            if (contrato.usuario_id) {
+                try {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('cargo')
+                        .eq('id', contrato.usuario_id)
+                        .single()
+
+                    if (profile) {
+                        const dataCriacao = new Date(contrato.criado_em || new Date())
+                        const mes = dataCriacao.getMonth() + 1
+                        const ano = dataCriacao.getFullYear()
+                        
+                        const ComissaoService = (await import('../../services/ComissaoService')).default
+                        await ComissaoService.calcularComissao(contrato.usuario_id, profile.cargo || 'C1', mes, ano)
+                        console.log(`[FinanceiroController] Comissao recalculada para usuario ${contrato.usuario_id} (Contrato aprovado)`)
+                    }
+                } catch (errComissao) {
+                    console.error('[FinanceiroController] Erro ao recalcular comissao (Contrato):', errComissao)
+                }
+            }
 
             const clienteStatusAtual = String(contrato?.cliente?.status || '').toUpperCase()
             if (clienteStatusAtual === 'LEAD' && contrato.cliente_id) {

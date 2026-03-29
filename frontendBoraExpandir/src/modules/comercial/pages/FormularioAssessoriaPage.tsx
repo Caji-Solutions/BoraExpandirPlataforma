@@ -63,6 +63,7 @@ type FormularioDraft = {
   valor_pavao: string
   valor_desconto: string
   valor_consultoria: string
+  valor_final?: string
   forma_pagamento: string
   formaPagamento: string
   dependentes?: string
@@ -495,10 +496,12 @@ export default function FormularioAssessoriaPage() {
                   type="text"
                   disabled={saving || isLockedByGeracaoErro}
                   value={formData.documento}
+                  maxLength={14}
                   onChange={(e) => {
                     const valor = e.target.value
                     const digits = onlyDigits(valor)
-                    const masked = digits.length <= 11 ? maskCpfInput(valor) : valor
+                    if (digits.length > 11) return
+                    const masked = maskCpfInput(valor)
                     setFormData({ ...formData, documento: masked })
                     if (digits.length === 11) setValidationErrors(prev => ({ ...prev, documento: '' }))
                   }}
@@ -668,6 +671,18 @@ export default function FormularioAssessoriaPage() {
                   />
                 </div>
               </div>
+              <div className="md:col-span-2 pt-2 border-t border-gray-100 dark:border-neutral-800">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor Final / Real do Contrato (em euros extenso)</label>
+                <input
+                  type="text"
+                  disabled={saving || isLockedByGeracaoErro}
+                  placeholder="Ex: 800 (oitocentos euros) — Valor com desconto menos a consultoria"
+                  value={formData.valor_final || ''}
+                  onChange={(e) => setFormData({ ...formData, valor_final: e.target.value })}
+                  className="w-full border border-emerald-300 dark:border-emerald-700 rounded-lg px-3 py-2 bg-emerald-50/50 dark:bg-emerald-900/10 text-sm focus:ring-emerald-500 focus:border-emerald-500"
+                />
+                <p className="text-xs text-gray-500 mt-1 dark:text-gray-400">É este valor que aparecerá explicitamente para aprovação da equipe do Financeiro.</p>
+              </div>
             </div>
             {/* Pendencias removida */}
 
@@ -729,6 +744,10 @@ export default function FormularioAssessoriaPage() {
                   <div>
                     <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Valor com Desconto</span>
                     <p className="text-gray-900 dark:text-white font-medium mt-0.5">{formData.valor_desconto || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Valor Real / Final</span>
+                    <p className="text-gray-900 dark:text-white font-medium mt-0.5">{formData.valor_final || '-'}</p>
                   </div>
                 </div>
               </div>
