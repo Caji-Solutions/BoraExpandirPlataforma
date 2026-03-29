@@ -3,15 +3,12 @@ import { extractLocalTimeMapping } from '../dateUtils';
 
 describe('dateUtils - formatAgendamentoTZ (Testes de Persistência de Fuso Horário)', () => {
 
-  it('deve extrair 18:00 BRT quando o backend retornar um horário exato de 21:00 UTC **sem** o sufixo Z', () => {
-    // Cenário causador do bug relatado na Task_001. 
-    // O banco salva 21h em UTC e retorna via string pura.
-    // Se lida sem o utilitário, mostraria 21h localmente. Com o utilitário, ele injeta 'Z' e estabiliza em 18h BRT.
+  it('deve manter 21:00 quando o backend retornar horário sem timezone (interpretado como BRT)', () => {
     const mockDbDateNoZ = '2026-03-30T21:00:00';
     const result = extractLocalTimeMapping(mockDbDateNoZ);
 
     expect(result.dataStr).toBe('2026-03-30');
-    expect(result.horaStr).toBe('18:00');
+    expect(result.horaStr).toBe('21:00');
   });
 
   it('deve extrair 18:00 BRT quando o backend retornar um horário em UTC formalmente exato com sufixo Z', () => {

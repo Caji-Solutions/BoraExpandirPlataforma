@@ -21,9 +21,8 @@ import { useAuth } from "../contexts/AuthContext";
 import juridicoService from "../modules/juridico/services/juridicoService"; // Keeping the service reference for now
 import { catalogService, Service } from "../modules/adm/services/catalogService";
 import { Badge } from '@/modules/shared/components/ui/badge';
-import { formatDate } from "../modules/cliente/lib/utils";
 import { CalendarPicker } from "@/components/ui/CalendarPicker";
-import { parseBackendDate, formatDataHora, formatHoraOnly } from "../utils/dateUtils";
+import { parseBackendDate, formatHoraOnly, getBrtDateKey, getBrtHhMm } from "../utils/dateUtils";
 import { PedidoReagendamentoModal } from "../modules/juridico/components/PedidoReagendamentoModal";
 
 type TabType = 'consultorias' | 'assessorias';
@@ -60,6 +59,10 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
   const [isReagendamentoOpen, setIsReagendamentoOpen] = useState(false);
   const [isMarkingRealizada, setIsMarkingRealizada] = useState(false);
   const [isMarkingEmAndamento, setIsMarkingEmAndamento] = useState(false);
+  const [hasStartedConsultoria, setHasStartedConsultoria] = useState(false);
+  const [selectedVendedorId, setSelectedVendedorId] = useState<string>('');
+  const [usuariosComerciaisC2, setUsuariosComerciaisC2] = useState<any[]>([]);
+  const [isLoadingUsuariosC2, setIsLoadingUsuariosC2] = useState(false);
   const [cachedProfiles, setCachedProfiles] = useState<Record<string, string>>({});
   const [servicosCatalogo, setServicosCatalogo] = useState<Service[]>([]);
 
@@ -69,32 +72,9 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
   // evitando qualquer dependência do timezone do browser.
   // Para objetos Date do CalendarPicker: usa timezone local (o calendário é local).
   const getLocalDateString = (date: Date | string) => {
-    if (typeof date === 'string') {
-      if (!date.includes('Z') && !date.match(/[+-]\d{2}:\d{2}$/)) {
-        return date.substring(0, 10);
-      }
-      return new Date(date).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
-    }
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return getBrtDateKey(date);
   };
 
-  // Extrai hora e minuto BRT de uma string de backend (sem Z) ou Date UTC.
-  // Nunca depende do timezone do browser.
-  const getBrtHhMm = (timeValue: string | Date): { h: number; m: number } | null => {
-    if (typeof timeValue === 'string' && !timeValue.includes('Z') && !timeValue.match(/[+-]\d{2}:\d{2}$/)) {
-      const h = parseInt(timeValue.substring(11, 13), 10);
-      const m = parseInt(timeValue.substring(14, 16), 10);
-      if (!isNaN(h)) return { h, m };
-    }
-    const d = typeof timeValue === 'string' ? new Date(timeValue) : timeValue;
-    if (isNaN(d.getTime())) return null;
-    const s = d.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false });
-    const parts = s.split(':');
-    return { h: parseInt(parts[0], 10), m: parseInt(parts[1], 10) };
-  };
 
   const occupancyData = (activeTab === 'consultorias' ? consultorias : assessorias).reduce((acc: Record<string, number>, item) => {
     const timeValue = item.data_hora || item.criado_em;
@@ -243,6 +223,46 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
     fetchData();
   }, [activeTab, effectiveUserId]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchUsuariosComerciais = async () => {
+      try {
+        setIsLoadingUsuariosC2(true);
+        const usuarios = await juridicoService.getUsuariosComerciaisC2();
+        if (isMounted) {
+          setUsuariosComerciaisC2(Array.isArray(usuarios) ? usuarios : []);
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar vendedores C2:', err);
+        if (isMounted) {
+          setUsuariosComerciaisC2([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingUsuariosC2(false);
+        }
+      }
+    };
+
+    fetchUsuariosComerciais();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedItem) {
+      setHasStartedConsultoria(false);
+      setSelectedVendedorId('');
+      return;
+    }
+
+    setHasStartedConsultoria(selectedItem.status === 'em_consultoria');
+    setSelectedVendedorId(selectedItem.vendedor_id || '');
+  }, [selectedItem?.id, selectedItem?.status, selectedItem?.vendedor_id]);
+
   const handleAssign = async () => {
     if (!selectedItem || !activeProfile?.id) return;
 
@@ -298,43 +318,46 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
   console.log("DEBUG: Renderizando grade para:", dataSelecionadaIso);
   console.log("DEBUG: Items filtrados para o dia:", JSON.stringify(itemsDoDia));
 
-  // Slot matching usando janela de hora BRT — independente do timezone do browser.
-  // Um agendamento "pertence" a este slot se começa dentro da janela [slotH*60, slotH*60+60)
-  // OU se este slot está no meio de um agendamento multi-hora (continuação).
-  const getItemParaHorario = (hora: string) => {
-    const [slotH] = hora.split(':').map(Number);
-    const slotMinutes = slotH * 60;
+  const hhMmToMinutes = (hhMm: string) => {
+    const [h, m] = hhMm.split(':').map(Number);
+    return (h * 60) + m;
+  };
 
-    const found = itemsDoDia.find(item => {
+  // Função auxiliar para calcular conflitos e duração nos slots (sempre em BRT)
+  const getItemParaHorario = (hora: string) => {
+    const slotMinutes = hhMmToMinutes(hora);
+
+    return itemsDoDia.find(item => {
       const timeValue = item.data_hora || item.criado_em;
       if (!timeValue) return false;
-      const brtTime = getBrtHhMm(timeValue);
-      if (!brtTime) return false;
-      const itemMinutes = brtTime.h * 60 + brtTime.m;
+
+      const itemMinutes = hhMmToMinutes(getBrtHhMm(timeValue));
       const duracao = item.duracao_minutos || 60;
-      // O agendamento pertence a este slot se começa antes do fim do slot E o slot começa antes do fim do agendamento
+
       return itemMinutes < slotMinutes + 60 && slotMinutes < itemMinutes + duracao;
     });
-
-    if (found) {
-      const rawVal = found.data_hora || found.criado_em;
-      const brt = getBrtHhMm(rawVal);
-      console.log(`DEBUG: Slot ${hora} ocupado por:`, found.id, "| BRT:", brt ? `${brt.h}:${String(brt.m).padStart(2,'0')}` : 'N/A');
-    }
-    return found;
   };
 
   // Este é o slot de início se o agendamento começa dentro da janela de hora do slot
   const isInicioAgendamento = (hora: string, item: any) => {
     const timeValue = item.data_hora || item.criado_em;
     if (!item || !timeValue) return false;
-    const brtTime = getBrtHhMm(timeValue);
-    if (!brtTime) return false;
-    const [slotH] = hora.split(':').map(Number);
-    const slotMinutes = slotH * 60;
-    const itemMinutes = brtTime.h * 60 + brtTime.m;
+
+    const slotMinutes = hhMmToMinutes(hora);
+    const itemMinutes = hhMmToMinutes(getBrtHhMm(timeValue));
+
     return itemMinutes >= slotMinutes && itemMinutes < slotMinutes + 60;
   };
+
+  const isIniciarConsultoriaDisabled = !selectedItem
+    || selectedItem.pagamento_status !== 'aprovado'
+    || isMarkingEmAndamento
+    || hasStartedConsultoria;
+
+  const isRealizadaDisabled = !selectedItem
+    || isMarkingRealizada
+    || selectedItem.status === 'realizado'
+    || !selectedVendedorId;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 lg:space-y-8">
@@ -547,7 +570,12 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                     </div>
                     <p className="text-base font-bold text-gray-900 dark:text-white">
                       {selectedItem.data_hora || selectedItem.criado_em
-                        ? parseBackendDate(selectedItem.data_hora || selectedItem.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                        ? parseBackendDate(selectedItem.data_hora || selectedItem.criado_em).toLocaleDateString('pt-BR', {
+                          timeZone: 'America/Sao_Paulo',
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        })
                         : '—'}
                     </p>
                   </div>
@@ -560,7 +588,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                       {(() => {
                         const timeValue = selectedItem.data_hora || selectedItem.criado_em;
                         if (!timeValue) return '—';
-                        return formatHoraOnly(parseBackendDate(timeValue));
+                        return formatHoraOnly(timeValue);
                       })()}
                       <span className="text-xs text-gray-400 font-medium ml-1.5">({selectedItem.duracao_minutos || 40}min)</span>
                     </p>
@@ -614,23 +642,25 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                             try {
                               setIsMarkingEmAndamento(true);
                               await juridicoService.marcarConsultoriaEmAndamento(selectedItem.id);
+                              setHasStartedConsultoria(true);
+                              setSelectedItem((prev: any) => prev ? { ...prev, status: 'em_consultoria' } : prev);
                             } catch (err: any) {
                               console.warn('Erro ao marcar em andamento:', err);
                             } finally {
                               setIsMarkingEmAndamento(false);
                             }
                             const targetId = selectedItem.cliente_id || selectedItem.id;
-                            navigate(`/juridico/dna?clienteId=${targetId}&tab=formularios`);
+                            navigate(`/juridico/dna?clienteId=${targetId}&tab=formularios&refresh=${Date.now()}`);
                           }}
-                          disabled={selectedItem.pagamento_status !== 'aprovado' || isMarkingEmAndamento}
+                          disabled={isIniciarConsultoriaDisabled}
                           className={`w-full py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex justify-center items-center gap-2 ${
-                            selectedItem.pagamento_status === 'aprovado'
+                            !isIniciarConsultoriaDisabled
                               ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
                               : 'bg-gray-100 dark:bg-neutral-800 text-gray-400 cursor-not-allowed'
                           }`}
                         >
                           <Briefcase className="h-3.5 w-3.5" />
-                          {isMarkingEmAndamento ? 'Iniciando...' : 'Iniciar Consultoria'}
+                          {isMarkingEmAndamento ? 'Iniciando...' : hasStartedConsultoria ? 'Em Consultoria' : 'Iniciar Consultoria'}
                         </button>
                       </div>
                     )}
@@ -735,29 +765,47 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
 
             {/* Footer com acoes */}
             <div className="sticky bottom-0 z-40 px-6 py-4 border-t border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-950">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-end gap-2">
                 {activeTab === 'consultorias' && (
-                  <button
-                    onClick={async () => {
-                      if (!selectedItem) return;
-                      try {
-                        setIsMarkingRealizada(true);
-                        await juridicoService.marcarConsultoriaRealizada(selectedItem.id);
-                        toast.success('Consultoria marcada como realizada e cliente movido para Pos Consultoria.');
-                        setSelectedItem(null);
-                        fetchData();
-                      } catch (err: any) {
-                        toast.error('Erro ao marcar consultoria: ' + (err.response?.data?.message || err.message));
-                      } finally {
-                        setIsMarkingRealizada(false);
-                      }
-                    }}
-                    disabled={isMarkingRealizada || selectedItem.status === 'realizado'}
-                    className="flex-1 px-4 py-3 font-bold text-xs bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    <CheckSquare className="h-3.5 w-3.5" />
-                    {isMarkingRealizada ? 'Salvando...' : 'Realizada'}
-                  </button>
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-neutral-400">
+                      Vendedor C2
+                    </label>
+                    <select
+                      value={selectedVendedorId}
+                      onChange={(e) => setSelectedVendedorId(e.target.value)}
+                      disabled={isLoadingUsuariosC2 || isMarkingRealizada}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm text-gray-900 dark:text-white disabled:opacity-60"
+                    >
+                      <option value="">Selecione um comercial C2</option>
+                      {usuariosComerciaisC2.map((usuario) => (
+                        <option key={usuario.id} value={usuario.id}>
+                          {usuario.full_name || usuario.nome || usuario.email || usuario.id}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={async () => {
+                        if (!selectedItem || !selectedVendedorId) return;
+                        try {
+                          setIsMarkingRealizada(true);
+                          await juridicoService.marcarConsultoriaRealizada(selectedItem.id, selectedVendedorId);
+                          toast.success('Consultoria marcada como realizada e cliente movido para Pos Consultoria.');
+                          setSelectedItem(null);
+                          fetchData();
+                        } catch (err: any) {
+                          toast.error('Erro ao marcar consultoria: ' + (err.response?.data?.message || err.message));
+                        } finally {
+                          setIsMarkingRealizada(false);
+                        }
+                      }}
+                      disabled={isRealizadaDisabled}
+                      className="w-full px-4 py-3 font-bold text-xs bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      <CheckSquare className="h-3.5 w-3.5" />
+                      {isMarkingRealizada ? 'Salvando...' : 'Realizada'}
+                    </button>
+                  </div>
                 )}
 
                 {activeTab === 'assessorias' && (
@@ -832,3 +880,5 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
 }
 
 export default MeusAgendamentos;
+
+

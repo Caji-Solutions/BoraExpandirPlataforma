@@ -20,37 +20,54 @@ export default function Dashboard() {
       setIsLoadingCalendar(true);
       const url = `${import.meta.env.VITE_URL_BACKEND || 'http://localhost:4000'}/api/calendar/status?userId=${activeProfile?.id}`;
       const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Falha ao verificar conexão (HTTP ${res.status})`);
+      }
       const data = await res.json();
-      if (data.success && data.isConnected) {
+      if (data?.success === true && data?.isConnected === true) {
          setIsCalendarConnected(true);
          setCalendarEmail(data.connection?.email || 'Google Calendar Integrado');
       } else {
          setIsCalendarConnected(false);
+         setCalendarEmail("");
       }
     } catch (e) {
       console.error(e);
       setIsCalendarConnected(false);
+      setCalendarEmail("");
     } finally {
       setIsLoadingCalendar(false);
     }
   };
 
   const handleDisconnect = async () => {
+    if (!activeProfile?.id) {
+      alert("Usuário não identificado para desconexão.");
+      return;
+    }
+
     if (!window.confirm("Deseja desconectar sua conta do Google Calendar?")) return;
+
     try {
       setIsLoadingCalendar(true);
       const url = `${import.meta.env.VITE_URL_BACKEND || 'http://localhost:4000'}/api/calendar/disconnect?userId=${activeProfile?.id}`;
       const res = await fetch(url, { method: 'DELETE' });
+      if (!res.ok) {
+        throw new Error(`Falha na desconexão (HTTP ${res.status})`);
+      }
       const data = await res.json();
-      if (data.success) {
+      if (data?.success === true) {
         setIsCalendarConnected(false);
         setCalendarEmail("");
+        await checkCalendarConnection();
       } else {
-        alert("Erro ao desconectar: " + data.error);
+        setIsCalendarConnected(false);
+        setCalendarEmail("");
+        alert("Erro ao desconectar: " + (data?.message || data?.error || 'Erro desconhecido'));
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Erro ao remover a desconexão");
+      alert("Erro ao remover a conexão: " + (e?.message || 'Erro desconhecido'));
     } finally {
       setIsLoadingCalendar(false);
     }

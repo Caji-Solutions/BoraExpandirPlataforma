@@ -61,6 +61,53 @@ interface Comprovante {
 
 type ActionState = 'idle' | 'aprovar' | 'recusar' | 'confirming_aprovar' | 'confirming_recusar' | 'loading'
 
+const parseCurrencyValue = (value: unknown): number => {
+    if (value === null || value === undefined) return 0
+
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : 0
+    }
+
+    if (typeof value !== 'string') return 0
+
+    const compact = value.replace(/\s/g, '')
+    let normalized = compact
+    if (compact.includes('.') && compact.includes(',')) {
+        normalized = compact.replace(/\./g, '').replace(',', '.')
+    } else if (compact.includes(',') && !compact.includes('.')) {
+        normalized = compact.replace(',', '.')
+    }
+
+    const match = normalized.match(/-?\d+(?:\.\d+)?/)
+    if (!match) return 0
+
+    const parsed = Number(match[0])
+    return Number.isFinite(parsed) ? parsed : 0
+}
+
+const calculateContratoValor = (contrato: any): number => {
+    const valorFinalDraft = parseCurrencyValue(contrato?.draft_dados?.valor_final)
+    const valorComDesconto = parseCurrencyValue(contrato?.draft_dados?.valor_desconto)
+    const valorTabela = parseCurrencyValue(contrato?.draft_dados?.valor_pavao)
+    const valorServico = parseCurrencyValue(contrato?.servico_valor || contrato?.servico?.valor)
+    const descontoConsultoriaDraft = parseCurrencyValue(contrato?.draft_dados?.valor_consultoria)
+    const descontoConsultoriaPerfil = parseCurrencyValue(contrato?.cliente?.perfil_unificado?.data?.valor_desconto)
+    const descontoConsultoria = descontoConsultoriaDraft || descontoConsultoriaPerfil
+
+    if (valorFinalDraft > 0) {
+        if (descontoConsultoria > 0 && valorComDesconto > 0 && Math.abs(valorFinalDraft - valorComDesconto) < 0.01) {
+            return Math.max(valorComDesconto - descontoConsultoria, 0)
+        }
+        return valorFinalDraft
+    }
+
+    if (valorComDesconto > 0 && descontoConsultoria > 0) {
+        return Math.max(valorComDesconto - descontoConsultoria, 0)
+    }
+
+    return valorComDesconto || valorTabela || valorServico || 0
+}
+
 export function ComprovantesPage() {
     const [comprovantes, setComprovantes] = useState<Comprovante[]>([])
     const [loading, setLoading] = useState(true)
@@ -104,14 +151,16 @@ export function ComprovantesPage() {
                 telefone: c.cliente_telefone || c.cliente?.whatsapp || '',
                 produto_id: c.servico_id || c.servico?.id || '',
                 produto_nome: c.servico_nome || c.servico?.nome || 'Serviço',
-                valor: parseFloat(c.draft_dados?.valor_final) || parseFloat(c.draft_dados?.valor_desconto) || parseFloat(c.draft_dados?.valor_pavao) || c.servico_valor || c.servico?.valor || 0,
+                valor: calculateContratoValor(c),
                 data_hora: c.criado_em || c.created_at || '',
                 comprovante_url: c.pagamento_comprovante_url,
                 comprovante_upload_em: c.pagamento_comprovante_upload_em,
                 pagamento_status: c.pagamento_status,
                 status: 'contrato',
                 duracao_minutos: 0,
-                tipo_comprovante: 'agendamento'
+                tipo_comprovante: 'agendamento',
+                draft_dados: c.draft_dados,
+                cliente: c.cliente
             }))
 
             const parcelas = (parcelasJson.data || []).map((p: any) => ({
@@ -391,6 +440,11 @@ export function ComprovantesPage() {
                                                     Pagamento em Lote ({c.ids_grupo.length} itens)
                                                 </span>
                                             )}
+                                            {c.tipo === 'contrato' && (
+                                                <span className="text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 px-2 py-0.5 rounded-full font-bold uppercase mt-1">
+                                                    Contrato (Fixo)
+                                                </span>
+                                            )}
                                         </div>
                                         <p className="text-xs text-gray-400 mt-1 flex items-center gap-1 justify-end">
                                             <CreditCard className="w-3 h-3" />
@@ -604,3 +658,5 @@ export function ComprovantesPage() {
         </div>
     )
 }
+
+

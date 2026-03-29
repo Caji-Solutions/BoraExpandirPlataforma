@@ -100,6 +100,7 @@ export function ClientDNAPage() {
     const queryClienteId = searchParams.get('clienteId')
     const queryTab = searchParams.get('tab') as 'timeline' | 'formularios' | 'contrato_comprovantes' | null
     const queryArea = searchParams.get('area') as 'todos' | 'juridico' | 'comercial' | 'administrativo' | null
+    const queryRefresh = searchParams.get('refresh')
     const [view, setView] = useState<DNAView>('list')
     const [selectedClient, setSelectedClient] = useState<ClientDNAData | null>(null)
     const [clientes, setClientes] = useState<ClientDNAData[]>([])
@@ -124,6 +125,9 @@ export function ClientDNAPage() {
             if (result.data) {
                 // const clientesReais = result.data.filter((item: any) => item.status !== 'LEAD')
                 const mappedClientes: ClientDNAData[] = result.data.map((item: any) => {
+                    const isCategoriaValida = (value?: string) =>
+                        typeof value === 'string' && CATEGORIAS_LIST.some(cat => cat.id === value)
+
                     // Ordena processos por criado_em desc para pegar o mais recente
                     const processosOrdenados = (item.processos || []).sort((a: any, b: any) =>
                         new Date(b.criado_em || 0).getTime() - new Date(a.criado_em || 0).getTime()
@@ -140,7 +144,11 @@ export function ClientDNAPage() {
                     const agendamentoRealizado = agendamentos.find((a: any) => a.status === 'realizado')
                     const melhorAgendamento = agendamentoRealizado || firstPaidAgendamento || lastAgendamento
 
-                    let computedCategoria = lastProcess?.status || item.stage || (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status || 'aguardando_consultoria'))
+                    let computedCategoria = isCategoriaValida(item.stage)
+                        ? item.stage
+                        : isCategoriaValida(lastProcess?.status)
+                            ? lastProcess.status
+                            : (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status || 'aguardando_consultoria'))
 
                     if (['formularios', 'lead', 'novo', 'captado'].includes(computedCategoria)) {
                         const temAgendamento = agendamentos.some((a: any) =>
@@ -201,7 +209,7 @@ export function ClientDNAPage() {
         } finally {
             setLoading(false)
         }
-    }, [activeProfile?.id, queryClienteId])
+    }, [activeProfile?.id, queryClienteId, queryRefresh])
 
     useEffect(() => {
         fetchClientes()

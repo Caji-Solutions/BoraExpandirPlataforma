@@ -579,7 +579,7 @@ class FinanceiroController {
                 .from('contratos_servicos')
                 .select(`
                     *,
-                    cliente:clientes(id, nome, email, whatsapp),
+                    cliente:clientes(id, nome, email, whatsapp, perfil_unificado),
                     servico:catalogo_servicos(id, nome, valor, tipo)
                 `)
                 .not('pagamento_comprovante_url', 'is', null)
