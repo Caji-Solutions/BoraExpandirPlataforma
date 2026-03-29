@@ -64,8 +64,12 @@ type FormularioDraft = {
   valor_desconto: string
   valor_consultoria: string
   valor_final?: string
+  metodo_pagamento: 'pix' | 'boleto' | ''
   forma_pagamento: string
   formaPagamento: string
+  boleto_valor_entrada: string
+  boleto_valor_parcela: string
+  boleto_quantidade_parcelas: string
   dependentes?: string
 }
 
@@ -83,8 +87,12 @@ const emptyFormData: FormularioDraft = {
   valor_pavao: '',
   valor_desconto: '',
   valor_consultoria: '',
+  metodo_pagamento: '',
   forma_pagamento: '',
-  formaPagamento: ''
+  formaPagamento: '',
+  boleto_valor_entrada: '',
+  boleto_valor_parcela: '',
+  boleto_quantidade_parcelas: '1'
 }
 
 export default function FormularioAssessoriaPage() {
@@ -135,8 +143,12 @@ export default function FormularioAssessoriaPage() {
       valor_pavao: String(draft.valor_pavao || data.servico_valor || ''),
       valor_desconto: String(draft.valor_desconto || ''),
       valor_consultoria: String(draft.valor_consultoria || ''),
+      metodo_pagamento: (draft.metodo_pagamento || (draft.forma_pagamento?.toLowerCase().includes('boleto') ? 'boleto' : 'pix')) as 'pix' | 'boleto' | '',
       forma_pagamento: draft.forma_pagamento || draft.formaPagamento || '',
-      formaPagamento: draft.forma_pagamento || draft.formaPagamento || ''
+      formaPagamento: draft.forma_pagamento || draft.formaPagamento || '',
+      boleto_valor_entrada: String(draft.boleto_valor_entrada || data.boleto_valor_entrada || ''),
+      boleto_valor_parcela: String(draft.boleto_valor_parcela || data.boleto_valor_parcela || ''),
+      boleto_quantidade_parcelas: String(draft.boleto_quantidade_parcelas || data.boleto_quantidade_parcelas || '1')
     })
 
     // Se havia valor_consultoria manual salvo no draft, pre-preencher o override
@@ -211,10 +223,31 @@ export default function FormularioAssessoriaPage() {
   }, [id])
 
   const buildDraftPayload = (source: FormularioDraft) => {
+    const metodoPagamento =
+      source.metodo_pagamento === 'boleto'
+        ? 'boleto'
+        : source.metodo_pagamento === 'pix'
+          ? 'pix'
+          : ''
+    const boletoQtd = Math.max(1, Math.min(3, Number(source.boleto_quantidade_parcelas || '1')))
+    const formaPagamentoContrato = metodoPagamento === 'boleto'
+      ? `Pagamento via BOLETO: entrada de R$ ${source.boleto_valor_entrada || '0,00'} + ${boletoQtd} parcela(s) de R$ ${source.boleto_valor_parcela || '0,00'}, com cobrança mensal no mesmo dia da criação do serviço.`
+      : metodoPagamento === 'pix'
+        ? 'Pagamento via PIX (com envio de comprovante).'
+        : ''
+
     const payload: Record<string, any> = {
       ...source,
-      forma_pagamento: source.forma_pagamento || source.formaPagamento || '',
-      formaPagamento: source.forma_pagamento || source.formaPagamento || ''
+      metodo_pagamento: metodoPagamento,
+      boleto_quantidade_parcelas: String(boletoQtd),
+      forma_pagamento: formaPagamentoContrato,
+      formaPagamento: formaPagamentoContrato
+    }
+
+    if (metodoPagamento !== 'boleto') {
+      payload.boleto_valor_entrada = ''
+      payload.boleto_valor_parcela = ''
+      payload.boleto_quantidade_parcelas = '1'
     }
 
     payload.telefone = normalizePhone(payload.telefone)
@@ -229,6 +262,11 @@ export default function FormularioAssessoriaPage() {
       : ''
     payload.descricao_pessoas = `${payload.nome} (Titular)${depText}`
     payload.dependentes = JSON.stringify(dependentes)
+
+    // Cálculo dinâmico do valor final: Valor com desconto - (quantidade de consultorias * 50)
+    const valorDescontoNum = parseFloat(payload.valor_desconto) || 0
+    const qtdConsultorias = consultoriaDesconto?.total || 0
+    payload.valor_final = Math.max(0, valorDescontoNum - (qtdConsultorias * 50))
 
     return payload
   }
@@ -301,7 +339,15 @@ export default function FormularioAssessoriaPage() {
       if (!formData.valor_desconto.trim()) errors.valor_desconto = 'Informe o valor com desconto'
     }
     if (step === 3) {
-      if (!formData.forma_pagamento.trim()) errors.forma_pagamento = 'Informe a forma de pagamento'
+      if (!formData.metodo_pagamento) {
+        errors.metodo_pagamento = 'Selecione o método de pagamento'
+      }
+      if (formData.metodo_pagamento === 'boleto') {
+        if (!formData.boleto_valor_entrada.trim()) errors.boleto_valor_entrada = 'Informe o valor da entrada'
+        if (!formData.boleto_valor_parcela.trim()) errors.boleto_valor_parcela = 'Informe o valor das parcelas'
+        const qtd = Number(formData.boleto_quantidade_parcelas || '0')
+        if (!qtd || qtd < 1 || qtd > 3) errors.boleto_quantidade_parcelas = 'Quantidade deve ser entre 1 e 3'
+      }
     }
     return errors
   }
@@ -671,18 +717,6 @@ export default function FormularioAssessoriaPage() {
                   />
                 </div>
               </div>
-              <div className="md:col-span-2 pt-2 border-t border-gray-100 dark:border-neutral-800">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor Final / Real do Contrato (em euros extenso)</label>
-                <input
-                  type="text"
-                  disabled={saving || isLockedByGeracaoErro}
-                  placeholder="Ex: 800 (oitocentos euros) — Valor com desconto menos a consultoria"
-                  value={formData.valor_final || ''}
-                  onChange={(e) => setFormData({ ...formData, valor_final: e.target.value })}
-                  className="w-full border border-emerald-300 dark:border-emerald-700 rounded-lg px-3 py-2 bg-emerald-50/50 dark:bg-emerald-900/10 text-sm focus:ring-emerald-500 focus:border-emerald-500"
-                />
-                <p className="text-xs text-gray-500 mt-1 dark:text-gray-400">É este valor que aparecerá explicitamente para aprovação da equipe do Financeiro.</p>
-              </div>
             </div>
             {/* Pendencias removida */}
 
@@ -698,10 +732,99 @@ export default function FormularioAssessoriaPage() {
         {etapaAtual === 3 && (
           <div className="space-y-4 animate-in fade-in">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Forma de Pagamento</h2>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Opcao de Pagamento (texto do contrato)</label>
-              <textarea rows={4} disabled={saving || isLockedByGeracaoErro} value={formData.forma_pagamento} onChange={(e) => setFormData({ ...formData, forma_pagamento: e.target.value, formaPagamento: e.target.value })} placeholder="Descreva como sera pago (ex: via PIX ou transferencia em 3 parcelas)." className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <button
+                type="button"
+                disabled={saving || isLockedByGeracaoErro}
+                onClick={() => setFormData({
+                  ...formData,
+                  metodo_pagamento: 'pix',
+                  forma_pagamento: 'Pagamento via PIX (com envio de comprovante).',
+                  formaPagamento: 'Pagamento via PIX (com envio de comprovante).'
+                })}
+                className={`rounded-xl border-2 p-4 text-left transition-all ${
+                  formData.metodo_pagamento === 'pix'
+                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/15'
+                    : 'border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800'
+                }`}
+              >
+                <p className="font-bold text-gray-900 dark:text-white">PIX</p>
+                <p className="text-xs text-gray-500 mt-1">Fluxo atual de comprovante e validação.</p>
+              </button>
+
+              <button
+                type="button"
+                disabled={saving || isLockedByGeracaoErro}
+                onClick={() => setFormData({
+                  ...formData,
+                  metodo_pagamento: 'boleto',
+                  forma_pagamento: '',
+                  formaPagamento: ''
+                })}
+                className={`rounded-xl border-2 p-4 text-left transition-all ${
+                  formData.metodo_pagamento === 'boleto'
+                    ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/15'
+                    : 'border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800'
+                }`}
+              >
+                <p className="font-bold text-gray-900 dark:text-white">Boleto</p>
+                <p className="text-xs text-gray-500 mt-1">Entrada + parcelamento mensal (1 a 3x).</p>
+              </button>
             </div>
+
+            {validationErrors.metodo_pagamento && <p className="text-red-500 text-xs">{validationErrors.metodo_pagamento}</p>}
+
+            {formData.metodo_pagamento === 'boleto' && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor da Entrada *</label>
+                  <input
+                    type="text"
+                    disabled={saving || isLockedByGeracaoErro}
+                    value={formData.boleto_valor_entrada}
+                    onChange={(e) => setFormData({ ...formData, boleto_valor_entrada: e.target.value })}
+                    placeholder="Ex.: 500,00"
+                    className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm ${validationErrors.boleto_valor_entrada ? 'border-red-400' : 'border-gray-200 dark:border-neutral-700'}`}
+                  />
+                  {validationErrors.boleto_valor_entrada && <p className="text-red-500 text-xs mt-1">{validationErrors.boleto_valor_entrada}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor das Parcelas *</label>
+                  <input
+                    type="text"
+                    disabled={saving || isLockedByGeracaoErro}
+                    value={formData.boleto_valor_parcela}
+                    onChange={(e) => setFormData({ ...formData, boleto_valor_parcela: e.target.value })}
+                    placeholder="Ex.: 300,00"
+                    className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm ${validationErrors.boleto_valor_parcela ? 'border-red-400' : 'border-gray-200 dark:border-neutral-700'}`}
+                  />
+                  {validationErrors.boleto_valor_parcela && <p className="text-red-500 text-xs mt-1">{validationErrors.boleto_valor_parcela}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quantidade de Parcelas *</label>
+                  <select
+                    disabled={saving || isLockedByGeracaoErro}
+                    value={formData.boleto_quantidade_parcelas}
+                    onChange={(e) => setFormData({ ...formData, boleto_quantidade_parcelas: e.target.value })}
+                    className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm ${validationErrors.boleto_quantidade_parcelas ? 'border-red-400' : 'border-gray-200 dark:border-neutral-700'}`}
+                  >
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                  </select>
+                  {validationErrors.boleto_quantidade_parcelas && <p className="text-red-500 text-xs mt-1">{validationErrors.boleto_quantidade_parcelas}</p>}
+                </div>
+              </div>
+            )}
+
+            {formData.metodo_pagamento === 'pix' && (
+              <div className="text-sm text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
+                O contrato será salvo com pagamento via PIX e comprovante obrigatório.
+              </div>
+            )}
+
             <div className="pt-4 flex justify-between">
               <button onClick={handleBack} disabled={saving || isLockedByGeracaoErro} className="px-6 py-2.5 border border-gray-300 dark:border-neutral-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-neutral-800 disabled:opacity-50 transition-all">Anterior</button>
               <button onClick={handleNext} disabled={saving || isLockedByGeracaoErro} className="px-6 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-emerald-600/20">
@@ -742,13 +865,45 @@ export default function FormularioAssessoriaPage() {
                     <p className="text-gray-900 dark:text-white font-medium mt-0.5">{formData.tipo_servico || '-'}</p>
                   </div>
                   <div>
+                    <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Metodo de Pagamento</span>
+                    <p className="text-gray-900 dark:text-white font-medium mt-0.5">
+                      {formData.metodo_pagamento === 'boleto'
+                        ? 'Boleto'
+                        : formData.metodo_pagamento === 'pix'
+                          ? 'PIX'
+                          : '-'}
+                    </p>
+                  </div>
+                  <div>
                     <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Valor com Desconto</span>
                     <p className="text-gray-900 dark:text-white font-medium mt-0.5">{formData.valor_desconto || '-'}</p>
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Valor Real / Final</span>
-                    <p className="text-gray-900 dark:text-white font-medium mt-0.5">{formData.valor_final || '-'}</p>
+                    <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Valor Real / Final (Calculado)</span>
+                    <p className="text-gray-900 dark:text-white font-medium mt-0.5">
+                      {Math.max(0, (parseFloat(formData.valor_desconto) || 0) - ((consultoriaDesconto?.total || 0) * 50))}
+                    </p>
                   </div>
+                  {formData.metodo_pagamento === 'boleto' && (
+                    <>
+                      <div>
+                        <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Valor da Entrada</span>
+                        <p className="text-gray-900 dark:text-white font-medium mt-0.5">{formData.boleto_valor_entrada || '-'}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Valor das Parcelas</span>
+                        <p className="text-gray-900 dark:text-white font-medium mt-0.5">{formData.boleto_valor_parcela || '-'}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Quantidade de Parcelas</span>
+                        <p className="text-gray-900 dark:text-white font-medium mt-0.5">{formData.boleto_quantidade_parcelas || '1'}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Cobranca Mensal</span>
+                        <p className="text-gray-900 dark:text-white font-medium mt-0.5">Mesmo dia da criacao do servico</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

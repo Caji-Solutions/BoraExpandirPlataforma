@@ -281,8 +281,8 @@ class ClienteProfileController {
               email: normalizedEmail,
               role: 'cliente',
               password_hash,
-              cpf: cpfNormalizado || null,
-              telefone: whatsappNormalizado || null
+              cpf: cpfNormalizado || undefined,
+              telefone: whatsappNormalizado || undefined
           });
       }
 

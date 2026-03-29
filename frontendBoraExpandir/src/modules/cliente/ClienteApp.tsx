@@ -44,6 +44,7 @@ export function ClienteApp() {
   const [requiredDocuments, setRequiredDocuments] = useState<any[]>([])
   const [agendamentos, setAgendamentos] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [paymentLockInfo, setPaymentLockInfo] = useState<any>(null)
   const { activeProfile, isAuthenticated } = useAuth()
 
   const fetchDocuments = async (clientId: string = client.id, reqDocs?: any[]) => {
@@ -180,6 +181,18 @@ export function ClienteApp() {
     return null
   }
 
+  const fetchPaymentLockStatus = async (clientId: string) => {
+    try {
+      const result = await clienteService.getPagamentoLockStatus(clientId)
+      setPaymentLockInfo(result || null)
+      return result || null
+    } catch (error) {
+      console.error('Erro ao buscar bloqueio financeiro:', error)
+      setPaymentLockInfo(null)
+      return null
+    }
+  }
+
   useEffect(() => {
     const fetchInitialData = async () => {
       setIsLoading(true)
@@ -265,6 +278,7 @@ export function ClienteApp() {
         }
 
         // Fetch other data using the final active ID
+        await fetchPaymentLockStatus(finalActiveId)
         const reqs = await fetchRequiredDocuments(finalActiveId)
         await fetchDocuments(finalActiveId, reqs)
         await fetchRequerimentos(finalActiveId)
@@ -302,6 +316,13 @@ export function ClienteApp() {
 
   // Um usuário é considerado "Apenas Parceiro" se o seu status for 'parceiro'
   const isPartnerOnly = client.status === 'parceiro';
+  const isPaymentLocked = Boolean(paymentLockInfo?.bloqueado)
+
+  useEffect(() => {
+    if (!isPartnerOnly && isPaymentLocked && location.pathname !== '/cliente') {
+      navigate('/cliente', { replace: true })
+    }
+  }, [isPartnerOnly, isPaymentLocked, location.pathname, navigate])
 
 
   const handleCloseRequiredModal = () => {
@@ -316,6 +337,12 @@ export function ClienteApp() {
 
   const handleDeleteDocument = (documentId: string) => {
     setDocuments(prev => prev.filter(doc => doc.id !== documentId))
+  }
+
+  const handleUploadOverdueProof = async (parcelaId: string, file: File) => {
+    if (!client.id) return
+    await clienteService.uploadComprovanteParcela(parcelaId, client.id, file)
+    await fetchPaymentLockStatus(client.id)
   }
 
   const handleMarkAsRead = async (notificationId: string, lida: boolean = true) => {
@@ -446,15 +473,15 @@ export function ClienteApp() {
         label: 'Menu Principal',
         items: [
           { label: 'Dashboard', to: '/cliente', icon: Home },
-          { label: 'Meu Processo', to: '/cliente/processo', icon: GitBranch },
-          { label: 'Documentos', to: '/cliente/upload', icon: FileText },
-          { label: 'Parceiro', to: '/cliente/parceiro', icon: Users },
+          { label: 'Meu Processo', to: '/cliente/processo', icon: GitBranch, disabled: isPaymentLocked },
+          { label: 'Documentos', to: '/cliente/upload', icon: FileText, disabled: isPaymentLocked },
+          { label: 'Parceiro', to: '/cliente/parceiro', icon: Users, disabled: isPaymentLocked },
         ],
       },
       {
         label: 'Sistema',
         items: [
-          { label: 'Configurações', to: '/cliente/configuracoes', icon: Settings },
+          { label: 'Configurações', to: '/cliente/configuracoes', icon: Settings, disabled: isPaymentLocked },
         ],
       },
     ]
@@ -544,6 +571,8 @@ export function ClienteApp() {
                   process={processo}
                   requerimentos={requerimentos}
                   notifications={notifications}
+                  paymentLockInfo={paymentLockInfo}
+                  onUploadOverdueProof={handleUploadOverdueProof}
                 />
               )
             }

@@ -54,6 +54,10 @@ export const clienteService = {
     return result.data || [];
   },
 
+  async getPagamentoLockStatus(clienteId: string) {
+    return apiClient.get(`/cliente/pagamentos-lock?clienteId=${encodeURIComponent(clienteId)}`);
+  },
+
   async uploadContratoAssinado(contratoId: string, clienteId: string, file: File) {
     const formData = new FormData();
     formData.append('file', file);
@@ -69,6 +73,15 @@ export const clienteService = {
     formData.append('cliente_id', clienteId);
 
     const result = await apiClient.post(`/cliente/contratos/${contratoId}/comprovante`, formData);
+    return result.data;
+  },
+
+  async uploadComprovanteParcela(parcelaId: string, clienteId: string, file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('cliente_id', clienteId);
+
+    const result = await apiClient.post(`/cliente/parcelas/${parcelaId}/comprovante`, formData);
     return result.data;
   },
 

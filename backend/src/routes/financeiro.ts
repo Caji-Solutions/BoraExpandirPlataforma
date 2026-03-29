@@ -30,6 +30,12 @@ financeiro.post('/traducao/comprovante/:id/recusar', FinanceiroController.recusa
 financeiro.post('/contratos/:id/multa', FinanceiroController.registrarMulta.bind(FinanceiroController))
 financeiro.post('/contratos/:id/multa/aprovar', FinanceiroController.aprovarComprovanteMulta.bind(FinanceiroController))
 
+// ROTAS PARA CONTAS A RECEBER (BOLETO)
+financeiro.get('/contas-receber', FinanceiroController.getContasReceber.bind(FinanceiroController))
+financeiro.get('/parcelas/comprovantes/pendentes', FinanceiroController.getComprovantesParcelasPendentes.bind(FinanceiroController))
+financeiro.post('/parcelas/comprovante/:id/aprovar', FinanceiroController.aprovarComprovanteParcela.bind(FinanceiroController))
+financeiro.post('/parcelas/comprovante/:id/recusar', FinanceiroController.recusarComprovanteParcela.bind(FinanceiroController))
+
 // ROTAS PARA DASHBOARD
 financeiro.get('/dashboard/metricas', FinanceiroController.getDashboardMetricas.bind(FinanceiroController))
 financeiro.get('/dashboard/vendedores', FinanceiroController.getDashboardVendedores.bind(FinanceiroController))

@@ -33,6 +33,8 @@ cliente.post('/timezone', ClienteController.saveTimezone.bind(ClienteController)
 cliente.post('/lead-notas', ClienteController.createLeadNote.bind(ClienteController))
 cliente.post('/contratos/:id/upload', upload.single('file'), ClienteContratosController.uploadContratoAssinado.bind(ClienteContratosController))
 cliente.post('/contratos/:id/comprovante', upload.single('file'), ClienteController.uploadComprovanteContrato.bind(ClienteController))
+cliente.get('/pagamentos-lock', ClienteController.getPagamentoLockStatus.bind(ClienteController))
+cliente.post('/parcelas/:id/comprovante', upload.single('file'), ClienteController.uploadComprovanteParcela.bind(ClienteController))
 
 // Rotas de Processo (específicas)
 cliente.get('/processo/:processoId/documentos', ClienteDocumentController.getDocumentosByProcesso.bind(ClienteDocumentController))

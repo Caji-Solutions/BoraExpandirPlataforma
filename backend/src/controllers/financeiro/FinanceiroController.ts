@@ -5,7 +5,10 @@ import NotificationService from '../../services/NotificationService'
 import DNAService from '../../services/DNAService'
 import TraducoesRepository from '../../repositories/TraducoesRepository'
 import FinanceiroDashboardRepository from '../../repositories/FinanceiroDashboardRepository'
+import BoletoParcelasRepository from '../../repositories/BoletoParcelasRepository'
 import bcrypt from 'bcryptjs'
+import { toBrtFromUtc } from '../../utils/dateUtils'
+import { normalizeMetodoPagamento } from '../../utils/boletoUtils'
 
 function generatePassword(length = 10): string {
     const chars = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$'
@@ -35,6 +38,79 @@ class FinanceiroController {
         } catch (notificationError) {
             console.error('[FinanceiroController] Erro ao criar notificacao de contrato:', notificationError)
         }
+    }
+
+    private getHojeBrt(): string {
+        return new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/Sao_Paulo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).format(new Date())
+    }
+
+    private getParcelaStatusVisual(parcela: any): 'pago' | 'em_analise' | 'recusado' | 'atrasado' | 'pendente' {
+        if (parcela.status === 'pago') return 'pago'
+        if (parcela.status === 'em_analise') return 'em_analise'
+        if (parcela.status === 'recusado') return 'recusado'
+        if (parcela.status === 'pendente' && parcela.data_vencimento <= this.getHojeBrt()) return 'atrasado'
+        return 'pendente'
+    }
+
+    private groupContasReceber(rows: any[]): any[] {
+        const grouped = new Map<string, any[]>()
+        for (const row of rows) {
+            const key = `${row.origem_tipo}:${row.origem_id}`
+            if (!grouped.has(key)) grouped.set(key, [])
+            grouped.get(key)!.push(row)
+        }
+
+        return Array.from(grouped.entries()).map(([key, items]) => {
+            const parcelasOrdenadas = [...items].sort((a, b) => String(a.data_vencimento).localeCompare(String(b.data_vencimento)))
+            const first = parcelasOrdenadas[0]
+            const parcelasMapeadas = parcelasOrdenadas.map((p: any) => ({
+                id: p.id,
+                numero_parcela: p.numero_parcela,
+                quantidade_parcelas: p.quantidade_parcelas,
+                valor: Number(p.valor || 0),
+                data_vencimento: p.data_vencimento,
+                status: p.status,
+                status_visual: this.getParcelaStatusVisual(p),
+                comprovante_url: p.comprovante_url || null,
+                nota_recusa: p.nota_recusa || null
+            }))
+
+            const parcelasPagas = parcelasMapeadas.filter((p: any) => p.status === 'pago').length
+            const proximaParcela = parcelasMapeadas.find((p: any) => p.status !== 'pago') || null
+            const hasAtraso = parcelasMapeadas.some((p: any) => p.status_visual === 'atrasado')
+            const hasAnalise = parcelasMapeadas.some((p: any) => p.status_visual === 'em_analise')
+            const hasRecusa = parcelasMapeadas.some((p: any) => p.status_visual === 'recusado')
+
+            let statusGeral: 'em_dia' | 'atrasado' | 'em_analise' | 'recusado' = 'em_dia'
+            if (hasAtraso) statusGeral = 'atrasado'
+            else if (hasRecusa) statusGeral = 'recusado'
+            else if (hasAnalise) statusGeral = 'em_analise'
+
+            return {
+                id: key,
+                origem_tipo: first.origem_tipo,
+                origem_id: first.origem_id,
+                servico_nome: first.servico_nome || 'Serviço',
+                pagador_nome: first.pagador_nome || 'Não informado',
+                vendedor_nome: first.vendedor_nome || 'Não informado',
+                cliente_id: first.cliente_id || null,
+                usuario_id: first.usuario_id || null,
+                metodo_pagamento: first.metodo_pagamento || 'boleto',
+                quantidade_parcelas: first.quantidade_parcelas || parcelasMapeadas.length,
+                parcelas_pagas: parcelasPagas,
+                valor_entrada: Number(first.valor_entrada || 0),
+                valor_parcela: Number(first.valor_parcela || 0),
+                dia_cobranca: first.dia_cobranca,
+                proxima_parcela: proximaParcela,
+                status_geral: statusGeral,
+                parcelas: parcelasMapeadas
+            }
+        })
     }
 
 
@@ -82,6 +158,7 @@ class FinanceiroController {
             // 3. Normalizar dados e agrupar por comprovante_url para orçamentos
             const agendamentosMapeados = (agendamentos || []).map(a => ({
                 ...a,
+                data_hora: a.data_hora ? toBrtFromUtc(a.data_hora) : a.data_hora,
                 tipo_comprovante: 'agendamento'
             }))
 
@@ -216,6 +293,38 @@ class FinanceiroController {
             if (updateError) {
                 console.error('[FinanceiroController] Erro ao atualizar pagamento_status:', updateError)
                 return res.status(500).json({ message: 'Erro ao aprovar comprovante' })
+            }
+
+            try {
+                if (normalizeMetodoPagamento((agendamento as any).metodo_pagamento) === 'boleto') {
+                    await BoletoParcelasRepository.ensureParcelasPosEntradaAprovada({
+                        origemTipo: 'agendamento',
+                        origemId: id,
+                        clienteId: agendamento.cliente_id || null,
+                        usuarioId: agendamento.usuario_id || null,
+                        servicoNome: agendamento.produto_nome || 'Consultoria',
+                        pagadorNome: agendamento.nome || null,
+                        metodoPagamento: (agendamento as any).metodo_pagamento || 'boleto',
+                        valorEntrada: (agendamento as any).boleto_valor_entrada,
+                        valorParcela: (agendamento as any).boleto_valor_parcela,
+                        quantidadeParcelas: (agendamento as any).boleto_quantidade_parcelas,
+                        diaCobranca: (agendamento as any).boleto_dia_cobranca,
+                        dataBase: (agendamento as any).created_at || (agendamento as any).criado_em || agendamento.data_hora || new Date().toISOString(),
+                        comprovanteUrlEntrada: agendamento.comprovante_url || null,
+                        verificadoPor: verificado_por || null,
+                        verificadoEm: new Date().toISOString()
+                    })
+
+                    await supabase
+                        .from('agendamentos')
+                        .update({
+                            boleto_entrada_aprovada_em: new Date().toISOString(),
+                            boleto_ativo: true
+                        })
+                        .eq('id', id)
+                }
+            } catch (parcelasError) {
+                console.error('[FinanceiroController] Erro ao criar parcelas de boleto (agendamento):', parcelasError)
             }
 
             // Recalcular comissão do usuário comercial associado ao agendamento
@@ -521,6 +630,35 @@ class FinanceiroController {
                 atualizado_em: new Date().toISOString()
             })
 
+            try {
+                if (normalizeMetodoPagamento((contrato as any).metodo_pagamento) === 'boleto') {
+                    await BoletoParcelasRepository.ensureParcelasPosEntradaAprovada({
+                        origemTipo: 'contrato',
+                        origemId: id,
+                        clienteId: contrato.cliente_id || null,
+                        usuarioId: contrato.usuario_id || null,
+                        servicoNome: (contrato as any).servico_nome || contrato.servico?.nome || 'Contrato',
+                        pagadorNome: (contrato as any).cliente_nome || contrato.cliente?.nome || null,
+                        metodoPagamento: (contrato as any).metodo_pagamento || 'boleto',
+                        valorEntrada: (contrato as any).boleto_valor_entrada,
+                        valorParcela: (contrato as any).boleto_valor_parcela,
+                        quantidadeParcelas: (contrato as any).boleto_quantidade_parcelas,
+                        diaCobranca: (contrato as any).boleto_dia_cobranca,
+                        dataBase: (contrato as any).criado_em || (contrato as any).created_at || new Date().toISOString(),
+                        comprovanteUrlEntrada: (contrato as any).pagamento_comprovante_url || null,
+                        verificadoPor: verificado_por || null,
+                        verificadoEm: new Date().toISOString()
+                    })
+
+                    await ContratoServicoRepository.updateContrato(id, {
+                        boleto_entrada_aprovada_em: new Date().toISOString(),
+                        boleto_ativo: true
+                    })
+                }
+            } catch (parcelasError) {
+                console.error('[FinanceiroController] Erro ao criar parcelas de boleto (contrato):', parcelasError)
+            }
+
             // Recalcular comissão do usuário comercial associado ao contrato
             if (contrato.usuario_id) {
                 try {
@@ -731,6 +869,129 @@ class FinanceiroController {
             console.error('[FinanceiroController] Erro ao recusar comprovante de traducao:', error)
 
             return res.status(500).json({ message: 'Erro ao recusar comprovante', error: error.message })
+        }
+    }
+
+    /**
+     * GET /financeiro/contas-receber
+     * Lista processos com parcelas de boleto para "Contas a Receber".
+     */
+    async getContasReceber(_req: any, res: any) {
+        try {
+            const rows = await BoletoParcelasRepository.getContasReceber()
+            const grouped = this.groupContasReceber(rows)
+            return res.status(200).json({
+                data: grouped,
+                total: grouped.length
+            })
+        } catch (error: any) {
+            console.error('[FinanceiroController] Erro ao buscar contas a receber:', error)
+            return res.status(500).json({ message: 'Erro ao buscar contas a receber', error: error.message })
+        }
+    }
+
+    /**
+     * GET /financeiro/parcelas/comprovantes/pendentes
+     * Lista comprovantes de parcelas (boleto) aguardando validação.
+     */
+    async getComprovantesParcelasPendentes(_req: any, res: any) {
+        try {
+            const data = await BoletoParcelasRepository.getParcelasComprovantesPendentes()
+            return res.status(200).json({
+                data,
+                total: data.length
+            })
+        } catch (error: any) {
+            console.error('[FinanceiroController] Erro ao buscar comprovantes pendentes de parcelas:', error)
+            return res.status(500).json({ message: 'Erro ao buscar comprovantes de parcelas', error: error.message })
+        }
+    }
+
+    /**
+     * POST /financeiro/parcelas/comprovante/:id/aprovar
+     */
+    async aprovarComprovanteParcela(req: any, res: any) {
+        try {
+            const { id } = req.params
+            const { verificado_por } = req.body
+
+            const parcela = await BoletoParcelasRepository.getParcelaById(id)
+            if (!parcela) {
+                return res.status(404).json({ message: 'Parcela não encontrada' })
+            }
+
+            if (!parcela.comprovante_url) {
+                return res.status(400).json({ message: 'Esta parcela não possui comprovante enviado.' })
+            }
+
+            if (parcela.status === 'pago') {
+                return res.status(400).json({ message: 'Este comprovante de parcela já foi aprovado.' })
+            }
+
+            const updated = await BoletoParcelasRepository.updateParcela(id, {
+                status: 'pago',
+                nota_recusa: null,
+                verificado_por: verificado_por || null,
+                verificado_em: new Date().toISOString()
+            })
+
+            await this.notificarClienteContrato({
+                clienteId: updated.cliente_id,
+                titulo: 'Parcela aprovada',
+                mensagem: `O pagamento da parcela ${updated.numero_parcela}/${updated.quantidade_parcelas} foi aprovado.`,
+                tipo: 'success'
+            })
+
+            return res.status(200).json({
+                success: true,
+                message: 'Comprovante da parcela aprovado com sucesso.',
+                data: updated
+            })
+        } catch (error: any) {
+            console.error('[FinanceiroController] Erro ao aprovar comprovante de parcela:', error)
+            return res.status(500).json({ message: 'Erro ao aprovar comprovante da parcela', error: error.message })
+        }
+    }
+
+    /**
+     * POST /financeiro/parcelas/comprovante/:id/recusar
+     */
+    async recusarComprovanteParcela(req: any, res: any) {
+        try {
+            const { id } = req.params
+            const { nota, verificado_por } = req.body
+
+            const parcela = await BoletoParcelasRepository.getParcelaById(id)
+            if (!parcela) {
+                return res.status(404).json({ message: 'Parcela não encontrada' })
+            }
+
+            if (!parcela.comprovante_url) {
+                return res.status(400).json({ message: 'Esta parcela não possui comprovante enviado.' })
+            }
+
+            const updated = await BoletoParcelasRepository.updateParcela(id, {
+                status: 'recusado',
+                nota_recusa: nota || 'Comprovante recusado sem observação.',
+                verificado_por: verificado_por || null,
+                verificado_em: new Date().toISOString()
+            })
+
+            await this.notificarClienteContrato({
+                clienteId: updated.cliente_id,
+                titulo: 'Comprovante da parcela recusado',
+                mensagem: updated.nota_recusa || 'Seu comprovante de parcela foi recusado. Envie um novo arquivo para regularizar o acesso.',
+                tipo: 'warning'
+            })
+
+            return res.status(200).json({
+                success: true,
+                message: 'Comprovante da parcela recusado com sucesso.',
+                data: updated
+            })
+        } catch (error: any) {
+            console.error('[FinanceiroController] Erro ao recusar comprovante de parcela:', error)
+            return res.status(500).json({ message: 'Erro ao recusar comprovante da parcela', error: error.message })
         }
     }
     // =============================================

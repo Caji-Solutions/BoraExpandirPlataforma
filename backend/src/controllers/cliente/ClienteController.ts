@@ -10,6 +10,7 @@ import AdmRepository from '../../repositories/AdmRepository';
 import { getDocumentosPorTipoServico, DocumentoRequeridoConfig } from '../../config/documentosConfig';
 import ContratoServicoRepository from '../../repositories/ContratoServicoRepository';
 import { normalizeCpf, normalizePhone } from '../../utils/normalizers';
+import BoletoParcelasRepository from '../../repositories/BoletoParcelasRepository';
 
 // Interface para o documento requerido com informações do processo
 interface DocumentoRequeridoComProcesso extends DocumentoRequeridoConfig {
@@ -41,6 +42,40 @@ class ClienteController {
 
   private isClienteLead(contrato: any): boolean {
     return String(contrato?.cliente?.status || '').toUpperCase() === 'LEAD'
+  }
+
+  private async resolveClienteId(rawId?: string | null): Promise<string | null> {
+    const base = String(rawId || '').trim()
+    if (!base) return null
+
+    const { data: byId } = await supabase
+      .from('clientes')
+      .select('id')
+      .eq('id', base)
+      .maybeSingle()
+    if (byId?.id) return byId.id
+
+    const { data: byClientCode } = await supabase
+      .from('clientes')
+      .select('id')
+      .eq('client_id', base)
+      .maybeSingle()
+    if (byClientCode?.id) return byClientCode.id
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('id', base)
+      .maybeSingle()
+    if (!profile?.email) return null
+
+    const { data: byEmail } = await supabase
+      .from('clientes')
+      .select('id')
+      .ilike('email', profile.email)
+      .maybeSingle()
+
+    return byEmail?.id || null
   }
 
   // GET /cliente/:clienteId/documentos-requeridos
@@ -438,8 +473,8 @@ class ClienteController {
               email: normalizedEmail,
               role: 'cliente',
               password_hash,
-              cpf: cpfNormalizado || null,
-              telefone: whatsappNormalizado || null
+              cpf: cpfNormalizado || undefined,
+              telefone: whatsappNormalizado || undefined
           });
       }
 
@@ -1295,6 +1330,141 @@ class ClienteController {
       console.error('Erro ao buscar contratos do cliente:', error)
       return res.status(500).json({
         message: 'Erro ao buscar contratos',
+        error: error.message
+      })
+    }
+  }
+
+  // GET /cliente/pagamentos-lock?clienteId=...
+  async getPagamentoLockStatus(req: any, res: any) {
+    try {
+      const clienteIdRaw = (req.query?.clienteId || req.query?.cliente_id || req.params?.clienteId || req.body?.cliente_id || req.body?.clienteId) as string | undefined
+      const clienteId = await this.resolveClienteId(clienteIdRaw || null)
+
+      if (!clienteId) {
+        return res.status(400).json({ message: 'clienteId é obrigatório' })
+      }
+
+      const parcelas = await BoletoParcelasRepository.getBloqueiosAtivosByCliente(clienteId)
+      const bloqueado = parcelas.length > 0
+
+      return res.status(200).json({
+        bloqueado,
+        dashboard_only: bloqueado,
+        total_atrasadas: parcelas.length,
+        parcelas_atrasadas: parcelas.map((p: any) => ({
+          id: p.id,
+          origem_tipo: p.origem_tipo,
+          origem_id: p.origem_id,
+          servico_nome: p.servico_nome || 'Serviço',
+          numero_parcela: p.numero_parcela,
+          quantidade_parcelas: p.quantidade_parcelas,
+          valor: Number(p.valor || 0),
+          data_vencimento: p.data_vencimento,
+          status: p.status,
+          nota_recusa: p.nota_recusa || null
+        })),
+        mensagem: bloqueado
+          ? 'Seu acesso está temporariamente restrito até a aprovação do(s) comprovante(s) de parcela em atraso.'
+          : 'Sem bloqueios financeiros ativos.'
+      })
+    } catch (error: any) {
+      console.error('[ClienteController] Erro ao verificar bloqueio financeiro:', error)
+      return res.status(500).json({
+        message: 'Erro ao verificar bloqueio financeiro',
+        error: error.message
+      })
+    }
+  }
+
+  // POST /cliente/parcelas/:id/comprovante
+  async uploadComprovanteParcela(req: any, res: any) {
+    try {
+      const { id } = req.params
+      const file = req.file
+      const clienteIdRaw = req.body.cliente_id || req.body.clienteId
+
+      if (!file) {
+        return res.status(400).json({ message: 'Arquivo do comprovante é obrigatório' })
+      }
+
+      const clienteId = await this.resolveClienteId(String(clienteIdRaw || ''))
+      if (!clienteId) {
+        return res.status(400).json({ message: 'cliente_id é obrigatório' })
+      }
+
+      const parcela = await BoletoParcelasRepository.getParcelaById(id)
+      if (!parcela) {
+        return res.status(404).json({ message: 'Parcela não encontrada' })
+      }
+
+      if (parcela.cliente_id !== clienteId) {
+        return res.status(403).json({ message: 'Parcela não pertence ao cliente informado' })
+      }
+
+      if (parcela.status === 'pago') {
+        return res.status(409).json({ message: 'Esta parcela já foi quitada.' })
+      }
+
+      if (parcela.status === 'em_analise') {
+        return res.status(409).json({ message: 'Esta parcela já possui comprovante em análise.' })
+      }
+
+      const lockTimestamp = new Date().toISOString()
+      await BoletoParcelasRepository.updateParcela(id, {
+        status: 'em_analise',
+        nota_recusa: null,
+        comprovante_upload_em: lockTimestamp
+      })
+
+      const timestamp = Date.now()
+      const ext = file.originalname.split('.').pop() || 'pdf'
+      const filePath = `parcelas-comprovantes/${id}/${timestamp}_comprovante.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('documentos')
+        .upload(filePath, file.buffer, {
+          contentType: file.mimetype,
+          upsert: true
+        })
+
+      if (uploadError) {
+        console.error('[ClienteController] Erro no upload do comprovante de parcela:', uploadError)
+        await BoletoParcelasRepository.updateParcela(id, {
+          status: parcela.status,
+          nota_recusa: parcela.nota_recusa || null
+        })
+        return res.status(500).json({ message: 'Erro ao fazer upload do comprovante da parcela' })
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('documentos')
+        .getPublicUrl(filePath)
+
+      const updated = await BoletoParcelasRepository.updateParcela(id, {
+        status: 'em_analise',
+        comprovante_url: urlData.publicUrl,
+        comprovante_path: filePath,
+        comprovante_nome_original: file.originalname,
+        comprovante_upload_em: new Date().toISOString(),
+        nota_recusa: null
+      })
+
+      await this.notificarClienteContrato({
+        clienteId: updated.cliente_id,
+        titulo: 'Comprovante de parcela enviado',
+        mensagem: `Recebemos seu comprovante da parcela ${updated.numero_parcela}/${updated.quantidade_parcelas}. O financeiro irá analisar.`,
+        tipo: 'info'
+      })
+
+      return res.status(200).json({
+        message: 'Comprovante da parcela enviado com sucesso',
+        data: updated
+      })
+    } catch (error: any) {
+      console.error('[ClienteController] Erro ao enviar comprovante da parcela:', error)
+      return res.status(500).json({
+        message: 'Erro ao enviar comprovante da parcela',
         error: error.message
       })
     }

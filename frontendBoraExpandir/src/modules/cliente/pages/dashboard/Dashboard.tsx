@@ -35,15 +35,39 @@ interface DashboardProps {
   process: Process | null
   requerimentos?: any[]
   notifications?: import('../../types').Notification[]
+  paymentLockInfo?: {
+    bloqueado?: boolean
+    mensagem?: string
+    parcelas_atrasadas?: Array<{
+      id: string
+      servico_nome: string
+      numero_parcela: number
+      quantidade_parcelas: number
+      valor: number
+      data_vencimento: string
+      status: string
+      nota_recusa?: string | null
+    }>
+  } | null
+  onUploadOverdueProof?: (parcelaId: string, file: File) => Promise<void>
 }
 
-export function Dashboard({ client, documents, process, requerimentos = [], notifications: propNotifications }: DashboardProps) {
+export function Dashboard({
+  client,
+  documents,
+  process,
+  requerimentos = [],
+  notifications: propNotifications,
+  paymentLockInfo,
+  onUploadOverdueProof
+}: DashboardProps) {
   const [notifications, setNotifications] = useState<import('../../types').Notification[]>([])
   const [realRequerimentos, setRealRequerimentos] = useState<any[]>([])
   const [agendamentos, setAgendamentos] = useState<any[]>([])
   const [contratos, setContratos] = useState<ContratoServico[]>([])
   const [isLoadingData, setIsLoadingData] = useState(false)
   const [showRequestedActionsModal, setShowRequestedActionsModal] = useState(false)
+  const [uploadingParcelaId, setUploadingParcelaId] = useState<string | null>(null)
 
   const totalDocuments = documents.length
   const allRequerimentos = [...(requerimentos || []), ...realRequerimentos]
@@ -386,6 +410,18 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
       });
   }, [notifications])
 
+  const handleUploadParcela = async (parcelaId: string, file?: File | null) => {
+    if (!file || !onUploadOverdueProof) return
+    try {
+      setUploadingParcelaId(parcelaId)
+      await onUploadOverdueProof(parcelaId, file)
+    } catch (error) {
+      console.error('Erro ao enviar comprovante da parcela:', error)
+    } finally {
+      setUploadingParcelaId(null)
+    }
+  }
+
   return (
     <div className="space-y-8">
 
@@ -449,6 +485,57 @@ export function Dashboard({ client, documents, process, requerimentos = [], noti
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {paymentLockInfo?.bloqueado && (
+        <Card className="border-red-200 bg-red-50 dark:bg-red-900/15 dark:border-red-900/40 shadow-sm">
+          <CardContent className="p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+              <div>
+                <h3 className="text-lg font-bold text-red-800 dark:text-red-300">Acesso temporariamente restrito</h3>
+                <p className="text-sm text-red-700 dark:text-red-400 mt-1">
+                  {paymentLockInfo.mensagem || 'Há parcela(s) vencida(s). Envie o comprovante para análise do financeiro.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {(paymentLockInfo.parcelas_atrasadas || []).map((parcela) => (
+                <div key={parcela.id} className="rounded-xl border border-red-200 dark:border-red-900/40 bg-white/90 dark:bg-neutral-900 p-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-gray-900 dark:text-white">{parcela.servico_nome}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        Parcela {parcela.numero_parcela}/{parcela.quantidade_parcelas} • Vencimento {formatDateSimple(parcela.data_vencimento)}
+                      </p>
+                      <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                        Valor: R$ {Number(parcela.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                      {parcela.nota_recusa && (
+                        <p className="text-xs text-red-600 mt-1">{parcela.nota_recusa}</p>
+                      )}
+                    </div>
+                    <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-300 text-sm font-semibold text-red-700 hover:bg-red-100 cursor-pointer">
+                      {uploadingParcelaId === parcela.id ? 'Enviando...' : 'Enviar comprovante'}
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="application/pdf,image/*"
+                        disabled={uploadingParcelaId === parcela.id}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          handleUploadParcela(parcela.id, file)
+                          e.currentTarget.value = ''
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
       {/* Reminders Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

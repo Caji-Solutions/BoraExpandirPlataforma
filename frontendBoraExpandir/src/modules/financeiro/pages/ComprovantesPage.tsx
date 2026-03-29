@@ -25,7 +25,7 @@ const API_BASE_URL = import.meta.env.VITE_BACKEND_URL
 
 interface Comprovante {
     id: string
-    tipo?: 'agendamento' | 'contrato'
+    tipo?: 'agendamento' | 'contrato' | 'parcela'
     ids_grupo?: string[]
     nome: string
     email: string
@@ -40,11 +40,14 @@ interface Comprovante {
     pagamento_nota_recusa?: string
     status: string
     duracao_minutos: number
-    tipo_comprovante?: 'agendamento' | 'traducao'
+    tipo_comprovante?: 'agendamento' | 'traducao' | 'parcela_boleto'
     valor_tradutor?: number
     valor_plataforma?: number
     lucro?: number
     prazo_entrega?: string
+    numero_parcela?: number
+    quantidade_parcelas?: number
+    data_vencimento?: string
     tradutor_nome?: string
     observacoes?: string
     docs_relacionados?: Array<{
@@ -74,16 +77,19 @@ export function ComprovantesPage() {
         try {
             setLoading(true)
             setError(null)
-            const [agRes, contratoRes] = await Promise.all([
+            const [agRes, contratoRes, parcelasRes] = await Promise.all([
                 fetch(`${API_BASE_URL}/financeiro/comprovantes/pendentes`),
-                fetch(`${API_BASE_URL}/financeiro/contratos/comprovantes/pendentes`)
+                fetch(`${API_BASE_URL}/financeiro/contratos/comprovantes/pendentes`),
+                fetch(`${API_BASE_URL}/financeiro/parcelas/comprovantes/pendentes`)
             ])
 
             if (!agRes.ok) throw new Error('Erro ao buscar comprovantes')
             if (!contratoRes.ok) throw new Error('Erro ao buscar comprovantes de contrato')
+            if (!parcelasRes.ok) throw new Error('Erro ao buscar comprovantes de parcelas')
 
             const agJson = await agRes.json()
             const contratoJson = await contratoRes.json()
+            const parcelasJson = await parcelasRes.json()
 
             const agendamentos = (agJson.data || []).map((c: any) => ({
                 ...c,
@@ -104,10 +110,33 @@ export function ComprovantesPage() {
                 comprovante_upload_em: c.pagamento_comprovante_upload_em,
                 pagamento_status: c.pagamento_status,
                 status: 'contrato',
-                duracao_minutos: 0
+                duracao_minutos: 0,
+                tipo_comprovante: 'agendamento'
             }))
 
-            setComprovantes([...agendamentos, ...contratos])
+            const parcelas = (parcelasJson.data || []).map((p: any) => ({
+                id: p.id,
+                tipo: 'parcela',
+                nome: p.pagador_nome || 'Sem nome',
+                email: '',
+                telefone: '',
+                produto_id: p.origem_id || '',
+                produto_nome: p.servico_nome || 'Parcela Boleto',
+                valor: Number(p.valor || 0),
+                data_hora: p.data_vencimento,
+                comprovante_url: p.comprovante_url,
+                comprovante_upload_em: p.comprovante_upload_em,
+                pagamento_status: p.status,
+                pagamento_nota_recusa: p.nota_recusa || null,
+                status: p.status,
+                duracao_minutos: 0,
+                tipo_comprovante: 'parcela_boleto',
+                numero_parcela: p.numero_parcela,
+                quantidade_parcelas: p.quantidade_parcelas,
+                data_vencimento: p.data_vencimento
+            }))
+
+            setComprovantes([...agendamentos, ...contratos, ...parcelas])
         } catch (err: any) {
             setError(err.message)
         } finally {
@@ -144,11 +173,14 @@ export function ComprovantesPage() {
             const item = comprovantes.find(c => c.id === id)
             const isTraducao = item?.tipo_comprovante === 'traducao'
             const isContrato = item?.tipo === 'contrato'
+            const isParcela = item?.tipo === 'parcela'
             const endpoint = isTraducao
                 ? `${API_BASE_URL}/financeiro/traducao/comprovante/${id}/aprovar`
                 : isContrato
                     ? `${API_BASE_URL}/financeiro/contratos/comprovante/${id}/aprovar`
-                    : `${API_BASE_URL}/financeiro/comprovante/${id}/aprovar`
+                    : isParcela
+                        ? `${API_BASE_URL}/financeiro/parcelas/comprovante/${id}/aprovar`
+                        : `${API_BASE_URL}/financeiro/comprovante/${id}/aprovar`
 
             const res = await fetch(endpoint, {
                 method: 'POST',
@@ -184,11 +216,14 @@ export function ComprovantesPage() {
             const item = comprovantes.find(c => c.id === id)
             const isTraducao = item?.tipo_comprovante === 'traducao'
             const isContrato = item?.tipo === 'contrato'
+            const isParcela = item?.tipo === 'parcela'
             const endpoint = isTraducao
                 ? `${API_BASE_URL}/financeiro/traducao/comprovante/${id}/recusar`
                 : isContrato
                     ? `${API_BASE_URL}/financeiro/contratos/comprovante/${id}/recusar`
-                    : `${API_BASE_URL}/financeiro/comprovante/${id}/recusar`
+                    : isParcela
+                        ? `${API_BASE_URL}/financeiro/parcelas/comprovante/${id}/recusar`
+                        : `${API_BASE_URL}/financeiro/comprovante/${id}/recusar`
 
             const res = await fetch(endpoint, {
                 method: 'POST',
@@ -322,12 +357,27 @@ export function ComprovantesPage() {
                                                 <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {c.email || '—'}</span>
                                                 <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {c.telefone || '—'}</span>
                                                 <span className="flex items-center gap-1"><Package className="w-3 h-3" /> {getServiceName(c.produto_id, c.produto_nome) || '—'}</span>
-                                                <span className="flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {c.tipo === 'contrato' ? 'Contrato' : 'Agendamento'}</span>
+                                                <span className="flex items-center gap-1">
+                                                    <AlertCircle className="w-3 h-3" />
+                                                    {c.tipo === 'contrato' ? 'Contrato' : c.tipo === 'parcela' ? 'Parcela Boleto' : 'Agendamento'}
+                                                </span>
                                                 <span className="flex items-center gap-1">
                                                     <Clock className="w-3 h-3" />
-                                                    {c.tipo_comprovante === 'traducao' ? 'Tradução' : 'Agendamento'}
+                                                    {c.tipo_comprovante === 'traducao'
+                                                        ? 'Tradução'
+                                                        : c.tipo_comprovante === 'parcela_boleto'
+                                                            ? `Parcela ${c.numero_parcela}/${c.quantidade_parcelas}`
+                                                            : c.tipo === 'contrato'
+                                                                ? 'Contrato'
+                                                                : 'Agendamento'}
                                                 </span>
                                                 <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {formatDateTime(c.data_hora)}</span>
+                                                {c.data_vencimento && (
+                                                    <span className="flex items-center gap-1">
+                                                        <CreditCard className="w-3 h-3" />
+                                                        Vencimento: {formatDate(c.data_vencimento)}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

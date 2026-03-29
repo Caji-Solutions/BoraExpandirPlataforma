@@ -8,6 +8,12 @@ import NotificationService from '../../services/NotificationService';
 import { normalizeCpf, normalizePhone } from '../../utils/normalizers';
 import DNAService from '../../services/DNAService';
 import { toUtcFromBrt, toBrtFromUtc } from '../../utils/dateUtils';
+import {
+    clampQuantidadeParcelas,
+    getAnchorDayFromDate,
+    normalizeMetodoPagamento,
+    parseMoneyInput
+} from '../../utils/boletoUtils';
 
 
 class ComercialController {
@@ -24,6 +30,53 @@ class ComercialController {
             mensagem,
             ocorrido_em: new Date().toISOString()
         }
+    }
+
+    private extractBoletoPayload(input: Record<string, any> = {}, baseDate?: string | Date) {
+        const metodo = normalizeMetodoPagamento(input.metodo_pagamento || input.forma_pagamento)
+        if (metodo !== 'boleto') {
+            return {
+                metodo_pagamento: 'pix',
+                boleto_ativo: false,
+                boleto_valor_entrada: null,
+                boleto_valor_parcela: null,
+                boleto_quantidade_parcelas: null,
+                boleto_dia_cobranca: null
+            }
+        }
+
+        const valorEntrada = parseMoneyInput(input.boleto_valor_entrada)
+        const valorParcela = parseMoneyInput(input.boleto_valor_parcela)
+        const quantidadeParcelas = clampQuantidadeParcelas(input.boleto_quantidade_parcelas)
+        const diaCobranca = Number(input.boleto_dia_cobranca) || getAnchorDayFromDate(baseDate || new Date())
+
+        return {
+            metodo_pagamento: 'boleto',
+            boleto_ativo: true,
+            boleto_valor_entrada: valorEntrada,
+            boleto_valor_parcela: valorParcela,
+            boleto_quantidade_parcelas: quantidadeParcelas,
+            boleto_dia_cobranca: Math.max(1, Math.min(31, diaCobranca))
+        }
+    }
+
+    private validateBoletoPayload(payload: {
+        metodo_pagamento?: string | null
+        boleto_valor_entrada?: number | null
+        boleto_valor_parcela?: number | null
+        boleto_quantidade_parcelas?: number | null
+    }): string | null {
+        if (payload.metodo_pagamento !== 'boleto') return null
+        if (!payload.boleto_valor_entrada || payload.boleto_valor_entrada <= 0) {
+            return 'Valor da entrada do boleto é obrigatório e deve ser maior que zero.'
+        }
+        if (!payload.boleto_valor_parcela || payload.boleto_valor_parcela <= 0) {
+            return 'Valor das parcelas do boleto é obrigatório e deve ser maior que zero.'
+        }
+        if (!payload.boleto_quantidade_parcelas || payload.boleto_quantidade_parcelas < 1 || payload.boleto_quantidade_parcelas > 3) {
+            return 'Quantidade de parcelas do boleto deve estar entre 1 e 3.'
+        }
+        return null
     }
 
     private async notificarClienteContrato(params: {
@@ -49,7 +102,24 @@ class ComercialController {
         console.log('========== CREATE AGENDAMENTO DEBUG ==========')
         console.log('Body completo recebido:', req.body)
         try {
-            const { nome, email, telefone, data_hora, produto_id, duracao_minutos, status, usuario_id, cliente_id, requer_delegacao, pagamento_status } = req.body
+            const {
+                nome,
+                email,
+                telefone,
+                data_hora,
+                produto_id,
+                duracao_minutos,
+                status,
+                usuario_id,
+                cliente_id,
+                requer_delegacao,
+                pagamento_status,
+                metodo_pagamento,
+                boleto_valor_entrada,
+                boleto_valor_parcela,
+                boleto_quantidade_parcelas,
+                boleto_dia_cobranca
+            } = req.body
             const telefoneNormalizado = normalizePhone(telefone)
 
             console.log('IDs recebidos:', { usuario_id, cliente_id })
@@ -64,6 +134,17 @@ class ComercialController {
 
             // Normaliza data_hora assumindo que veio fuso de Brasília
             const dataHoraIso = toUtcFromBrt(data_hora);
+            const boletoPayload = this.extractBoletoPayload({
+                metodo_pagamento,
+                boleto_valor_entrada,
+                boleto_valor_parcela,
+                boleto_quantidade_parcelas,
+                boleto_dia_cobranca
+            }, dataHoraIso)
+            const boletoValidationError = this.validateBoletoPayload(boletoPayload)
+            if (boletoValidationError) {
+                return res.status(400).json({ message: boletoValidationError })
+            }
 
             const diaSemana = new Date(dataHoraIso).getDay()
             if (diaSemana === 0 || diaSemana === 6) {
@@ -93,7 +174,8 @@ class ComercialController {
                 pagamento_status: pagamento_status || 'pendente',
                 usuario_id: usuario_id || null,
                 cliente_id: cliente_id || null,
-                requer_delegacao: requer_delegacao !== undefined ? requer_delegacao : false
+                requer_delegacao: requer_delegacao !== undefined ? requer_delegacao : false,
+                ...boletoPayload
             }
 
             // Fallback: se o frontend não enviou requer_delegacao, tenta buscar do catálogo
@@ -160,7 +242,23 @@ class ComercialController {
         console.log('========== UPDATE AGENDAMENTO (PIX) DEBUG ==========')
         try {
             const { id } = req.params
-            const { nome, email, telefone, data_hora, produto_id, produto_nome, valor, duracao_minutos, usuario_id, cliente_id, metodo_pagamento } = req.body
+            const {
+                nome,
+                email,
+                telefone,
+                data_hora,
+                produto_id,
+                produto_nome,
+                valor,
+                duracao_minutos,
+                usuario_id,
+                cliente_id,
+                metodo_pagamento,
+                boleto_valor_entrada,
+                boleto_valor_parcela,
+                boleto_quantidade_parcelas,
+                boleto_dia_cobranca
+            } = req.body
             const telefoneNormalizado = normalizePhone(telefone)
 
             if (!nome || !email || !telefoneNormalizado || !data_hora || !produto_id || !produto_nome || !valor) {
@@ -169,6 +267,17 @@ class ComercialController {
 
             const dataHoraIso = toUtcFromBrt(data_hora);
             const duracao = duracao_minutos || 60
+            const boletoPayload = this.extractBoletoPayload({
+                metodo_pagamento,
+                boleto_valor_entrada,
+                boleto_valor_parcela,
+                boleto_quantidade_parcelas,
+                boleto_dia_cobranca
+            }, dataHoraIso)
+            const boletoValidationError = this.validateBoletoPayload(boletoPayload)
+            if (boletoValidationError) {
+                return res.status(400).json({ message: boletoValidationError })
+            }
 
             // Se a data/hora mudou e o agendamento já tem um meet_link, atualizar o evento no Google Calendar
             const agendamentoAntigo = await ComercialRepository.getAgendamentoById(id);
@@ -200,8 +309,8 @@ class ComercialController {
                 duracao_minutos: duracao,
                 usuario_id: usuario_id || null,
                 cliente_id: cliente_id || null,
-                metodo_pagamento: metodo_pagamento || 'pix',
-                conflito_horario: isConflito
+                conflito_horario: isConflito,
+                ...boletoPayload
             }
 
             if (agendamentoAntigo) {
@@ -690,6 +799,13 @@ class ComercialController {
             const clienteTelefoneNormalizado = normalizePhone(cliente.whatsapp || cliente.telefone)
             const clienteCpfNormalizado = normalizeCpf(cliente.cpf || cliente.documento)
             const tipoServicoPadrao = subservico_nome || servico.nome || 'Assessoria de Imigracao'
+            const boletoPrefill = this.extractBoletoPayload({
+                metodo_pagamento: ultimoDraftDados?.metodo_pagamento || 'pix',
+                boleto_valor_entrada: ultimoDraftDados?.boleto_valor_entrada,
+                boleto_valor_parcela: ultimoDraftDados?.boleto_valor_parcela,
+                boleto_quantidade_parcelas: ultimoDraftDados?.boleto_quantidade_parcelas,
+                boleto_dia_cobranca: ultimoDraftDados?.boleto_dia_cobranca
+            }, new Date().toISOString())
 
             const draftDadosPrefill: any = {
                 ...ultimoDraftDados,
@@ -725,7 +841,8 @@ class ComercialController {
                 pagamento_status: 'pendente',
                 is_draft: true,
                 etapa_fluxo: 1,
-                draft_dados: draftDadosPrefill
+                draft_dados: draftDadosPrefill,
+                ...boletoPrefill
             }
 
             // Incluir subservico se informado
@@ -1074,6 +1191,19 @@ class ComercialController {
                 draft_dados: mergedDraft,
                 atualizado_em: new Date().toISOString()
             }
+
+            const boletoPayload = this.extractBoletoPayload({
+                metodo_pagamento: mergedDraft.metodo_pagamento || mergedDraft.forma_pagamento || mergedDraft.formaPagamento,
+                boleto_valor_entrada: mergedDraft.boleto_valor_entrada,
+                boleto_valor_parcela: mergedDraft.boleto_valor_parcela,
+                boleto_quantidade_parcelas: mergedDraft.boleto_quantidade_parcelas,
+                boleto_dia_cobranca: mergedDraft.boleto_dia_cobranca
+            }, contrato.criado_em || new Date().toISOString())
+            const boletoValidationError = this.validateBoletoPayload(boletoPayload)
+            if (boletoValidationError) {
+                return res.status(400).json({ message: boletoValidationError })
+            }
+            Object.assign(payloadUpdate, boletoPayload)
 
             if (membrosCount !== undefined) {
                 payloadUpdate.membros_count = membrosCount

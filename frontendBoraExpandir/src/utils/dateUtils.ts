@@ -5,13 +5,13 @@
 
 export function parseBackendDate(dateStr: string | Date): Date {
     if (!dateStr) return new Date();
-    if (dateStr instanceof Date) return dateStr;
-    // Se não tiver indicador de timezone, assume Brazil (UTC-3)
-    let normalized = dateStr;
-    if (!dateStr.includes('Z') && !dateStr.match(/[+-]\d{2}:\d{2}$/)) {
-        normalized = dateStr + '-03:00';
+    if (typeof dateStr === 'string') {
+        // Se vier com Z (UTC), JavaScript interpreta automaticamente e converte para local
+        // Se vier sem Z, assume que é uma string já em BRT — trata como horário local
+        // (auto-consistente com os slots de horário que também usam horário local)
+        return new Date(dateStr);
     }
-    return new Date(normalized);
+    return new Date(dateStr);
 }
 
 export function formatDataHora(dateStr: string | Date): string {

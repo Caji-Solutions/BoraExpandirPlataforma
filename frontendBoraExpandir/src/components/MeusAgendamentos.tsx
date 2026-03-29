@@ -65,12 +65,35 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
 
   const effectiveUserId = userId || activeProfile?.id;
 
+  // Para strings BRT do backend (sem Z/offset): extrai data direto da string,
+  // evitando qualquer dependência do timezone do browser.
+  // Para objetos Date do CalendarPicker: usa timezone local (o calendário é local).
   const getLocalDateString = (date: Date | string) => {
-    const d = typeof date === 'string' ? parseBackendDate(date) : date;
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
+    if (typeof date === 'string') {
+      if (!date.includes('Z') && !date.match(/[+-]\d{2}:\d{2}$/)) {
+        return date.substring(0, 10);
+      }
+      return new Date(date).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+    }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  };
+
+  // Extrai hora e minuto BRT de uma string de backend (sem Z) ou Date UTC.
+  // Nunca depende do timezone do browser.
+  const getBrtHhMm = (timeValue: string | Date): { h: number; m: number } | null => {
+    if (typeof timeValue === 'string' && !timeValue.includes('Z') && !timeValue.match(/[+-]\d{2}:\d{2}$/)) {
+      const h = parseInt(timeValue.substring(11, 13), 10);
+      const m = parseInt(timeValue.substring(14, 16), 10);
+      if (!isNaN(h)) return { h, m };
+    }
+    const d = typeof timeValue === 'string' ? new Date(timeValue) : timeValue;
+    if (isNaN(d.getTime())) return null;
+    const s = d.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false });
+    const parts = s.split(':');
+    return { h: parseInt(parts[0], 10), m: parseInt(parts[1], 10) };
   };
 
   const occupancyData = (activeTab === 'consultorias' ? consultorias : assessorias).reduce((acc: Record<string, number>, item) => {
@@ -275,48 +298,42 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
   console.log("DEBUG: Renderizando grade para:", dataSelecionadaIso);
   console.log("DEBUG: Items filtrados para o dia:", JSON.stringify(itemsDoDia));
 
-  // Função auxiliar para calcular conflitos e duração nos slots
+  // Slot matching usando janela de hora BRT — independente do timezone do browser.
+  // Um agendamento "pertence" a este slot se começa dentro da janela [slotH*60, slotH*60+60)
+  // OU se este slot está no meio de um agendamento multi-hora (continuação).
   const getItemParaHorario = (hora: string) => {
-    // Garantir que a comparação seja feita com datas no mesmo fuso (Local)
-    const [h, m] = hora.split(':').map(Number);
-    const inicioSlot = new Date(dataSelecionada);
-    inicioSlot.setHours(h, m, 0, 0);
-    const inicioSlotTime = inicioSlot.getTime();
+    const [slotH] = hora.split(':').map(Number);
+    const slotMinutes = slotH * 60;
 
     const found = itemsDoDia.find(item => {
       const timeValue = item.data_hora || item.criado_em;
       if (!timeValue) return false;
-
-      // Com as mudanças no backend, os dados agora chegam blindados em UTC-3
-      const inicioAgendamento = parseBackendDate(timeValue);
-
+      const brtTime = getBrtHhMm(timeValue);
+      if (!brtTime) return false;
+      const itemMinutes = brtTime.h * 60 + brtTime.m;
       const duracao = item.duracao_minutos || 60;
-      const fimAgendamento = new Date(inicioAgendamento.getTime() + duracao * 60000);
-
-      // Margem de erro de 1 minuto para evitar bugs de arredondamento
-      const match = inicioAgendamento.getTime() <= (inicioSlotTime + 60000) && inicioSlotTime < fimAgendamento.getTime();
-      return match;
+      // O agendamento pertence a este slot se começa antes do fim do slot E o slot começa antes do fim do agendamento
+      return itemMinutes < slotMinutes + 60 && slotMinutes < itemMinutes + duracao;
     });
 
     if (found) {
       const rawVal = found.data_hora || found.criado_em;
-      const d = parseBackendDate(rawVal);
-      console.log(`DEBUG: Slot ${hora} ocupado por:`, found.id,
-        "| Raw:", rawVal,
-        "| LocalTime:", d.toLocaleTimeString());
+      const brt = getBrtHhMm(rawVal);
+      console.log(`DEBUG: Slot ${hora} ocupado por:`, found.id, "| BRT:", brt ? `${brt.h}:${String(brt.m).padStart(2,'0')}` : 'N/A');
     }
     return found;
   };
 
+  // Este é o slot de início se o agendamento começa dentro da janela de hora do slot
   const isInicioAgendamento = (hora: string, item: any) => {
     const timeValue = item.data_hora || item.criado_em;
     if (!item || !timeValue) return false;
-
-    // Normalização local 1:1
-    const normalized = parseBackendDate(timeValue);
-    const h = String(normalized.getHours()).padStart(2, '0');
-    const m = String(normalized.getMinutes()).padStart(2, '0');
-    return `${h}:${m}` === hora;
+    const brtTime = getBrtHhMm(timeValue);
+    if (!brtTime) return false;
+    const [slotH] = hora.split(':').map(Number);
+    const slotMinutes = slotH * 60;
+    const itemMinutes = brtTime.h * 60 + brtTime.m;
+    return itemMinutes >= slotMinutes && itemMinutes < slotMinutes + 60;
   };
 
   return (
