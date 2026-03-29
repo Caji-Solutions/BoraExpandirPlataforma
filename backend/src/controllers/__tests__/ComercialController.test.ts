@@ -2,7 +2,7 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import comercialRoutes from '../../routes/comercial';
-import ComercialController from '../ComercialController';
+import ComercialController from '../comercial/ComercialController';
 import ContratoServicoRepository from '../../repositories/ContratoServicoRepository';
 import ComercialRepository from '../../repositories/ComercialRepository';
 import AdmRepository from '../../repositories/AdmRepository';
@@ -443,5 +443,423 @@ describe('ComercialController - Comprovante', () => {
         expect(ContratoServicoRepository.updateContrato).toHaveBeenCalled();
 
         expect(NotificationService.createNotification).toHaveBeenCalled();
+    });
+});
+
+// =============================================
+// Contract creation - Stage progression logic
+// =============================================
+
+describe('ComercialController - Contract Stage Progression', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('Deve mover cliente para aguardando_assessoria quando e o primeiro contrato', async () => {
+        const mockServico = { id: 'servico-1', tipo: 'fixo', nome: 'Assessoria' };
+        (AdmRepository.getServiceById as any).mockResolvedValue(mockServico);
+
+        const mockPayload = {
+            id: 'contrato-new',
+            cliente_id: 'cliente-first',
+            servico_id: 'servico-1',
+            is_draft: true,
+            etapa_fluxo: 1,
+            draft_dados: {}
+        };
+
+        (ContratoServicoRepository.createContrato as any).mockResolvedValue(mockPayload);
+        (ContratoServicoRepository.getUltimoContratoComDados as any).mockResolvedValue(null);
+        (ContratoServicoRepository.getContratoById as any).mockResolvedValue(mockPayload);
+
+        // Mock supabase para retornar count=1 (primeiro contrato) e lidar com updates
+        const { supabase: supabaseMock } = await import('../../config/SupabaseClient');
+        const mockClienteUpdateEq = vi.fn().mockResolvedValue({ error: null });
+        const mockClienteUpdate = vi.fn().mockReturnValue({ eq: mockClienteUpdateEq });
+        const mockProcessoUpdateEq = vi.fn().mockResolvedValue({ error: null });
+        const mockProcessoUpdate = vi.fn().mockReturnValue({ eq: mockProcessoUpdateEq });
+
+        (supabaseMock.from as any).mockImplementation((table: string) => {
+            if (table === 'contratos_servicos') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockResolvedValue({ count: 1, error: null })
+                    })
+                };
+            }
+            if (table === 'clientes') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({
+                            single: vi.fn().mockResolvedValue({ data: { id: 'cliente-first', nome: 'Teste', email: 'a@b.com', whatsapp: '11999' }, error: null })
+                        })
+                    }),
+                    update: mockClienteUpdate
+                };
+            }
+            if (table === 'processos') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({
+                            order: vi.fn().mockReturnValue({
+                                limit: vi.fn().mockReturnValue({
+                                    single: vi.fn().mockResolvedValue({ data: { id: 'proc-1' }, error: null })
+                                })
+                            })
+                        })
+                    }),
+                    update: mockProcessoUpdate
+                };
+            }
+            if (table === 'catalogo_servicos') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({
+                            single: vi.fn().mockResolvedValue({ data: mockServico, error: null })
+                        })
+                    })
+                };
+            }
+            return {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                single: vi.fn().mockResolvedValue({ data: null, error: null })
+            };
+        });
+
+        const res = await request(app)
+            .post('/api/comercial/contratos')
+            .send({
+                cliente_id: 'cliente-first',
+                servico_id: 'servico-1'
+            });
+
+        expect(res.status).toBe(201);
+        expect(mockClienteUpdate).toHaveBeenCalledWith({ stage: 'aguardando_assessoria', status: 'aguardando_assessoria' });
+        expect(mockProcessoUpdate).toHaveBeenCalledWith({ status: 'aguardando_assessoria' });
+    });
+});
+
+// =============================================
+// Contract Draft - Client data sync
+// =============================================
+
+describe('ComercialController - Draft Client Data Sync', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('Deve sincronizar email, estado_civil e CPF (11 digitos) para a tabela clientes', async () => {
+        const mockContratoId = 'contrato-sync';
+        const mockClienteId = 'cliente-sync';
+
+        const contratoDb = {
+            id: mockContratoId,
+            cliente_id: mockClienteId,
+            is_draft: true,
+            etapa_fluxo: 2,
+            draft_dados: { nome: 'Maria' }
+        };
+
+        (ContratoServicoRepository.getContratoById as any).mockResolvedValue(contratoDb);
+
+        const updatedContrato = {
+            ...contratoDb,
+            etapa_fluxo: 3,
+            draft_dados: {
+                nome: 'Maria',
+                email: 'maria@test.com',
+                estado_civil: 'casada',
+                documento: '123.456.789-09'
+            }
+        };
+        (ContratoServicoRepository.updateContrato as any).mockResolvedValue(updatedContrato);
+        (DNAService.mergeDNA as any).mockResolvedValue(true);
+
+        // Mock supabase para capturar o update na tabela clientes
+        const { supabase: supabaseMock } = await import('../../config/SupabaseClient');
+        const mockClienteEq = vi.fn().mockResolvedValue({ error: null });
+        const mockClienteUpdate = vi.fn().mockReturnValue({ eq: mockClienteEq });
+
+        (supabaseMock.from as any).mockImplementation((table: string) => {
+            if (table === 'clientes') {
+                return { update: mockClienteUpdate };
+            }
+            return {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                single: vi.fn().mockResolvedValue({ data: null, error: null })
+            };
+        });
+
+        const res = await request(app)
+            .put(`/api/comercial/contratos/${mockContratoId}/draft`)
+            .send({
+                etapa_fluxo: 3,
+                draft_dados: {
+                    email: 'maria@test.com',
+                    estado_civil: 'casada',
+                    documento: '123.456.789-09'
+                }
+            });
+
+        expect(res.status).toBe(200);
+        expect(mockClienteUpdate).toHaveBeenCalledWith({
+            email: 'maria@test.com',
+            estado_civil: 'casada',
+            cpf: '12345678909'
+        });
+        expect(mockClienteEq).toHaveBeenCalledWith('id', mockClienteId);
+    });
+
+    it('Nao deve sincronizar CPF se documento nao tem 11 digitos', async () => {
+        const contratoDb = {
+            id: 'contrato-no-cpf',
+            cliente_id: 'cliente-no-cpf',
+            is_draft: true,
+            etapa_fluxo: 2,
+            draft_dados: { nome: 'Joao' }
+        };
+
+        (ContratoServicoRepository.getContratoById as any).mockResolvedValue(contratoDb);
+        (ContratoServicoRepository.updateContrato as any).mockResolvedValue({
+            ...contratoDb,
+            etapa_fluxo: 3,
+            draft_dados: { nome: 'Joao', email: 'joao@test.com', documento: 'AB123456' }
+        });
+        (DNAService.mergeDNA as any).mockResolvedValue(true);
+
+        const { supabase: supabaseMock } = await import('../../config/SupabaseClient');
+        const mockClienteEq = vi.fn().mockResolvedValue({ error: null });
+        const mockClienteUpdate = vi.fn().mockReturnValue({ eq: mockClienteEq });
+
+        (supabaseMock.from as any).mockImplementation((table: string) => {
+            if (table === 'clientes') {
+                return { update: mockClienteUpdate };
+            }
+            return {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                single: vi.fn().mockResolvedValue({ data: null, error: null })
+            };
+        });
+
+        const res = await request(app)
+            .put('/api/comercial/contratos/contrato-no-cpf/draft')
+            .send({
+                etapa_fluxo: 3,
+                draft_dados: { email: 'joao@test.com', documento: 'AB123456' }
+            });
+
+        expect(res.status).toBe(200);
+        // Deve sincronizar apenas email, sem CPF
+        expect(mockClienteUpdate).toHaveBeenCalledWith({ email: 'joao@test.com' });
+    });
+});
+
+// =============================================
+// getConsultoriasCount
+// =============================================
+
+describe('ComercialController - getConsultoriasCount', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('Deve retornar contagem de consultorias e valor de desconto', async () => {
+        const { supabase: supabaseMock } = await import('../../config/SupabaseClient');
+
+        (supabaseMock.from as any).mockImplementation(() => ({
+            select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                    eq: vi.fn().mockResolvedValue({ count: 3, error: null })
+                })
+            })
+        }));
+
+        const res = await request(app)
+            .get('/api/comercial/consultorias-count/cliente-123');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.total_consultorias).toBe(3);
+        expect(res.body.data.valor_desconto).toBe(150);
+        expect(res.body.data.valor_por_consultoria).toBe(50);
+    });
+
+    it('Deve retornar desconto zero quando nao ha consultorias realizadas', async () => {
+        const { supabase: supabaseMock } = await import('../../config/SupabaseClient');
+
+        (supabaseMock.from as any).mockImplementation(() => ({
+            select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                    eq: vi.fn().mockResolvedValue({ count: 0, error: null })
+                })
+            })
+        }));
+
+        const res = await request(app)
+            .get('/api/comercial/consultorias-count/cliente-456');
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.total_consultorias).toBe(0);
+        expect(res.body.data.valor_desconto).toBe(0);
+    });
+
+    it('Deve retornar 500 quando supabase retorna erro', async () => {
+        const { supabase: supabaseMock } = await import('../../config/SupabaseClient');
+
+        (supabaseMock.from as any).mockImplementation(() => ({
+            select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                    eq: vi.fn().mockResolvedValue({ count: null, error: { message: 'db error' } })
+                })
+            })
+        }));
+
+        const res = await request(app)
+            .get('/api/comercial/consultorias-count/cliente-err');
+
+        expect(res.status).toBe(500);
+    });
+});
+
+// =============================================
+// getPosConsultoria (direct method calls - requires auth context)
+// =============================================
+
+describe('ComercialController - getPosConsultoria', () => {
+    function makeRes() {
+        return {
+            status: vi.fn().mockReturnThis(),
+            json: vi.fn()
+        };
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('Deve retornar 401 quando userId nao esta presente', async () => {
+        const req: any = { userId: null, user: {} };
+        const res = makeRes();
+        await ComercialController.getPosConsultoria(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(401);
+    });
+
+    it('Deve retornar 403 quando usuario nao e C2 comercial nem super_admin', async () => {
+        const { supabase: supabaseMock } = await import('../../config/SupabaseClient');
+
+        (supabaseMock.from as any).mockImplementation((table: string) => {
+            if (table === 'usuarios') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({
+                            single: vi.fn().mockResolvedValue({
+                                data: { nivel: 'C1', setor: 'comercial', role: 'comercial' },
+                                error: null
+                            })
+                        })
+                    })
+                };
+            }
+            return {};
+        });
+
+        const req: any = { userId: 'user-c1', user: { role: 'comercial' } };
+        const res = makeRes();
+        await ComercialController.getPosConsultoria(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(403);
+    });
+
+    it('Deve retornar agendamentos realizados para usuario C2 comercial', async () => {
+        const { supabase: supabaseMock } = await import('../../config/SupabaseClient');
+
+        const mockAgendamentos = [
+            {
+                id: 'ag-1',
+                produto_nome: 'Consultoria Espanha',
+                data_hora: '2026-03-28T18:00:00Z',
+                criado_em: '2026-03-20',
+                clientes: { id: 'cli-1', client_id: 'C001', nome: 'Maria', email: 'maria@test.com', whatsapp: '11999' }
+            }
+        ];
+
+        (supabaseMock.from as any).mockImplementation((table: string) => {
+            if (table === 'usuarios') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({
+                            single: vi.fn().mockResolvedValue({
+                                data: { nivel: 'C2', setor: 'comercial', role: 'comercial' },
+                                error: null
+                            })
+                        })
+                    })
+                };
+            }
+            if (table === 'agendamentos') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({
+                            eq: vi.fn().mockReturnValue({
+                                order: vi.fn().mockResolvedValue({ data: mockAgendamentos, error: null })
+                            })
+                        })
+                    })
+                };
+            }
+            return {};
+        });
+
+        const req: any = { userId: 'user-c2', user: { role: 'comercial' } };
+        const res = makeRes();
+        await ComercialController.getPosConsultoria(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({
+            data: expect.arrayContaining([
+                expect.objectContaining({ id: 'ag-1', produto_nome: 'Consultoria Espanha' })
+            ])
+        });
+    });
+
+    it('Deve permitir acesso para super_admin independente do nivel', async () => {
+        const { supabase: supabaseMock } = await import('../../config/SupabaseClient');
+
+        (supabaseMock.from as any).mockImplementation((table: string) => {
+            if (table === 'usuarios') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({
+                            single: vi.fn().mockResolvedValue({
+                                data: { nivel: null, setor: 'admin', role: 'super_admin' },
+                                error: null
+                            })
+                        })
+                    })
+                };
+            }
+            if (table === 'agendamentos') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({
+                            eq: vi.fn().mockReturnValue({
+                                order: vi.fn().mockResolvedValue({ data: [], error: null })
+                            })
+                        })
+                    })
+                };
+            }
+            return {};
+        });
+
+        const req: any = { userId: 'admin-1', user: { role: 'super_admin' } };
+        const res = makeRes();
+        await ComercialController.getPosConsultoria(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({ data: [] });
     });
 });
