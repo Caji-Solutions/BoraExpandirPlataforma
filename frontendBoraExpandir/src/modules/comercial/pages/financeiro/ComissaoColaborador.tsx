@@ -51,9 +51,16 @@ export default function ComissaoColaborador() {
   const mesAtual = new Date().getMonth() + 1
   const anoAtual = new Date().getFullYear()
 
+  const extractResponseData = <T,>(response: any): T => {
+    const payload = response?.data ?? response
+    return (payload?.data ?? payload) as T
+  }
+
   useEffect(() => {
-    fetchData()
-  }, [])
+    if (activeProfile?.id) {
+      fetchData()
+    }
+  }, [activeProfile?.id])
 
   async function fetchData() {
     try {
@@ -61,8 +68,12 @@ export default function ComissaoColaborador() {
         apiClient.get<{ data: ComissaoResult }>(`/comercial/comissao/calcular?mes=${mesAtual}&ano=${anoAtual}`),
         apiClient.get<{ data: ComissaoHistorico[] }>(`/comercial/comissao/historico?ano=${anoAtual}`)
       ])
-      setComissao(comissaoRes.data)
-      setHistorico(historicoRes.data)
+
+      const comissaoData = extractResponseData<ComissaoResult | null>(comissaoRes)
+      const historicoData = extractResponseData<ComissaoHistorico[] | null>(historicoRes)
+
+      setComissao(comissaoData)
+      setHistorico(Array.isArray(historicoData) ? historicoData : [])
     } catch (err) {
       console.error('Erro ao buscar comissao:', err)
     } finally {
@@ -74,7 +85,8 @@ export default function ComissaoColaborador() {
     setCalculating(true)
     try {
       const res = await apiClient.get<{ data: ComissaoResult }>(`/comercial/comissao/calcular?mes=${mesAtual}&ano=${anoAtual}`)
-      setComissao(res.data)
+      const comissaoData = extractResponseData<ComissaoResult | null>(res)
+      setComissao(comissaoData)
     } catch (err) {
       console.error('Erro ao recalcular:', err)
     } finally {
