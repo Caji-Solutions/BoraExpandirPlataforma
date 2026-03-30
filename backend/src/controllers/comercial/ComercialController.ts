@@ -1660,55 +1660,112 @@ class ComercialController {
                 return res.status(401).json({ message: 'Nao autenticado' });
             }
 
-            // Verificar nivel do usuario: apenas C2 do setor comercial ou super_admin tem acesso
-            const { data: usuario, error: userError } = await supabase
-                .from('usuarios')
-                .select('nivel, setor, role')
-                .eq('id', userId)
-                .single();
-
             const roleFromToken = String(req.user?.role || '').toLowerCase();
             const nivelFromToken = String(req.user?.nivel || req.user?.cargo || '').toUpperCase();
-            const roleUsuario = String(usuario?.role || '').toLowerCase();
-            const nivelUsuario = String(usuario?.nivel || '').toUpperCase();
-            const setorUsuario = String(usuario?.setor || '').toLowerCase();
+            let roleDb = '';
+            let nivelDb = '';
+            let setorDb = '';
 
-            const isSuperAdmin =
-                roleFromToken === 'super_admin' ||
-                roleUsuario === 'super_admin';
+            // Tentativa 1: profiles (schema mais atual)
+            try {
+                const { data: profileDb, error: profileDbError } = await supabase
+                    .from('profiles')
+                    .select('role, nivel, cargo')
+                    .eq('id', userId)
+                    .single();
 
-            const isC2ComercialFromUsuarios = nivelUsuario === 'C2' && setorUsuario === 'comercial';
+                if (!profileDbError && profileDb) {
+                    roleDb = String(profileDb.role || '').toLowerCase();
+                    nivelDb = String(profileDb.nivel || profileDb.cargo || '').toUpperCase();
+                }
+            } catch (profileLookupError) {
+                console.warn('[ComercialController] Falha ao buscar permissao em profiles (nao critico):', profileLookupError);
+            }
+
+            // Tentativa 2: usuarios (schema legado)
+            if (!roleDb || !nivelDb) {
+                try {
+                    const { data: usuarioDb, error: usuarioDbError } = await supabase
+                        .from('usuarios')
+                        .select('nivel, setor, role')
+                        .eq('id', userId)
+                        .single();
+
+                    if (!usuarioDbError && usuarioDb) {
+                        roleDb = String(usuarioDb.role || '').toLowerCase();
+                        nivelDb = String(usuarioDb.nivel || '').toUpperCase();
+                        setorDb = String(usuarioDb.setor || '').toLowerCase();
+                    }
+                } catch (usuariosLookupError) {
+                    console.warn('[ComercialController] Falha ao buscar permissao em usuarios (nao critico):', usuariosLookupError);
+                }
+            }
+
+            const isSuperAdmin = roleFromToken === 'super_admin' || roleDb === 'super_admin';
+
             const isC2ComercialFromToken =
                 nivelFromToken === 'C2' &&
                 (roleFromToken === 'comercial' || roleFromToken === 'super_admin');
-            const isC2Comercial = isC2ComercialFromUsuarios || isC2ComercialFromToken;
 
-            if ((userError || !usuario) && !isSuperAdmin && !isC2Comercial) {
-                return res.status(403).json({ message: 'Acesso negado: usuario nao encontrado' });
-            }
+            const isC2ComercialFromDb =
+                nivelDb === 'C2' &&
+                (
+                    roleDb === 'comercial' ||
+                    roleDb === 'super_admin' ||
+                    setorDb === 'comercial'
+                );
 
-            if (!isSuperAdmin && !isC2Comercial) {
+            if (!isSuperAdmin && !isC2ComercialFromToken && !isC2ComercialFromDb) {
                 return res.status(403).json({ message: 'Acesso negado: apenas usuarios C2 do setor comercial podem acessar pos-consultoria' });
             }
 
-            const selectAgendamento = 'id, produto_nome, data_hora, criado_em, cliente_id, clientes(id, client_id, nome, email, whatsapp)';
+            const selectAgendamentoBase = 'id, produto_nome, data_hora, criado_em, cliente_id';
+            const isMissingColumnError = (error: any, column: string) => {
+                const msg = String(error?.message || error?.details || error?.hint || '').toLowerCase();
+                const code = String(error?.code || '');
+                return code === '42703' || (msg.includes('column') && msg.includes(column.toLowerCase()));
+            };
 
-            const { data: agendamentosDoVendedor, error: agendamentosVendedorError } = await supabase
+            let agendamentosDoVendedor: any[] = [];
+            const queryVendedorId = await supabase
                 .from('agendamentos')
-                .select(selectAgendamento)
+                .select(selectAgendamentoBase)
                 .eq('vendedor_id', userId)
                 .eq('status', 'realizado')
                 .order('data_hora', { ascending: false });
 
-            if (agendamentosVendedorError) throw agendamentosVendedorError;
+            if (queryVendedorId.error && isMissingColumnError(queryVendedorId.error, 'vendedor_id')) {
+                const queryUsuarioId = await supabase
+                    .from('agendamentos')
+                    .select(selectAgendamentoBase)
+                    .eq('usuario_id', userId)
+                    .eq('status', 'realizado')
+                    .order('data_hora', { ascending: false });
 
-            const { data: processosDelegados, error: processosDelegadosError } = await supabase
-                .from('processos')
-                .select('cliente_id')
-                .eq('responsavel_id', userId)
-                .eq('status', 'clientes_c2');
+                if (queryUsuarioId.error) throw queryUsuarioId.error;
+                agendamentosDoVendedor = queryUsuarioId.data || [];
+            } else if (queryVendedorId.error) {
+                throw queryVendedorId.error;
+            } else {
+                agendamentosDoVendedor = queryVendedorId.data || [];
+            }
 
-            if (processosDelegadosError) throw processosDelegadosError;
+            let processosDelegados: any[] = [];
+            try {
+                const { data, error } = await supabase
+                    .from('processos')
+                    .select('cliente_id')
+                    .eq('responsavel_id', userId)
+                    .eq('status', 'clientes_c2');
+
+                if (error) {
+                    console.warn('[ComercialController] Falha ao buscar processos delegados (nao critico):', error);
+                } else {
+                    processosDelegados = data || [];
+                }
+            } catch (processosDelegadosError) {
+                console.warn('[ComercialController] Excecao ao buscar processos delegados (nao critico):', processosDelegadosError);
+            }
 
             const clienteIdsDelegados = [...new Set(
                 (processosDelegados || [])
@@ -1719,15 +1776,18 @@ class ComercialController {
             let agendamentosDelegados: any[] = [];
 
             if (clienteIdsDelegados.length > 0) {
-                const { data, error } = await supabase
+                const { data: agDelegados, error: agDelegadosError } = await supabase
                     .from('agendamentos')
-                    .select(selectAgendamento)
+                    .select(selectAgendamentoBase)
                     .in('cliente_id', clienteIdsDelegados)
                     .eq('status', 'realizado')
                     .order('data_hora', { ascending: false });
 
-                if (error) throw error;
-                agendamentosDelegados = data || [];
+                if (agDelegadosError) {
+                    console.warn('[ComercialController] Falha ao buscar agendamentos delegados (nao critico):', agDelegadosError);
+                } else {
+                    agendamentosDelegados = agDelegados || [];
+                }
             }
 
             const agendamentosUnificadosMap = new Map<string, any>();
@@ -1744,8 +1804,35 @@ class ComercialController {
                     return dataB - dataA;
                 });
 
+            const clienteIds = [...new Set(
+                agendamentosUnificados
+                    .map((ag: any) => ag?.cliente_id)
+                    .filter(Boolean)
+            )];
+
+            const clientesMap = new Map<string, any>();
+            if (clienteIds.length > 0) {
+                try {
+                    const { data: clientesData, error: clientesError } = await supabase
+                        .from('clientes')
+                        .select('id, client_id, nome, email, whatsapp')
+                        .in('id', clienteIds);
+
+                    if (clientesError) {
+                        console.warn('[ComercialController] Falha ao buscar dados de clientes (nao critico):', clientesError);
+                    } else {
+                        for (const cliente of clientesData || []) {
+                            if (cliente?.id) clientesMap.set(cliente.id, cliente);
+                        }
+                    }
+                } catch (clientesFetchError) {
+                    console.warn('[ComercialController] Excecao ao buscar dados de clientes (nao critico):', clientesFetchError);
+                }
+            }
+
             const agendamentosBrt = agendamentosUnificados.map((ag: any) => ({
                 ...ag,
+                clientes: ag?.cliente_id ? (clientesMap.get(ag.cliente_id) || null) : null,
                 data_hora: ag.data_hora ? toBrtFromUtc(ag.data_hora) : ag.data_hora
             }));
 
