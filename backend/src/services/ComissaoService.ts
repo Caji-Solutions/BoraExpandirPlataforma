@@ -4,6 +4,23 @@ import CambioService from './CambioService'
 import type { MetaComercial } from '../repositories/MetaComercialRepository'
 
 class ComissaoService {
+  private normalizeCargo(rawCargo: string | undefined | null): 'C1' | 'C2' | 'HEAD' {
+    const cargo = String(rawCargo || '').trim().toUpperCase()
+
+    if (cargo.includes('HEAD') || cargo.includes('SUPERVISOR')) {
+      return 'HEAD'
+    }
+
+    if (cargo.includes('C2')) {
+      return 'C2'
+    }
+
+    if (cargo.includes('C1')) {
+      return 'C1'
+    }
+
+    return 'C1'
+  }
 
   private findMetaAtingida(metas: MetaComercial[], totalVendas: number): MetaComercial | null {
     // Percorre as metas de cima para baixo para encontrar a maior atingida
@@ -95,9 +112,9 @@ class ComissaoService {
     const contratos = await ComissaoRepository.getContratosAssinados(userId, mes, ano)
     const taxa = await CambioService.getCotacaoAtual()
 
-    // Filtrar contratos de assessoria
+    // Filtrar contratos de servico fixo (assessoria de imigracao)
     const contratosAssessoria = contratos.filter(
-      (c: any) => c.servico?.tipo === 'assessoria'
+      (c: any) => c.servico?.tipo === 'fixo' || c.servico?.tipo === 'assessoria'
     )
 
     const totalContratosAssessoria = contratosAssessoria.length
@@ -135,8 +152,8 @@ class ComissaoService {
     })
 
     return {
-      nivel: 'C2',
       ...resultadoBase,
+      nivel: 'C2',
       contratosAssessoria: totalContratosAssessoria,
       totalMembrosValor,
       metaAssessoriaAtingida: metaAssessoria?.meta_num || 0,
@@ -211,7 +228,9 @@ class ComissaoService {
    * Calcula comissao automaticamente baseado no cargo do usuario
    */
   async calcularComissao(userId: string, cargo: string, mes: number, ano: number) {
-    switch (cargo) {
+    const cargoNormalizado = this.normalizeCargo(cargo)
+
+    switch (cargoNormalizado) {
       case 'HEAD':
         return this.calcularComissaoHEAD(userId, mes, ano)
       case 'C2':

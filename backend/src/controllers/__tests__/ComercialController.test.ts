@@ -355,6 +355,86 @@ describe('ComercialController - cancelarAgendamento com meet_link', () => {
     });
 });
 
+describe('ComercialController - Isolamento de contratos por dono', () => {
+    function makeRes() {
+        return {
+            status: vi.fn().mockReturnThis(),
+            json: vi.fn()
+        };
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('Deve retornar 401 ao listar contratos sem userId autenticado', async () => {
+        const req: any = { userId: null, query: {} };
+        const res = makeRes();
+
+        await ComercialController.getContratosServicos(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(401);
+        expect(ContratoServicoRepository.getContratos).not.toHaveBeenCalled();
+    });
+
+    it('Deve ignorar usuarioId da query e forcar filtro pelo userId autenticado', async () => {
+        const req: any = {
+            userId: 'owner-123',
+            query: {
+                usuarioId: 'outro-usuario',
+                clienteId: 'cliente-123',
+                isDraft: 'false'
+            }
+        };
+        const res = makeRes();
+
+        (ContratoServicoRepository.getContratos as any).mockResolvedValue([
+            { id: 'contrato-1', usuario_id: 'owner-123' }
+        ]);
+
+        await ComercialController.getContratosServicos(req, res);
+
+        expect(ContratoServicoRepository.getContratos).toHaveBeenCalledWith({
+            clienteId: 'cliente-123',
+            isDraft: false,
+            usuarioId: 'owner-123'
+        });
+        expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('Deve retornar 403 ao buscar contrato que pertence a outro usuario', async () => {
+        const req: any = { userId: 'owner-123', params: { id: 'contrato-1' } };
+        const res = makeRes();
+
+        (ContratoServicoRepository.getContratoById as any).mockResolvedValue({
+            id: 'contrato-1',
+            usuario_id: 'owner-999'
+        });
+
+        await ComercialController.getContratoServicoById(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(403);
+        expect(res.json).toHaveBeenCalledWith({ message: 'Acesso negado a contrato de outro usuário' });
+    });
+
+    it('Deve permitir buscar contrato do proprio usuario autenticado', async () => {
+        const req: any = { userId: 'owner-123', params: { id: 'contrato-1' } };
+        const res = makeRes();
+
+        const contrato = {
+            id: 'contrato-1',
+            usuario_id: 'owner-123',
+            cliente_id: 'cliente-123'
+        };
+        (ContratoServicoRepository.getContratoById as any).mockResolvedValue(contrato);
+
+        await ComercialController.getContratoServicoById(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({ data: contrato });
+    });
+});
+
 describe('ComercialController - Comprovante', () => {
     const mockContratoId = 'contrato-123';
     
@@ -536,7 +616,11 @@ describe('ComercialController - Contract Stage Progression', () => {
 
         expect(res.status).toBe(201);
         expect(mockClienteUpdate).toHaveBeenCalledWith({ stage: 'aguardando_assessoria', status: 'aguardando_assessoria' });
-        expect(mockProcessoUpdate).toHaveBeenCalledWith({ status: 'aguardando_assessoria' });
+        expect(mockProcessoUpdate).toHaveBeenCalledWith(expect.objectContaining({
+            status: 'aguardando_assessoria',
+            tipo_servico: 'Assessoria',
+            servico_id: 'servico-1'
+        }));
     });
 });
 

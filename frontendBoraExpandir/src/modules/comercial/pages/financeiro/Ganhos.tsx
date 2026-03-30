@@ -8,6 +8,7 @@ import { useAuth } from '../../../../contexts/AuthContext'
 import MetaComissaoCard from '../../components/MetaComissaoCard'
 import RecordsPessoaisCard from '../../components/RecordsPessoaisCard'
 import AlertaComissoesRisco from '../../components/AlertaComissoesRisco'
+import comercialService from '../../services/comercialService'
 
 const META_MENSAL_PADRAO = 2000
 
@@ -55,16 +56,15 @@ export default function Ganhos() {
     const fetchVendas = async () => {
       setLoading(true)
       try {
-        const [agendamentosRes, contratosRes] = await Promise.all([
+        const [agendamentosRes, contratos] = await Promise.all([
           fetch(`${API_BASE_URL}/comercial/agendamentos/usuario/${activeProfile.id}`),
-          fetch(`${API_BASE_URL}/comercial/contratos?usuarioId=${activeProfile.id}&isDraft=false`),
+          comercialService.getContratosServicos(undefined, false),
         ])
 
         const agendamentosData = agendamentosRes.ok ? await agendamentosRes.json() : []
-        const contratosResult = contratosRes.ok ? await contratosRes.json() : { data: [] }
 
         const agendamentos: any[] = Array.isArray(agendamentosData) ? agendamentosData : []
-        const contratos: any[] = contratosResult.data || []
+        const contratosSeguros: any[] = Array.isArray(contratos) ? contratos : []
 
         const vendasDeAgendamentos = agendamentos
           .filter((a: any) => a.valor && Number(a.valor) > 0)
@@ -80,7 +80,7 @@ export default function Ganhos() {
             created_at: a.created_at,
           }))
 
-        const vendasDeContratos = contratos
+        const vendasDeContratos = contratosSeguros
           .filter((c: any) => Number(c.servico_valor || c.servico?.valor) > 0)
           .map((c: any) => ({
             id: c.id,

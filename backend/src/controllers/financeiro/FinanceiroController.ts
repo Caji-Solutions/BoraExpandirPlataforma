@@ -21,6 +21,20 @@ function generatePassword(length = 10): string {
 
 
 class FinanceiroController {
+    private resolveNivelComercial(rawNivel?: string | null, rawCargo?: string | null): 'C1' | 'C2' | 'HEAD' {
+        const nivel = String(rawNivel || '').trim().toUpperCase()
+        const cargo = String(rawCargo || '').trim().toUpperCase()
+
+        const normalizar = (value: string): 'C1' | 'C2' | 'HEAD' | null => {
+            if (value.includes('HEAD') || value.includes('SUPERVISOR')) return 'HEAD'
+            if (value.includes('C2')) return 'C2'
+            if (value.includes('C1')) return 'C1'
+            return null
+        }
+
+        return normalizar(nivel) || normalizar(cargo) || 'C1'
+    }
+
     private async notificarClienteContrato(params: {
         clienteId?: string | null
         titulo: string
@@ -332,17 +346,18 @@ class FinanceiroController {
                 try {
                     const { data: profile } = await supabase
                         .from('profiles')
-                        .select('cargo')
+                        .select('cargo, nivel')
                         .eq('id', agendamento.usuario_id)
                         .single()
 
                     if (profile) {
-                        const dataAgend = new Date(agendamento.data_hora)
-                        const mes = dataAgend.getMonth() + 1
-                        const ano = dataAgend.getFullYear()
+                        const dataAprovacao = new Date()
+                        const mes = dataAprovacao.getMonth() + 1
+                        const ano = dataAprovacao.getFullYear()
+                        const cargoComissao = this.resolveNivelComercial(profile.nivel, profile.cargo)
                         
                         const ComissaoService = (await import('../../services/ComissaoService')).default
-                        await ComissaoService.calcularComissao(agendamento.usuario_id, profile.cargo || 'C1', mes, ano)
+                        await ComissaoService.calcularComissao(agendamento.usuario_id, cargoComissao, mes, ano)
                         console.log(`[FinanceiroController] Comissao recalculada para usuario ${agendamento.usuario_id} (Agendamento aprovado)`)
                     }
                 } catch (errComissao) {
@@ -664,17 +679,18 @@ class FinanceiroController {
                 try {
                     const { data: profile } = await supabase
                         .from('profiles')
-                        .select('cargo')
+                        .select('cargo, nivel')
                         .eq('id', contrato.usuario_id)
                         .single()
 
                     if (profile) {
-                        const dataCriacao = new Date(contrato.criado_em || new Date())
-                        const mes = dataCriacao.getMonth() + 1
-                        const ano = dataCriacao.getFullYear()
+                        const dataAprovacao = new Date((updated as any)?.pagamento_verificado_em || new Date())
+                        const mes = dataAprovacao.getMonth() + 1
+                        const ano = dataAprovacao.getFullYear()
+                        const cargoComissao = this.resolveNivelComercial(profile.nivel, profile.cargo)
                         
                         const ComissaoService = (await import('../../services/ComissaoService')).default
-                        await ComissaoService.calcularComissao(contrato.usuario_id, profile.cargo || 'C1', mes, ano)
+                        await ComissaoService.calcularComissao(contrato.usuario_id, cargoComissao, mes, ano)
                         console.log(`[FinanceiroController] Comissao recalculada para usuario ${contrato.usuario_id} (Contrato aprovado)`)
                     }
                 } catch (errComissao) {

@@ -109,6 +109,8 @@ export default function ComissaoColaborador() {
     )
   }
 
+  const totalVendasComAssessoria = (comissao?.totalVendas || 0) + (comissao?.contratosAssessoria || 0)
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -139,7 +141,7 @@ export default function ComissaoColaborador() {
               <span className="text-sm text-gray-600 dark:text-gray-400">Total Vendas</span>
               <Target className="h-5 w-5 text-blue-500" />
             </div>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">{comissao?.totalVendas || 0}</p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-white">{totalVendasComAssessoria}</p>
             <p className="text-xs text-gray-500 mt-1">Meta {comissao?.metaVendasAtingida || 0} atingida</p>
           </CardContent>
         </Card>

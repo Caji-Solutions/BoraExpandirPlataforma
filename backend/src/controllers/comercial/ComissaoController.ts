@@ -3,12 +3,25 @@ import CambioService from '../../services/CambioService'
 import MetaComercialRepository from '../../repositories/MetaComercialRepository'
 
 class ComissaoController {
+  private resolveNivelComercial(rawNivel?: string | null, rawCargo?: string | null): 'C1' | 'C2' | 'HEAD' {
+    const nivel = String(rawNivel || '').trim().toUpperCase()
+    const cargo = String(rawCargo || '').trim().toUpperCase()
+
+    const normalizar = (value: string): 'C1' | 'C2' | 'HEAD' | null => {
+      if (value.includes('HEAD') || value.includes('SUPERVISOR')) return 'HEAD'
+      if (value.includes('C2')) return 'C2'
+      if (value.includes('C1')) return 'C1'
+      return null
+    }
+
+    return normalizar(nivel) || normalizar(cargo) || 'C1'
+  }
 
   // GET /comercial/comissao/calcular?mes=3&ano=2026
   async calcularMinhaComissao(req: any, res: any) {
     try {
       const userId = req.userId
-      const cargo = req.user?.cargo || 'C1'
+      const cargo = this.resolveNivelComercial(req.user?.nivel, req.user?.cargo)
       const mes = parseInt(req.query.mes) || new Date().getMonth() + 1
       const ano = parseInt(req.query.ano) || new Date().getFullYear()
 

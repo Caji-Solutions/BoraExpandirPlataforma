@@ -689,6 +689,15 @@ class ClienteRepository {
                     data_hora,
                     pagamento_status
                 ),
+                contratos_servicos (
+                    id,
+                    servico_nome,
+                    subservico_nome,
+                    assinatura_status,
+                    pagamento_status,
+                    status_contrato,
+                    criado_em
+                ),
                 requerimentos (*)
             `)
             .order('criado_em', { ascending: false })

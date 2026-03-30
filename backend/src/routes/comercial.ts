@@ -21,8 +21,8 @@ comercial.post('/agendamento/:id/cancelar', ComercialController.cancelarAgendame
 
 // Contratos de serviços fixos
 comercial.post('/contratos', ComercialController.createContratoServico.bind(ComercialController))
-comercial.get('/contratos', ComercialController.getContratosServicos.bind(ComercialController))
-comercial.get('/contratos/:id', ComercialController.getContratoServicoById.bind(ComercialController))
+comercial.get('/contratos', authMiddleware, ComercialController.getContratosServicos.bind(ComercialController))
+comercial.get('/contratos/:id', authMiddleware, ComercialController.getContratoServicoById.bind(ComercialController))
 comercial.post('/contratos/:id/upload', upload.single('file'), ComercialController.uploadContratoAssinado.bind(ComercialController))
 comercial.post('/contratos/:id/aprovar', ComercialController.aprovarContrato.bind(ComercialController))
 comercial.post('/contratos/:id/recusar', ComercialController.recusarContrato.bind(ComercialController))

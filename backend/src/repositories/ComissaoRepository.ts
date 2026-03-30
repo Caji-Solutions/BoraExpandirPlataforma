@@ -1,19 +1,49 @@
 import { supabase } from '../config/SupabaseClient'
 
 class ComissaoRepository {
+  private isMissingColumnError(error: any, columnName: string) {
+    const column = String(columnName || '').toLowerCase()
+    const code = String(error?.code || '').toLowerCase()
+    const message = String(error?.message || '').toLowerCase()
+    const details = String(error?.details || '').toLowerCase()
+    const hint = String(error?.hint || '').toLowerCase()
+
+    return code === '42703' || message.includes(column) || details.includes(column) || hint.includes(column)
+  }
 
   async getVendasMes(usuarioId: string, mes: number, ano: number) {
     const inicioMes = new Date(Date.UTC(ano, mes - 1, 1)).toISOString()
     const fimMes = new Date(Date.UTC(ano, mes, 1)).toISOString()
+    const janelaPagamento = `and(pagamento_verificado_em.gte.${inicioMes},pagamento_verificado_em.lt.${fimMes})`
+    const janelaAgendamento = `and(pagamento_verificado_em.is.null,data_hora.gte.${inicioMes},data_hora.lt.${fimMes})`
 
-    // Buscar agendamentos (Consultoria/Diversos) com pagamento aprovado ou confirmado
-    const { data: agendamentos, error: errAg } = await supabase
+    // Buscar vendas por data real de aprovacao do pagamento.
+    // Fallback legada: quando nao houver pagamento_verificado_em, usa data_hora.
+    let agendamentos: any[] | null = null
+    let errAg: any = null
+
+    const queryPrincipalAgendamentos = await supabase
       .from('agendamentos')
-      .select('id, produto_id, produto_nome, pagamento_status, valor, data_hora')
+      .select('id, produto_id, produto_nome, pagamento_status, valor, data_hora, pagamento_verificado_em')
       .eq('usuario_id', usuarioId)
       .in('pagamento_status', ['aprovado', 'confirmado'])
-      .gte('data_hora', inicioMes)
-      .lt('data_hora', fimMes)
+      .or(`${janelaPagamento},${janelaAgendamento}`)
+
+    agendamentos = queryPrincipalAgendamentos.data
+    errAg = queryPrincipalAgendamentos.error
+
+    if (errAg && this.isMissingColumnError(errAg, 'pagamento_verificado_em')) {
+      const fallback = await supabase
+        .from('agendamentos')
+        .select('id, produto_id, produto_nome, pagamento_status, valor, data_hora')
+        .eq('usuario_id', usuarioId)
+        .in('pagamento_status', ['aprovado', 'confirmado'])
+        .gte('data_hora', inicioMes)
+        .lt('data_hora', fimMes)
+
+      agendamentos = fallback.data
+      errAg = fallback.error
+    }
 
     if (errAg) {
       console.error('[ComissaoRepository] Erro ao buscar agendamentos:', errAg)
@@ -26,21 +56,50 @@ class ComissaoRepository {
   async getContratosAssinados(usuarioId: string, mes: number, ano: number) {
     const inicioMes = new Date(Date.UTC(ano, mes - 1, 1)).toISOString()
     const fimMes = new Date(Date.UTC(ano, mes, 1)).toISOString()
+    const janelaPagamento = `and(pagamento_verificado_em.gte.${inicioMes},pagamento_verificado_em.lt.${fimMes})`
+    const janelaCriacaoLegado = `and(pagamento_verificado_em.is.null,criado_em.gte.${inicioMes},criado_em.lt.${fimMes})`
 
-    // Buscar contratos de assessoria assinados e validos
-    const { data: contratos, error } = await supabase
+    // Buscar contratos vendidos (assinatura e pagamento aprovados).
+    // Data de referencia: pagamento_verificado_em; fallback para criado_em em registros legados.
+    let contratos: any[] | null = null
+    let error: any = null
+
+    const queryPrincipalContratos = await supabase
       .from('contratos_servicos')
       .select(`
-        id, cliente_id, servico_id, valor_total, assinatura_status,
-        status_contrato, membros_count, criado_em,
+        id, cliente_id, servico_id, valor_total, assinatura_status, pagamento_status,
+        status_contrato, membros_count, criado_em, pagamento_verificado_em,
         servico:catalogo_servicos(id, nome, tipo)
       `)
       .eq('usuario_id', usuarioId)
       .eq('assinatura_status', 'aprovado')
+      .in('pagamento_status', ['aprovado', 'confirmado'])
       .neq('status_contrato', 'INVALIDO')
       .neq('status_contrato', 'CANCELADO')
-      .gte('criado_em', inicioMes)
-      .lt('criado_em', fimMes)
+      .or(`${janelaPagamento},${janelaCriacaoLegado}`)
+
+    contratos = queryPrincipalContratos.data
+    error = queryPrincipalContratos.error
+
+    if (error && this.isMissingColumnError(error, 'pagamento_verificado_em')) {
+      const fallback = await supabase
+        .from('contratos_servicos')
+        .select(`
+          id, cliente_id, servico_id, valor_total, assinatura_status, pagamento_status,
+          status_contrato, membros_count, criado_em,
+          servico:catalogo_servicos(id, nome, tipo)
+        `)
+        .eq('usuario_id', usuarioId)
+        .eq('assinatura_status', 'aprovado')
+        .in('pagamento_status', ['aprovado', 'confirmado'])
+        .neq('status_contrato', 'INVALIDO')
+        .neq('status_contrato', 'CANCELADO')
+        .gte('criado_em', inicioMes)
+        .lt('criado_em', fimMes)
+
+      contratos = fallback.data
+      error = fallback.error
+    }
 
     if (error) {
       console.error('[ComissaoRepository] Erro ao buscar contratos:', error)
@@ -69,14 +128,34 @@ class ComissaoRepository {
 
     const inicioMes = new Date(Date.UTC(ano, mes - 1, 1)).toISOString()
     const fimMes = new Date(Date.UTC(ano, mes, 1)).toISOString()
+    const janelaPagamento = `and(pagamento_verificado_em.gte.${inicioMes},pagamento_verificado_em.lt.${fimMes})`
+    const janelaAgendamento = `and(pagamento_verificado_em.is.null,data_hora.gte.${inicioMes},data_hora.lt.${fimMes})`
 
-    const { data, error } = await supabase
+    let data: any[] | null = null
+    let error: any = null
+
+    const queryPrincipalEquipe = await supabase
       .from('agendamentos')
-      .select('id, usuario_id, produto_nome, pagamento_status, valor, data_hora')
+      .select('id, usuario_id, produto_nome, pagamento_status, valor, data_hora, pagamento_verificado_em')
       .in('usuario_id', subordinadoIds)
       .in('pagamento_status', ['aprovado', 'confirmado'])
-      .gte('data_hora', inicioMes)
-      .lt('data_hora', fimMes)
+      .or(`${janelaPagamento},${janelaAgendamento}`)
+
+    data = queryPrincipalEquipe.data
+    error = queryPrincipalEquipe.error
+
+    if (error && this.isMissingColumnError(error, 'pagamento_verificado_em')) {
+      const fallback = await supabase
+        .from('agendamentos')
+        .select('id, usuario_id, produto_nome, pagamento_status, valor, data_hora')
+        .in('usuario_id', subordinadoIds)
+        .in('pagamento_status', ['aprovado', 'confirmado'])
+        .gte('data_hora', inicioMes)
+        .lt('data_hora', fimMes)
+
+      data = fallback.data
+      error = fallback.error
+    }
 
     if (error) {
       console.error('[ComissaoRepository] Erro ao buscar vendas da equipe:', error)

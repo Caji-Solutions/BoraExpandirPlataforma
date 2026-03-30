@@ -128,11 +128,36 @@ export function ClientDNAPage() {
                     // Encontra o processo mais recente para determinar o responsável e status
                     const lastProcess = item.processos?.[0]
                     const agendamentos = item.agendamentos || []
+                    const contratos = item.contratos_servicos || []
                     const lastAgendamento = agendamentos.length > 0 ? agendamentos.reduce((latest: any, current: any) => new Date(latest.data_hora) > new Date(current.data_hora) ? latest : current) : null
                     const agendamentosPagos = agendamentos.filter((a: any) => a.pagamento_status === 'aprovado')
                     const firstPaidAgendamento = agendamentosPagos.length > 0
                         ? agendamentosPagos.reduce((earliest: any, current: any) => new Date(earliest.data_hora) < new Date(current.data_hora) ? earliest : current)
                         : null
+
+                    const contratosValidosPagos = contratos.filter((c: any) => {
+                        const pagamentoAprovado = String(c?.pagamento_status || '').toLowerCase() === 'aprovado'
+                        const assinaturaAprovada = String(c?.assinatura_status || '').toLowerCase() === 'aprovado'
+                        const statusContrato = String(c?.status_contrato || '').toUpperCase()
+                        const contratoValido = statusContrato !== 'INVALIDO' && statusContrato !== 'CANCELADO'
+                        return pagamentoAprovado && assinaturaAprovada && contratoValido
+                    })
+
+                    const firstPaidContrato = contratosValidosPagos.length > 0
+                        ? contratosValidosPagos.reduce((earliest: any, current: any) => new Date(earliest.criado_em) < new Date(current.criado_em) ? earliest : current)
+                        : null
+
+                    const servicoDoDna = String(item?.perfil_unificado?.data?.servico_inicial || '').trim()
+                    const servicoDoContrato = String(firstPaidContrato?.subservico_nome || firstPaidContrato?.servico_nome || '').trim()
+                    const servicoDoProcesso = String(lastProcess?.tipo_servico || '').trim()
+                    const servicoDoAgendamento = String(firstPaidAgendamento?.produto_nome || lastAgendamento?.produto_nome || '').trim()
+                    const processoEhConsultoria = /consultoria/i.test(servicoDoProcesso)
+                    const agendamentoEhAssessoria = /assessoria|fixo|contrato|arraigo/i.test(servicoDoAgendamento)
+
+                    let tipoAssessoria = servicoDoDna || servicoDoContrato || servicoDoProcesso || servicoDoAgendamento || 'Assessoria'
+                    if (!servicoDoDna && !servicoDoContrato && processoEhConsultoria && agendamentoEhAssessoria) {
+                        tipoAssessoria = servicoDoAgendamento
+                    }
 
                     return {
                         id: item.client_id || item.id,
@@ -141,7 +166,7 @@ export function ClientDNAPage() {
                         nome: item.nome || 'Sem nome',
                         email: item.email || 'Sem e-mail',
                         telefone: item.whatsapp || '',
-                        tipoAssessoria: lastProcess?.tipo_servico || firstPaidAgendamento?.produto_nome || lastAgendamento?.produto_nome || 'Assessoria',
+                        tipoAssessoria,
                         contratoAtivo: true, // Padronizado para true para evitar quebras, mas não é mais usado na listagem
                         categoria: lastProcess?.status || item.stage || (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status === 'cliente' ? 'aguardando_consultoria' : (item.status || 'formularios'))),
                         previsaoChegada: item.previsao_chegada || '',

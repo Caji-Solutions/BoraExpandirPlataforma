@@ -17,6 +17,15 @@ import {
 
 
 class ComercialController {
+    private getAuthenticatedUserId(req: any, res: any): string | null {
+        const userId = req.userId || req.user?.id
+        if (!userId) {
+            res.status(401).json({ message: 'Usuário não autenticado' })
+            return null
+        }
+        return userId
+    }
+
     private mergeDraftDados(baseDraft: any, incomingDraft: any) {
         const base = (baseDraft && typeof baseDraft === 'object') ? baseDraft : {}
         const incoming = (incomingDraft && typeof incomingDraft === 'object') ? incomingDraft : {}
@@ -828,6 +837,7 @@ class ComercialController {
     async createContratoServico(req: any, res: any) {
         try {
             const { cliente_id, servico_id, usuario_id, subservico_id, subservico_nome } = req.body
+            const ownerUserId = req.userId || req.user?.id || usuario_id || null
 
             if (!cliente_id || !servico_id) {
                 return res.status(400).json({ message: 'cliente_id e servico_id são obrigatórios' })
@@ -896,7 +906,7 @@ class ComercialController {
 
             const contratoPayload: any = {
                 cliente_id,
-                usuario_id: usuario_id || null,
+                usuario_id: ownerUserId,
                 servico_id,
                 servico_nome: servico.nome || null,
                 servico_valor: servico.valor || 0,
@@ -938,7 +948,12 @@ class ComercialController {
                     .limit(1)
                     .single();
                 if (processoAtivo && processoAtivo.id) {
-                   await supabase.from('processos').update({ status: 'aguardando_assessoria' }).eq('id', processoAtivo.id);
+                   await supabase.from('processos').update({
+                        status: 'aguardando_assessoria',
+                        tipo_servico: tipoServicoPadrao,
+                        servico_id: servico_id || null,
+                        atualizado_em: new Date().toISOString()
+                    }).eq('id', processoAtivo.id);
                 }
             }
 
@@ -956,15 +971,17 @@ class ComercialController {
      */
     async getContratosServicos(req: any, res: any) {
         try {
+            const userId = this.getAuthenticatedUserId(req, res)
+            if (!userId) return
+
             const clienteId = (req.query?.cliente_id || req.query?.clienteId) as string | undefined
-            const usuarioId = (req.query?.usuario_id || req.query?.usuarioId) as string | undefined
             const isDraftRaw = req.query?.isDraft
             const isDraft =
                 isDraftRaw === 'true' ? true
                     : isDraftRaw === 'false' ? false
                         : undefined
 
-            const contratos = await ContratoServicoRepository.getContratos({ clienteId, isDraft, usuarioId })
+            const contratos = await ContratoServicoRepository.getContratos({ clienteId, isDraft, usuarioId: userId })
             return res.status(200).json({ data: contratos })
         } catch (error: any) {
             console.error('[ComercialController] Erro ao listar contratos:', error)
@@ -977,8 +994,16 @@ class ComercialController {
      */
     async getContratoServicoById(req: any, res: any) {
         try {
+            const userId = this.getAuthenticatedUserId(req, res)
+            if (!userId) return
+
             const { id } = req.params
             const contrato = await ContratoServicoRepository.getContratoById(id)
+
+            if (contrato?.usuario_id !== userId) {
+                return res.status(403).json({ message: 'Acesso negado a contrato de outro usuário' })
+            }
+
             return res.status(200).json({ data: contrato })
         } catch (error: any) {
             console.error('[ComercialController] Erro ao buscar contrato:', error)
