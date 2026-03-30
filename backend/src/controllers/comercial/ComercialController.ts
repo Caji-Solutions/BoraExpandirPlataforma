@@ -1742,10 +1742,13 @@ class ComercialController {
                     .eq('status', 'realizado')
                     .order('data_hora', { ascending: false });
 
-                if (queryUsuarioId.error) throw queryUsuarioId.error;
-                agendamentosDoVendedor = queryUsuarioId.data || [];
+                if (queryUsuarioId.error) {
+                    console.warn('[ComercialController] Falha ao buscar agendamentos por usuario_id (nao critico):', queryUsuarioId.error);
+                } else {
+                    agendamentosDoVendedor = queryUsuarioId.data || [];
+                }
             } else if (queryVendedorId.error) {
-                throw queryVendedorId.error;
+                console.warn('[ComercialController] Falha ao buscar agendamentos por vendedor_id (nao critico):', queryVendedorId.error);
             } else {
                 agendamentosDoVendedor = queryVendedorId.data || [];
             }
