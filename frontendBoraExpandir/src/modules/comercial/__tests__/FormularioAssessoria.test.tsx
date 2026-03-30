@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
-import FormularioAssessoriaPage from '../FormularioAssessoriaPage';
+import FormularioAssessoriaPage from '../pages/FormularioAssessoriaPage';
 import comercialService from '../services/comercialService';
 
 // Mock dependencias externas
@@ -73,13 +73,25 @@ describe('FormularioAssessoriaPage', () => {
       id: 'mock-draft-id',
       is_draft: true,
       etapa_fluxo: 1,
-      draft_dados: { nome: 'Joao', email: 'joao@test.com' }
+      draft_dados: {
+        nome: 'Joao',
+        email: 'joao@test.com',
+        documento: '12345678901',
+        nacionalidade: 'Brasileira',
+        estado_civil: 'Solteiro(a)',
+        profissao: 'Desenvolvedor',
+        telefone: '11999999999',
+        endereco: 'Rua Teste, 123'
+      }
     });
 
     // Mock do retorno da atualizacao
     (comercialService.updateContratoDraft as any).mockResolvedValueOnce({
       etapa_fluxo: 2,
-      draft_dados: { nome: 'Joao', email: 'joao@test.com' }
+      draft_dados: {
+        nome: 'Joao',
+        email: 'joao@test.com'
+      }
     });
 
     renderComponent();
