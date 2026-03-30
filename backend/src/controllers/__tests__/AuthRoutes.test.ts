@@ -58,8 +58,12 @@ vi.mock('../../config/SupabaseClient', () => ({
             chain.eq = vi.fn().mockImplementation((field: string, value: any) => {
                 entry.filters[field] = value;
 
-                // Auth lookup: profiles.eq('auth_token', token).single()
+                // Auth lookup: supports both new authMiddleware (array) and getUserByToken (.single())
                 if (field === 'auth_token') {
+                    const authArray = mockResponses.auth ? [mockResponses.auth] : []
+                    chain.then = vi.fn().mockImplementation((onFulfill: any) =>
+                        Promise.resolve({ data: authArray, error: null }).then(onFulfill)
+                    )
                     chain.single = vi.fn().mockResolvedValue({ data: mockResponses.auth, error: null });
                 }
 

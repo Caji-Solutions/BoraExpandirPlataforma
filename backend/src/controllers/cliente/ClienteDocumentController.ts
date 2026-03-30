@@ -277,7 +277,7 @@ class ClienteDocumentController {
             await NotificationService.createNotification({
               usuarioId: processo.responsavel_id,
               titulo: 'Novo documento enviado',
-              mensagem: `O cliente ${processo.cliente?.nome || 'desconhecido'} enviou o documento "${documentType || documentoRecord.tipo}". Acesse a área de documentos para revisar.`,
+              mensagem: `O cliente ${(processo.cliente as any)?.nome || 'desconhecido'} enviou o documento "${documentType || documentoRecord.tipo}". Acesse a área de documentos para revisar.`,
               tipo: 'info'
             })
             console.log(`[uploadDoc] Notificação enviada ao jurídico ${processo.responsavel_id} sobre novo documento`)
