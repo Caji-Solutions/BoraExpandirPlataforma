@@ -18,6 +18,7 @@ import admRoutes from './routes/adm'
 import formulario from './routes/formulario'
 import apostilamentos from './routes/apostilamentos'
 import financeiroRoutes from './routes/financeiro'
+import usuarioRoutes from './routes/usuario'
 
 dotenv.config()
 
@@ -42,6 +43,7 @@ app.use('/parceiro', parceiro)
 app.use('/cliente', cliente)
 app.use('/comercial', comercial)
 app.use('/juridico', juridico)
+app.use('/usuario', usuarioRoutes)
 app.use('/traducoes', traducoes)
 app.use('/configuracoes', config)
 app.use('/adm', admRoutes)

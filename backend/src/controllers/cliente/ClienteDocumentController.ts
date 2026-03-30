@@ -22,8 +22,9 @@ class ClienteDocumentController {
         return res.status(400).json({ message: 'clienteId é obrigatório' })
       }
 
-      // Validar autorização: cliente vê só seus docs, admin/juridico veem de qualquer um
-      if (userId !== clienteId && role !== 'admin' && role !== 'juridico') {
+      // Validar autorização: cliente vê só seus docs, admin/juridico/super_admin veem de qualquer um
+      const rolesAutorizados = ['admin', 'juridico', 'super_admin']
+      if (userId !== clienteId && !rolesAutorizados.includes(role)) {
         return res.status(403).json({ message: 'Sem permissão para acessar documentos de outro cliente' })
       }
 
@@ -261,6 +262,31 @@ class ClienteDocumentController {
       }
 
       console.log('Documento processado no banco:', documentoRecord.id)
+
+      // Notificar o jurídico responsável quando um novo documento é enviado
+      if (processoId && !documentoId) {
+        try {
+          const { supabase } = await import('../../config/SupabaseClient')
+          const { data: processo } = await supabase
+            .from('processos')
+            .select('responsavel_id, cliente: clientes(nome, id)')
+            .eq('id', processoId)
+            .maybeSingle()
+
+          if (processo?.responsavel_id) {
+            await NotificationService.createNotification({
+              usuarioId: processo.responsavel_id,
+              titulo: 'Novo documento enviado',
+              mensagem: `O cliente ${processo.cliente?.nome || 'desconhecido'} enviou o documento "${documentType || documentoRecord.tipo}". Acesse a área de documentos para revisar.`,
+              tipo: 'info'
+            })
+            console.log(`[uploadDoc] Notificação enviada ao jurídico ${processo.responsavel_id} sobre novo documento`)
+          }
+        } catch (notifyError) {
+          console.error('[uploadDoc] Erro ao notificar jurídico:', notifyError)
+          // Não falha o upload se a notificação falhar
+        }
+      }
 
       return res.status(200).json({
         message: documentoId ? 'Documento atualizado com sucesso' : 'Documento enviado com sucesso',

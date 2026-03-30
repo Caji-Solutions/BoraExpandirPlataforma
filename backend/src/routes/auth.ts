@@ -76,11 +76,19 @@ router.post('/login', async (req: Request, res: Response) => {
         }
 
         const token = crypto.randomUUID()
-        
-        await supabase
+        console.log('[Auth.login] Token gerado:', token)
+
+        const { error: updateError } = await supabase
             .from('profiles')
             .update({ auth_token: token })
             .eq('id', profile.id)
+
+        if (updateError) {
+            console.error('[Auth.login] ❌ Erro ao atualizar auth_token:', updateError)
+            return res.status(500).json({ error: 'Erro ao gerar token de sessão' })
+        }
+
+        console.log('[Auth.login] ✅ Token salvo para o usuário:', profile.id)
 
         const fullProfile = buildFullProfile(profile)
 

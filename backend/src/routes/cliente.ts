@@ -7,6 +7,7 @@ import ClienteNotificationController from '../controllers/cliente/ClienteNotific
 import ClienteContratosController from '../controllers/cliente/ClienteContratosController'
 import ClienteRequerimentosController from '../controllers/cliente/ClienteRequerimentosController'
 import ClienteController from '../controllers/cliente/ClienteController'
+import ParceiroTermoController from '../controllers/cliente/ParceiroTermoController'
 import upload from '../middlewares/upload'
 
 const cliente = Router()
@@ -54,6 +55,10 @@ cliente.patch('/notificacoes/:notificacaoId/status', ClienteNotificationControll
 // Rotas de Lead Notes (específicas)
 cliente.get('/lead-notas/:leadId', ClienteController.getLeadNotes.bind(ClienteController))
 cliente.delete('/lead-notas/:noteId', ClienteController.deleteLeadNote.bind(ClienteController))
+
+// Rotas de Parceiro: Termo de Aceite (específicas)
+cliente.get('/parceiro/termo-status/:clienteId', ParceiroTermoController.getTermoStatus.bind(ParceiroTermoController))
+cliente.post('/parceiro/termo-aceitar', ParceiroTermoController.aceitarTermo.bind(ParceiroTermoController))
 
 // Rotas parametrizadas por clienteId - DEVEM VIR DEPOIS das rotas específicas
 cliente.get('/:clienteId', ClienteProfileController.getCliente.bind(ClienteProfileController))

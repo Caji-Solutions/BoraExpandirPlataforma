@@ -7,6 +7,7 @@ export interface Client {
   paymentStatus: 'pending' | 'confirmed' | 'failed';
   accessGranted: boolean;
   status?: string;
+  stage?: 'formularios' | 'aguardando_consultoria' | 'em_consultoria' | 'clientes_c2' | 'aguardando_assessoria' | 'assessoria_andamento' | 'assessoria_finalizada' | 'cancelado';
   isPartner?: boolean;
   isClient?: boolean;
   createdAt: Date;

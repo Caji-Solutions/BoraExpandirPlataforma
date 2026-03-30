@@ -65,13 +65,32 @@ export function NotificationsDropdown() {
   const [filter, setFilter] = useState<'unread' | 'read'>('unread')
 
   const fetchNotificacoes = async () => {
-    const userId = activeProfile?.id
-    if (!userId) return
+    const profileId = activeProfile?.id
+    if (!profileId) return
+    let targetId: string = profileId
+
+    // Se for cliente, precisamos do ID da tabela 'clientes', não do 'profiles'
+    if (activeProfile?.role === 'cliente') {
+      const impersonatedId = localStorage.getItem('impersonatedClientId')
+      if (impersonatedId) {
+        targetId = impersonatedId
+      } else {
+        try {
+          const res = await clienteService.getClienteByUserId(profileId)
+          if (res?.id) {
+            targetId = res.id
+          }
+        } catch (error) {
+          console.error('Erro ao buscar ID do cliente:', error)
+        }
+      }
+    }
+
     try {
       setIsLoading(true)
-      const data = await clienteService.getNotificacoes(userId)
+      const data = await clienteService.getNotificacoes(targetId)
       
-      const mapped = data.map((n: any) => {
+      const mapped = (Array.isArray(data) ? data : []).map((n: any) => {
         const isRead = n.lida === true || String(n.lida) === 'true' || n.lida === 1;
         
         // Map backend types to local UI types
@@ -118,11 +137,19 @@ export function NotificationsDropdown() {
     .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
 
   const marcarTodasComoLidas = async () => {
-    if (!activeProfile?.id) return
+    const profileId = activeProfile?.id
+    if (!profileId) return
+    let targetId: string = profileId
+
+    if (activeProfile?.role === 'cliente') {
+      const impersonatedId = localStorage.getItem('impersonatedClientId')
+      targetId = impersonatedId || profileId
+    }
+
     try {
       // Optimistic update
       setNotificacoes(prev => prev.map(n => ({ ...n, lida: true })))
-      await clienteService.markAllNotificacoesAsRead(activeProfile.id)
+      await clienteService.markAllNotificacoesAsRead(targetId)
     } catch (error) {
       console.error('Erro ao marcar todas como lidas:', error)
     }

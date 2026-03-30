@@ -784,7 +784,19 @@ class ClienteRepository {
     }
 
     async getNotificacoes(clienteId: string): Promise<any[]> {
-        return NotificationService.getNotificationsByCliente(clienteId);
+        console.log('[ClienteRepository.getNotificacoes] Chamado com clienteId:', clienteId)
+        try {
+            const result = await NotificationService.getNotificationsByCliente(clienteId);
+            console.log('[ClienteRepository.getNotificacoes] ✅ Sucesso - retornando', result.length, 'notificações')
+            return result;
+        } catch (error: any) {
+            console.error('[ClienteRepository.getNotificacoes] ❌ Erro:', {
+                message: error.message,
+                code: error.code,
+                status: error.status
+            })
+            throw error;
+        }
     }
 
     async updateNotificacaoStatus(notificacaoId: string, lida: boolean): Promise<any> {
