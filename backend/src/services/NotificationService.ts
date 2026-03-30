@@ -84,9 +84,7 @@ class NotificationService {
         if (error) {
             console.error('[NotificationService] ❌ Erro ao buscar notificacoes:', {
                 code: error.code,
-                message: error.message,
-                details: error.details,
-                status: error.status
+                message: error.message
             })
             throw error
         }
@@ -153,9 +151,7 @@ class NotificationService {
         if (error) {
             console.error('[NotificationService] ❌ Erro ao buscar notificacoes por usuario:', {
                 code: error.code,
-                message: error.message,
-                details: error.details,
-                status: error.status
+                message: error.message
             })
             throw error
         }
