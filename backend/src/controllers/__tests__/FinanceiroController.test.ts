@@ -1,14 +1,18 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import FinanceiroController from '../financeiro/FinanceiroController';
 import ComercialRepository from '../../repositories/ComercialRepository';
+import ContratoServicoRepository from '../../repositories/ContratoServicoRepository';
 import { supabase } from '../../config/SupabaseClient';
 import EmailService from '../../services/EmailService';
 import ComposioService from '../../services/ComposioService';
+import DNAService from '../../services/DNAService';
 
 vi.mock('../../repositories/ComercialRepository');
+vi.mock('../../repositories/ContratoServicoRepository');
 vi.mock('../../services/EmailService');
 vi.mock('../../services/StripeService');
 vi.mock('../../services/MercadoPagoService');
+vi.mock('../../services/DNAService');
 vi.mock('../../services/ComposioService', () => ({
     default: {
         createCalendarEvent: vi.fn().mockResolvedValue({ success: false }),
@@ -193,6 +197,147 @@ describe('FinanceiroController - Aprovação de Comprovante (Lead -> Cliente)', 
         }));
 
         expect(mockUpdateClient).not.toHaveBeenCalled();
+    });
+});
+
+describe('FinanceiroController - aprovarComprovanteContrato (Lead -> Cliente + Onboarding)', () => {
+    let req: any;
+    let res: any;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        req = {
+            params: { id: 'contrato-123' },
+            body: { verificado_por: 'admin-123' }
+        };
+        res = {
+            status: vi.fn().mockReturnThis(),
+            json: vi.fn()
+        };
+    });
+
+    it('deve converter LEAD, atualizar DNA e enviar onboarding quando aprovar contrato', async () => {
+        (ContratoServicoRepository.getContratoById as any).mockResolvedValue({
+            id: 'contrato-123',
+            cliente_id: 'cliente-123',
+            usuario_id: null,
+            pagamento_status: 'em_analise',
+            pagamento_comprovante_url: 'https://files.test/comprovante.png',
+            metodo_pagamento: 'pix',
+            servico_nome: 'Assessoria Premium',
+            cliente: { status: null, nome: null, email: null, whatsapp: null },
+            servico: { nome: 'Assessoria Premium' }
+        });
+        (ContratoServicoRepository.updateContrato as any).mockResolvedValue({ id: 'contrato-123' });
+
+        let clientesCallCount = 0;
+        let profilesCallCount = 0;
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'clientes') {
+                clientesCallCount += 1;
+                if (clientesCallCount === 1) {
+                    return {
+                        select: vi.fn().mockReturnValue({
+                            eq: vi.fn().mockReturnValue({
+                                maybeSingle: vi.fn().mockResolvedValue({
+                                    data: {
+                                        status: 'LEAD',
+                                        nome: 'Cliente Contrato',
+                                        email: 'cliente@teste.com',
+                                        whatsapp: '11999990000'
+                                    },
+                                    error: null
+                                })
+                            })
+                        })
+                    };
+                }
+
+                return {
+                    update: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockResolvedValue({ error: null })
+                    })
+                };
+            }
+
+            if (table === 'profiles') {
+                profilesCallCount += 1;
+
+                if (profilesCallCount === 1) {
+                    return {
+                        select: vi.fn().mockReturnValue({
+                            ilike: vi.fn().mockReturnValue({
+                                maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null })
+                            })
+                        })
+                    };
+                }
+
+                return {
+                    insert: vi.fn().mockResolvedValue({ error: null })
+                };
+            }
+
+            return {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+                update: vi.fn().mockReturnValue({
+                    eq: vi.fn().mockResolvedValue({ error: null })
+                })
+            };
+        });
+
+        (DNAService.mergeDNA as any).mockResolvedValue(true);
+        (EmailService.sendWelcomeEmail as any).mockResolvedValue(true);
+
+        await FinanceiroController.aprovarComprovanteContrato(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(DNAService.mergeDNA).toHaveBeenCalledWith(
+            'cliente-123',
+            { servico_inicial: 'Assessoria Premium' },
+            'HIGH'
+        );
+        expect(EmailService.sendWelcomeEmail).toHaveBeenCalledTimes(1);
+        expect(EmailService.sendWelcomeEmail).toHaveBeenCalledWith(expect.objectContaining({
+            to: 'cliente@teste.com',
+            email: 'cliente@teste.com'
+        }));
+    });
+
+    it('nao deve executar onboarding quando cliente nao for LEAD', async () => {
+        (ContratoServicoRepository.getContratoById as any).mockResolvedValue({
+            id: 'contrato-123',
+            cliente_id: 'cliente-123',
+            usuario_id: null,
+            pagamento_status: 'em_analise',
+            pagamento_comprovante_url: 'https://files.test/comprovante.png',
+            metodo_pagamento: 'pix',
+            servico_nome: 'Assessoria Premium',
+            cliente: {
+                status: 'cliente',
+                nome: 'Cliente Ativo',
+                email: 'ativo@teste.com',
+                whatsapp: '11999990000'
+            },
+            servico: { nome: 'Assessoria Premium' }
+        });
+        (ContratoServicoRepository.updateContrato as any).mockResolvedValue({ id: 'contrato-123' });
+        (supabase.from as any).mockReturnValue({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            update: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({ error: null })
+            })
+        });
+
+        await FinanceiroController.aprovarComprovanteContrato(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(DNAService.mergeDNA).not.toHaveBeenCalled();
+        expect(EmailService.sendWelcomeEmail).not.toHaveBeenCalled();
     });
 });
 

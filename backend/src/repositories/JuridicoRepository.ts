@@ -1166,6 +1166,21 @@ class JuridicoRepository {
         return data || []
     }
 
+    // Buscar todos os requerimentos
+    async getAllRequerimentos(): Promise<any[]> {
+        const { data, error } = await supabase
+            .from('requerimentos')
+            .select('*')
+            .order('criado_em', { ascending: false })
+
+        if (error) {
+            console.error('Erro ao buscar todos os requerimentos:', error)
+            throw error
+        }
+
+        return data || []
+    }
+
     // Criar um novo processo manualmente
     async createProcess(params: {
         clienteId: string

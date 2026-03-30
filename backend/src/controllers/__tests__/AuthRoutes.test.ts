@@ -334,13 +334,14 @@ describe('Auth Routes - Supervisor e Cargo', () => {
             mockResponses.delegados = mockDelegados;
 
             const res = await request(app)
-                .get('/auth/team/delegados/supervisor-abc');
+                .get('/auth/team/delegados/supervisor-abc')
+                .set('Authorization', `Bearer ${adminToken}`);
 
             expect(res.status).toBe(200);
             expect(res.body).toEqual(mockDelegados);
 
             // Verificar que filtrou por supervisor_id
-            const selectCall = supabaseCallLog.find(c => c.action === 'select');
+            const selectCall = supabaseCallLog.find(c => c.action === 'select' && c.filters.supervisor_id);
             expect(selectCall).toBeTruthy();
             expect(selectCall!.filters.supervisor_id).toBe('supervisor-abc');
         });
@@ -349,7 +350,8 @@ describe('Auth Routes - Supervisor e Cargo', () => {
             mockResponses.delegados = [];
 
             const res = await request(app)
-                .get('/auth/team/delegados/no-one');
+                .get('/auth/team/delegados/no-one')
+                .set('Authorization', `Bearer ${adminToken}`);
 
             expect(res.status).toBe(200);
             expect(res.body).toEqual([]);

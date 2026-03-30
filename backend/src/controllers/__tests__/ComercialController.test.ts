@@ -773,10 +773,10 @@ describe('ComercialController - getPosConsultoria', () => {
         expect(res.status).toHaveBeenCalledWith(403);
     });
 
-    it('Deve retornar agendamentos realizados para usuario C2 comercial', async () => {
+    it('Deve retornar agendamentos realizados para usuario C2 comercial (vendedor + delegados por processo)', async () => {
         const { supabase: supabaseMock } = await import('../../config/SupabaseClient');
 
-        const mockAgendamentos = [
+        const mockAgendamentosVendedor = [
             {
                 id: 'ag-1',
                 produto_nome: 'Consultoria Espanha',
@@ -786,6 +786,24 @@ describe('ComercialController - getPosConsultoria', () => {
             }
         ];
 
+        const mockAgendamentosDelegados = [
+            {
+                id: 'ag-2',
+                produto_nome: 'Consultoria Portugal',
+                data_hora: '2026-03-29T18:00:00Z',
+                criado_em: '2026-03-21',
+                clientes: { id: 'cli-2', client_id: 'C002', nome: 'Joao', email: 'joao@test.com', whatsapp: '11888' }
+            },
+            {
+                id: 'ag-1',
+                produto_nome: 'Consultoria Espanha',
+                data_hora: '2026-03-28T18:00:00Z',
+                criado_em: '2026-03-20',
+                clientes: { id: 'cli-1', client_id: 'C001', nome: 'Maria', email: 'maria@test.com', whatsapp: '11999' }
+            }
+        ];
+
+        let agendamentosCallCount = 0;
         (supabaseMock.from as any).mockImplementation((table: string) => {
             if (table === 'usuarios') {
                 return {
@@ -799,12 +817,38 @@ describe('ComercialController - getPosConsultoria', () => {
                     })
                 };
             }
-            if (table === 'agendamentos') {
+            if (table === 'processos') {
                 return {
                     select: vi.fn().mockReturnValue({
                         eq: vi.fn().mockReturnValue({
+                            eq: vi.fn().mockResolvedValue({
+                                data: [{ cliente_id: 'cli-2' }],
+                                error: null
+                            })
+                        })
+                    })
+                };
+            }
+            if (table === 'agendamentos') {
+                agendamentosCallCount += 1;
+
+                if (agendamentosCallCount === 1) {
+                    return {
+                        select: vi.fn().mockReturnValue({
                             eq: vi.fn().mockReturnValue({
-                                order: vi.fn().mockResolvedValue({ data: mockAgendamentos, error: null })
+                                eq: vi.fn().mockReturnValue({
+                                    order: vi.fn().mockResolvedValue({ data: mockAgendamentosVendedor, error: null })
+                                })
+                            })
+                        })
+                    };
+                }
+
+                return {
+                    select: vi.fn().mockReturnValue({
+                        in: vi.fn().mockReturnValue({
+                            eq: vi.fn().mockReturnValue({
+                                order: vi.fn().mockResolvedValue({ data: mockAgendamentosDelegados, error: null })
                             })
                         })
                     })
@@ -823,6 +867,63 @@ describe('ComercialController - getPosConsultoria', () => {
                 expect.objectContaining({ id: 'ag-1', produto_nome: 'Consultoria Espanha' })
             ])
         });
+        expect(res.json).toHaveBeenCalledWith({
+            data: expect.arrayContaining([
+                expect.objectContaining({ id: 'ag-2', produto_nome: 'Consultoria Portugal' })
+            ])
+        });
+        const responsePayload = (res.json as any).mock.calls[0][0];
+        expect(responsePayload.data).toHaveLength(2);
+    });
+
+    it('Deve permitir fallback de permissao via req.user quando usuario nao e encontrado na tabela usuarios', async () => {
+        const { supabase: supabaseMock } = await import('../../config/SupabaseClient');
+
+        (supabaseMock.from as any).mockImplementation((table: string) => {
+            if (table === 'usuarios') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({
+                            single: vi.fn().mockResolvedValue({
+                                data: null,
+                                error: { message: 'not found' }
+                            })
+                        })
+                    })
+                };
+            }
+            if (table === 'processos') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({
+                            eq: vi.fn().mockResolvedValue({
+                                data: [],
+                                error: null
+                            })
+                        })
+                    })
+                };
+            }
+            if (table === 'agendamentos') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({
+                            eq: vi.fn().mockReturnValue({
+                                order: vi.fn().mockResolvedValue({ data: [], error: null })
+                            })
+                        })
+                    })
+                };
+            }
+            return {};
+        });
+
+        const req: any = { userId: 'user-c2', user: { role: 'comercial', cargo: 'C2' } };
+        const res = makeRes();
+        await ComercialController.getPosConsultoria(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({ data: [] });
     });
 
     it('Deve permitir acesso para super_admin independente do nivel', async () => {
@@ -847,6 +948,18 @@ describe('ComercialController - getPosConsultoria', () => {
                         eq: vi.fn().mockReturnValue({
                             eq: vi.fn().mockReturnValue({
                                 order: vi.fn().mockResolvedValue({ data: [], error: null })
+                            })
+                        })
+                    })
+                };
+            }
+            if (table === 'processos') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({
+                            eq: vi.fn().mockResolvedValue({
+                                data: [],
+                                error: null
                             })
                         })
                     })
