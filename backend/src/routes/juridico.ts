@@ -84,7 +84,6 @@ juridico.post('/agendamentos/:id/realizada', JuridicoController.marcarConsultori
 // =============================================
 
 juridico.post('/documentos/solicitar', JuridicoController.solicitarDocumento.bind(JuridicoController))
-juridico.get('/requerimentos', JuridicoController.getRequerimentos.bind(JuridicoController))
 juridico.post('/requerimentos/solicitar', upload.array('files'), JuridicoController.solicitarRequerimento.bind(JuridicoController))
 
 // =============================================
