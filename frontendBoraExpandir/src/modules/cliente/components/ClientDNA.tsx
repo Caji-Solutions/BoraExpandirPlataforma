@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import {
     AlertCircle,
     ClipboardList,
+    Clock,
     FolderOpen,
     Plane,
     CheckSquare,
@@ -73,6 +74,7 @@ export type DNACategory = {
 export const CATEGORIAS_LIST: Omit<DNACategory, 'count'>[] = [
     { id: 'formularios', label: 'Formularios Consultoria Imigracao', icon: <ClipboardList className="h-6 w-6" />, color: 'bg-gray-500' },
     { id: 'aguardando_consultoria', label: 'Aguardando consultoria', icon: <FolderOpen className="h-6 w-6" />, color: 'bg-amber-600' },
+    { id: 'em_consultoria', label: 'Em Consultoria', icon: <Clock className="h-6 w-6 text-yellow-500" />, color: 'bg-yellow-500' },
     { id: 'clientes_c2', label: 'Pos Consultoria', icon: <ClipboardList className="h-6 w-6" />, color: 'bg-slate-600' },
     { id: 'aguardando_assessoria', label: 'Aguardando Assessoria', icon: <CheckSquare className="h-6 w-6 text-green-500" />, color: 'bg-green-600' },
     { id: 'assessoria_andamento', label: 'Assessoria em Andamento', icon: <Plane className="h-6 w-6 text-blue-500" />, color: 'bg-blue-600' },
@@ -141,7 +143,7 @@ export function ClientDNAPage() {
                         telefone: item.whatsapp || '',
                         tipoAssessoria: lastProcess?.tipo_servico || firstPaidAgendamento?.produto_nome || lastAgendamento?.produto_nome || 'Assessoria',
                         contratoAtivo: true, // Padronizado para true para evitar quebras, mas não é mais usado na listagem
-                        categoria: lastProcess?.status || item.stage || (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status || 'formularios')),
+                        categoria: lastProcess?.status || item.stage || (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status === 'cliente' ? 'aguardando_consultoria' : (item.status || 'formularios'))),
                         previsaoChegada: item.previsao_chegada || '',
                         priority: 'medium',
                         notes: [],

@@ -60,6 +60,7 @@ function calcularEtapaAtual(agendamentos: any[] = [], documents: Document[] = []
   )
 
   const consultoriaRealizada = consultoriasAgendadas.some(a => a.status === 'realizado')
+  const consultoriaEmAndamento = consultoriasAgendadas.some(a => a.status === 'em_consultoria')
   const assessoriaRealizada = assessoriasAgendadas.some(a => a.status === 'realizado')
 
   const temDocumentos = documents.length > 0
@@ -71,7 +72,7 @@ function calcularEtapaAtual(agendamentos: any[] = [], documents: Document[] = []
   // Sem processo = Etapas 0-1 (Consultoria)
   if (!process) {
     if (consultoriaRealizada) return 1  // 1: Consultoria Realizada
-    return 0                             // 0: Consultoria Agendada/Pendente
+    return 0                             // 0: Consultoria Agendada/Pendente (inclui em_consultoria)
   }
 
   // Com processo = Etapas 2-6
@@ -134,7 +135,17 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
   )
 
   const consultoriaRealizada = consultoriasAgendadas.some(a => a.status === 'realizado')
+  const consultoriaEmAndamento = consultoriasAgendadas.some(a => a.status === 'em_consultoria')
   const assessoriaRealizada = assessoriasAgendadas.some(a => a.status === 'realizado')
+
+  // Atualizar nome e descrição do step 0 quando consultoria está em andamento
+  if (consultoriaEmAndamento && !consultoriaRealizada) {
+    const step0 = currentProcess.steps.find(s => s.id === 0)
+    if (step0) {
+      step0.name = "Em Consultoria"
+      step0.description = "Consultoria jurídica em andamento. O advogado está analisando seu caso."
+    }
+  }
 
   const temDocumentos = documents.length > 0
   const todosAprovados = temDocumentos && documents.every(d => {
@@ -179,7 +190,27 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
         </Card>
       )}
 
-      {!process && !consultoriaRealizada && consultoriasAgendadas.length > 0 && (
+      {!process && !consultoriaRealizada && consultoriaEmAndamento && (
+        <Card className="bg-indigo-50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800 shadow-sm animate-in fade-in slide-in-from-top duration-500">
+          <CardContent className="p-6">
+            <div className="flex items-start space-x-4">
+              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/40 rounded-full">
+                <Clock className="w-6 h-6 text-indigo-600 dark:text-indigo-400 animate-pulse" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-indigo-800 dark:text-indigo-300">
+                  Em Consultoria
+                </h3>
+                <p className="text-indigo-700 dark:text-indigo-400 mt-1">
+                  Sua consultoria jurídica está em andamento. O advogado está analisando seu caso.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!process && !consultoriaRealizada && !consultoriaEmAndamento && consultoriasAgendadas.length > 0 && (
         <Card className="bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 shadow-sm animate-in fade-in slide-in-from-top duration-500">
           <CardContent className="p-6">
             <div className="flex items-start space-x-4">

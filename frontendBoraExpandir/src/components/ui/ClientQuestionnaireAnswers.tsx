@@ -168,62 +168,61 @@ export function ClientQuestionnaireAnswers({ clienteId }: ClientQuestionnaireAns
   ]
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-300">
-      <div className="flex items-center gap-4 bg-gray-50/50 dark:bg-neutral-800/30 px-6 py-5 rounded-3xl border border-gray-100/50 dark:border-neutral-800/50">
-        <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-400/30 to-blue-600/30 flex items-center justify-center flex-shrink-0">
-          <User className="h-6 w-6 text-blue-500" />
+    <div className="space-y-5">
+      {/* Submitter info */}
+      <div className="flex items-center gap-3 bg-muted/30 dark:bg-muted/15 px-5 py-4 rounded-xl border border-border/40">
+        <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <User className="h-4 w-4 text-primary" />
         </div>
-        <div>
-          <p className="text-[10px] text-gray-400 uppercase font-black tracking-[0.2em] mb-0.5">Submetido Por</p>
-          <p className="text-base font-black text-gray-900 dark:text-white tracking-tight">{data.nome_completo}</p>
-          <p className="text-xs text-gray-400 font-medium mt-0.5">
-            {data.created_at
+        <div className="min-w-0">
+          <p className="text-[13px] font-bold text-foreground truncate">{data.nome_completo}</p>
+          <p className="text-[11px] text-muted-foreground/60 tabular-nums">
+            Respondido em {data.created_at
               ? new Date(data.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-              : 'Data desconhecida'}
+              : '—'}
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {sections.map((section, idx) => (
-          <div
-            key={idx}
-            className={cn(
-              "bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.08)] overflow-hidden",
-              idx === sections.length - 1 && sections.length % 2 !== 0 ? 'lg:col-span-2' : ''
-            )}
-          >
-            <div className="px-5 py-4 border-b border-gray-100/50 dark:border-neutral-800/50 bg-white/40 dark:bg-neutral-900/40 backdrop-blur-xl flex items-center gap-3">
-              <div className={cn("p-2 rounded-xl", section.bg)}>
-                <section.icon className={cn("h-4 w-4", section.color)} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {sections.map((section, idx) => {
+          const hasVisibleFields = section.fields.some(f => f.value)
+          if (!hasVisibleFields) return null
+          return (
+            <div
+              key={idx}
+              className={cn(
+                "bg-card border border-border rounded-xl overflow-hidden",
+                idx === sections.length - 1 && sections.length % 2 !== 0 ? 'lg:col-span-2' : ''
+              )}
+            >
+              <div className="px-5 py-3 border-b border-border/50 flex items-center gap-2.5">
+                <div className={cn("p-1.5 rounded-lg", section.bg)}>
+                  <section.icon className={cn("h-3.5 w-3.5", section.color)} />
+                </div>
+                <h4 className="font-bold text-foreground text-[13px]">{section.title}</h4>
               </div>
-              <h4 className="font-black text-gray-900 dark:text-white text-sm tracking-tight">{section.title}</h4>
-            </div>
-            <div className="p-5 flex flex-col gap-4">
-              {section.fields.map((field, fIdx) => {
-                if (!field.value) return null;
-                return (
-                  <div key={fIdx} className="group">
-                    <span className="text-[10px] text-gray-400 uppercase font-black tracking-widest block mb-1.5 group-hover:text-blue-500 transition-colors">
-                      {field.label}
-                    </span>
-                    <div className="flex items-start gap-2">
-                      {field.icon && (
-                        <field.icon className="h-4 w-4 text-gray-400 mt-0.5 shrink-0 group-hover:text-blue-400 transition-colors" />
-                      )}
-                      <span className={cn(
-                        "text-sm font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors",
+              <div className="p-5 space-y-4">
+                {section.fields.map((field, fIdx) => {
+                  if (!field.value) return null;
+                  return (
+                    <div key={fIdx}>
+                      <p className="text-[10px] text-muted-foreground/50 uppercase font-bold tracking-widest mb-1">
+                        {field.label}
+                      </p>
+                      <p className={cn(
+                        "text-[13px] font-semibold text-foreground leading-relaxed",
                         field.isFullWidth ? "whitespace-pre-line" : "break-words"
                       )}>
                         {field.value}
-                      </span>
+                      </p>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

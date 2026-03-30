@@ -301,6 +301,8 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
         return <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none">Realizado</Badge>;
       case 'conflito':
         return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none">Conflito</Badge>;
+      case 'em_consultoria':
+        return <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100 border-none">Em Consultoria</Badge>;
       default:
         return <Badge variant="outline">{status || 'N/A'}</Badge>;
     }
@@ -644,13 +646,13 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                               await juridicoService.marcarConsultoriaEmAndamento(selectedItem.id);
                               setHasStartedConsultoria(true);
                               setSelectedItem((prev: any) => prev ? { ...prev, status: 'em_consultoria' } : prev);
+                              const targetId = selectedItem.cliente_id || selectedItem.id;
+                              navigate(`/juridico/dna?clienteId=${targetId}&tab=formularios&refresh=${Date.now()}`);
                             } catch (err: any) {
                               console.warn('Erro ao marcar em andamento:', err);
                             } finally {
                               setIsMarkingEmAndamento(false);
                             }
-                            const targetId = selectedItem.cliente_id || selectedItem.id;
-                            navigate(`/juridico/dna?clienteId=${targetId}&tab=formularios&refresh=${Date.now()}`);
                           }}
                           disabled={isIniciarConsultoriaDisabled}
                           className={`w-full py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex justify-center items-center gap-2 ${

@@ -150,7 +150,7 @@ export function ClientDNAPage() {
                             ? lastProcess.status
                             : (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status || 'aguardando_consultoria'))
 
-                    if (['formularios', 'lead', 'novo', 'captado'].includes(computedCategoria)) {
+                    if (['formularios', 'lead', 'novo', 'captado', 'cliente'].includes(computedCategoria)) {
                         const temAgendamento = agendamentos.some((a: any) =>
                             a.status === 'agendado' || a.status === 'confirmado' || a.status === 'pendente' || a.status === 'reagendado'
                         )
@@ -158,9 +158,19 @@ export function ClientDNAPage() {
                             computedCategoria = 'aguardando_consultoria'
                         }
                         // Se tem agendamento realizado mas categoria ainda nao reflete, forcar pos consultoria
-                        if (agendamentoRealizado && ['formularios', 'lead', 'novo', 'captado'].includes(computedCategoria)) {
+                        if (agendamentoRealizado && ['formularios', 'lead', 'novo', 'captado', 'cliente'].includes(computedCategoria)) {
                             computedCategoria = 'clientes_c2'
                         }
+                        // Se status é 'cliente' e não houve remap acima, padrão é aguardando consultoria
+                        if (computedCategoria === 'cliente') {
+                            computedCategoria = 'aguardando_consultoria'
+                        }
+                    }
+
+                    // Se tem agendamento em_consultoria, forcar categoria para em_consultoria
+                    const agendamentoEmConsultoria = agendamentos.some((a: any) => a.status === 'em_consultoria')
+                    if (agendamentoEmConsultoria && !agendamentoRealizado && ['aguardando_consultoria', 'formularios', 'lead', 'novo', 'captado', 'cliente'].includes(computedCategoria)) {
+                        computedCategoria = 'em_consultoria'
                     }
 
                     return {

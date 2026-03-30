@@ -135,6 +135,7 @@ export function Dashboard() {
   const pipelineData = useMemo(() => {
     const stages = [
       { id: 'aguardando_consultoria', label: 'Aguardando Consultoria', color: 'bg-amber-500' },
+      { id: 'em_consultoria', label: 'Em Consultoria', color: 'bg-yellow-500' },
       { id: 'clientes_c2', label: 'Pos Consultoria', color: 'bg-slate-500' },
       { id: 'aguardando_assessoria', label: 'Aguardando Assessoria', color: 'bg-green-500' },
       { id: 'assessoria_andamento', label: 'Assessoria em Andamento', color: 'bg-blue-500' },

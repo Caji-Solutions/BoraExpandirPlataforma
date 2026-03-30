@@ -25,7 +25,7 @@ export interface ClienteDTO {
   whatsapp: string
   parceiro_id: string
   status?: ClienteStatus
-  stage?: 'formularios' | 'aguardando_consultoria' | 'clientes_c2' | 'aguardando_assessoria' | 'assessoria_andamento' | 'assessoria_finalizada' | 'cancelado'
+  stage?: 'formularios' | 'aguardando_consultoria' | 'em_consultoria' | 'clientes_c2' | 'aguardando_assessoria' | 'assessoria_andamento' | 'assessoria_finalizada' | 'cancelado'
   previsao_chegada?: string
   foto_perfil?: string
   cpf?: string

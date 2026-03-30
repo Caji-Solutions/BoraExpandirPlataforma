@@ -1108,11 +1108,24 @@ class JuridicoController {
             if (agError) throw agError;
             if (!agendamento) return res.status(404).json({ message: 'Agendamento nao encontrado' });
 
+            // Atualizar status do agendamento para em_consultoria
+            const { error: updateAgError } = await supabase
+                .from('agendamentos')
+                .update({ status: 'em_consultoria' })
+                .eq('id', id);
+
+            if (updateAgError) throw updateAgError;
+
             if (agendamento.cliente_id) {
-                await supabase
+                // Atualizar stage do cliente
+                const { error: updateClienteError } = await supabase
                     .from('clientes')
                     .update({ stage: 'em_consultoria' })
                     .eq('id', agendamento.cliente_id);
+
+                if (updateClienteError) {
+                    console.error('Erro ao atualizar stage do cliente:', updateClienteError);
+                }
             }
 
             return res.status(200).json({ success: true });
@@ -1150,6 +1163,11 @@ class JuridicoController {
 
             const clienteId = agendamento.cliente_id;
             const tipoServico = agendamento.produto_nome || 'Consultoria';
+            const isConsultoria = tipoServico.toLowerCase().includes('consultoria') || !agendamento.produto_nome;
+
+            if (isConsultoria && !vendedorId) {
+                return res.status(400).json({ message: 'Vendedor C2 é obrigatório para marcar a consultoria como realizada' });
+            }
 
             if (clienteId) {
                 // 2. Buscar nome do vendedor C2 se fornecido
@@ -1177,9 +1195,20 @@ class JuridicoController {
                     if (!processo.tipo_servico) {
                         processoUpdateData.tipo_servico = tipoServico;
                     }
+                    if (vendedorId) {
+                        processoUpdateData.responsavel_id = vendedorId;
+                    }
                     await supabase.from('processos').update(processoUpdateData).eq('id', processo.id);
-                } else {
-                    await supabase.from('clientes').update({ stage: 'clientes_c2', status: 'clientes_c2' }).eq('id', clienteId);
+                }
+
+                // Sempre atualizar stage do cliente para clientes_c2
+                const { error: stageError } = await supabase
+                    .from('clientes')
+                    .update({ stage: 'clientes_c2' })
+                    .eq('id', clienteId);
+
+                if (stageError) {
+                    console.error('Erro ao atualizar stage do cliente para clientes_c2:', stageError);
                 }
 
                 // 4. Salvar vendedor C2 no perfil_unificado via DNAService
