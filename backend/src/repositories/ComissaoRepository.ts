@@ -6,12 +6,12 @@ class ComissaoRepository {
     const inicioMes = new Date(Date.UTC(ano, mes - 1, 1)).toISOString()
     const fimMes = new Date(Date.UTC(ano, mes, 1)).toISOString()
 
-    // Buscar agendamentos (Consultoria/Diversos) com pagamento aprovado
+    // Buscar agendamentos (Consultoria/Diversos) com pagamento aprovado ou confirmado
     const { data: agendamentos, error: errAg } = await supabase
       .from('agendamentos')
       .select('id, produto_id, produto_nome, pagamento_status, valor, data_hora')
       .eq('usuario_id', usuarioId)
-      .eq('pagamento_status', 'aprovado')
+      .in('pagamento_status', ['aprovado', 'confirmado'])
       .gte('data_hora', inicioMes)
       .lt('data_hora', fimMes)
 
@@ -74,7 +74,7 @@ class ComissaoRepository {
       .from('agendamentos')
       .select('id, usuario_id, produto_nome, pagamento_status, valor, data_hora')
       .in('usuario_id', subordinadoIds)
-      .eq('pagamento_status', 'aprovado')
+      .in('pagamento_status', ['aprovado', 'confirmado'])
       .gte('data_hora', inicioMes)
       .lt('data_hora', fimMes)
 

@@ -195,6 +195,50 @@ class ComercialController {
             const createdData = await ComercialRepository.createAgendamento(agendamento)
             console.log('Agendamento criado com sucesso:', createdData)
 
+            // Atualizar stage do cliente baseado no novo agendamento
+            if (cliente_id) {
+                try {
+                    const [{ data: clienteAtual }, { data: outrosAgendamentos }] = await Promise.all([
+                        supabase.from('clientes').select('stage, status').eq('id', cliente_id).single(),
+                        supabase.from('agendamentos').select('id').eq('cliente_id', cliente_id).neq('id', createdData.id)
+                    ])
+                    const isPrimeiroAgendamento = !outrosAgendamentos || outrosAgendamentos.length === 0
+
+                    if (isPrimeiroAgendamento) {
+                        // Task 2: Primeiro agendamento com servico fixo -> aguardando_assessoria
+                        const { data: servico } = await supabase
+                            .from('catalogo_servicos')
+                            .select('tipo')
+                            .eq('id', produto_id)
+                            .single()
+
+                        if (servico?.tipo === 'fixo') {
+                            await supabase.from('clientes').update({
+                                stage: 'aguardando_assessoria',
+                                status: 'aguardando_assessoria'
+                            }).eq('id', cliente_id)
+                            console.log(`[ComercialController] Cliente ${cliente_id} movido para aguardando_assessoria (servico fixo, primeiro agendamento)`)
+                        }
+                    } else if (clienteAtual?.stage === 'clientes_c2') {
+                        // Task 1: Cliente em pos-consultoria agendou assessoria -> assessoria_andamento
+                        await supabase.from('clientes').update({
+                            stage: 'assessoria_andamento',
+                            status: 'assessoria_andamento'
+                        }).eq('id', cliente_id)
+                        console.log(`[ComercialController] Cliente ${cliente_id} movido de clientes_c2 para assessoria_andamento`)
+                    } else if (clienteAtual?.stage === 'cancelado') {
+                        // Task 3: Cliente que havia cancelado criou novo agendamento -> restaurar stage
+                        await supabase.from('clientes').update({
+                            stage: 'aguardando_consultoria',
+                            status: 'aguardando_consultoria'
+                        }).eq('id', cliente_id)
+                        console.log(`[ComercialController] Cliente ${cliente_id} restaurado de cancelado para aguardando_consultoria`)
+                    }
+                } catch (stageErr) {
+                    console.warn('[ComercialController] Erro ao atualizar stage do cliente apos agendamento:', stageErr)
+                }
+            }
+
             // Verificar se o lead já preencheu o formulário em outro agendamento
             let avisoFormularioPreenchido = false
             try {
@@ -725,6 +769,28 @@ class ComercialController {
             }
 
             await ComercialRepository.updateAgendamentoStatus(id, 'cancelado')
+
+            // Task 3: Verificar se o cliente tem outros agendamentos ativos. Se nao, marcar como cancelado
+            try {
+                if (agendamento.cliente_id) {
+                    const { data: outrosAgendamentosAtivos } = await supabase
+                        .from('agendamentos')
+                        .select('id, status')
+                        .eq('cliente_id', agendamento.cliente_id)
+                        .neq('id', id)
+                        .not('status', 'eq', 'cancelado')
+
+                    if (!outrosAgendamentosAtivos || outrosAgendamentosAtivos.length === 0) {
+                        await supabase.from('clientes').update({
+                            stage: 'cancelado',
+                            status: 'cancelado'
+                        }).eq('id', agendamento.cliente_id)
+                        console.log(`[ComercialController] Cliente ${agendamento.cliente_id} marcado como cancelado (sem outros agendamentos ativos)`)
+                    }
+                }
+            } catch (cancelStageErr) {
+                console.warn('[ComercialController] Erro ao atualizar stage do cliente apos cancelamento:', cancelStageErr)
+            }
 
             // Resiliência Google Meet: Se tiver link, tenta deletar evento
             if (agendamento.meet_link) {

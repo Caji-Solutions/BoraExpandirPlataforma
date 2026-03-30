@@ -251,7 +251,7 @@ export function AdminSidebar({ sidebarOpen = false, setSidebarOpen }: AdminSideb
                             title={`Ver como ${member.full_name}`}
                           >
                             <UserCircle className="h-4 w-4 flex-shrink-0" />
-                            <span className="truncate">{member.full_name}</span>
+                            <span className="truncate">{member.full_name}{member.nivel ? ` (${member.nivel})` : ''}</span>
                             {member.is_supervisor && (
                               <span className="text-amber-500 text-xs">★</span>
                             )}

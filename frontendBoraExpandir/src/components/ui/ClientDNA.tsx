@@ -173,6 +173,22 @@ export function ClientDNAPage() {
                         computedCategoria = 'em_consultoria'
                     }
 
+                    // Se tem agendamento realizado E cliente esta em 'assessoria_andamento', forcar para 'assessoria_finalizada'
+                    const agendamentoAssessoriaRealizado = agendamentos.some((a: any) =>
+                        a.status === 'realizado' &&
+                        (a.produto_id || a.servico_id)
+                    )
+                    if (agendamentoAssessoriaRealizado && computedCategoria === 'assessoria_andamento') {
+                        computedCategoria = 'assessoria_finalizada'
+                    }
+
+                    // Se TODOS os agendamentos estao cancelados, forcar categoria para 'cancelado'
+                    const allAppointmentsCancelled = agendamentos.length > 0 &&
+                        agendamentos.every((a: any) => a.status === 'cancelado')
+                    if (allAppointmentsCancelled && computedCategoria !== 'cancelado') {
+                        computedCategoria = 'cancelado'
+                    }
+
                     return {
                         id: item.client_id || item.id,
                         true_id: item.id,
@@ -180,7 +196,7 @@ export function ClientDNAPage() {
                         nome: item.nome || 'Sem nome',
                         email: item.email || 'Sem e-mail',
                         telefone: item.whatsapp || '',
-                        tipoAssessoria: lastProcess?.tipo_servico || melhorAgendamento?.produto_nome || 'Consultoria',
+                        tipoAssessoria: lastProcess?.tipo_servico || firstPaidAgendamento?.produto_nome || melhorAgendamento?.produto_nome || 'Consultoria',
                         contratoAtivo: true, // Padronizado para true para evitar quebras, mas não é mais usado na listagem
                         categoria: computedCategoria,
                         previsaoChegada: item.previsao_chegada || '',

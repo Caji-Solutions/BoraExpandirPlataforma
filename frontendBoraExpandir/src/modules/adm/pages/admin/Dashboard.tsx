@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/modules/shared/components/ui/card';
 import { Users, FileText, TrendingUp, Activity, Calendar, ExternalLink, CheckCircle, LogOut, Loader2 } from "lucide-react";
 import { useAuth } from "../../../../contexts/AuthContext";
 
 export default function Dashboard() {
   const { activeProfile } = useAuth();
+  const location = useLocation();
   const [isCalendarConnected, setIsCalendarConnected] = useState(false);
   const [calendarEmail, setCalendarEmail] = useState("");
   const [isLoadingCalendar, setIsLoadingCalendar] = useState(true);
@@ -13,7 +15,7 @@ export default function Dashboard() {
     if (activeProfile?.id) {
       checkCalendarConnection();
     }
-  }, [activeProfile?.id]);
+  }, [activeProfile?.id, location.pathname]);
 
   const checkCalendarConnection = async () => {
     try {

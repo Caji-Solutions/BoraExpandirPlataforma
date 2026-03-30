@@ -234,7 +234,7 @@ export default function SupervisorComercialPage() {
                       onClick={() => handleEntrarComoDelegado(d)}
                     >
                       <LogIn className="h-3.5 w-3.5" />
-                      Entrar como delegado
+                      Entrar na Área
                     </Button>
                   </div>
                 </div>

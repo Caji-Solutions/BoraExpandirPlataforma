@@ -14,7 +14,8 @@ import {
   Video,
   CalendarClock,
   FileText,
-  Fingerprint
+  Fingerprint,
+  Search
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
@@ -65,6 +66,8 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
   const [isLoadingUsuariosC2, setIsLoadingUsuariosC2] = useState(false);
   const [cachedProfiles, setCachedProfiles] = useState<Record<string, string>>({});
   const [servicosCatalogo, setServicosCatalogo] = useState<Service[]>([]);
+  const [isC2SelectionOpen, setIsC2SelectionOpen] = useState(false);
+  const [c2SearchQuery, setC2SearchQuery] = useState('');
 
   const effectiveUserId = userId || activeProfile?.id;
 
@@ -358,8 +361,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
 
   const isRealizadaDisabled = !selectedItem
     || isMarkingRealizada
-    || selectedItem.status === 'realizado'
-    || !selectedVendedorId;
+    || selectedItem.status === 'realizado';
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 lg:space-y-8">
@@ -512,7 +514,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
       </div>
 
       {/* Modal de Detalhes do Agendamento */}
-      {selectedItem && createPortal(
+      {selectedItem && !isC2SelectionOpen && createPortal(
         <div className="fixed inset-0 z-[1000] w-screen h-screen bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" style={{ animation: 'fadeIn 0.2s ease-out' }}>
           <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-200 dark:border-neutral-800 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]" style={{ animation: 'slideUp 0.25s ease-out' }}>
 
@@ -769,37 +771,12 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
             <div className="sticky bottom-0 z-40 px-6 py-4 border-t border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-950">
               <div className="flex flex-col sm:flex-row sm:items-end gap-2">
                 {activeTab === 'consultorias' && (
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-neutral-400">
-                      Vendedor C2
-                    </label>
-                    <select
-                      value={selectedVendedorId}
-                      onChange={(e) => setSelectedVendedorId(e.target.value)}
-                      disabled={isLoadingUsuariosC2 || isMarkingRealizada}
-                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm text-gray-900 dark:text-white disabled:opacity-60"
-                    >
-                      <option value="">Selecione um comercial C2</option>
-                      {usuariosComerciaisC2.map((usuario) => (
-                        <option key={usuario.id} value={usuario.id}>
-                          {usuario.full_name || usuario.nome || usuario.email || usuario.id}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="flex-1 min-w-0">
                     <button
-                      onClick={async () => {
-                        if (!selectedItem || !selectedVendedorId) return;
-                        try {
-                          setIsMarkingRealizada(true);
-                          await juridicoService.marcarConsultoriaRealizada(selectedItem.id, selectedVendedorId);
-                          toast.success('Consultoria marcada como realizada e cliente movido para Pos Consultoria.');
-                          setSelectedItem(null);
-                          fetchData();
-                        } catch (err: any) {
-                          toast.error('Erro ao marcar consultoria: ' + (err.response?.data?.message || err.message));
-                        } finally {
-                          setIsMarkingRealizada(false);
-                        }
+                      onClick={() => {
+                        setSelectedVendedorId('');
+                        setC2SearchQuery('');
+                        setIsC2SelectionOpen(true);
                       }}
                       disabled={isRealizadaDisabled}
                       className="w-full px-4 py-3 font-bold text-xs bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
@@ -859,6 +836,121 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
           </div>
           <style>{`
             @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes slideUp { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+          `}</style>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal de Selecao de Vendedor C2 */}
+      {isC2SelectionOpen && selectedItem && createPortal(
+        <div className="fixed inset-0 z-[1100] w-screen h-screen bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-200 dark:border-neutral-800 shadow-2xl w-full max-w-md flex flex-col max-h-[80vh]" style={{ animation: 'slideUp 0.25s ease-out' }}>
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-neutral-800">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Selecionar Vendedor C2</h2>
+              <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">Selecione o vendedor responsavel por esta consultoria</p>
+            </div>
+
+            {/* Search */}
+            <div className="px-6 py-3 border-b border-gray-100 dark:border-neutral-800">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar por nome ou e-mail..."
+                  value={c2SearchQuery}
+                  onChange={(e) => setC2SearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Lista de usuarios */}
+            <div className="overflow-y-auto flex-1 px-3 py-2">
+              {(() => {
+                const filtered = usuariosComerciaisC2.filter((u) => {
+                  if (!c2SearchQuery) return true;
+                  const q = c2SearchQuery.toLowerCase();
+                  return (
+                    (u.full_name || u.nome || '').toLowerCase().includes(q) ||
+                    (u.email || '').toLowerCase().includes(q)
+                  );
+                });
+                if (filtered.length === 0) {
+                  return (
+                    <div className="py-10 text-center">
+                      <p className="text-sm text-gray-400">Nenhum usuario encontrado</p>
+                    </div>
+                  );
+                }
+                return filtered.map((usuario) => (
+                  <button
+                    key={usuario.id}
+                    onClick={() => setSelectedVendedorId(usuario.id)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all mb-1 text-left ${
+                      selectedVendedorId === usuario.id
+                        ? 'bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50'
+                        : 'hover:bg-gray-50 dark:hover:bg-neutral-900 border border-transparent'
+                    }`}
+                  >
+                    <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-neutral-800 flex items-center justify-center shrink-0">
+                      <User className="h-4 w-4 text-gray-500" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-sm font-semibold truncate ${selectedVendedorId === usuario.id ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
+                        {usuario.full_name || usuario.nome || 'Sem nome'}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-neutral-400 truncate">{usuario.email || '—'}</p>
+                    </div>
+                    {selectedVendedorId === usuario.id && (
+                      <CheckSquare className="h-4 w-4 text-blue-500 shrink-0" />
+                    )}
+                  </button>
+                ));
+              })()}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-100 dark:border-neutral-800 flex gap-3">
+              <button
+                onClick={() => {
+                  setIsC2SelectionOpen(false);
+                  setSelectedVendedorId('');
+                  setC2SearchQuery('');
+                }}
+                className="flex-1 px-4 py-3 font-bold text-xs bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-800 rounded-xl transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  if (!selectedItem || !selectedVendedorId) return;
+                  try {
+                    setIsMarkingRealizada(true);
+                    await juridicoService.marcarConsultoriaRealizada(selectedItem.id, selectedVendedorId);
+                    toast.success('Consultoria marcada como realizada e cliente movido para Pos Consultoria.');
+                    setIsC2SelectionOpen(false);
+                    setSelectedItem(null);
+                    setSelectedVendedorId('');
+                    setC2SearchQuery('');
+                    fetchData();
+                  } catch (err: any) {
+                    toast.error('Erro ao marcar consultoria: ' + (err.response?.data?.message || err.message));
+                  } finally {
+                    setIsMarkingRealizada(false);
+                  }
+                }}
+                disabled={!selectedVendedorId || isMarkingRealizada}
+                className="flex-1 px-4 py-3 font-bold text-xs bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <CheckSquare className="h-3.5 w-3.5" />
+                {isMarkingRealizada ? 'Salvando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+          <style>{`
             @keyframes slideUp { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
           `}</style>
         </div>,

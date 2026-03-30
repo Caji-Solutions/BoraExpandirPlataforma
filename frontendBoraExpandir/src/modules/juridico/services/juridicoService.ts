@@ -435,7 +435,8 @@ export async function marcarConsultoriaRealizada(agendamentoId: string, vendedor
  */
 export async function getUsuariosComerciaisC2(): Promise<any[]> {
   const result = await apiClient.get(`/juridico/usuarios-comerciais-c2`);
-  return result.data || [];
+  if (Array.isArray(result)) return result;
+  return (result as any).data || [];
 }
 
 export default {

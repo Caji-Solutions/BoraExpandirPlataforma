@@ -229,7 +229,7 @@ router.get('/team', authMiddleware, async (req: Request, res: Response) => {
     try {
         const { data: profiles, error } = await supabase
             .from('profiles')
-            .select('id, full_name, email, role, cargo, horario_trabalho')
+            .select('id, full_name, email, role, cargo, nivel, is_supervisor, supervisor_id, horario_trabalho, cpf, telefone, created_at')
             .order('role', { ascending: true })
             .order('full_name', { ascending: true })
 
@@ -247,7 +247,7 @@ router.get('/team', authMiddleware, async (req: Request, res: Response) => {
 // ============================================
 // GET /auth/team/delegados/:supervisorId — Listar delegados de um supervisor
 // ============================================
-router.get('/team/delegados/:supervisorId', async (req: Request, res: Response) => {
+router.get('/team/delegados/:supervisorId', authMiddleware, async (req: Request, res: Response) => {
     try {
         const { supervisorId } = req.params
 
@@ -270,7 +270,7 @@ router.get('/team/delegados/:supervisorId', async (req: Request, res: Response) 
 // ============================================
 // GET /auth/team/:role — Listar colaboradores por setor
 // ============================================
-router.get('/team/:role', async (req: Request, res: Response) => {
+router.get('/team/:role', authMiddleware, async (req: Request, res: Response) => {
     try {
         const { role } = req.params
 
@@ -358,6 +358,81 @@ router.patch('/team/:id/password', async (req: Request, res: Response) => {
             message: 'Senha atualizada com sucesso',
             isSelfUpdate: adminProfile.id === id
         })
+    } catch (error: any) {
+        return res.status(500).json({ error: 'Erro interno do servidor' })
+    }
+})
+
+// ============================================
+// PATCH /auth/team/:id/supervisor — Atribuir supervisor a um colaborador
+// ============================================
+router.patch('/team/:id/supervisor', async (req: Request, res: Response) => {
+    try {
+        const adminProfile = await getUserByToken(req)
+
+        if (!adminProfile || adminProfile.role !== 'super_admin') {
+            return res.status(403).json({ error: 'Apenas Super Admin pode alterar colaboradores' })
+        }
+
+        const { id } = req.params
+        const { supervisor_id } = req.body
+
+        const { error } = await supabase
+            .from('profiles')
+            .update({ supervisor_id: supervisor_id || null })
+            .eq('id', id)
+
+        if (error) {
+            return res.status(500).json({ error: 'Erro ao atualizar supervisor' })
+        }
+
+        return res.json({ message: 'Supervisor atualizado com sucesso' })
+    } catch (error: any) {
+        return res.status(500).json({ error: 'Erro interno do servidor' })
+    }
+})
+
+// ============================================
+// PUT /auth/team/:id/delegados — Atribuir delegados a um supervisor
+// ============================================
+router.put('/team/:id/delegados', async (req: Request, res: Response) => {
+    try {
+        const adminProfile = await getUserByToken(req)
+
+        if (!adminProfile || adminProfile.role !== 'super_admin') {
+            return res.status(403).json({ error: 'Apenas Super Admin pode gerenciar delegados' })
+        }
+
+        const { id } = req.params
+        const { delegateIds } = req.body
+
+        if (!Array.isArray(delegateIds)) {
+            return res.status(400).json({ error: 'delegateIds deve ser um array' })
+        }
+
+        // Limpar delegados existentes deste supervisor
+        const { error: clearError } = await supabase
+            .from('profiles')
+            .update({ supervisor_id: null })
+            .eq('supervisor_id', id)
+
+        if (clearError) {
+            return res.status(500).json({ error: 'Erro ao limpar delegados anteriores' })
+        }
+
+        // Atribuir novos delegados
+        if (delegateIds.length > 0) {
+            const { error: setError } = await supabase
+                .from('profiles')
+                .update({ supervisor_id: id })
+                .in('id', delegateIds)
+
+            if (setError) {
+                return res.status(500).json({ error: 'Erro ao atribuir delegados' })
+            }
+        }
+
+        return res.json({ message: 'Delegados atualizados com sucesso' })
     } catch (error: any) {
         return res.status(500).json({ error: 'Erro interno do servidor' })
     }

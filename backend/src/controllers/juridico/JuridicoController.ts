@@ -1074,11 +1074,10 @@ class JuridicoController {
     async getUsuariosComerciaisC2(req: any, res: any) {
         try {
             const { data: usuarios, error } = await supabase
-                .from('usuarios')
+                .from('profiles')
                 .select('id, full_name, email, nivel, cargo')
-                .eq('setor', 'comercial')
+                .eq('role', 'comercial')
                 .eq('nivel', 'C2')
-                .eq('status', 'active')
                 .order('full_name', { ascending: true });
 
             if (error) throw error;
@@ -1145,12 +1144,28 @@ class JuridicoController {
                 return res.status(400).json({ message: 'Agendamento ID é obrigatório' });
             }
 
-            // 1. Marcar o agendamento como 'realizado' e salvar vendedorId se fornecido
-            const updateData: any = { status: 'realizado' };
-            if (vendedorId) {
-                updateData.vendedor_id = vendedorId;
+            // 1. Buscar agendamento antes de atualizar para validar o tipo de servico
+            const { data: agendamentoExistente, error: fetchError } = await supabase
+                .from('agendamentos')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (fetchError || !agendamentoExistente) {
+                return res.status(404).json({ message: 'Agendamento não encontrado' });
             }
 
+            const tipoServico = agendamentoExistente.produto_nome || '';
+            const isConsultoria = tipoServico.toLowerCase().includes('consultoria');
+
+            if (isConsultoria && !vendedorId) {
+                return res.status(400).json({ message: 'Vendedor C2 é obrigatório para marcar a consultoria como realizada' });
+            }
+
+            // 2. Marcar o agendamento como 'realizado'
+            const updateData: any = { status: 'realizado' };
+
+            console.log('[marcarConsultoriaRealizada] Atualizando agendamento:', id, updateData);
             const { data: agendamento, error: agError } = await supabase
                 .from('agendamentos')
                 .update(updateData)
@@ -1158,23 +1173,21 @@ class JuridicoController {
                 .select()
                 .single();
 
-            if (agError) throw agError;
+            if (agError) {
+                console.error('[marcarConsultoriaRealizada] Erro ao atualizar agendamento:', agError);
+                throw agError;
+            }
             if (!agendamento) return res.status(404).json({ message: 'Agendamento não encontrado' });
 
             const clienteId = agendamento.cliente_id;
-            const tipoServico = agendamento.produto_nome || 'Consultoria';
-            const isConsultoria = tipoServico.toLowerCase().includes('consultoria') || !agendamento.produto_nome;
-
-            if (isConsultoria && !vendedorId) {
-                return res.status(400).json({ message: 'Vendedor C2 é obrigatório para marcar a consultoria como realizada' });
-            }
+            console.log('[marcarConsultoriaRealizada] clienteId:', clienteId);
 
             if (clienteId) {
                 // 2. Buscar nome do vendedor C2 se fornecido
                 let vendedorNome: string | null = null;
                 if (vendedorId) {
                     const { data: vendedor } = await supabase
-                        .from('usuarios')
+                        .from('profiles')
                         .select('full_name')
                         .eq('id', vendedorId)
                         .single();
@@ -1182,13 +1195,18 @@ class JuridicoController {
                 }
 
                 // 3. Buscar um processo ativo para mudar para Pós Consultoria (clientes_c2)
-                const { data: processo } = await supabase
+                console.log('[marcarConsultoriaRealizada] Buscando processo para clienteId:', clienteId);
+                const { data: processo, error: processoFetchError } = await supabase
                     .from('processos')
                     .select('id, status, tipo_servico')
                     .eq('cliente_id', clienteId)
                     .order('criado_em', { ascending: false })
                     .limit(1)
-                    .single();
+                    .maybeSingle();
+
+                if (processoFetchError) {
+                    console.warn('[marcarConsultoriaRealizada] Erro ao buscar processo (nao critico):', processoFetchError);
+                }
 
                 if (processo) {
                     const processoUpdateData: any = { status: 'clientes_c2' };
@@ -1198,32 +1216,40 @@ class JuridicoController {
                     if (vendedorId) {
                         processoUpdateData.responsavel_id = vendedorId;
                     }
+                    console.log('[marcarConsultoriaRealizada] Atualizando processo:', processo.id, processoUpdateData);
                     await supabase.from('processos').update(processoUpdateData).eq('id', processo.id);
                 }
 
                 // Sempre atualizar stage do cliente para clientes_c2
+                console.log('[marcarConsultoriaRealizada] Atualizando stage do cliente:', clienteId);
                 const { error: stageError } = await supabase
                     .from('clientes')
                     .update({ stage: 'clientes_c2' })
                     .eq('id', clienteId);
 
                 if (stageError) {
-                    console.error('Erro ao atualizar stage do cliente para clientes_c2:', stageError);
+                    console.error('[marcarConsultoriaRealizada] Erro ao atualizar stage:', stageError);
                 }
 
                 // 4. Salvar vendedor C2 no perfil_unificado via DNAService
                 if (vendedorId) {
                     const dnaPayload: Record<string, any> = { vendedor_c2_id: vendedorId };
                     if (vendedorNome) dnaPayload.vendedor_c2_nome = vendedorNome;
+                    console.log('[marcarConsultoriaRealizada] Salvando DNA do vendedor C2');
                     await DNAService.mergeDNA(clienteId, dnaPayload, 'HIGH');
                 }
 
-                await NotificationService.createNotification({
-                    clienteId: clienteId,
-                    titulo: 'Consultoria Realizada',
-                    mensagem: 'A consultoria foi finalizada pelo Jurídico. Cliente agora em Pós Consultoria.',
-                    tipo: 'success'
-                });
+                console.log('[marcarConsultoriaRealizada] Criando notificacao...');
+                try {
+                    await NotificationService.createNotification({
+                        clienteId: clienteId,
+                        titulo: 'Consultoria Realizada',
+                        mensagem: 'A consultoria foi finalizada pelo Jurídico. Cliente agora em Pós Consultoria.',
+                        tipo: 'success'
+                    });
+                } catch (notifError: any) {
+                    console.error('[marcarConsultoriaRealizada] Erro ao criar notificacao (nao critico):', notifError?.message || notifError);
+                }
             }
 
             return res.status(200).json({ success: true, message: 'Consultoria finalizada com sucesso.' });

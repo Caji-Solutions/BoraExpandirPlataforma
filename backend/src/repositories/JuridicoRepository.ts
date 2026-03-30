@@ -341,7 +341,7 @@ class JuridicoRepository {
                 ),
                 formularios_cliente!agendamento_id (*)
             `)
-            .eq('responsavel_juridico_id', responsavelId)
+            .or(`responsavel_juridico_id.eq.${responsavelId},responsavel_juridico_id.is.null`)
             .order('data_hora', { ascending: true })
 
         if (error) {
