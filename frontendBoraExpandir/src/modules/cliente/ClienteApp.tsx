@@ -170,6 +170,7 @@ export function ClienteApp() {
           avatarUrl: apiCliente.foto_perfil,
           clientId: apiCliente.client_id,
           status: apiCliente.status,
+          stage: apiCliente.stage,
           createdAt: new Date(apiCliente.criado_em || apiCliente.created_at)
         }
         setClient(updatedClient)
@@ -579,7 +580,7 @@ export function ClienteApp() {
           />
           <Route
             path="processo"
-            element={<ProcessTimeline process={processo} requerimentos={requerimentos} familyMembers={familyMembers} agendamentos={agendamentos} documents={documents} />}
+            element={<ProcessTimeline process={processo} requerimentos={requerimentos} familyMembers={familyMembers} agendamentos={agendamentos} documents={documents} clientStage={client.stage} />}
           />
           <Route path="agendamento" element={<ClienteAgendamento client={client} />} />
           <Route

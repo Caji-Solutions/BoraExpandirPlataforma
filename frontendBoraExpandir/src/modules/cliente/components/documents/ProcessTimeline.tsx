@@ -11,6 +11,7 @@ interface ProcessTimelineProps {
   familyMembers?: { id: string, name: string, type: string }[]
   agendamentos?: any[]
   documents?: Document[]
+  clientStage?: 'formularios' | 'aguardando_consultoria' | 'em_consultoria' | 'clientes_c2' | 'aguardando_assessoria' | 'assessoria_andamento' | 'assessoria_finalizada' | 'cancelado'
 }
 
 const stepIcons = {
@@ -49,9 +50,49 @@ const stepLabels = {
   analyzing: 'Em Análise',
 }
 
-// Função para calcular a etapa atual baseada nas regras de negócio (7 fases)
-function calcularEtapaAtual(agendamentos: any[] = [], documents: Document[] = [], process: Process | null = null): number {
-  // Separar consultorias de assessorias pelo produto_nome
+// Mapear stage para etapa visual (0-7)
+function mapStageToStep(stage?: string): number {
+  switch (stage) {
+    // Consultoria
+    case 'formularios':
+    case 'aguardando_consultoria':
+    case 'em_consultoria':
+      return 0  // Consultoria Agendada/Em Andamento
+
+    case 'clientes_c2':
+      return 1  // Consultoria Realizada
+
+    // Processo
+    case 'aguardando_assessoria':
+      return 2  // Processo Contratado
+
+    case 'assessoria_andamento':
+      return 3  // Assessoria em Andamento
+
+    case 'assessoria_finalizada':
+      return 5  // Documentação/Protocolo
+
+    case 'cancelado':
+      return -1 // Cancelado (não mostrar normalmente)
+
+    default:
+      return 0
+  }
+}
+
+// Função para calcular a etapa atual baseada no stage e dados adicionais
+function calcularEtapaAtual(
+  agendamentos: any[] = [],
+  documents: Document[] = [],
+  process: Process | null = null,
+  clientStage?: string
+): number {
+  // Usar stage como fonte de verdade principal
+  if (clientStage) {
+    return mapStageToStep(clientStage)
+  }
+
+  // Fallback: cálculo baseado em agendamentos e documentos (compatibilidade com dados antigos)
   const consultoriasAgendadas = agendamentos.filter(a =>
     String(a.produto_nome || '').toLowerCase().includes('consultoria')
   )
@@ -82,7 +123,7 @@ function calcularEtapaAtual(agendamentos: any[] = [], documents: Document[] = []
   return 2                               // 2: Processo Contratado
 }
 
-export function ProcessTimeline({ process, requerimentos = [], familyMembers = [], agendamentos = [], documents = [] }: ProcessTimelineProps) {
+export function ProcessTimeline({ process, requerimentos = [], familyMembers = [], agendamentos = [], documents = [], clientStage }: ProcessTimelineProps) {
   // 7 fases detalhadas do fluxo completo
   const defaultSteps: ProcessStep[] = [
     { id: 0, name: "Consultoria Agendada", description: "Agende sua consultoria jurídica para avaliar seu caso.", status: 'pending' as const },
@@ -95,8 +136,8 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
     { id: 7, name: "Concluído", description: "Processo finalizado com sucesso.", status: 'pending' as const }
   ];
 
-  // Calcular a etapa atual dinamicamente
-  const calculatedCurrentStep = calcularEtapaAtual(agendamentos, documents, process)
+  // Calcular a etapa atual dinamicamente usando o stage do cliente
+  const calculatedCurrentStep = calcularEtapaAtual(agendamentos, documents, process, clientStage)
 
   // Determinar o status de cada etapa baseado na etapa atual
   const enrichedSteps = defaultSteps.map(step => {

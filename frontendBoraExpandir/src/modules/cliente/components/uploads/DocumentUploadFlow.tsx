@@ -99,10 +99,10 @@ export function DocumentUploadFlow({
 
                             <div className="space-y-2">
                                 <h3 className="text-xl font-bold text-amber-900 dark:text-amber-200">
-                                    Realize a Consultoria para Iniciar seu Processo
+                                    Realize a Assessoria para Iniciar seu Processo
                                 </h3>
                                 <p className="text-sm text-amber-800 dark:text-amber-300 max-w-md">
-                                    A área de documentos estará disponível após você realizar sua consultoria jurídica inicial e contratar o processo completo.
+                                    A área de documentos estará disponível após você realizar sua assessoria jurídica inicial e contratar o processo completo.
                                 </p>
                             </div>
 

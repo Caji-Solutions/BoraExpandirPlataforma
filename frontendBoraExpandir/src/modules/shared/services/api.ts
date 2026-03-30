@@ -9,7 +9,7 @@ interface RequestOptions extends RequestInit {
   skipErrorHandling?: boolean;
 }
 
-interface ApiResponse<T = any> {
+export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
   message?: string;

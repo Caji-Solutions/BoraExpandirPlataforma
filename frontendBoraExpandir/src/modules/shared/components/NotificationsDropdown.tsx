@@ -23,8 +23,6 @@ interface Notificacao {
   lida: boolean
 }
 
-
-
 // Configuração visual por tipo
 const tipoConfig = {
   vencido: {
@@ -72,24 +70,58 @@ export function NotificationsDropdown() {
   const [filter, setFilter] = useState<'unread' | 'read'>('unread')
 
   const fetchNotificacoes = async () => {
-    const userId = activeProfile?.id
+    const profileId = activeProfile?.id
+    const role = activeProfile?.role
     console.log('🔔 [NotificationsDropdown] fetchNotificacoes iniciado')
-    console.log('📱 [NotificationsDropdown] userId:', userId)
     console.log('👤 [NotificationsDropdown] activeProfile:', activeProfile)
+    console.log('👥 [NotificationsDropdown] Role:', role)
 
-    if (!userId) {
-      console.warn('⚠️ [NotificationsDropdown] userId não encontrado, retornando')
+    if (!profileId || !role) {
+      console.warn('⚠️ [NotificationsDropdown] userId ou role não encontrado, retornando')
       return
     }
+
     try {
       setIsLoading(true)
-      console.log('⏳ [NotificationsDropdown] Buscando notificações...')
-      const data = await clienteService.getNotificacoes(userId)
+      let data: any[] = []
+
+      // Se for cliente, buscar notificações de cliente (precisa do ID da tabela clientes, não profiles)
+      if (role === 'cliente') {
+        console.log('📱 [NotificationsDropdown] Usuário é cliente, buscando notificações de cliente')
+        let targetId: string = profileId
+
+        const impersonatedId = localStorage.getItem('impersonatedClientId')
+        if (impersonatedId) {
+          targetId = impersonatedId
+          console.log('📱 [NotificationsDropdown] Usando impersonatedClientId:', targetId)
+        } else {
+          try {
+            console.log('📱 [NotificationsDropdown] Buscando cliente pelo profileId:', profileId)
+            const res = await clienteService.getClienteByUserId(profileId)
+            if (res?.id) {
+              targetId = res.id
+              console.log('📱 [NotificationsDropdown] Cliente encontrado - clienteId:', targetId)
+            } else {
+              console.warn('⚠️ [NotificationsDropdown] Nenhum cliente encontrado para profileId:', profileId)
+            }
+          } catch (error) {
+            console.error('❌ [NotificationsDropdown] Erro ao buscar ID do cliente:', error)
+          }
+        }
+
+        console.log('⏳ [NotificationsDropdown] Buscando notificações de cliente para clienteId:', targetId)
+        data = await clienteService.getNotificacoes(targetId)
+      } else if (['admin', 'juridico', 'super_admin', 'comercial'].includes(role)) {
+        // Se for funcionário, buscar notificações de usuário (usa o profileId diretamente)
+        console.log('👨‍💼 [NotificationsDropdown] Usuário é funcionário, buscando notificações de usuário')
+        console.log('⏳ [NotificationsDropdown] Buscando notificações de usuário para usuarioId:', profileId)
+        data = await clienteService.getNotificacoesUsuario(profileId)
+      }
 
       console.log('✅ [NotificationsDropdown] Dados brutos recebidos:', data)
       console.log('📊 [NotificationsDropdown] Quantidade de notificações:', data.length)
 
-      const mapped = data.map((n: any) => {
+      const mapped = (Array.isArray(data) ? data : []).map((n: any) => {
         const isRead = n.lida === true || String(n.lida) === 'true' || n.lida === 1;
 
         // Map backend types to local UI types
@@ -97,14 +129,6 @@ export function NotificationsDropdown() {
         if (n.tipo === 'error') tipo = 'vencido'
         else if (n.tipo === 'warning') tipo = 'urgente'
         else if (n.tipo === 'success') tipo = 'success'
-
-        console.log(`📌 [NotificationsDropdown] Mapeando notificação:`, {
-          id: n.id,
-          tipoOriginal: n.tipo,
-          tipoMapeado: tipo,
-          titulo: n.titulo,
-          lida: isRead
-        })
 
         return {
           id: n.id,
@@ -129,7 +153,7 @@ export function NotificationsDropdown() {
   useEffect(() => {
     console.log('🚀 [NotificationsDropdown] Componente montado, buscando notificações iniciais...')
     fetchNotificacoes()
-  }, [])
+  }, [activeProfile?.id, activeProfile?.role])
 
   useEffect(() => {
     console.log('🔄 [NotificationsDropdown] isOpen mudou para:', isOpen)
@@ -155,7 +179,6 @@ export function NotificationsDropdown() {
     isOpen,
     isLoading,
     filterAtivo: filter,
-    notificacoes
   })
 
   const filteredNotificacoes = notificacoes
@@ -165,35 +188,59 @@ export function NotificationsDropdown() {
   console.log('🎬 [NotificationsDropdown] Notificações filtradas:', {
     filtro: filter,
     quantidade: filteredNotificacoes.length,
-    dados: filteredNotificacoes
   })
 
   const marcarTodasComoLidas = async () => {
-    if (!activeProfile?.id) return
+    const profileId = activeProfile?.id
+    const role = activeProfile?.role
+    if (!profileId || !role) return
+
     try {
-      // Optimistic update
       setNotificacoes(prev => prev.map(n => ({ ...n, lida: true })))
-      await clienteService.markAllNotificacoesAsRead(activeProfile.id)
+
+      if (role === 'cliente') {
+        let targetId: string = profileId
+        const impersonatedId = localStorage.getItem('impersonatedClientId')
+        if (impersonatedId) {
+          targetId = impersonatedId
+        } else {
+          // Se não tem impersonatedId, buscar o clienteId
+          try {
+            const res = await clienteService.getClienteByUserId(profileId)
+            if (res?.id) {
+              targetId = res.id
+            }
+          } catch (error) {
+            console.error('Erro ao buscar cliente:', error)
+          }
+        }
+        await clienteService.markAllNotificacoesAsRead(targetId)
+      } else if (['admin', 'juridico', 'super_admin', 'comercial'].includes(role)) {
+        await clienteService.markAllNotificacoesAsReadUsuario(profileId)
+      }
     } catch (error) {
       console.error('Erro ao marcar todas como lidas:', error)
     }
   }
 
   const dispensarNotificacao = (id: string) => {
-    // Para dispensar, geralmente precisaríamos de um endpoint de delete
-    // Por enquanto, apenas removemos da UI
     setNotificacoes(prev => prev.filter(n => n.id !== id))
   }
 
   const marcarComoLida = async (id: string, currentStatus: boolean) => {
-    if (currentStatus) return // Já está lida
+    if (currentStatus) return
 
     try {
-      // Optimistic update
-      setNotificacoes(prev => prev.map(n => 
+      setNotificacoes(prev => prev.map(n =>
         n.id === id ? { ...n, lida: true } : n
       ))
-      await clienteService.updateNotificacaoStatus(id, true)
+
+      const role = activeProfile?.role
+      if (role === 'cliente') {
+        await clienteService.updateNotificacaoStatus(id, true)
+      } else if (role && ['admin', 'juridico', 'super_admin', 'comercial'].includes(role)) {
+        await clienteService.updateNotificacaoStatusUsuario(id, true)
+      }
     } catch (error) {
       console.error('Erro ao marcar como lida:', error)
     }
@@ -205,8 +252,8 @@ export function NotificationsDropdown() {
       <DialogPrimitive.Trigger asChild>
         <button
           className={`relative p-2 rounded-lg transition-all duration-200 ${
-            isOpen 
-              ? 'bg-emerald-100 text-emerald-600' 
+            isOpen
+              ? 'bg-emerald-100 text-emerald-600'
               : 'hover:bg-gray-100'
           }`}
           title="Notificações"
@@ -214,7 +261,7 @@ export function NotificationsDropdown() {
           <Bell className={`h-5 w-5 ${
             naoLidas > 0 ? 'text-gray-700' : 'text-gray-500'
           }`} />
-          
+
           {/* Badge de contagem */}
           {naoLidas > 0 && (
             <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-[20px] px-1 text-[10px] font-bold text-white bg-red-600 rounded-full ring-2 ring-white shadow-sm animate-pulse">
@@ -227,9 +274,9 @@ export function NotificationsDropdown() {
       <DialogPrimitive.Portal>
         {/* Overlay escuro */}
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        
+
         {/* Modal de Notificações */}
-        <DialogPrimitive.Content 
+        <DialogPrimitive.Content
           className="fixed left-[50%] top-[50%] z-50 w-full max-w-md max-h-[85vh] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white shadow-2xl border border-gray-200 overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]"
         >
           {/* Header do Modal */}
@@ -249,7 +296,7 @@ export function NotificationsDropdown() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button 
+                <button
                   onClick={marcarTodasComoLidas}
                   className="text-xs text-white/90 hover:text-white font-medium transition-colors px-2 py-1 rounded hover:bg-white/10"
                 >
@@ -267,8 +314,8 @@ export function NotificationsDropdown() {
             <button
               onClick={() => setFilter('unread')}
               className={`flex-1 py-3 text-sm font-semibold transition-all relative ${
-                filter === 'unread' 
-                ? 'text-red-600' 
+                filter === 'unread'
+                ? 'text-red-600'
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'
               }`}
             >
@@ -285,8 +332,8 @@ export function NotificationsDropdown() {
             <button
               onClick={() => setFilter('read')}
               className={`flex-1 py-3 text-sm font-semibold transition-all relative ${
-                filter === 'read' 
-                ? 'text-red-600' 
+                filter === 'read'
+                ? 'text-red-600'
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'
               }`}
             >
@@ -324,9 +371,10 @@ export function NotificationsDropdown() {
                   const IconComponent = config.icon
 
                   return (
-                    <div 
+                    <div
                       key={notificacao.id}
-                      className={`p-4 transition-colors bg-white hover:bg-gray-50 ${
+                      onClick={() => marcarComoLida(notificacao.id, notificacao.lida)}
+                      className={`p-4 transition-colors bg-white hover:bg-gray-50 cursor-pointer ${
                         !notificacao.lida ? 'bg-blue-50/50' : ''
                       }`}
                     >
@@ -370,7 +418,7 @@ export function NotificationsDropdown() {
                         </div>
 
                         {/* Ação Dispensar */}
-                        <button 
+                        <button
                           onClick={(e) => {
                             e.stopPropagation()
                             dispensarNotificacao(notificacao.id)

@@ -4,6 +4,34 @@ import { Badge } from '@/modules/shared/components/ui/badge';
 import { Client } from '../../types';
 import { parceiroService } from '../../services/parceiroService';
 
+const TERMO_PARCEIRO_TEXT = `
+TERMO DE PARCERIA
+
+Bem-vindo ao Programa de Parceria da Bora Expandir!
+
+Este termo estabelece os direitos e responsabilidades ao utilizar sua área de parceiro em nossa plataforma.
+
+RESPONSABILIDADES DO PARCEIRO:
+1. Manter a confidencialidade de informações compartilhadas
+2. Não divulgar dados de clientes a terceiros sem autorização
+3. Seguir todas as políticas e procedimentos da Bora Expandir
+4. Responder adequadamente às indicações dentro de prazos acordados
+
+DIREITOS DO PARCEIRO:
+1. Acessar métricas de indicações e conversões
+2. Receber comissões conforme acordado
+3. Utilizar materiais de marketing fornecidos
+4. Suporte dedicado da equipe
+
+TERMOS GERAIS:
+- Este programa pode ser modificado a qualquer momento com notificação prévia
+- A Bora Expandir se reserva o direito de remover parceiros que violarem este termo
+- Todas as indicações devem ser feitas através do link oferecido
+
+Ao clicar em "Aceitar e Continuar", você concorda com todos os termos acima.
+`;
+
+
 const statusConfig = {
   prospect: { variant: 'secondary' as const, label: 'Prospect' },
   'em-processo': { variant: 'default' as const, label: 'Em Processo' },
@@ -22,23 +50,56 @@ export default function Parceiro({ client }: ParceiroProps) {
   const [metrics, setMetrics] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [termoAceito, setTermoAceito] = useState<boolean | null>(null);
+  const [aceitaTermoCheckbox, setAceitaTermoCheckbox] = useState(false);
+  const [isAceitandoTermo, setIsAceitandoTermo] = useState(false);
 
   useEffect(() => {
-    const fetchMetrics = async () => {
+    const fetchData = async () => {
       if (!client?.id) return;
       try {
         setIsLoading(true);
-        const data = await parceiroService.getMetrics(client.id);
-        setMetrics(data);
+
+        // Verificar status do termo
+        const termoStatusResult = await parceiroService.getTermoStatus(client.id);
+        const termoStatusData = termoStatusResult?.data || termoStatusResult;
+        setTermoAceito(termoStatusData?.aceito || false);
+
+        // Se o termo foi aceito, buscar métricas
+        if (termoStatusData?.aceito) {
+          const metricsData = await parceiroService.getMetrics(client.id);
+          setMetrics(metricsData);
+        }
       } catch (error) {
-        console.error('Erro ao buscar metricas:', error);
+        console.error('Erro ao buscar dados:', error);
+        setTermoAceito(false);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchMetrics();
+    fetchData();
   }, [client?.id]);
+
+  const handleAceitarTermo = async () => {
+    if (!aceitaTermoCheckbox || !client?.id) return;
+
+    try {
+      setIsAceitandoTermo(true);
+      await parceiroService.aceitarTermo(client.id);
+      setTermoAceito(true);
+      setAceitaTermoCheckbox(false);
+
+      // Buscar métricas após aceitar
+      const metricsData = await parceiroService.getMetrics(client.id);
+      setMetrics(metricsData);
+    } catch (error) {
+      console.error('Erro ao aceitar termo:', error);
+      alert('Erro ao aceitar o termo. Por favor, tente novamente.');
+    } finally {
+      setIsAceitandoTermo(false);
+    }
+  };
 
   // O ID agora vem da coluna client_id (mapeado para client.clientId no frontend)
   const displayId = client.clientId || client.id;
@@ -52,7 +113,52 @@ export default function Parceiro({ client }: ParceiroProps) {
     }
   };
 
-  if (isLoading || !metrics) {
+  if (isLoading || termoAceito === null) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2">Carregando...</span>
+      </div>
+    );
+  }
+
+  // Modal de Termo Bloqueante
+  if (termoAceito === false) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+        <div className="bg-white dark:bg-neutral-800 rounded-lg p-8 max-w-2xl w-full mx-4 border border-gray-200 dark:border-neutral-700 max-h-screen overflow-y-auto">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Termo de Parceria</h2>
+
+          <div className="bg-gray-50 dark:bg-neutral-700/50 rounded p-6 mb-6 max-h-96 overflow-y-auto text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+            {TERMO_PARCEIRO_TEXT}
+          </div>
+
+          <div className="mb-6 flex items-start gap-3">
+            <input
+              type="checkbox"
+              id="aceita-termo"
+              checked={aceitaTermoCheckbox}
+              onChange={(e) => setAceitaTermoCheckbox(e.target.checked)}
+              className="mt-1 cursor-pointer"
+            />
+            <label htmlFor="aceita-termo" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+              Li e aceito os termos de parceria acima
+            </label>
+          </div>
+
+          <button
+            onClick={handleAceitarTermo}
+            disabled={!aceitaTermoCheckbox || isAceitandoTermo}
+            className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
+          >
+            {isAceitandoTermo ? 'Processando...' : 'Aceitar e Continuar'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!metrics) {
     return (
       <div className="p-6 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
