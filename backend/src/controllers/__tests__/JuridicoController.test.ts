@@ -1,6 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import JuridicoController from '../juridico/JuridicoController';
 import ComercialRepository from '../../repositories/ComercialRepository';
+import JuridicoRepository from '../../repositories/JuridicoRepository';
 import NotificationService from '../../services/NotificationService';
 import { supabase } from '../../config/SupabaseClient';
 import DNAService from '../../services/DNAService';
@@ -83,6 +84,41 @@ describe('JuridicoController - verificarFormularioPreenchido', () => {
         await JuridicoController.verificarFormularioPreenchido(req, res);
 
         expect(res.status).toHaveBeenCalledWith(500);
+    });
+});
+
+describe('JuridicoController - getRequerimentos', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('deve retornar lista de requerimentos com status 200', async () => {
+        const mockRequerimentos = [
+            { id: 'req-1', tipo: 'NIE', status: 'pendente' },
+            { id: 'req-2', tipo: 'NIF', status: 'concluido' }
+        ];
+        (JuridicoRepository.getAllRequerimentos as any).mockResolvedValue(mockRequerimentos);
+
+        const req: any = {};
+        const res = makeRes();
+        await JuridicoController.getRequerimentos(req, res);
+
+        expect(JuridicoRepository.getAllRequerimentos).toHaveBeenCalledTimes(1);
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({ data: mockRequerimentos });
+    });
+
+    it('deve retornar 500 quando houver erro ao buscar requerimentos', async () => {
+        (JuridicoRepository.getAllRequerimentos as any).mockRejectedValue(new Error('db error'));
+
+        const req: any = {};
+        const res = makeRes();
+        await JuridicoController.getRequerimentos(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(500);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            message: 'Erro ao buscar requerimentos'
+        }));
     });
 });
 
@@ -217,9 +253,18 @@ describe('JuridicoController - marcarConsultoriaEmAndamento', () => {
         const mockEqCliente = vi.fn().mockResolvedValue({ error: null });
         const mockUpdate = vi.fn().mockReturnValue({ eq: mockEqCliente });
 
+        let agendamentosCallCount = 0;
         (supabase.from as any).mockImplementation((table: string) => {
             if (table === 'agendamentos') {
-                return { select: mockSelect };
+                agendamentosCallCount += 1;
+                if (agendamentosCallCount === 1) {
+                    return { select: mockSelect };
+                }
+                return {
+                    update: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockResolvedValue({ error: null })
+                    })
+                };
             }
             if (table === 'clientes') {
                 return { update: mockUpdate };
@@ -243,16 +288,28 @@ describe('JuridicoController - marcarConsultoriaEmAndamento', () => {
         const mockSingle = vi.fn().mockResolvedValue({ data: { cliente_id: null }, error: null });
         const mockEq = vi.fn().mockReturnValue({ single: mockSingle });
         const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
-        (supabase.from as any).mockReturnValue({ select: mockSelect });
+        let agendamentosCallCount = 0;
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'agendamentos') {
+                agendamentosCallCount += 1;
+                if (agendamentosCallCount === 1) {
+                    return { select: mockSelect };
+                }
+                return {
+                    update: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockResolvedValue({ error: null })
+                    })
+                };
+            }
+            return {};
+        });
 
         const req: any = { params: { id: 'ag-2' } };
         const res = makeRes();
         await JuridicoController.marcarConsultoriaEmAndamento(req, res);
 
         expect(res.status).toHaveBeenCalledWith(200);
-        // supabase.from so deve ter sido chamado para 'agendamentos', nao para 'clientes'
-        expect(supabase.from).toHaveBeenCalledTimes(1);
-        expect(supabase.from).toHaveBeenCalledWith('agendamentos');
+        expect(supabase.from).toHaveBeenCalledTimes(2);
     });
 });
 
@@ -289,6 +346,11 @@ describe('JuridicoController - marcarConsultoriaRealizada', () => {
         (supabase.from as any).mockImplementation((table: string) => {
             if (table === 'agendamentos') {
                 return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({
+                            single: vi.fn().mockResolvedValue({ data: agendamentoData, error: null })
+                        })
+                    }),
                     update: vi.fn().mockReturnValue({
                         eq: vi.fn().mockReturnValue({
                             select: vi.fn().mockReturnValue({
@@ -304,13 +366,22 @@ describe('JuridicoController - marcarConsultoriaRealizada', () => {
                         eq: vi.fn().mockReturnValue({
                             order: vi.fn().mockReturnValue({
                                 limit: vi.fn().mockReturnValue({
-                                    single: vi.fn().mockResolvedValue({ data: processoData, error: null })
+                                    maybeSingle: vi.fn().mockResolvedValue({ data: processoData, error: null })
                                 })
                             })
                         })
                     }),
                     update: vi.fn().mockReturnValue({
                         eq: vi.fn().mockResolvedValue({ error: null })
+                    })
+                };
+            }
+            if (table === 'profiles') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({
+                            single: vi.fn().mockResolvedValue({ data: { full_name: 'Vendedor C2 Teste' }, error: null })
+                        })
                     })
                 };
             }
@@ -324,7 +395,7 @@ describe('JuridicoController - marcarConsultoriaRealizada', () => {
 
         (NotificationService.createNotification as any).mockResolvedValue(true);
 
-        const req: any = { params: { id: 'ag-1' }, body: {} };
+        const req: any = { params: { id: 'ag-1' }, body: { vendedorId: 'vend-c2-1' } };
         const res = makeRes();
         await JuridicoController.marcarConsultoriaRealizada(req, res);
 
@@ -347,6 +418,11 @@ describe('JuridicoController - marcarConsultoriaRealizada', () => {
         (supabase.from as any).mockImplementation((table: string) => {
             if (table === 'agendamentos') {
                 return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({
+                            single: vi.fn().mockResolvedValue({ data: agendamentoData, error: null })
+                        })
+                    }),
                     update: vi.fn().mockReturnValue({
                         eq: vi.fn().mockReturnValue({
                             select: vi.fn().mockReturnValue({
@@ -356,7 +432,7 @@ describe('JuridicoController - marcarConsultoriaRealizada', () => {
                     })
                 };
             }
-            if (table === 'usuarios') {
+            if (table === 'profiles') {
                 return {
                     select: vi.fn().mockReturnValue({
                         eq: vi.fn().mockReturnValue({
@@ -371,7 +447,7 @@ describe('JuridicoController - marcarConsultoriaRealizada', () => {
                         eq: vi.fn().mockReturnValue({
                             order: vi.fn().mockReturnValue({
                                 limit: vi.fn().mockReturnValue({
-                                    single: vi.fn().mockResolvedValue({ data: { id: 'proc-1', status: 'ativo', tipo_servico: 'Consultoria' }, error: null })
+                                    maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'proc-1', status: 'ativo', tipo_servico: 'Consultoria' }, error: null })
                                 })
                             })
                         })
@@ -419,6 +495,11 @@ describe('JuridicoController - marcarConsultoriaRealizada', () => {
         (supabase.from as any).mockImplementation((table: string) => {
             if (table === 'agendamentos') {
                 return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({
+                            single: vi.fn().mockResolvedValue({ data: agendamentoData, error: null })
+                        })
+                    }),
                     update: vi.fn().mockReturnValue({
                         eq: vi.fn().mockReturnValue({
                             select: vi.fn().mockReturnValue({
@@ -434,7 +515,7 @@ describe('JuridicoController - marcarConsultoriaRealizada', () => {
                         eq: vi.fn().mockReturnValue({
                             order: vi.fn().mockReturnValue({
                                 limit: vi.fn().mockReturnValue({
-                                    single: vi.fn().mockResolvedValue({ data: null, error: null })
+                                    maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null })
                                 })
                             })
                         })
@@ -453,12 +534,12 @@ describe('JuridicoController - marcarConsultoriaRealizada', () => {
 
         (NotificationService.createNotification as any).mockResolvedValue(true);
 
-        const req: any = { params: { id: 'ag-1' }, body: {} };
+        const req: any = { params: { id: 'ag-1' }, body: { vendedorId: 'vend-c2-1' } };
         const res = makeRes();
         await JuridicoController.marcarConsultoriaRealizada(req, res);
 
         expect(res.status).toHaveBeenCalledWith(200);
-        expect(mockClienteUpdate).toHaveBeenCalledWith({ stage: 'clientes_c2', status: 'clientes_c2' });
+        expect(mockClienteUpdate).toHaveBeenCalledWith({ stage: 'clientes_c2' });
     });
 });
 
@@ -478,31 +559,28 @@ describe('JuridicoController - getUsuariosComerciaisC2', () => {
         ];
 
         const mockOrder = vi.fn().mockResolvedValue({ data: mockUsuarios, error: null });
-        const mockEqStatus = vi.fn().mockReturnValue({ order: mockOrder });
-        const mockEqNivel = vi.fn().mockReturnValue({ eq: mockEqStatus });
-        const mockEqSetor = vi.fn().mockReturnValue({ eq: mockEqNivel });
-        const mockSelect = vi.fn().mockReturnValue({ eq: mockEqSetor });
+        const mockEqNivel = vi.fn().mockReturnValue({ order: mockOrder });
+        const mockEqRole = vi.fn().mockReturnValue({ eq: mockEqNivel });
+        const mockSelect = vi.fn().mockReturnValue({ eq: mockEqRole });
         (supabase.from as any).mockReturnValue({ select: mockSelect });
 
         const req: any = {};
         const res = makeRes();
         await JuridicoController.getUsuariosComerciaisC2(req, res);
 
-        expect(supabase.from).toHaveBeenCalledWith('usuarios');
+        expect(supabase.from).toHaveBeenCalledWith('profiles');
         expect(mockSelect).toHaveBeenCalledWith('id, full_name, email, nivel, cargo');
-        expect(mockEqSetor).toHaveBeenCalledWith('setor', 'comercial');
+        expect(mockEqRole).toHaveBeenCalledWith('role', 'comercial');
         expect(mockEqNivel).toHaveBeenCalledWith('nivel', 'C2');
-        expect(mockEqStatus).toHaveBeenCalledWith('status', 'active');
         expect(res.status).toHaveBeenCalledWith(200);
         expect(res.json).toHaveBeenCalledWith(mockUsuarios);
     });
 
     it('deve retornar array vazio quando nao ha usuarios C2', async () => {
         const mockOrder = vi.fn().mockResolvedValue({ data: null, error: null });
-        const mockEqStatus = vi.fn().mockReturnValue({ order: mockOrder });
-        const mockEqNivel = vi.fn().mockReturnValue({ eq: mockEqStatus });
-        const mockEqSetor = vi.fn().mockReturnValue({ eq: mockEqNivel });
-        const mockSelect = vi.fn().mockReturnValue({ eq: mockEqSetor });
+        const mockEqNivel = vi.fn().mockReturnValue({ order: mockOrder });
+        const mockEqRole = vi.fn().mockReturnValue({ eq: mockEqNivel });
+        const mockSelect = vi.fn().mockReturnValue({ eq: mockEqRole });
         (supabase.from as any).mockReturnValue({ select: mockSelect });
 
         const req: any = {};
@@ -515,10 +593,9 @@ describe('JuridicoController - getUsuariosComerciaisC2', () => {
 
     it('deve retornar 500 quando supabase retorna erro', async () => {
         const mockOrder = vi.fn().mockResolvedValue({ data: null, error: { message: 'db error' } });
-        const mockEqStatus = vi.fn().mockReturnValue({ order: mockOrder });
-        const mockEqNivel = vi.fn().mockReturnValue({ eq: mockEqStatus });
-        const mockEqSetor = vi.fn().mockReturnValue({ eq: mockEqNivel });
-        const mockSelect = vi.fn().mockReturnValue({ eq: mockEqSetor });
+        const mockEqNivel = vi.fn().mockReturnValue({ order: mockOrder });
+        const mockEqRole = vi.fn().mockReturnValue({ eq: mockEqNivel });
+        const mockSelect = vi.fn().mockReturnValue({ eq: mockEqRole });
         (supabase.from as any).mockReturnValue({ select: mockSelect });
 
         const req: any = {};

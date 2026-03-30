@@ -682,7 +682,41 @@ class FinanceiroController {
                 }
             }
 
-            const clienteStatusAtual = String(contrato?.cliente?.status || '').toUpperCase()
+            let clienteStatusAtual = String(contrato?.cliente?.status || '').toUpperCase()
+            const clienteServicoInicial = (contrato as any).servico_nome || contrato.servico?.nome || null
+            let clienteDados: { nome?: string | null; email?: string | null; whatsapp?: string | null } = {
+                nome: contrato.cliente?.nome || (contrato as any).cliente_nome || null,
+                email: contrato.cliente?.email || null,
+                whatsapp: contrato.cliente?.whatsapp || null
+            }
+
+            if (contrato.cliente_id) {
+                const precisaFallbackCliente =
+                    !clienteStatusAtual ||
+                    !clienteDados.nome ||
+                    !clienteDados.email ||
+                    !clienteDados.whatsapp
+
+                if (precisaFallbackCliente) {
+                    const { data: clienteBanco, error: clienteFetchError } = await supabase
+                        .from('clientes')
+                        .select('status, nome, email, whatsapp')
+                        .eq('id', contrato.cliente_id)
+                        .maybeSingle()
+
+                    if (clienteFetchError) {
+                        console.error('[FinanceiroController] Erro ao buscar cliente para fallback do contrato:', clienteFetchError)
+                    } else if (clienteBanco) {
+                        clienteStatusAtual = String(clienteBanco.status || '').toUpperCase() || clienteStatusAtual
+                        clienteDados = {
+                            nome: clienteBanco.nome || clienteDados.nome || null,
+                            email: clienteBanco.email || clienteDados.email || null,
+                            whatsapp: clienteBanco.whatsapp || clienteDados.whatsapp || null
+                        }
+                    }
+                }
+            }
+
             if (clienteStatusAtual === 'LEAD' && contrato.cliente_id) {
                 const { error: clienteUpdateError } = await supabase
                     .from('clientes')
@@ -697,11 +731,94 @@ class FinanceiroController {
                 } else {
                     try {
                         await DNAService.mergeDNA(contrato.cliente_id, {
-                            servico_inicial: (contrato as any).servico_nome || null
+                            servico_inicial: clienteServicoInicial
                         }, 'HIGH')
-                        console.log(`[FinanceiroController] DNA atualizado com servico_inicial: ${(contrato as any).servico_nome}`)
+                        console.log(`[FinanceiroController] DNA atualizado com servico_inicial: ${clienteServicoInicial}`)
                     } catch (dnaErr) {
                         console.error('[FinanceiroController] Erro ao atualizar DNA com servico:', dnaErr)
+                    }
+
+                    const emailClienteNormalizado = String(clienteDados.email || '').trim().toLowerCase()
+                    if (!emailClienteNormalizado) {
+                        console.warn('[FinanceiroController] Cliente convertido para cliente, mas sem email para onboarding.')
+                    } else {
+                        try {
+                            const { data: profileData, error: profileFetchError } = await supabase
+                                .from('profiles')
+                                .select('id')
+                                .ilike('email', emailClienteNormalizado)
+                                .maybeSingle()
+
+                            if (profileFetchError) {
+                                console.error('[FinanceiroController] Erro ao buscar profile para onboarding do contrato:', profileFetchError)
+                            } else {
+                                const senhaGerada = generatePassword()
+                                const salt = await bcrypt.genSalt(10)
+                                const password_hash = await bcrypt.hash(senhaGerada, salt)
+
+                                const nomeCliente = clienteDados.nome || 'Cliente'
+                                const telefoneCliente = clienteDados.whatsapp || null
+
+                                if (profileData?.id) {
+                                    const payloadAtualizacao: any = {
+                                        role: 'cliente',
+                                        password_hash
+                                    }
+                                    if (nomeCliente) payloadAtualizacao.full_name = nomeCliente
+                                    if (telefoneCliente) payloadAtualizacao.telefone = telefoneCliente
+
+                                    const { error: profileUpdateError } = await supabase
+                                        .from('profiles')
+                                        .update(payloadAtualizacao)
+                                        .eq('id', profileData.id)
+
+                                    if (profileUpdateError) {
+                                        console.error('[FinanceiroController] Erro ao atualizar profile no onboarding do contrato:', profileUpdateError)
+                                    } else {
+                                        const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')
+                                        const EmailService = (await import('../../services/EmailService')).default
+                                        await EmailService.sendWelcomeEmail({
+                                            to: emailClienteNormalizado,
+                                            clientName: nomeCliente,
+                                            loginUrl: `${frontendUrl}/login`,
+                                            email: emailClienteNormalizado,
+                                            senha: senhaGerada
+                                        })
+                                        console.log(`[FinanceiroController] Email de boas-vindas enviado para ${emailClienteNormalizado} (contrato aprovado)`)
+                                    }
+                                } else {
+                                    const payloadInsercao: any = {
+                                        id: contrato.cliente_id,
+                                        email: emailClienteNormalizado,
+                                        role: 'cliente',
+                                        password_hash
+                                    }
+                                    if (nomeCliente) payloadInsercao.full_name = nomeCliente
+                                    if (telefoneCliente) payloadInsercao.telefone = telefoneCliente
+
+                                    const { error: profileInsertError } = await supabase
+                                        .from('profiles')
+                                        .insert([payloadInsercao])
+
+                                    if (profileInsertError) {
+                                        console.error('[FinanceiroController] Erro ao criar profile no onboarding do contrato:', profileInsertError)
+                                    } else {
+                                        const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')
+                                        const EmailService = (await import('../../services/EmailService')).default
+                                        await EmailService.sendWelcomeEmail({
+                                            to: emailClienteNormalizado,
+                                            clientName: nomeCliente,
+                                            loginUrl: `${frontendUrl}/login`,
+                                            email: emailClienteNormalizado,
+                                            senha: senhaGerada
+                                        })
+                                        console.log(`[FinanceiroController] Profile criado e email de boas-vindas enviado para ${emailClienteNormalizado} (contrato aprovado)`)
+                                    }
+                                }
+                            }
+                        } catch (onboardingError) {
+                            console.error('[FinanceiroController] Erro no onboarding após aprovação de contrato:', onboardingError)
+                        }
                     }
                 }
             }

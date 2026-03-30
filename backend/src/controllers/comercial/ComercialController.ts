@@ -1667,29 +1667,86 @@ class ComercialController {
                 .eq('id', userId)
                 .single();
 
-            if (userError || !usuario) {
+            const roleFromToken = String(req.user?.role || '').toLowerCase();
+            const nivelFromToken = String(req.user?.nivel || req.user?.cargo || '').toUpperCase();
+            const roleUsuario = String(usuario?.role || '').toLowerCase();
+            const nivelUsuario = String(usuario?.nivel || '').toUpperCase();
+            const setorUsuario = String(usuario?.setor || '').toLowerCase();
+
+            const isSuperAdmin =
+                roleFromToken === 'super_admin' ||
+                roleUsuario === 'super_admin';
+
+            const isC2ComercialFromUsuarios = nivelUsuario === 'C2' && setorUsuario === 'comercial';
+            const isC2ComercialFromToken =
+                nivelFromToken === 'C2' &&
+                (roleFromToken === 'comercial' || roleFromToken === 'super_admin');
+            const isC2Comercial = isC2ComercialFromUsuarios || isC2ComercialFromToken;
+
+            if ((userError || !usuario) && !isSuperAdmin && !isC2Comercial) {
                 return res.status(403).json({ message: 'Acesso negado: usuario nao encontrado' });
             }
-
-            const isSuperAdmin = req.user?.role === 'super_admin' || usuario.role === 'super_admin';
-            const isC2Comercial = usuario.nivel === 'C2' && usuario.setor === 'comercial';
 
             if (!isSuperAdmin && !isC2Comercial) {
                 return res.status(403).json({ message: 'Acesso negado: apenas usuarios C2 do setor comercial podem acessar pos-consultoria' });
             }
 
-            const { data: agendamentos, error } = await supabase
+            const selectAgendamento = 'id, produto_nome, data_hora, criado_em, cliente_id, clientes(id, client_id, nome, email, whatsapp)';
+
+            const { data: agendamentosDoVendedor, error: agendamentosVendedorError } = await supabase
                 .from('agendamentos')
-                .select('id, produto_nome, data_hora, criado_em, clientes(id, client_id, nome, email, whatsapp)')
+                .select(selectAgendamento)
                 .eq('vendedor_id', userId)
                 .eq('status', 'realizado')
                 .order('data_hora', { ascending: false });
 
-            if (error) throw error;
+            if (agendamentosVendedorError) throw agendamentosVendedorError;
 
-            const agendamentosBrt = (agendamentos || []).map((ag: any) => ({
+            const { data: processosDelegados, error: processosDelegadosError } = await supabase
+                .from('processos')
+                .select('cliente_id')
+                .eq('responsavel_id', userId)
+                .eq('status', 'clientes_c2');
+
+            if (processosDelegadosError) throw processosDelegadosError;
+
+            const clienteIdsDelegados = [...new Set(
+                (processosDelegados || [])
+                    .map((proc: any) => proc?.cliente_id)
+                    .filter(Boolean)
+            )];
+
+            let agendamentosDelegados: any[] = [];
+
+            if (clienteIdsDelegados.length > 0) {
+                const { data, error } = await supabase
+                    .from('agendamentos')
+                    .select(selectAgendamento)
+                    .in('cliente_id', clienteIdsDelegados)
+                    .eq('status', 'realizado')
+                    .order('data_hora', { ascending: false });
+
+                if (error) throw error;
+                agendamentosDelegados = data || [];
+            }
+
+            const agendamentosUnificadosMap = new Map<string, any>();
+            for (const agendamento of [...(agendamentosDoVendedor || []), ...agendamentosDelegados]) {
+                if (agendamento?.id && !agendamentosUnificadosMap.has(agendamento.id)) {
+                    agendamentosUnificadosMap.set(agendamento.id, agendamento);
+                }
+            }
+
+            const agendamentosUnificados = Array.from(agendamentosUnificadosMap.values())
+                .sort((a: any, b: any) => {
+                    const dataA = a?.data_hora ? new Date(a.data_hora).getTime() : 0;
+                    const dataB = b?.data_hora ? new Date(b.data_hora).getTime() : 0;
+                    return dataB - dataA;
+                });
+
+            const agendamentosBrt = agendamentosUnificados.map((ag: any) => ({
                 ...ag,
-                data_hora: toBrtFromUtc(ag.data_hora)
+                data_hora: ag.data_hora ? toBrtFromUtc(ag.data_hora) : ag.data_hora
             }));
 
             return res.status(200).json({ data: agendamentosBrt });

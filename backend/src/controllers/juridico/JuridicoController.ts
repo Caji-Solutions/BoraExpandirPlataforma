@@ -756,6 +756,23 @@ class JuridicoController {
         }
     }
 
+    // GET /juridico/requerimentos - Listar requerimentos
+    async getRequerimentos(_req: any, res: any) {
+        try {
+            const requerimentos = await JuridicoRepository.getAllRequerimentos()
+
+            return res.status(200).json({
+                data: requerimentos
+            })
+        } catch (error: any) {
+            console.error('Erro ao buscar requerimentos:', error)
+            return res.status(500).json({
+                message: 'Erro ao buscar requerimentos',
+                error: error.message
+            })
+        }
+    }
+
     // PATCH /juridico/processo/:processoId/etapa - Atualizar etapa do processo
     async updateEtapaProcesso(req: any, res: any) {
         try {
