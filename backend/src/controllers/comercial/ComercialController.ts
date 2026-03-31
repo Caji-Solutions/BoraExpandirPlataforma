@@ -207,36 +207,30 @@ class ComercialController {
             // Atualizar stage do cliente baseado no novo agendamento
             if (cliente_id) {
                 try {
-                    const [{ data: clienteAtual }, { data: outrosAgendamentos }] = await Promise.all([
+                    const [{ data: clienteAtual }, { data: outrosAgendamentos }, { data: servicoAgendado }] = await Promise.all([
                         supabase.from('clientes').select('stage, status').eq('id', cliente_id).single(),
-                        supabase.from('agendamentos').select('id').eq('cliente_id', cliente_id).neq('id', createdData.id)
+                        supabase.from('agendamentos').select('id').eq('cliente_id', cliente_id).neq('id', createdData.id),
+                        supabase.from('catalogo_servicos').select('tipo').eq('id', produto_id).single()
                     ])
                     const isPrimeiroAgendamento = !outrosAgendamentos || outrosAgendamentos.length === 0
+                    const isServicoFixo = servicoAgendado?.tipo === 'fixo'
 
-                    if (isPrimeiroAgendamento) {
-                        // Task 2: Primeiro agendamento com servico fixo -> aguardando_assessoria
-                        const { data: servico } = await supabase
-                            .from('catalogo_servicos')
-                            .select('tipo')
-                            .eq('id', produto_id)
-                            .single()
+                    // Stages que já estão adiante da assessoria — não retroagir
+                    const stagesAdiante = ['assessoria_andamento', 'assessoria_finalizada']
+                    const stageAtual = clienteAtual?.stage || ''
 
-                        if (servico?.tipo === 'fixo') {
-                            await supabase.from('clientes').update({
-                                stage: 'aguardando_assessoria',
-                                status: 'aguardando_assessoria'
-                            }).eq('id', cliente_id)
-                            console.log(`[ComercialController] Cliente ${cliente_id} movido para aguardando_assessoria (servico fixo, primeiro agendamento)`)
-                        }
-                    } else if (clienteAtual?.stage === 'clientes_c2') {
-                        // Task 1: Cliente em pos-consultoria agendou assessoria -> assessoria_andamento
+                    if (isServicoFixo && !stagesAdiante.includes(stageAtual)) {
+                        // Qualquer agendamento de serviço fixo (assessoria) -> aguardando_assessoria
                         await supabase.from('clientes').update({
-                            stage: 'assessoria_andamento',
-                            status: 'assessoria_andamento'
+                            stage: 'aguardando_assessoria',
+                            status: 'aguardando_assessoria'
                         }).eq('id', cliente_id)
-                        console.log(`[ComercialController] Cliente ${cliente_id} movido de clientes_c2 para assessoria_andamento`)
+                        console.log(`[ComercialController] Cliente ${cliente_id} movido para aguardando_assessoria (servico fixo)`)
+                    } else if (!isServicoFixo && isPrimeiroAgendamento) {
+                        // Primeiro agendamento de serviço variável (consultoria) — não altera stage extra
+                        console.log(`[ComercialController] Primeiro agendamento de servico variavel para cliente ${cliente_id}`)
                     } else if (clienteAtual?.stage === 'cancelado') {
-                        // Task 3: Cliente que havia cancelado criou novo agendamento -> restaurar stage
+                        // Cliente que havia cancelado criou novo agendamento -> restaurar stage
                         await supabase.from('clientes').update({
                             stage: 'aguardando_consultoria',
                             status: 'aguardando_consultoria'
@@ -273,6 +267,42 @@ class ComercialController {
 
             if (createdData && createdData.data_hora) {
                 createdData.data_hora = toBrtFromUtc(createdData.data_hora);
+            }
+
+            // Gerar Google Meet se o agendamento já for criado como 'confirmado' (ex: pago no ato / contrato)
+            if (agendamento.status === 'confirmado' || agendamento.pagamento_status === 'pago') {
+                try {
+                    console.log(`[GoogleMeet] Agendamento ${createdData.id} auto-confirmado. Gerando link...`)
+                    const ComposioService = (await import('../../services/ComposioService')).default
+                    const { getSuperAdminId } = await import('../../utils/calendarHelpers')
+                    const superAdminId = await getSuperAdminId()
+                    const calendarUserId = superAdminId || 'default'
+                    
+                    const servicoNomeBusca = await supabase.from('catalogo_servicos').select('name, nome').eq('id', produto_id).single()
+                    let nomeServico = 'Assessoria/Consultoria'
+                    if (servicoNomeBusca.data) {
+                        nomeServico = servicoNomeBusca.data.nome || servicoNomeBusca.data.name || nomeServico
+                    }
+
+                    const eventResult = await ComposioService.createCalendarEvent(
+                        calendarUserId,
+                        {
+                            summary: `${nomeServico} - ${agendamento.nome}`,
+                            description: `Agendamento confirmado.\nTelefone: ${agendamento.telefone}\nEmail: ${agendamento.email}`,
+                            startTime: new Date(dataHoraIso),
+                            endTime: new Date(new Date(dataHoraIso).getTime() + (agendamento.duracao_minutos || 60) * 60000),
+                            attendees: [agendamento.email],
+                            location: 'Google Meet'
+                        }
+                    )
+                    if (eventResult.success && eventResult.eventLink) {
+                        await ComercialRepository.updateMeetLink(createdData.id, eventResult.eventLink)
+                        console.log('[GoogleMeet] Link auto-gerado e salvo:', eventResult.eventLink)
+                        createdData.meet_link = eventResult.eventLink
+                    }
+                } catch (errMeet) {
+                    console.error('[GoogleMeet] Erro ao auto-gerar link:', errMeet)
+                }
             }
 
             return res.status(201).json({ ...createdData, aviso_formulario_preenchido: avisoFormularioPreenchido })
@@ -1743,8 +1773,7 @@ class ComercialController {
             if (!isSuperAdmin && !isC2ComercialFromToken && !isC2ComercialFromDb) {
                 return res.status(403).json({ message: 'Acesso negado: apenas usuarios C2 do setor comercial podem acessar pos-consultoria' });
             }
-
-            const selectAgendamentoBase = 'id, produto_nome, data_hora, criado_em, cliente_id';
+            const selectAgendamentoBase = 'id, produto_nome, data_hora, cliente_id';
             const isMissingColumnError = (error: any, column: string) => {
                 const msg = String(error?.message || error?.details || error?.hint || '').toLowerCase();
                 const code = String(error?.code || '');
@@ -1795,11 +1824,32 @@ class ComercialController {
                 console.warn('[ComercialController] Excecao ao buscar processos delegados (nao critico):', processosDelegadosError);
             }
 
-            const clienteIdsDelegados = [...new Set(
-                (processosDelegados || [])
-                    .map((proc: any) => proc?.cliente_id)
-                    .filter(Boolean)
-            )];
+            let clientesDelegadosPorDNA: string[] = [];
+            try {
+                const { data: clientesDNA, error: clientesDNAError } = await supabase
+                    .from('clientes')
+                    .select('id, perfil_unificado')
+                    .eq('stage', 'clientes_c2');
+
+                if (!clientesDNAError && clientesDNA) {
+                    clientesDelegadosPorDNA = clientesDNA
+                        .filter(c => {
+                            const dna = c.perfil_unificado;
+                            if (!dna) return false;
+                            const metadata = dna.metadata || {};
+                            const content = dna.data || {};
+                            return metadata.vendedor_c2_id === userId || content.vendedor_c2_id === userId;
+                        })
+                        .map(c => c.id);
+                }
+            } catch (dnaErr) {
+                console.warn('[ComercialController] Erro ao buscar clientes por DNA:', dnaErr);
+            }
+
+            const clienteIdsDelegados = [...new Set([
+                ...(processosDelegados || []).map((proc: any) => proc?.cliente_id),
+                ...clientesDelegadosPorDNA
+            ].filter(Boolean))];
 
             let agendamentosDelegados: any[] = [];
 

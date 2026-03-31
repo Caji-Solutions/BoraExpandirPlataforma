@@ -154,6 +154,14 @@ export default function ContratoServicoDetailPage() {
     if (!contrato) return
     const cliente = getClienteInfo()
     const servico = getServicoInfo()
+    const draft = contrato.draft_dados as any
+    const valorReal = (() => {
+      if (draft?.valor_desconto) {
+        const parsed = parseFloat(String(draft.valor_desconto).replace(/\./g, '').replace(',', '.'))
+        if (!isNaN(parsed) && parsed > 0) return parsed
+      }
+      return contrato.servico_valor
+    })()
     navigate('/comercial/agendamento', {
       state: {
         preSelectedClient: {
@@ -163,6 +171,7 @@ export default function ContratoServicoDetailPage() {
           telefone: cliente.telefone
         },
         preSelectedProduto: servico.id,
+        preSelectedValor: valorReal,
         step: 'data_hora',
         paid: true
       }

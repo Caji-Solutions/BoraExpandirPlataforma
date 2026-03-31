@@ -95,7 +95,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const { activeProfile } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const navigationState = location.state as { preSelectedClient?: Cliente, preSelectedProduto?: string, step?: 'produto' | 'data_hora' | 'cliente', paid?: boolean } | undefined
+  const navigationState = location.state as { preSelectedClient?: Cliente, preSelectedProduto?: string, preSelectedValor?: number, step?: 'produto' | 'data_hora' | 'cliente', paid?: boolean } | undefined
   const isPaidFromContrato = navigationState?.paid === true
 
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([])
@@ -232,6 +232,9 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
           navigate(-1)
           return
         }
+      }
+      if (navigationState.preSelectedValor !== undefined && navigationState.preSelectedValor !== null) {
+        pEncontrado.valor = navigationState.preSelectedValor
       }
       setProdutoSelecionado(pEncontrado)
       setDuracaoMinutos(pEncontrado.duracaoMinutos || 60)

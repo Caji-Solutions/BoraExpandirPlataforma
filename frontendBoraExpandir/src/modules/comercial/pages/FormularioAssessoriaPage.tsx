@@ -107,10 +107,25 @@ export default function FormularioAssessoriaPage() {
   const [formData, setFormData] = useState<FormularioDraft>(emptyFormData)
   const [contrato, setContrato] = useState<ContratoServico | null>(null)
   const [erroGeracao, setErroGeracao] = useState<any>(null)
-  const [dependentes, setDependentes] = useState<Array<{nome: string, grau: string, data_nascimento: string}>>([])
+  const [dependentes, setDependentes] = useState<Array<{nome: string, grau: string, data_nascimento: string, valor: string}>>([])
+  const [valorTitular, setValorTitular] = useState('')
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [consultoriaDesconto, setConsultoriaDesconto] = useState<{ total: number; valor: number } | null>(null)
   const [consultoriaOverride, setConsultoriaOverride] = useState('')
+
+  const parseNumericoLocal = (val: string) => {
+    if (!val) return 0
+    const n = parseFloat(val.trim().replace(/\./g, '').replace(/,/g, '.'))
+    return isNaN(n) ? 0 : n
+  }
+
+  const valorFinalReal = Math.max(0, (parseNumericoLocal(formData.valor_desconto) || 0) - (consultoriaDesconto?.valor || 0))
+
+  // Auto-calcular valor_pavao quando titular ou dependentes mudam
+  const valorTitularNum = parseNumericoLocal(valorTitular)
+  const valorTotalCalculado = valorTitularNum > 0
+    ? valorTitularNum + dependentes.reduce((sum, dep) => sum + parseNumericoLocal(dep.valor || ''), 0)
+    : 0
 
   const initializedRef = useRef(false)
   const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -140,7 +155,7 @@ export default function FormularioAssessoriaPage() {
       telefone: formatPhoneDisplay(draft.telefone || data.cliente_telefone || data.cliente?.whatsapp || ''),
       tipo_servico: draft.tipo_servico || data.subservico_nome || data.servico_nome || 'Assessoria de Imigracao',
       descricao_pessoas: draft.descricao_pessoas || '',
-      valor_pavao: String(draft.valor_pavao || data.servico_valor || ''),
+      valor_pavao: String(draft.valor_pavao || ''),
       valor_desconto: String(draft.valor_desconto || ''),
       valor_consultoria: String(draft.valor_consultoria || ''),
       metodo_pagamento: (draft.metodo_pagamento || (draft.forma_pagamento?.toLowerCase().includes('boleto') ? 'boleto' : 'pix')) as 'pix' | 'boleto' | '',
@@ -156,9 +171,19 @@ export default function FormularioAssessoriaPage() {
       setConsultoriaOverride(String(draft.valor_consultoria))
     }
 
+    // Restaurar valor do titular
+    if (draft.valor_titular) {
+      setValorTitular(String(draft.valor_titular))
+    }
+
     try {
       const depsData = draft.dependentes ? JSON.parse(draft.dependentes) : []
-      setDependentes(Array.isArray(depsData) ? depsData : [])
+      setDependentes(Array.isArray(depsData) ? depsData.map((d: any) => ({
+        nome: d.nome || '',
+        grau: d.grau || '',
+        data_nascimento: d.data_nascimento || '',
+        valor: d.valor || ''
+      })) : [])
     } catch {
       setDependentes([])
     }
@@ -236,12 +261,41 @@ export default function FormularioAssessoriaPage() {
         ? 'Pagamento via PIX (com envio de comprovante).'
         : ''
 
+    const parseNumerico = (val: string) => parseFloat(val.trim().replace(/\./g, '').replace(/,/g, '.'))
+    
+    const formatarMoeda = (val: string) => {
+      if (!val) return val
+      const num = Math.floor(parseNumerico(val))
+      if (!isNaN(num) && !val.toLowerCase().includes('euro')) {
+        return `${num} (${numberToPortuguese(num)} euros)`
+      }
+      return val
+    }
+
+    // Cálculo dinâmico do valor final: Valor com desconto - valor consultorias
+    const valorDescontoNum = parseNumerico(source.valor_desconto) || 0
+    const valorDesc = consultoriaDesconto?.valor || 0
+    const finalValue = Math.max(0, valorDescontoNum - valorDesc)
+    
+    // Auto-preencher valor de consultoria se vazio e houver desconto
+    let vConsultoria = formatarMoeda(source.valor_consultoria)
+    if (!vConsultoria && valorDesc > 0) {
+      vConsultoria = `${valorDesc} (${numberToPortuguese(valorDesc)} euros)`
+    }
+    
+    const valorFinalExtenso = finalValue > 0 ? `${finalValue} (${numberToPortuguese(finalValue)} euros)` : ''
+
     const payload: Record<string, any> = {
       ...source,
+      valor_pavao: formatarMoeda(source.valor_pavao),
+      valor_desconto: formatarMoeda(source.valor_desconto),
       metodo_pagamento: metodoPagamento,
       boleto_quantidade_parcelas: String(boletoQtd),
       forma_pagamento: formaPagamentoContrato,
-      formaPagamento: formaPagamentoContrato
+      formaPagamento: formaPagamentoContrato,
+      valor_consultoria: vConsultoria,
+      valor_final: finalValue,
+      valor_final_extenso: valorFinalExtenso
     }
 
     if (metodoPagamento !== 'boleto') {
@@ -257,16 +311,19 @@ export default function FormularioAssessoriaPage() {
       payload.documento = normalizeCpf(payload.documento)
     }
 
-    const depText = dependentes.length > 0 
+    const depText = dependentes.length > 0
       ? `; ` + dependentes.map(d => `${d.nome} (${d.grau})`).filter(Boolean).join(' / ')
       : ''
     payload.descricao_pessoas = `${payload.nome} (Titular)${depText}`
     payload.dependentes = JSON.stringify(dependentes)
 
-    // Cálculo dinâmico do valor final: Valor com desconto - (quantidade de consultorias * 50)
-    const valorDescontoNum = parseFloat(payload.valor_desconto) || 0
-    const qtdConsultorias = consultoriaDesconto?.total || 0
-    payload.valor_final = Math.max(0, valorDescontoNum - (qtdConsultorias * 50))
+    // Salvar valor do titular e recalcular valor_pavao se houver valores individuais
+    const vTitularNum = parseNumerico(valorTitular) || 0
+    if (vTitularNum > 0) {
+      payload.valor_titular = valorTitular
+      const totalCalculado = vTitularNum + dependentes.reduce((sum, dep) => sum + (parseNumerico(dep.valor || '') || 0), 0)
+      payload.valor_pavao = formatarMoeda(String(totalCalculado))
+    }
 
     return payload
   }
@@ -625,13 +682,48 @@ export default function FormularioAssessoriaPage() {
                   <button
                     type="button"
                     disabled={saving || isLockedByGeracaoErro}
-                    onClick={() => setDependentes(prev => [...prev, { nome: '', grau: '', data_nascimento: '' }])}
+                    onClick={() => setDependentes(prev => [...prev, { nome: '', grau: '', data_nascimento: '', valor: '' }])}
                     className="text-emerald-600 hover:text-emerald-700 font-medium text-sm disabled:opacity-50 flex items-center gap-1"
                   >
                     + Adicionar Dependente
                   </button>
                 </div>
               </div>
+
+              {/* Valor do Titular */}
+              <div className="mb-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/40 rounded-xl p-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <label className="block text-[10px] font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wider mb-1">Valor do Titular (€)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="Ex: 1000"
+                      disabled={saving || isLockedByGeracaoErro}
+                      value={valorTitular}
+                      onChange={(e) => {
+                        setValorTitular(e.target.value)
+                        // Recalcular total automaticamente
+                        const titNum = parseNumericoLocal(e.target.value)
+                        if (titNum > 0) {
+                          const total = titNum + dependentes.reduce((sum, dep) => sum + parseNumericoLocal(dep.valor || ''), 0)
+                          setFormData(prev => ({ ...prev, valor_pavao: String(total) }))
+                        }
+                      }}
+                      className="w-full border border-blue-200 dark:border-blue-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-neutral-900"
+                    />
+                  </div>
+                  {valorTotalCalculado > 0 && (
+                    <div className="text-right">
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider">Total Calculado</p>
+                      <p className="text-lg font-bold text-emerald-600">€ {valorTotalCalculado}</p>
+                      <p className="text-[10px] text-gray-400">{1 + dependentes.length} membro(s)</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {dependentes.length > 0 && (
                 <div className="bg-gray-50 dark:bg-neutral-800/50 p-3 rounded-xl border border-gray-200 dark:border-neutral-700 space-y-3 mt-1">
                   {dependentes.map((dep, i) => (
@@ -667,10 +759,41 @@ export default function FormularioAssessoriaPage() {
                           className="w-full sm:w-36 border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-neutral-900"
                         />
                       </div>
+                      <div className="w-full sm:w-28">
+                        <label className="block text-[10px] font-semibold text-emerald-600 uppercase tracking-wider mb-1">Valor (€)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          placeholder="Ex: 500"
+                          disabled={saving || isLockedByGeracaoErro}
+                          value={dep.valor || ''}
+                          onChange={(e) => {
+                            const newDeps = dependentes.map((x, idx) => idx === i ? { ...x, valor: e.target.value } : x)
+                            setDependentes(newDeps)
+                            // Recalcular total
+                            const titNum = parseNumericoLocal(valorTitular)
+                            if (titNum > 0) {
+                              const total = titNum + newDeps.reduce((sum, dep) => sum + parseNumericoLocal(dep.valor || ''), 0)
+                              setFormData(prev => ({ ...prev, valor_pavao: String(total) }))
+                            }
+                          }}
+                          className="w-full border border-emerald-200 dark:border-emerald-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-neutral-900"
+                        />
+                      </div>
                       <button
                         type="button"
                         disabled={saving || isLockedByGeracaoErro}
-                        onClick={() => setDependentes(prev => prev.filter((_, idx) => idx !== i))}
+                        onClick={() => {
+                          const newDeps = dependentes.filter((_, idx) => idx !== i)
+                          setDependentes(newDeps)
+                          // Recalcular total
+                          const titNum = parseNumericoLocal(valorTitular)
+                          if (titNum > 0) {
+                            const total = titNum + newDeps.reduce((sum, dep) => sum + parseNumericoLocal(dep.valor || ''), 0)
+                            setFormData(prev => ({ ...prev, valor_pavao: String(total) }))
+                          }
+                        }}
                         className="text-gray-400 hover:text-red-500 p-2 font-bold disabled:opacity-50 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 absolute -right-2 top-2 sm:relative sm:-right-0 sm:-top-0"
                         title="Remover dependente"
                       >
@@ -683,12 +806,22 @@ export default function FormularioAssessoriaPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor Total (em euros extenso)</label>
-                <input type="text" disabled={saving || isLockedByGeracaoErro} placeholder="Ex: 1000 (mil euros)" value={formData.valor_pavao} onChange={(e) => setFormData({ ...formData, valor_pavao: e.target.value })} className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Valor Total (em euros)
+                  {valorTotalCalculado > 0 && <span className="ml-2 text-xs text-emerald-600 font-normal">(auto-calculado: € {valorTotalCalculado})</span>}
+                </label>
+                <input
+                  type="text"
+                  disabled={saving || isLockedByGeracaoErro}
+                  placeholder="Ex: 1000"
+                  value={formData.valor_pavao}
+                  onChange={(e) => setFormData({ ...formData, valor_pavao: e.target.value })}
+                  className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm"
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor com Desconto (em euros extenso)</label>
-                <input type="text" disabled={saving || isLockedByGeracaoErro} placeholder="Ex: 800 (oitocentos euros)" value={formData.valor_desconto} onChange={(e) => setFormData({ ...formData, valor_desconto: e.target.value })} className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor com Desconto (em euros)</label>
+                <input type="text" disabled={saving || isLockedByGeracaoErro} placeholder="Ex: 800" value={formData.valor_desconto} onChange={(e) => setFormData({ ...formData, valor_desconto: e.target.value })} className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm" />
               </div>
               <div className="md:col-span-2 space-y-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor da Consultoria a Abater</label>
@@ -782,7 +915,20 @@ export default function FormularioAssessoriaPage() {
                     type="text"
                     disabled={saving || isLockedByGeracaoErro}
                     value={formData.boleto_valor_entrada}
-                    onChange={(e) => setFormData({ ...formData, boleto_valor_entrada: e.target.value })}
+                    onChange={(e) => {
+                      const novaEntrada = e.target.value
+                      const entradaNum = parseNumericoLocal(novaEntrada)
+                      const restante = Math.max(0, valorFinalReal - entradaNum)
+                      const qtd = Number(formData.boleto_quantidade_parcelas) || 1
+                      const novaParcela = qtd > 0 ? (restante / qtd).toFixed(2).replace('.', ',') : '0,00'
+
+                      setFormData({ 
+                        ...formData, 
+                        boleto_valor_entrada: novaEntrada,
+                        boleto_valor_parcela: novaParcela
+                      })
+                      if (novaEntrada.trim()) setValidationErrors(prev => ({ ...prev, boleto_valor_entrada: '' }))
+                    }}
                     placeholder="Ex.: 500,00"
                     className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm ${validationErrors.boleto_valor_entrada ? 'border-red-400' : 'border-gray-200 dark:border-neutral-700'}`}
                   />
@@ -807,7 +953,20 @@ export default function FormularioAssessoriaPage() {
                   <select
                     disabled={saving || isLockedByGeracaoErro}
                     value={formData.boleto_quantidade_parcelas}
-                    onChange={(e) => setFormData({ ...formData, boleto_quantidade_parcelas: e.target.value })}
+                    onChange={(e) => {
+                      const qtdStr = e.target.value
+                      const qtd = Number(qtdStr) || 1
+                      const entradaNum = parseNumericoLocal(formData.boleto_valor_entrada)
+                      const restante = Math.max(0, valorFinalReal - entradaNum)
+                      const novaParcela = qtd > 0 ? (restante / qtd).toFixed(2).replace('.', ',') : '0,00'
+
+                      setFormData({ 
+                        ...formData, 
+                        boleto_quantidade_parcelas: qtdStr,
+                        boleto_valor_parcela: novaParcela
+                      })
+                      if (qtdStr.trim()) setValidationErrors(prev => ({ ...prev, boleto_quantidade_parcelas: '' }))
+                    }}
                     className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm ${validationErrors.boleto_quantidade_parcelas ? 'border-red-400' : 'border-gray-200 dark:border-neutral-700'}`}
                   >
                     <option value="1">1</option>

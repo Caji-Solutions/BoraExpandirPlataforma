@@ -74,6 +74,7 @@ juridico.post('/atribuir-responsavel-agendamento', JuridicoController.atribuirRe
 juridico.get('/formulario-preenchido/:clienteId', JuridicoController.verificarFormularioPreenchido.bind(JuridicoController))
 juridico.post('/agendamentos/pedido-reagendamento', JuridicoController.pedidoReagendamento.bind(JuridicoController))
 juridico.post('/agendamentos/:id/em-andamento', JuridicoController.marcarConsultoriaEmAndamento.bind(JuridicoController))
+juridico.post('/agendamentos/:id/assessoria-em-andamento', JuridicoController.marcarAssessoriaEmAndamento.bind(JuridicoController))
 juridico.post('/agendamentos/:id/realizada', JuridicoController.marcarConsultoriaRealizada.bind(JuridicoController))
 
 

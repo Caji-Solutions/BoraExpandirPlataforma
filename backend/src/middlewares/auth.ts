@@ -64,6 +64,29 @@ export const authMiddleware = async (req: any, res: Response, next: NextFunction
             email: profile.email,
             role: profile.role
         })
+
+        // Check if superadmin is impersonating another user
+        const impersonateUserId = req.headers['x-impersonate-user']
+        if (impersonateUserId && profile.role === 'super_admin') {
+            console.log(`[authMiddleware] 🔄 Super Admin impersonating user: ${impersonateUserId}`)
+            try {
+                const { data: targetProfile, error: _targetError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', impersonateUserId as string)
+                    .single()
+
+                if (targetProfile) {
+                    req.user = targetProfile
+                    req.userId = targetProfile.id
+                    console.log(`[authMiddleware] ✅ Profile impersonated successfully:`, targetProfile.email)
+                    return next()
+                }
+            } catch (err) {
+                console.warn('[authMiddleware] ❌ Falha ao buscar perfil de impersonation:', err)
+            }
+        }
+
         req.user = profile
         req.userId = profile.id
 

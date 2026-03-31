@@ -16,7 +16,7 @@
   :root {
     --red: #cc0000;
     --black: #000000;
-    --yellow-hl: #ffff00;
+    --yellow-hl: transparent;
     --page-width: 210mm;
     --page-padding: 25mm 20mm 20mm 20mm;
   }
@@ -70,8 +70,26 @@
     text-align: center;
     pointer-events: none;
     z-index: 0;
-    opacity: 0.07;
     width: 80%;
+    height: 80%;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    {{#if logoBase64}}
+    opacity: 0.1;
+    background-image: url('{{logoBase64}}');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    filter: grayscale(100%);
+    {{else}}
+    opacity: 0.07;
+    {{/if}}
+  }
+
+  .watermark span {
+    {{#if logoBase64}}
+    display: none;
+    {{/if}}
   }
 
   .watermark-bora {

@@ -368,10 +368,10 @@ class FinanceiroController {
             if (agendamento.cliente_id) {
                 const { data: clienteBanco } = await supabase
                     .from('clientes')
-                    .select('status')
+                    .select('status, stage')
                     .eq('id', agendamento.cliente_id)
                     .single()
-                    
+
                 if (clienteBanco && String(clienteBanco.status).toUpperCase() === 'LEAD') {
                     const { error: clienteUpdateError } = await supabase
                         .from('clientes')
@@ -390,6 +390,28 @@ class FinanceiroController {
                         } catch (dnaErr) {
                             console.error('[FinanceiroController] Erro ao atualizar DNA com servico:', dnaErr)
                         }
+                    }
+                }
+
+                // Se o serviço é do tipo 'fixo' (assessoria), atualizar stage do cliente para aguardando_assessoria
+                if (agendamento.produto_id) {
+                    try {
+                        const { data: servicoInfo } = await supabase
+                            .from('catalogo_servicos')
+                            .select('tipo')
+                            .eq('id', agendamento.produto_id)
+                            .single()
+
+                        const stagesAdiante = ['aguardando_assessoria', 'assessoria_andamento', 'assessoria_finalizada']
+                        if (servicoInfo?.tipo === 'fixo' && !stagesAdiante.includes(clienteBanco?.stage || '')) {
+                            await supabase
+                                .from('clientes')
+                                .update({ stage: 'aguardando_assessoria', status: 'aguardando_assessoria', atualizado_em: new Date().toISOString() })
+                                .eq('id', agendamento.cliente_id)
+                            console.log(`[FinanceiroController] Cliente ${agendamento.cliente_id} movido para aguardando_assessoria (pagamento de servico fixo aprovado)`)
+                        }
+                    } catch (stageErr) {
+                        console.error('[FinanceiroController] Erro ao verificar tipo de servico para stage:', stageErr)
                     }
                 }
             }
@@ -424,11 +446,20 @@ class FinanceiroController {
                         const { getSuperAdminId } = await import('../../utils/calendarHelpers')
                         const superAdminId = await getSuperAdminId()
                         const calendarUserId = superAdminId || 'default'
+                        // Determinar nome do serviço para o evento
+                        let nomeEventoServico = agendamento.produto_nome || 'Consultoria'
+                        try {
+                            if (agendamento.produto_id) {
+                                const { data: svcInfo } = await supabase.from('catalogo_servicos').select('nome, tipo').eq('id', agendamento.produto_id).single()
+                                if (svcInfo?.nome) nomeEventoServico = svcInfo.nome
+                            }
+                        } catch (_) { /* usa fallback */ }
+
                         const eventResult = await ComposioService.createCalendarEvent(
                             calendarUserId,
                             {
-                                summary: `Consultoria - ${agendamento.nome}`,
-                                description: `Consultoria confirmada via PIX.\nTelefone: ${agendamento.telefone}\nEmail: ${agendamento.email}`,
+                                summary: `${nomeEventoServico} - ${agendamento.nome}`,
+                                description: `Agendamento confirmado.\nTelefone: ${agendamento.telefone}\nEmail: ${agendamento.email}`,
                                 startTime: new Date(agendamento.data_hora),
                                 endTime: new Date(new Date(agendamento.data_hora).getTime() + (agendamento.duracao_minutos || 60) * 60000),
                                 attendees: [agendamento.email],
@@ -836,6 +867,31 @@ class FinanceiroController {
                             console.error('[FinanceiroController] Erro no onboarding após aprovação de contrato:', onboardingError)
                         }
                     }
+                }
+            }
+
+            // Atualizar stage do cliente para aguardando_assessoria se o contrato é de serviço fixo (assessoria)
+            if (contrato.cliente_id) {
+                try {
+                    const servicoTipo = (contrato as any).servico?.tipo
+                    if (servicoTipo === 'fixo') {
+                        const { data: clienteStage } = await supabase
+                            .from('clientes')
+                            .select('stage')
+                            .eq('id', contrato.cliente_id)
+                            .single()
+
+                        const stagesAdiante = ['aguardando_assessoria', 'assessoria_andamento', 'assessoria_finalizada']
+                        if (!stagesAdiante.includes(clienteStage?.stage || '')) {
+                            await supabase
+                                .from('clientes')
+                                .update({ stage: 'aguardando_assessoria', status: 'aguardando_assessoria', atualizado_em: new Date().toISOString() })
+                                .eq('id', contrato.cliente_id)
+                            console.log(`[FinanceiroController] Cliente ${contrato.cliente_id} movido para aguardando_assessoria (contrato fixo aprovado)`)
+                        }
+                    }
+                } catch (stageErr) {
+                    console.error('[FinanceiroController] Erro ao atualizar stage do cliente (contrato fixo):', stageErr)
                 }
             }
 

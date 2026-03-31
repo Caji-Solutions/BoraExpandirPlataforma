@@ -25,12 +25,17 @@ dotenv.config()
 const app = express()
 
 app.use(cors())
-app.post('/webhooks/autentique', express.json(), (req, res) => {
+app.use(morgan('dev')) // movido para o topo para logar até webhooks capturados antecipadamente
+
+const autentiqueWebhookHandler = (req: any, res: any) => {
   const WebhookController = require('./controllers/WebhookController').default
   WebhookController.handleAutentiqueWebhook(req, res)
-})
+}
+
+app.post('/webhooks/autentique', express.json(), autentiqueWebhookHandler)
+app.post('//webhooks/autentique', express.json(), autentiqueWebhookHandler)
+
 app.use(express.json())
-app.use(morgan('dev'))
 
 
 app.get('/', (_req, res) => {

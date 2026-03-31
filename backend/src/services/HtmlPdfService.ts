@@ -146,6 +146,13 @@ class HtmlPdfService {
                 }
             }
 
+            // Ler logo para usar como content em tela cheia do contrato
+            const logoPath = path.resolve(__dirname, '../../assets/bora-logo.png');
+            let logoBase64 = '';
+            if (fs.existsSync(logoPath)) {
+                logoBase64 = fs.readFileSync(logoPath, 'base64');
+            }
+
             // Compilar template com Handlebars
             const template = Handlebars.compile(templateSource);
 
@@ -161,18 +168,19 @@ class HtmlPdfService {
                 tipo_servico: sanitizeText(payload.tipo_servico),
                 descricao_pessoas: payload.descricao_pessoas || '',
                 valor_pavao: payload.valor_pavao || '',
-                valor_desconto: payload.valor_desconto || '',
+                valor_desconto: payload.valor_final_extenso || payload.valor_desconto || '',
                 valor_consultoria: payload.valor_consultoria || '',
                 forma_pagamento: payload.forma_pagamento || '',
                 data: payload.data || new Date().toLocaleDateString('pt-BR'),
                 pendencias: pendenciasArray.length > 0 ? pendenciasArray : null,
+                logoBase64: logoBase64 ? `data:image/png;base64,${logoBase64}` : null,
             };
 
             const html = template(context);
 
             // Gerar PDF
             const file = { content: html };
-            const pdfBuffer = await htmlPdf.generatePdf(file, { format: 'A4' }) as unknown as Buffer;
+            const pdfBuffer = await htmlPdf.generatePdf(file, { format: 'A4', printBackground: true }) as unknown as Buffer;
 
             // Ler dimensoes reais da pagina e calcular posicoes exatas das assinaturas
             let totalPages = 1;

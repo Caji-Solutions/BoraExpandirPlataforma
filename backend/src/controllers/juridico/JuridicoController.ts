@@ -1151,6 +1151,51 @@ class JuridicoController {
         }
     }
 
+    // POST /juridico/agendamentos/:id/assessoria-em-andamento
+    async marcarAssessoriaEmAndamento(req: any, res: any) {
+        try {
+            const { id } = req.params;
+
+            if (!id) {
+                return res.status(400).json({ message: 'Agendamento ID e obrigatorio' });
+            }
+
+            const { data: agendamento, error: agError } = await supabase
+                .from('agendamentos')
+                .select('cliente_id')
+                .eq('id', id)
+                .single();
+
+            if (agError) throw agError;
+            if (!agendamento) return res.status(404).json({ message: 'Agendamento nao encontrado' });
+
+            // Atualizar status do agendamento
+            const { error: updateAgError } = await supabase
+                .from('agendamentos')
+                .update({ status: 'em_assessoria' })
+                .eq('id', id);
+
+            if (updateAgError) throw updateAgError;
+
+            if (agendamento.cliente_id) {
+                // Atualizar stage do cliente
+                const { error: updateClienteError } = await supabase
+                    .from('clientes')
+                    .update({ stage: 'assessoria_andamento', status: 'assessoria_andamento' })
+                    .eq('id', agendamento.cliente_id);
+
+                if (updateClienteError) {
+                    console.error('Erro ao atualizar stage do cliente:', updateClienteError);
+                }
+            }
+
+            return res.status(200).json({ success: true });
+        } catch (error: any) {
+            console.error('Erro ao marcar assessoria em andamento:', error);
+            return res.status(500).json({ message: 'Erro ao marcar assessoria em andamento', error: error.message });
+        }
+    }
+
     // POST /juridico/agendamentos/:id/realizada
     async marcarConsultoriaRealizada(req: any, res: any) {
         try {
@@ -1181,6 +1226,9 @@ class JuridicoController {
 
             // 2. Marcar o agendamento como 'realizado'
             const updateData: any = { status: 'realizado' };
+            if (vendedorId) {
+                updateData.vendedor_id = vendedorId;
+            }
 
             console.log('[marcarConsultoriaRealizada] Atualizando agendamento:', id, updateData);
             const { data: agendamento, error: agError } = await supabase

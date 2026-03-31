@@ -448,8 +448,7 @@ class FormularioController {
                     .update({
                         comprovante_url: urlData.publicUrl,
                         comprovante_upload_em: new Date().toISOString(),
-                        pagamento_status: 'em_analise',
-                        status: 'aguardando_verificacao'
+                        pagamento_status: 'em_analise'
                     })
                     .eq('id', agendamento_id)
 

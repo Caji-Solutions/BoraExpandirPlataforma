@@ -561,8 +561,8 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                   <p className="text-[10px] text-gray-400 dark:text-neutral-500 uppercase font-semibold tracking-widest mb-1.5">Servico Agendado</p>
                   <h3 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight leading-tight">
                     {activeTab === 'consultorias'
-                      ? (selectedItem.produto?.nome || selectedItem.produto_nome || 'Consultoria')
-                      : (selectedItem.produto?.nome || selectedItem.servico_nome || 'Assessoria Juridica')}
+                      ? (selectedItem.produto?.nome || selectedItem.produto_nome || servicosCatalogo.find((s: any) => s.id === selectedItem.produto_id)?.name || 'Consultoria')
+                      : (selectedItem.produto?.nome || selectedItem.produto_nome || selectedItem.servico_nome || servicosCatalogo.find((s: any) => s.id === selectedItem.produto_id)?.name || 'Assessoria Juridica')}
                   </h3>
                 </div>
 
@@ -669,21 +669,54 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                       </div>
                     )}
 
-                    <div className={`rounded-xl border transition-all ${checkingSecurity ? 'bg-gray-50 dark:bg-neutral-900 border-gray-200 dark:border-neutral-800 animate-pulse' :
-                      hasFormulario ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/30' : 'bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/30'
-                      }`}>
-                      <div className="flex items-center gap-3 p-3">
-                        <div className={`p-1.5 rounded-lg text-white ${checkingSecurity ? 'bg-gray-400' : hasFormulario ? 'bg-blue-500' : 'bg-rose-500'}`}>
-                          <FileText className="h-3.5 w-3.5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-gray-900 dark:text-white">Coleta de Informacoes</p>
-                          <p className="text-[10px] font-medium text-gray-500 dark:text-neutral-400">
-                            {checkingSecurity ? 'Verificando...' : hasFormulario ? 'Formulario preenchido' : 'Dados pendentes'}
-                          </p>
+                    {activeTab === 'consultorias' && (
+                      <div className={`rounded-xl border transition-all ${checkingSecurity ? 'bg-gray-50 dark:bg-neutral-900 border-gray-200 dark:border-neutral-800 animate-pulse' :
+                        hasFormulario ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/30' : 'bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/30'
+                        }`}>
+                        <div className="flex items-center gap-3 p-3">
+                          <div className={`p-1.5 rounded-lg text-white ${checkingSecurity ? 'bg-gray-400' : hasFormulario ? 'bg-blue-500' : 'bg-rose-500'}`}>
+                            <FileText className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-gray-900 dark:text-white">Coleta de Informacoes</p>
+                            <p className="text-[10px] font-medium text-gray-500 dark:text-neutral-400">
+                              {checkingSecurity ? 'Verificando...' : hasFormulario ? 'Formulario preenchido' : 'Dados pendentes'}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
+                    
+                    {activeTab === 'assessorias' && selectedItem.status !== 'realizado' && (
+                      <div className="rounded-xl border border-blue-200 dark:border-blue-800/30 bg-blue-50 dark:bg-blue-950/20">
+                        <button
+                          onClick={async () => {
+                            if (!selectedItem) return;
+                            const targetId = selectedItem.cliente_id || selectedItem.id;
+                            const pId = selectedItem.produto_id || selectedItem.servico_id || '';
+                            // Se já está em andamento, apenas navega
+                            if (selectedItem.status === 'em_assessoria') {
+                              navigate(`/juridico/assessoria?clienteId=${targetId}&produtoId=${pId}&agendamentoId=${selectedItem.id}`);
+                              return;
+                            }
+                            try {
+                              setIsMarkingEmAndamento(true);
+                              await juridicoService.marcarAssessoriaEmAndamento(selectedItem.id);
+                              setSelectedItem((prev: any) => prev ? { ...prev, status: 'em_assessoria' } : prev);
+                              navigate(`/juridico/assessoria?clienteId=${targetId}&produtoId=${pId}&agendamentoId=${selectedItem.id}`);
+                            } catch (err: any) {
+                              console.warn('Erro ao marcar assessoria em andamento:', err);
+                            } finally {
+                              setIsMarkingEmAndamento(false);
+                            }
+                          }}
+                          className="w-full py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                        >
+                          <Briefcase className="h-3.5 w-3.5" />
+                          {isMarkingEmAndamento ? 'Iniciando...' : selectedItem.status === 'em_assessoria' ? 'Continuar Atendimento' : 'Iniciar Atendimento'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -789,17 +822,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
 
                 {activeTab === 'assessorias' && (
                   <>
-                    <button
-                      onClick={() => {
-                        const clienteId = selectedItem.cliente_id;
-                        const produtoId = selectedItem.produto_id || selectedItem.servico_id || '';
-                        navigate(`/juridico/assessoria?clienteId=${clienteId}&produtoId=${produtoId}&agendamentoId=${selectedItem.id}`);
-                      }}
-                      disabled={!selectedItem.cliente_id}
-                      className="flex-1 px-4 py-3 font-bold text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      <Briefcase className="h-3.5 w-3.5" /> Atendimento
-                    </button>
+
 
                     <button
                       onClick={async () => {

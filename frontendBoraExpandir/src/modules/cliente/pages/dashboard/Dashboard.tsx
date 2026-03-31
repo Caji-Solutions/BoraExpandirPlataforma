@@ -345,14 +345,19 @@ export function Dashboard({
     const agendamentoReminders = agendamentos
       .filter(a => a.status === 'confirmado' || a.status === 'agendado')
       .filter(a => new Date(a.data_hora).getTime() >= new Date().getTime() - (24 * 60 * 60 * 1000))
-      .map(a => ({
-        id: `agenda-${a.id}`,
-        title: a.produto_nome ? `Agendamento: ${a.produto_nome}` : 'Agendamento de Consultoria',
-        message: `Sua consultoria está agendada para ${formatDateSimple(a.data_hora)} às ${new Date(a.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
-        date: new Date(a.data_hora),
-        type: 'agendamento' as const,
-        actionLink: '#'
-      }));
+      .map(a => {
+        const isAssessoria = a.produto?.tipo === 'fixo'
+        const tipoLabel = isAssessoria ? 'assessoria' : 'consultoria'
+        const nomeServico = a.produto_nome || a.produto?.nome || (isAssessoria ? 'Assessoria Jurídica' : 'Consultoria')
+        return {
+          id: `agenda-${a.id}`,
+          title: `Agendamento: ${nomeServico}`,
+          message: `Sua ${tipoLabel} está agendada para ${formatDateSimple(a.data_hora)} às ${new Date(a.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
+          date: new Date(a.data_hora),
+          type: 'agendamento' as const,
+          actionLink: '#'
+        }
+      });
 
     return [...filteredReminders, ...docReminders, ...reqReminders, ...contratoReminders, ...agendamentoReminders].sort((a, b) => {
       // Prioritize urgent
@@ -544,7 +549,7 @@ export function Dashboard({
           <AppointmentReminder
             appointmentDate={nextAppointmentData.data_hora}
             appointmentTime={new Date(nextAppointmentData.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-            service={nextAppointmentData.produto_nome || "Consultoria"}
+            service={nextAppointmentData.produto_nome || nextAppointmentData.produto?.nome || (nextAppointmentData.produto?.tipo === 'fixo' ? 'Assessoria Jurídica' : 'Consultoria')}
             meetLink={nextAppointmentData.meet_link}
             status={nextAppointmentData.status}
             checkoutUrl={nextAppointmentData.checkout_url || nextAppointmentData.checkoutUrl}

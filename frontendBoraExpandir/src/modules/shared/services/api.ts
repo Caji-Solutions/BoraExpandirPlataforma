@@ -56,6 +56,21 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    // ✅ Adicionar cabeçalho de impersonation se existir "Visualizando como"
+    if (typeof window !== 'undefined') {
+      try {
+        const impersonatedJson = sessionStorage.getItem('impersonated_profile');
+        if (impersonatedJson) {
+          const profile = JSON.parse(impersonatedJson);
+          if (profile && profile.id) {
+            headers['X-Impersonate-User'] = profile.id;
+          }
+        }
+      } catch (e) {
+        console.error('Erro ao ler impersonated_profile da sessão', e);
+      }
+    }
+
     try {
       const response = await fetch(url, {
         ...fetchOptions,

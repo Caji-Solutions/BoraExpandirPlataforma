@@ -424,6 +424,13 @@ export async function marcarConsultoriaEmAndamento(agendamentoId: string): Promi
 }
 
 /**
+ * Marca uma assessoria como em andamento (atualiza stage do cliente para assessoria_andamento)
+ */
+export async function marcarAssessoriaEmAndamento(agendamentoId: string): Promise<any> {
+  return apiClient.post(`/juridico/agendamentos/${agendamentoId}/assessoria-em-andamento`, {});
+}
+
+/**
  * Marca uma consultoria/agendamento como realizada
  */
 export async function marcarConsultoriaRealizada(agendamentoId: string, vendedorId?: string): Promise<any> {
@@ -472,6 +479,9 @@ export default {
     getAgendamentos,
     getAssessoriasByResponsavel,
     getAgendamentosByResponsavel,
+    marcarConsultoriaEmAndamento,
+    marcarAssessoriaEmAndamento,
+    marcarConsultoriaRealizada,
     createDependent: async (
       clienteId: string,
       nomeCompleto: string,
