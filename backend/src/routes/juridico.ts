@@ -32,6 +32,7 @@ juridico.get('/estatisticas', JuridicoController.getEstatisticas.bind(JuridicoCo
 juridico.post('/assessoria', JuridicoController.createAssessoria.bind(JuridicoController))
 juridico.get('/assessoria/:clienteId', JuridicoController.getLatestAssessoria.bind(JuridicoController))
 juridico.get('/processo-cliente/:clienteId', JuridicoController.getProcessoByCliente.bind(JuridicoController))
+juridico.get('/processo/:processoId', JuridicoController.getProcessoById.bind(JuridicoController))
 
 // Lista processos sem responsável (vagos)
 juridico.get('/processos/vagos', JuridicoController.getProcessosVagos.bind(JuridicoController))

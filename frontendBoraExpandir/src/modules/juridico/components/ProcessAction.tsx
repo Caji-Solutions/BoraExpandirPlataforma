@@ -10,12 +10,14 @@ import {
     ShieldCheck, 
     DollarSign, 
     Calendar,
+    FileSearch
 } from 'lucide-react';
 
 interface ProcessActionProps {
     clienteId: string;
     processoId?: string;
     responsavel?: { id: string, nome: string }; // Novo prop: Responsável pelo processo
+    areaFilter?: 'todos' | 'juridico' | 'comercial' | 'administrativo'; // Novo prop: Filtro de área
     onActionClick?: (action: string, ids: { clienteId: string, processoId?: string }) => void;
 }
 
@@ -23,6 +25,7 @@ export function ProcessAction({
     clienteId,
     processoId,
     responsavel,
+    areaFilter = 'todos',
     onActionClick
 }: ProcessActionProps) {
     const navigate = useNavigate();
@@ -36,6 +39,7 @@ export function ProcessAction({
             color: 'blue',
             description: activeProfile?.role === 'comercial' ? 'Solicitar orçamento de apostilamento' : 'Registrar pendência de arquivo no sistema',
             roles: ['super_admin', 'juridico', 'comercial', 'administrativo', 'tradutor'],
+            area: 'juridico',
             isJuridico: true
         },
         {
@@ -45,24 +49,17 @@ export function ProcessAction({
             color: 'orange',
             description: 'Coletar dados via formulário PDF',
             roles: ['super_admin', 'juridico'],
+            area: 'juridico',
             isJuridico: true
         },
         {
             id: 'ver_documentos',
             name: 'Analisar Documentos',
-            icon: Eye,
-            color: 'green',
-            description: 'Verificar envios e aprovar etapas',
+            icon: FileSearch,
+            color: 'indigo',
+            description: 'Acessar fila de análise deste cliente',
             roles: ['super_admin', 'juridico'],
-            isJuridico: true
-        },
-        {
-            id: 'ver_processo',
-            name: activeProfile?.role === 'comercial' ? 'Solicitar Orçamento Tradução' : 'Dados do Processo',
-            icon: LayoutDashboard,
-            color: 'slate',
-            description: activeProfile?.role === 'comercial' ? 'Solicitar orçamento de tradução' : 'Acessar painel completo do caso',
-            roles: ['super_admin', 'juridico', 'comercial', 'administrativo', 'tradutor'],
+            area: 'juridico',
             isJuridico: true
         },
         {
@@ -72,6 +69,7 @@ export function ProcessAction({
             color: 'purple',
             description: 'Painel de controle administrativo',
             roles: ['super_admin'],
+            area: 'administrativo',
             isJuridico: false
         },
         {
@@ -81,6 +79,7 @@ export function ProcessAction({
             color: 'blue',
             description: activeProfile?.role === 'comercial' ? 'Agendar consultoria inicial' : 'Marcar call de boas-vindas comercial',
             roles: ['comercial', 'super_admin'],
+            area: 'comercial',
             isJuridico: false
         },
         {
@@ -90,18 +89,12 @@ export function ProcessAction({
             color: 'green',
             description: 'Emitir cobrança administrativa',
             roles: ['administrativo', 'super_admin'],
+            area: 'administrativo',
             isJuridico: false
         }
     ];
 
     const handleAction = (actionId: string) => {
-        // Mock buttons for commercial role
-        if (activeProfile?.role === 'comercial') {
-            if (actionId === 'solicitar_documentos' || actionId === 'ver_processo') {
-                return; // Nothing happens
-            }
-        }
-
         const btn = ALL_BUTTONS.find(b => b.id === actionId);
         
         // Regra de Impersonation: Se for admin clicando em função jurídica e houver um responsável
@@ -117,24 +110,16 @@ export function ProcessAction({
             }
         }
 
-        if (actionId === 'ver_processo' && processoId) {
-            navigate(`/juridico/processos?expand=${processoId}`);
-            return;
-        }
-
-        if (actionId === 'ver_documentos' && processoId) {
-            navigate(`/juridico/analise?processoId=${processoId}`);
-            return;
-        }
-
         if (onActionClick) {
             onActionClick(actionId, { clienteId, processoId });
         }
     };
 
-    const ACTION_BUTTONS = ALL_BUTTONS.filter(btn => 
-        !activeProfile?.role || btn.roles.includes(activeProfile.role)
-    );
+    const ACTION_BUTTONS = ALL_BUTTONS.filter(btn => {
+        const hasRole = !activeProfile?.role || btn.roles.includes(activeProfile.role);
+        const matchesArea = areaFilter === 'todos' || btn.area === areaFilter;
+        return hasRole && matchesArea;
+    });
 
     return (
         <div className="space-y-4">

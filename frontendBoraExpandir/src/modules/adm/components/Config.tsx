@@ -103,16 +103,25 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
     if (!file || !client) return
 
     setIsUploadingPhoto(true)
-    
+
     try {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('clienteId', client.id)
 
+      // Get token from localStorage (stored as 'auth_token')
+      const token = localStorage.getItem('auth_token')
+      if (!token) {
+        throw new Error('Token de autenticação não encontrado')
+      }
+
       const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
       const response = await fetch(`${API_BASE_URL}/cliente/profile-photo`, {
         method: 'POST',
-        body: formData
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       })
 
       if (!response.ok) {
@@ -123,7 +132,7 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
       if (onRefresh) {
         await onRefresh()
       }
-      
+
     } catch (error) {
       console.error('Erro no upload da foto:', error)
       alert('Erro ao atualizar foto de perfil')

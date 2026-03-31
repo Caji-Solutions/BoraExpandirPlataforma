@@ -25,9 +25,12 @@ import { DocumentRequestModal } from '../../modules/juridico/components/Document
 import { RequirementRequestModal } from '../../modules/juridico/components/RequirementRequestModal'
 import { FormsDeclarationsSection } from '../../modules/juridico/components/FormsDeclarationsSection'
 import { RequirementsSection } from '../../modules/juridico/components/RequirementsSection'
+import { FormUploadModal } from '../../modules/juridico/components/FormUploadModal'
+import { ApostilleQuoteModal } from '../../modules/cliente/components/services/ApostilleQuoteModal'
 import juridicoService from '../../modules/juridico/services/juridicoService'
 import comercialService from '../../modules/comercial/services/comercialService'
 import { useAuth } from '../../contexts/AuthContext'
+import { toast } from '@/modules/shared/components/ui/sonner'
 
 export function DNAClientDetailView({
     client,
@@ -63,6 +66,22 @@ export function DNAClientDetailView({
     const [leadNotesData, setLeadNotesData] = useState<any[]>([])
     const [loadingLeadNotes, setLoadingLeadNotes] = useState(false)
     const [leadNotesExpanded, setLeadNotesExpanded] = useState(false)
+    const [isApostilleModalOpen, setIsApostilleModalOpen] = useState(false)
+    const [allClientDocs, setAllClientDocs] = useState<any[]>([])
+    const [localProcessoId, setLocalProcessoId] = useState<string | undefined>(client.processo_id)
+
+    // Fetch process if missing
+    useEffect(() => {
+        if (!localProcessoId && client.true_id) {
+            juridicoService.getProcessoByCliente(client.true_id)
+                .then(processo => {
+                    if (processo?.id) {
+                        setLocalProcessoId(processo.id)
+                    }
+                })
+                .catch(err => console.error("Error fetching process for DNA:", err))
+        }
+    }, [client.true_id, localProcessoId])
 
     // Handle adding document to a specific requirement
     const handleAddDocToReq = (reqId: string) => {
@@ -129,8 +148,17 @@ export function DNAClientDetailView({
                     isTitular: false
                 }))
                 setMembers([titular, ...formattedDeps])
+
+                // Fetch all documents for this client (for apostille modal)
+                const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
+                const token = localStorage.getItem('auth_token')
+                const docResp = await fetch(`${baseUrl}/cliente/documentos/${client.true_id || client.id}`, {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {}
+                })
+                const docData = await docResp.json()
+                setAllClientDocs(docData.data || [])
             } catch (err) {
-                console.error('Erro ao buscar membros:', err)
+                console.error('Erro ao buscar membros/documentos:', err)
             } finally {
                 setLoadingMembers(false)
             }
@@ -958,9 +986,14 @@ export function DNAClientDetailView({
                                 clienteId={client.true_id || client.id}
                                 processoId={client.processo_id}
                                 responsavel={client.responsavel}
+                                areaFilter={areaFilter}
                                 onActionClick={(action) => {
                                     if (action === 'solicitar_documentos') {
-                                        setIsDocModalOpen(true)
+                                        if (activeProfile?.role === 'comercial') {
+                                            setIsApostilleModalOpen(true)
+                                        } else {
+                                            setIsDocModalOpen(true)
+                                        }
                                     } else if (action === 'solicitar_formulario') {
                                         setIsFormModalOpen(true)
                                     } else if (action === 'comercial_agenda') {
@@ -971,6 +1004,24 @@ export function DNAClientDetailView({
                                                 step: 'data_hora'
                                             }
                                         })
+                                    } else if (action === 'ver_processo') {
+                                        if (client.processo_id) {
+                                            navigate(`/juridico/processos?expand=${client.processo_id}`);
+                                        } else {
+                                            toast.error('Este cliente ainda não possui um processo jurídico vinculado.');
+                                        }
+                                    } else if (action === 'ver_documentos') {
+                                        const pid = localProcessoId || client.processo_id;
+                                        if (pid) {
+                                            navigate(`/juridico/analise?processoId=${pid}`);
+                                        } else {
+                                            toast.error('Este cliente ainda não possui um processo jurídico aberto.');
+                                        }
+                                    } else if (action === 'admin_config') {
+                                        navigate('/juridico/configuracoes');
+                                    } else if (action === 'financeiro_fatura') {
+                                        setActiveTab('contrato_comprovantes');
+                                        toast.info('Redirecionado para aba de contratos. Selecione um contrato para gerenciar o financeiro.');
                                     } else {
                                         console.log('Action triggered:', action)
                                     }
@@ -1007,6 +1058,30 @@ export function DNAClientDetailView({
                 processoId={client.processo_id}
                 members={members}
             />
+
+            <FormUploadModal
+                isOpen={isFormModalOpen}
+                onOpenChange={setIsFormModalOpen}
+                clienteId={client.true_id || client.id}
+                processoId={client.processo_id}
+                members={members}
+                onSuccess={() => fetchNotes()}
+            />
+
+            {allClientDocs.length > 0 && (
+                <ApostilleQuoteModal
+                    isOpen={isApostilleModalOpen}
+                    onClose={() => setIsApostilleModalOpen(false)}
+                    clienteEmail={client.email}
+                    documentoId={allClientDocs[0]?.id}
+                    documentoNome={allClientDocs[0]?.nome || allClientDocs[0]?.name}
+                    allDocuments={allClientDocs}
+                    onPaymentSuccess={() => {
+                        setIsApostilleModalOpen(false)
+                        fetchNotes()
+                    }}
+                />
+            )}
 
         </div>
     )

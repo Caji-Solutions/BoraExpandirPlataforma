@@ -128,12 +128,7 @@ const Index = () => {
         { label: "Equipe Jurídica", to: "/juridico/equipe", icon: Users },
       ],
     }] : []),
-    {
-      label: "Sistema",
-      items: [
-        { label: "Configurações", to: "/juridico/configuracoes", icon: Settings },
-      ],
-    },
+
   ];
 
   return (

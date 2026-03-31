@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { User, Mail, Phone, Fingerprint, Save, Loader2, Edit2, X, Camera } from 'lucide-react'
 import { Client, Document } from '../../modules/cliente/types'
-import { TimezoneSelector } from '../../modules/cliente/components/scheduling/TimezoneSelector'
 
 interface ConfigProps {
   onClose?: () => void
@@ -103,16 +102,25 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
     if (!file || !client) return
 
     setIsUploadingPhoto(true)
-    
+
     try {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('clienteId', client.id)
 
+      // Get token from localStorage (stored as 'auth_token')
+      const token = localStorage.getItem('auth_token')
+      if (!token) {
+        throw new Error('Token de autenticação não encontrado')
+      }
+
       const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
       const response = await fetch(`${API_BASE_URL}/cliente/profile-photo`, {
         method: 'POST',
-        body: formData
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       })
 
       if (!response.ok) {
@@ -123,7 +131,7 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
       if (onRefresh) {
         await onRefresh()
       }
-      
+
     } catch (error) {
       console.error('Erro no upload da foto:', error)
       alert('Erro ao atualizar foto de perfil')
@@ -137,20 +145,20 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto px-4 sm:px-0">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
           Configurações
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
           Gerencie seus dados e preferências
         </p>
       </div>
 
       <div className="grid gap-6">
         {client && (
-          <div className="bg-white dark:bg-neutral-800 rounded-2xl border border-gray-200 dark:border-neutral-700 p-6">
+          <div className="bg-white dark:bg-neutral-800 rounded-2xl border border-gray-200 dark:border-neutral-700 p-4 sm:p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Informações Pessoais
@@ -158,9 +166,9 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
               {!isEditing && (
                 <button
                   onClick={handleEdit}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                  className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors border border-blue-100 dark:border-blue-900/30"
                 >
-                  <Edit2 className="w-4 h-4" />
+                  <Edit2 className="w-3.5 h-3.5 sm:w-4 h-4" />
                   Editar Dados
                 </button>
               )}
@@ -219,7 +227,7 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
                       <Fingerprint className="w-4 h-4" />
                       ID do Cliente
                     </label>
-                    <div className="p-3 bg-gray-100 dark:bg-neutral-900/50 rounded-lg text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-neutral-700 font-mono text-sm select-all">
+                    <div className="p-3 bg-gray-100 dark:bg-neutral-900/50 rounded-lg text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-neutral-700 font-mono text-xs sm:text-sm select-all break-all overflow-hidden">
                       {client.id}
                     </div>
                   </div>
@@ -231,7 +239,7 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
                       <User className="w-4 h-4" />
                       Nome Completo
                     </label>
-                    <div className="p-3 bg-gray-100 dark:bg-neutral-900/50 rounded-lg text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-neutral-700 cursor-not-allowed">
+                    <div className="p-3 bg-gray-100 dark:bg-neutral-900/50 rounded-lg text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-neutral-700 cursor-not-allowed truncate" title={client.name}>
                       {client.name}
                     </div>
                   </div>
@@ -252,9 +260,9 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
                         className="w-full p-3 bg-white dark:bg-neutral-700 rounded-lg text-gray-900 dark:text-white border border-gray-300 dark:border-neutral-600 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                       />
                     ) : (
-                      <div className="p-3 bg-gray-50 dark:bg-neutral-700/50 rounded-lg text-gray-900 dark:text-white border border-gray-200 dark:border-neutral-700">
-                        {formData.email}
-                      </div>
+                        <div className="p-3 bg-gray-50 dark:bg-neutral-700/50 rounded-lg text-gray-900 dark:text-white border border-gray-200 dark:border-neutral-700 break-all">
+                          {formData.email}
+                        </div>
                     )}
                   </div>
 
@@ -271,7 +279,7 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
                         className="w-full p-3 bg-white dark:bg-neutral-700 rounded-lg text-gray-900 dark:text-white border border-gray-300 dark:border-neutral-600 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                       />
                     ) : (
-                      <div className="p-3 bg-gray-50 dark:bg-neutral-700/50 rounded-lg text-gray-900 dark:text-white border border-gray-200 dark:border-neutral-700">
+                      <div className="p-3 bg-gray-50 dark:bg-neutral-700/50 rounded-lg text-gray-900 dark:text-white border border-gray-200 dark:border-neutral-700 truncate" title={formData.phone}>
                         {formData.phone || <i className="text-gray-400">Não informado</i>}
                       </div>
                     )}
@@ -280,11 +288,11 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
 
                 {/* Edit Actions */}
                 {isEditing && (
-                  <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-neutral-700">
+                  <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-gray-100 dark:border-neutral-700">
                     <button
                       onClick={handleCancel}
                       disabled={isSaving}
-                      className="flex items-center gap-2 px-6 py-2 rounded-lg font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-all border border-gray-200 dark:border-neutral-600"
+                      className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-lg font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-all border border-gray-200 dark:border-neutral-600 text-sm sm:text-base"
                     >
                       <X className="w-4 h-4" />
                       Cancelar
@@ -292,7 +300,7 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
                     <button
                       onClick={handleSave}
                       disabled={isSaving}
-                      className="flex items-center gap-2 px-6 py-2 rounded-lg font-medium bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-sm"
+                      className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-lg font-medium bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-sm text-sm sm:text-base"
                     >
                       {isSaving ? (
                         <Loader2 className="w-4 h-4 animate-spin" />

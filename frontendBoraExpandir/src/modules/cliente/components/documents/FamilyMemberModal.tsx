@@ -26,8 +26,6 @@ interface FamilyMemberModalProps {
     onRefresh?: () => void
 }
 
-// statusConfig is now sourced from @/modules/shared/constants/statusConfig
-
 export function FamilyMemberModal({
     isOpen,
     onClose,

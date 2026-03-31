@@ -206,6 +206,34 @@ class JuridicoRepository {
         return data || []
     }
 
+    // Buscar processo pelo ID
+    async getProcessoById(processoId: string): Promise<any | null> {
+        const { data, error } = await supabase
+            .from('processos')
+            .select(`
+                *,
+                clientes:clientes!cliente_id (
+                    id,
+                    nome,
+                    email,
+                    whatsapp,
+                    status,
+                    previsao_chegada
+                ),
+                documentos (*),
+                requerimentos (*)
+            `)
+            .eq('id', processoId)
+            .maybeSingle()
+
+        if (error) {
+            console.error('Erro ao buscar processo por id:', error)
+            throw error
+        }
+
+        return data
+    }
+
     // Atribuir responsável jurídico a um processo
     async atribuirResponsavel(processoId: string, responsavelId: string | null): Promise<any> {
         const { data, error } = await supabase
@@ -1292,7 +1320,19 @@ class JuridicoRepository {
     async getProcessoByClienteId(clienteId: string): Promise<any | null> {
         const { data, error } = await supabase
             .from('processos')
-            .select('*')
+            .select(`
+                *,
+                clientes:clientes!cliente_id (
+                    id,
+                    nome,
+                    email,
+                    whatsapp,
+                    status,
+                    previsao_chegada
+                ),
+                documentos (*),
+                requerimentos (*)
+            `)
             .eq('cliente_id', clienteId)
             .order('criado_em', { ascending: false })
             .limit(1)

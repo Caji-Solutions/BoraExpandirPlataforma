@@ -85,34 +85,35 @@ export function DocumentUploadFlow({
     // Se o processo não foi iniciado, mostrar tela vazia
     if (shouldShowEmptyState) {
         return (
-            <div className="space-y-6">
+            <div className="max-w-4xl mx-auto px-4 space-y-8">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Envio de Documentos</h2>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Envio de Documentos</h2>
                 </div>
 
-                <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10 shadow-sm">
-                    <CardContent className="p-8">
-                        <div className="flex flex-col items-center justify-center text-center space-y-4">
-                            <div className="p-4 bg-amber-100 dark:bg-amber-900/30 rounded-full">
-                                <AlertCircle className="w-8 h-8 text-amber-600 dark:text-amber-400" />
+                <Card className="relative overflow-hidden border-2 border-amber-300 dark:border-amber-700 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+                    <div className="absolute inset-0 bg-gradient-to-r from-amber-400/5 to-yellow-400/5" />
+                    <CardContent className="relative z-10 p-6 sm:p-12">
+                        <div className="flex flex-col items-center justify-center text-center space-y-6">
+                            <div className="p-4 bg-gradient-to-br from-amber-100 to-yellow-100 dark:from-amber-900/40 dark:to-yellow-900/40 rounded-2xl shadow-md">
+                                <AlertCircle className="w-10 h-10 text-amber-600 dark:text-amber-400" />
                             </div>
 
-                            <div className="space-y-2">
-                                <h3 className="text-xl font-bold text-amber-900 dark:text-amber-200">
+                            <div className="space-y-3 max-w-xl">
+                                <h3 className="text-2xl font-bold bg-gradient-to-r from-amber-700 to-yellow-600 dark:from-amber-300 dark:to-yellow-300 bg-clip-text text-transparent">
                                     Realize a Assessoria para Iniciar seu Processo
                                 </h3>
-                                <p className="text-sm text-amber-800 dark:text-amber-300 max-w-md">
+                                <p className="text-base text-amber-800 dark:text-amber-300 leading-relaxed">
                                     A área de documentos estará disponível após você realizar sua assessoria jurídica inicial e contratar o processo completo.
                                 </p>
                             </div>
 
-                            <div className="pt-4">
+                            <div className="pt-2">
                                 <Link
                                     to="/cliente/processo"
-                                    className="inline-flex items-center gap-2 px-6 py-2 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg transition"
+                                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
                                 >
                                     <span>Acompanhar Processo</span>
-                                    <ArrowRight className="w-4 h-4" />
+                                    <ArrowRight className="w-5 h-5" />
                                 </Link>
                             </div>
                         </div>

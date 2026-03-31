@@ -29,7 +29,8 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "mcp__ide__getDiagnostics",
-      "Bash(npx skills:*)"
+      "Bash(npx skills:*)",
+      "Bash(git push:*)"
     ]
   },
   "hooks": {

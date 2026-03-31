@@ -3,8 +3,6 @@
 import { Link } from 'react-router-dom'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card'
-import { Badge } from '@/modules/shared/components/ui/badge'
-import { Progress } from '@/modules/shared/components/ui/progress'
 import { Button } from '@/modules/shared/components/ui/button'
 import {
   FileText,
@@ -12,8 +10,6 @@ import {
   Clock,
   AlertTriangle,
   User,
-  Target,
-  TrendingUp,
   XCircle,
   Stamp,
   Calendar
@@ -428,67 +424,76 @@ export function Dashboard({
   }
 
   return (
-    <div className="space-y-8">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
 
-      {/* Welcome Section */}
-      <div className="flex justify-center mb-8">
-        <div className="w-full max-w-3xl bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-8 text-white shadow-lg relative">
-          <div className="flex items-center justify-center space-x-6">
-            <Link to="/cliente/configuracoes?tab=meus-dados" className="flex-shrink-0 transition-transform hover:scale-105 cursor-pointer">
-              <div className="w-20 h-20 bg-white bg-opacity-20 rounded-full flex items-center justify-center border-2 border-white/30 hover:border-white/60">
-                <User className="h-10 w-10" />
+        {/* Welcome Section - Ultra Refined */}
+        <div className="mb-16 sm:mb-20">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-6 sm:gap-8">
+            <Link to="/cliente/configuracoes?tab=meus-dados" className="flex-shrink-0 group">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-600 to-blue-700 rounded-3xl flex items-center justify-center shadow-2xl group-hover:shadow-3xl group-hover:-translate-y-1 transition-all duration-300">
+                <User className="h-10 w-10 sm:h-12 sm:w-12 text-white" />
               </div>
             </Link>
-            <div className="text-center md:text-left flex-1">
-              <div>
-                <h1 className="text-3xl font-bold mb-1">Bem-vindo, {client.name}!</h1>
-                {client.clientId && <p className="text-blue-100 text-sm mb-2 opacity-80">ID: {client.clientId}</p>}
-                <div className="flex items-center justify-center md:justify-start space-x-4">
-                  <Badge variant="secondary" className="bg-white bg-opacity-20 text-white border-0 px-3 py-1">
-                    Cliente desde {formatDateSimple(client.createdAt)}
-                  </Badge>
+
+            <div className="flex-1">
+              <div className="mb-2">
+                <h1 className="text-4xl sm:text-5xl font-light tracking-tight text-gray-900 dark:text-white">
+                  {client.name.split(' ')[0]}
+                </h1>
+                <p className="text-lg text-gray-500 dark:text-gray-400 font-light">Seu acompanhamento jurídico</p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 mt-4">
+                {client.clientId && (
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <span className="text-gray-400">ID:</span> <span className="font-mono font-medium">{client.clientId}</span>
+                  </div>
+                )}
+                <div className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Cliente desde <span className="font-medium">{formatDateSimple(client.createdAt)}</span>
                 </div>
               </div>
             </div>
 
-            {/* Absolute positioned button for bottom-right */}
+            {/* Action button */}
             <button
               onClick={() => setShowRequestedActionsModal(true)}
-              className="absolute bottom-4 right-4 hidden md:flex items-center space-x-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors border border-white/20 backdrop-blur-sm"
+              className="hidden sm:flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium text-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 group flex-shrink-0"
             >
-              <AlertTriangle className="w-4 h-4 text-yellow-300" />
-              <span className="font-semibold text-xs">Ações Solicitadas</span>
+              <AlertTriangle className="w-4 h-4 group-hover:scale-110 transition-transform" />
+              <span>Ações Pendentes</span>
             </button>
           </div>
         </div>
-      </div>
 
 
-      {/* Requirement Alert Banner */}
+      {/* Alerts Section */}
       {pendingRequerimentos.length > 0 && (
-        <div className="animate-in fade-in slide-in-from-top duration-500">
-          <Card className="bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800 shadow-md">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full">
+        <div className="mb-16 animate-in fade-in slide-in-from-top duration-500">
+          <div className="p-6 sm:p-8 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/30 border border-red-200 dark:border-red-900/50 rounded-2xl">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-red-100 dark:bg-red-900/40 rounded-full flex-shrink-0">
                   <Stamp className="h-6 w-6 text-red-600 dark:text-red-400" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-red-800 dark:text-red-300">
-                    Ação Necessária: Requerimento Pendente
+                <div>
+                  <h3 className="text-lg font-semibold text-red-900 dark:text-red-200">
+                    Requerimentos Pendentes
                   </h3>
-                  <p className="text-red-700 dark:text-red-400 mt-1">
-                    Você possui {pendingRequerimentos.length} {pendingRequerimentos.length === 1 ? 'requerimento' : 'requerimentos'} em aberto que {pendingRequerimentos.length === 1 ? 'precisa' : 'precisan'} ser regularizados.
+                  <p className="text-sm text-red-800 dark:text-red-300 mt-0.5">
+                    {pendingRequerimentos.length} {pendingRequerimentos.length === 1 ? 'item' : 'itens'} precisam de atenção
                   </p>
                 </div>
-                <Link to="/cliente/processo">
-                  <Button variant="destructive" size="sm" className="shadow-lg shadow-red-500/30">
-                    Ver Requerimentos
-                  </Button>
-                </Link>
               </div>
-            </CardContent>
-          </Card>
+              <Link to="/cliente/processo" className="ml-auto flex-shrink-0">
+                <Button className="bg-red-600 hover:bg-red-700 text-white font-medium px-5 py-2.5 rounded-lg transition-all duration-200 hover:shadow-lg">
+                  Ver Detalhes
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
       )}
 
@@ -542,45 +547,48 @@ export function Dashboard({
           </CardContent>
         </Card>
       )}
-      {/* Reminders Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Próximo Agendamento */}
-        {nextAppointmentData && (
-          <AppointmentReminder
-            appointmentDate={nextAppointmentData.data_hora}
-            appointmentTime={new Date(nextAppointmentData.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-            service={nextAppointmentData.produto_nome || nextAppointmentData.produto?.nome || (nextAppointmentData.produto?.tipo === 'fixo' ? 'Assessoria Jurídica' : 'Consultoria')}
-            meetLink={nextAppointmentData.meet_link}
-            status={nextAppointmentData.status}
-            checkoutUrl={nextAppointmentData.checkout_url || nextAppointmentData.checkoutUrl}
-            agendamentoId={nextAppointmentData.id}
-          />
-        )}
-        {/* Only show categories that have real reminders */}
-        {legalReminders.length > 0 && (
-          <ReminderCard
-            title="Jurídico"
-            type="legal"
-            reminders={legalReminders}
-          />
-        )}
+      {/* Reminders & Insights Section */}
+      <div className="mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Próximo Agendamento */}
+          {nextAppointmentData && (
+            <AppointmentReminder
+              appointmentDate={nextAppointmentData.data_hora}
+              appointmentTime={new Date(nextAppointmentData.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+              service={nextAppointmentData.produto_nome || nextAppointmentData.produto?.nome || (nextAppointmentData.produto?.tipo === 'fixo' ? 'Assessoria Jurídica' : 'Consultoria')}
+              meetLink={nextAppointmentData.meet_link}
+              status={nextAppointmentData.status}
+              checkoutUrl={nextAppointmentData.checkout_url || nextAppointmentData.checkoutUrl}
+              agendamentoId={nextAppointmentData.id}
+            />
+          )}
+          {/* Only show categories that have real reminders */}
+          {legalReminders.length > 0 && (
+            <ReminderCard
+              title="Jurídico"
+              type="legal"
+              reminders={legalReminders}
+            />
+          )}
 
-        {/* Informational Notifications (Success, Info, Agendamento) */}
-        {informationalNotifications.length > 0 && (
-          <ReminderCard
-            title="Notificações"
-            type="commercial"
-            reminders={informationalNotifications}
-          />
-        )}
+          {/* Informational Notifications (Success, Info, Agendamento) */}
+          {informationalNotifications.length > 0 && (
+            <ReminderCard
+              title="Notificações"
+              type="commercial"
+              reminders={informationalNotifications}
+            />
+          )}
 
-        {/* Placeholder for future real data integration without mocks */}
-        {legalReminders.length === 0 && informationalNotifications.length === 0 && (
-          <div className="col-span-full text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
-            <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-gray-500 dark:text-gray-400">Nenhum lembrete ou ação pendente no momento.</p>
-          </div>
-        )}
+          {/* Placeholder for future real data integration without mocks */}
+          {legalReminders.length === 0 && informationalNotifications.length === 0 && (
+            <div className="col-span-full text-center py-16 px-6">
+              <Clock className="h-12 w-12 text-gray-300 dark:text-gray-700 mx-auto mb-4" />
+              <p className="text-lg text-gray-500 dark:text-gray-400 font-light">Nenhuma ação pendente</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">Seu processo está em dia ✓</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Required Actions Countdown Section */}
@@ -626,129 +634,140 @@ export function Dashboard({
         )
       }
 
-      {/* Stats Grid */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">Status dos Documentos</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* KPI Stats - Premium Grid */}
+      <div className="mb-16">
+        <div className="mb-12">
+          <h2 className="text-center">
+            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Documentos</span>
+            <p className="text-3xl sm:text-4xl font-light text-gray-900 dark:text-white mt-2 tracking-tight">Status Atual</p>
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {stats.map((stat, index) => {
             const Icon = stat.icon
             return (
-              <Card key={index} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                      <Icon className={`h-6 w-6 ${stat.color}`} />
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.title}</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{stat.description}</p>
-                    </div>
+              <div
+                key={index}
+                className="group relative p-6 sm:p-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl hover:border-gray-300 dark:hover:border-gray-600 shadow-sm hover:shadow-xl transition-all duration-300"
+              >
+                {/* Background gradient on hover */}
+                <div className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-5 transition-opacity ${stat.bgColor}`} />
+
+                {/* Content */}
+                <div className="relative z-10 flex flex-col items-center justify-center text-center space-y-4">
+                  {/* Icon */}
+                  <div className={`p-3 sm:p-4 rounded-2xl ${stat.bgColor} group-hover:shadow-lg transition-shadow`}>
+                    <Icon className={`h-6 w-6 ${stat.color}`} />
                   </div>
-                </CardContent>
-              </Card>
+
+                  {/* Number */}
+                  <div>
+                    <p className="text-4xl sm:text-5xl font-light text-gray-900 dark:text-white tracking-tight">{stat.value}</p>
+                  </div>
+
+                  {/* Label & Description */}
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">{stat.title}</p>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{stat.description}</p>
+                  </div>
+                </div>
+              </div>
             )
           })}
         </div>
       </div>
 
+      {/* Process & Documents - Two Column Layout */}
       <div className="grid lg:grid-cols-2 gap-8">
-        {/* Process Progress */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <TrendingUp className="h-5 w-5" />
-              <span>Progresso do Processo</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
+        {/* Process Progress - Refined Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg transition-shadow p-8">
+          <div className="mb-8">
+            <h3 className="text-2xl font-light text-gray-900 dark:text-white tracking-tight">Progresso</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Etapas do seu processo jurídico</p>
+          </div>
+
+          <div className="space-y-4">
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-900 dark:text-white">Progresso Geral</span>
-                <span className="text-sm text-gray-500 dark:text-gray-400">{Math.round(progressPercentage)}%</span>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Andamento</span>
+                <span className="text-2xl font-light text-blue-600 dark:text-blue-400">{Math.round(progressPercentage)}%</span>
               </div>
-              <Progress value={progressPercentage} className="h-3" />
+              <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-600 to-blue-500 transition-all duration-700 ease-out"
+                  style={{ width: `${progressPercentage}%` }}
+                />
+              </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2 mt-6">
               {process?.steps && process.steps.length > 0 ? (
-                process.steps.map((step, index) => (
-                  <div key={step.id} className="flex items-center space-x-3">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step.status === 'completed' ? 'bg-green-500 text-white' :
-                      step.status === 'in_progress' ? 'bg-blue-500 text-white' :
-                        'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                      }`}>
-                      {index + 1}
+                process.steps.slice(0, 5).map((step, index) => (
+                  <div key={step.id} className="flex items-center gap-3 py-2">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${
+                      step.status === 'completed' ? 'bg-green-600 text-white' :
+                      step.status === 'in_progress' ? 'bg-blue-600 text-white' :
+                      'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+                    }`}>
+                      {step.status === 'completed' ? '✓' : index + 1}
                     </div>
-                    <div className="flex-1">
-                      <p className={`text-sm font-medium ${step.status === 'completed' ? 'text-green-700 dark:text-green-400' :
-                        step.status === 'in_progress' ? 'text-blue-700 dark:text-blue-400' :
-                          'text-gray-500 dark:text-gray-400'
-                        }`}>
-                        {step.name}
-                      </p>
-                    </div>
-                    <div>
-                      {step.status === 'completed' && <CheckCircle className="h-4 w-4 text-green-500" />}
-                      {step.status === 'in_progress' && <Clock className="h-4 w-4 text-blue-500" />}
-                    </div>
+                    <span className={`text-sm ${
+                      step.status === 'completed' ? 'text-green-700 dark:text-green-400 line-through opacity-60' :
+                      step.status === 'in_progress' ? 'text-blue-700 dark:text-blue-400 font-medium' :
+                      'text-gray-600 dark:text-gray-400'
+                    }`}>
+                      {step.name}
+                    </span>
                   </div>
                 ))
               ) : (
-                <div className="text-center py-4">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum passo do processo disponível.</p>
-                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">Nenhuma etapa disponível</p>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Recent Documents */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <FileText className="h-5 w-5" />
-              <span>Documentos Recentes</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentDocuments.length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400 text-center py-4">
-                  Nenhum documento enviado ainda.
-                </p>
-              ) : (
-                recentDocuments.map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <FileText className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">{doc.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(doc.uploadDate)}</p>
-                      </div>
+        {/* Recent Documents - Refined Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg transition-shadow p-8">
+          <div className="mb-8">
+            <h3 className="text-2xl font-light text-gray-900 dark:text-white tracking-tight">Documentos</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Seus arquivos enviados recentemente</p>
+          </div>
+
+          <div className="space-y-3">
+            {recentDocuments.length === 0 ? (
+              <div className="text-center py-8">
+                <FileText className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum documento enviado</p>
+              </div>
+            ) : (
+              recentDocuments.map((doc) => (
+                <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="text-amber-600 dark:text-amber-400 flex-shrink-0">
+                      <FileText className="h-4 w-4" />
                     </div>
-                    <Badge
-                      variant={
-                        doc.status === 'approved' ? 'success' :
-                          doc.status === 'rejected' ? 'destructive' :
-                            doc.status.toLowerCase().includes('analyzing') ? 'default' :
-                              'warning'
-                      }
-                      className="text-xs"
-                    >
-                      {doc.status === 'pending' ? 'Pendente' :
-                        doc.status.toLowerCase().includes('analyzing') ? 'Análise' :
-                          doc.status === 'approved' ? 'Aprovado' :
-                            doc.status === 'rejected' ? 'Rejeitado' :
-                              doc.status.replace('_', ' ')}
-                    </Badge>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{doc.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(doc.uploadDate)}</p>
+                    </div>
                   </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                  <div className="ml-3 flex-shrink-0">
+                    {doc.status === 'approved' && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">✓ Aprovado</span>}
+                    {doc.status === 'rejected' && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">✗ Rejeitado</span>}
+                    {doc.status.toLowerCase().includes('analyzing') && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">◄ Análise</span>}
+                    {doc.status === 'pending' && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">● Pendente</span>}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Closing - End of main content */}
+      <div className="h-8" />
 
       {/* Modals */}
       <RequestedActionsModal
@@ -763,6 +782,7 @@ export function Dashboard({
         onClose={handleCloseRequiredModal}
         actions={realPendingActions}
       />
-    </div >
+      </div>
+    </div>
   )
 }

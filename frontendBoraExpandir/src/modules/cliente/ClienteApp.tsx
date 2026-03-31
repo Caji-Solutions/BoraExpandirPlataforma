@@ -3,12 +3,11 @@ import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { Sidebar } from '../../components/ui/Sidebar'
 import type { SidebarGroup } from '../../components/ui/Sidebar'
 import { Dashboard } from './pages/dashboard/Dashboard'
-import PartnerDashboard from './pages/dashboard/PartnerDashboard'
 import { ProcessTimeline } from './components/documents/ProcessTimeline'
 import { Notifications } from './components/dashboard/Notifications'
 import { DocumentModal } from './components/uploads/DocumentModal'
 import { Traducao } from './pages/services/Traducao'
-import Parceiro from './components/contracts/Parceiro'
+import Parceiro from '../shared/components/parceiro/Parceiro'
 import { ClienteAgendamento } from './pages/scheduling/ClienteAgendamento'
 import { Client, Document, Notification, TranslatedDocument, Process, ProcessStep } from './types'
 import { Apostilamento } from './pages/services/Apostilamento'
@@ -505,7 +504,7 @@ export function ClienteApp() {
         )}
         <main className="md:ml-64 p-4 md:p-8 pt-16 md:pt-8">
           <Routes>
-            <Route index element={<PartnerDashboard client={client} onBecomeClient={handleBecomeClient} />} />
+            <Route index element={<Parceiro client={client} />} />
             <Route path="parceiro" element={<Parceiro client={client} />} />
             <Route path="agendamento" element={<ClienteAgendamento client={client} />} />
             <Route path="configuracoes" element={<Config />} />
@@ -561,9 +560,8 @@ export function ClienteApp() {
             index
             element={
               isPartnerOnly ? (
-                <PartnerDashboard 
+                <Parceiro 
                   client={client} 
-                  onBecomeClient={handleBecomeClient} 
                 />
               ) : (
                 <Dashboard

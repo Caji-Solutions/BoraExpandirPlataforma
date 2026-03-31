@@ -975,6 +975,29 @@ class JuridicoController {
             })
         }
     }
+
+    // GET /juridico/processo/:processoId - Buscar processo por ID
+    async getProcessoById(req: any, res: any) {
+        try {
+            const { processoId } = req.params
+
+            if (!processoId) {
+                return res.status(400).json({ message: 'processoId é obrigatório' })
+            }
+
+            const processo = await JuridicoRepository.getProcessoById(processoId)
+
+            return res.status(200).json({
+                data: processo
+            })
+        } catch (error: any) {
+            console.error('Erro ao buscar processo no controller:', error)
+            return res.status(500).json({
+                message: 'Erro ao buscar processo',
+                error: error.message
+            })
+        }
+    }
     // GET /juridico/assessorias/por-responsavel/:responsavelId - Assessorias de um responsável
     async getAssessoriasByResponsavel(req: any, res: any) {
         try {

@@ -199,7 +199,7 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
   const progressPercentage = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-4xl mx-auto px-4 space-y-8">
       {!process && consultoriaRealizada && (
         <Card className="bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800 shadow-sm animate-in fade-in slide-in-from-top duration-500">
           <CardContent className="p-6">
@@ -296,7 +296,7 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
         </CardContent>
       </Card>
 
-      <div className="space-y-4">
+      <div className="space-y-8">
         {currentProcess.steps.map((step, index) => {
           const StepIcon = stepIcons[step.status] || Clock
           const isLast = index === currentProcess.steps.length - 1
@@ -307,58 +307,71 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
               {/* Connection line */}
               {!isLast && (
                 <div className={cn(
-                  "absolute left-6 top-12 w-0.5 h-16 transition-colors duration-200",
-                  (isActive && hasPendingReq) ? "bg-red-500" : "bg-gray-200 dark:bg-gray-700"
+                  "absolute left-1/2 -translate-x-1/2 top-[64px] w-1 h-32 rounded-full transition-all duration-300",
+                  step.status === 'completed' ? "bg-gradient-to-b from-green-500 via-green-400 to-green-300 dark:from-green-400 dark:via-green-300 dark:to-green-200" :
+                  (isActive && hasPendingReq) ? "bg-gradient-to-b from-red-600 via-red-500 to-red-400 dark:from-red-500 dark:via-red-400 dark:to-red-300 shadow-lg" :
+                  step.status === 'in_progress' ? "bg-gradient-to-b from-blue-500 via-blue-400 to-blue-300 dark:from-blue-400 dark:via-blue-300 dark:to-blue-200" :
+                  "bg-gradient-to-b from-gray-400 via-gray-300 to-gray-200 dark:from-gray-600 dark:via-gray-500 dark:to-gray-400"
                 )} />
               )}
 
               <Card className={cn(
-                "relative transition-all duration-200",
-                isActive && "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900",
-                isActive && hasPendingReq && "ring-red-500",
-                step.status === 'completed' && "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                "relative transition-all duration-300 rounded-xl border-2 hover:shadow-lg",
+                isActive && "ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900 shadow-lg",
+                isActive && hasPendingReq && "ring-red-500 bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-900/20 dark:to-red-800/20 border-red-400 dark:border-red-600",
+                step.status === 'completed' && "bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-300 dark:border-green-700",
+                step.status === 'in_progress' && "bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-300 dark:border-blue-700",
+                !isActive && step.status === 'pending' && "bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
               )}>
-                <CardContent className="p-6">
-                  <div className="flex items-start space-x-4">
+                <CardContent className="p-5 sm:p-6">
+                  <div className="flex items-center space-x-4">
                     <div className={cn(
-                      "flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center",
-                      isActive && hasPendingReq ? 'bg-red-100' : (stepBgColors[step.status] || 'bg-gray-100')
+                      "flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm shadow-md flex-shrink-0",
+                      isActive && hasPendingReq ? 'bg-gradient-to-br from-red-500 to-red-600 text-white' :
+                      step.status === 'completed' ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white' :
+                      step.status === 'in_progress' ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white' :
+                      'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
                     )}>
                       {isActive && hasPendingReq ? (
-                        <AlertCircle className="h-6 w-6 text-red-600" />
+                        <AlertCircle className="h-5 w-5" />
+                      ) : step.status === 'completed' ? (
+                        <CheckCircle className="h-5 w-5" />
                       ) : (
-                        <StepIcon className={cn("h-6 w-6", stepColors[step.status] || 'text-gray-400')} />
+                        <span>{step.id + 1}</span>
                       )}
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-1">
+                        <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                           {step.name}
                         </h3>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <Badge
-                            variant={
-                              (isActive && hasPendingReq) ? 'destructive' :
-                              step.status === 'completed' ? 'success' :
-                              (step.status === 'in_progress' || step.status === 'analyzing') ? 'default' :
-                              step.status === 'rejected' ? 'destructive' :
-                              step.status === 'waiting' ? 'warning' :
-                              'secondary'
-                            }
+                            className={cn(
+                              "text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap",
+                              (isActive && hasPendingReq) && 'bg-red-500 text-white',
+                              step.status === 'completed' && 'bg-green-500 text-white',
+                              (step.status === 'in_progress' || step.status === 'analyzing') && 'bg-blue-500 text-white',
+                              step.status === 'rejected' && 'bg-red-500 text-white',
+                              step.status === 'waiting' && 'bg-amber-500 text-white',
+                              step.status === 'pending' && 'bg-gray-400 text-white'
+                            )}
+                            variant="default"
                           >
                             {(isActive && hasPendingReq) ? 'Bloqueado' : (stepLabels[step.status] || step.status)}
                           </Badge>
-                          {isActive && (
-                            <Badge variant="outline">
-                              Etapa Atual
+                          {isActive && !hasPendingReq && (
+                            <Badge variant="outline" className="rounded-full px-2.5 py-1 font-semibold border-2 border-blue-400 dark:border-blue-500 whitespace-nowrap">
+                              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full inline-block mr-1.5 animate-pulse"></span>
+                              Atual
                             </Badge>
                           )}
                         </div>
                       </div>
 
                       {step.description && (
-                        <p className="text-gray-600 dark:text-gray-400 mt-2">{step.description}</p>
+                        <p className="text-sm text-gray-700 dark:text-gray-400 leading-relaxed">{step.description}</p>
                       )}
 
                       {/* Informativo: Assessoria ainda não agendada */}

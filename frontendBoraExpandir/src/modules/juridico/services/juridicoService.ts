@@ -67,7 +67,7 @@ export interface ClienteComResponsavel {
  * Busca todos os processos
  */
 export async function getProcessos(): Promise<Processo[]> {
-  const result = await apiClient.get(`/juridico/processos`);
+  const result: any = await apiClient.get(`/juridico/processos`);
   return result.data;
 }
 
@@ -75,7 +75,7 @@ export async function getProcessos(): Promise<Processo[]> {
  * Busca processos de um responsável específico
  */
 export async function getProcessosByResponsavel(responsavelId: string): Promise<Processo[]> {
-  const result = await apiClient.get(`/juridico/processos/por-responsavel/${responsavelId}`);
+  const result: any = await apiClient.get(`/juridico/processos/por-responsavel/${responsavelId}`);
   return result.data;
 }
 
@@ -83,7 +83,7 @@ export async function getProcessosByResponsavel(responsavelId: string): Promise<
  * Busca processos sem responsável (vagos)
  */
 export async function getProcessosVagos(): Promise<Processo[]> {
-  const result = await apiClient.get(`/juridico/processos/vagos`);
+  const result: any = await apiClient.get(`/juridico/processos/vagos`);
   return result.data;
 }
 
@@ -108,7 +108,7 @@ export async function removerResponsavel(clienteId: string): Promise<AtribuirRes
  * Busca agendamentos que requerem delegação
  */
 export async function getAgendamentosDelegacao(): Promise<any[]> {
-  const result = await apiClient.get(`/juridico/agendamentos/delegacao`);
+  const result: any = await apiClient.get(`/juridico/agendamentos/delegacao`);
   return result.data;
 }
 
@@ -126,7 +126,7 @@ export async function atribuirResponsavelAgendamento(
  * Busca todos os funcionários do jurídico
  */
 export async function getFuncionariosJuridico(): Promise<FuncionarioJuridico[]> {
-  const result = await apiClient.get(`/juridico/funcionarios`);
+  const result: any = await apiClient.get(`/juridico/funcionarios`);
   return result.data;
 }
 
@@ -134,7 +134,7 @@ export async function getFuncionariosJuridico(): Promise<FuncionarioJuridico[]> 
  * Busca clientes sem responsável (vagos)
  */
 export async function getClientesVagos(): Promise<ClienteComResponsavel[]> {
-  const result = await apiClient.get(`/juridico/clientes/vagos`);
+  const result: any = await apiClient.get(`/juridico/clientes/vagos`);
   return result.data;
 }
 
@@ -142,7 +142,7 @@ export async function getClientesVagos(): Promise<ClienteComResponsavel[]> {
  * Busca todos os clientes com seus responsáveis
  */
 export async function getAllClientesComResponsavel(): Promise<ClienteComResponsavel[]> {
-  const result = await apiClient.get(`/juridico/clientes`);
+  const result: any = await apiClient.get(`/juridico/clientes`);
   return result.data;
 }
 
@@ -150,7 +150,7 @@ export async function getAllClientesComResponsavel(): Promise<ClienteComResponsa
  * Busca clientes de um responsável específico
  */
 export async function getClientesByResponsavel(responsavelId: string): Promise<ClienteComResponsavel[]> {
-  const result = await apiClient.get(`/juridico/clientes/por-responsavel/${responsavelId}`);
+  const result: any = await apiClient.get(`/juridico/clientes/por-responsavel/${responsavelId}`);
   return result.data;
 }
 
@@ -162,7 +162,7 @@ export async function getFormulariosWithStatus(clienteId: string, membroId?: str
     ? `/juridico/formularios-status/${clienteId}/${membroId}`
     : `/juridico/formularios-status/${clienteId}`;
 
-  const result = await apiClient.get(endpoint);
+  const result: any = await apiClient.get(endpoint);
   return result.data || [];
 }
 
@@ -184,7 +184,7 @@ export async function updateFormularioClienteStatus(
  * Busca documentos de um cliente específico
  */
 export async function getDocumentosCliente(clienteId: string): Promise<any[]> {
-  const result = await apiClient.get(`/cliente/${clienteId}/documentos`);
+  const result: any = await apiClient.get(`/cliente/${clienteId}/documentos`);
   return result.data || [];
 }
 
@@ -192,7 +192,7 @@ export async function getDocumentosCliente(clienteId: string): Promise<any[]> {
  * Busca documentos de um processo específico (inclui todos os membros da família)
  */
 export async function getDocumentosByProcesso(processoId: string): Promise<any[]> {
-  const result = await apiClient.get(`/cliente/processo/${processoId}/documentos`);
+  const result: any = await apiClient.get(`/cliente/processo/${processoId}/documentos`);
   return result.data || [];
 }
 
@@ -200,7 +200,7 @@ export async function getDocumentosByProcesso(processoId: string): Promise<any[]
  * Busca o catálogo de serviços
  */
 export async function getCatalogServices(): Promise<any[]> {
-  const result = await apiClient.get(`/adm/catalog`);
+  const result: any = await apiClient.get(`/adm/catalog`);
   return result.data || [];
 }
 
@@ -208,7 +208,7 @@ export async function getCatalogServices(): Promise<any[]> {
  * Busca dependentes de um cliente
  */
 export async function getDependentes(clienteId: string): Promise<any[]> {
-  const result = await apiClient.get(`/cliente/${clienteId}/dependentes`);
+  const result: any = await apiClient.get(`/cliente/${clienteId}/dependentes`);
   return result.data || [];
 }
 
@@ -272,7 +272,7 @@ export async function updateProcessEtapa(processoId: string, etapa: number): Pro
  * Busca requerimentos de um processo específico
  */
 export async function getRequerimentosByProcesso(processoId: string): Promise<any[]> {
-  const result = await apiClient.get(`/juridico/requerimentos/processo/${processoId}`);
+  const result: any = await apiClient.get(`/juridico/requerimentos/processo/${processoId}`);
   return result.data || [];
 }
 
@@ -284,7 +284,7 @@ export async function getRequerimentosByCliente(clienteId: string, membroId?: st
     ? `/juridico/requerimentos/cliente/${clienteId}/${membroId}`
     : `/juridico/requerimentos/cliente/${clienteId}`;
 
-  const result = await apiClient.get(endpoint);
+  const result: any = await apiClient.get(endpoint);
   return result.data || [];
 }
 
@@ -306,7 +306,7 @@ export async function updateRequerimentoStatus(
  * Busca estatísticas globais do jurídico
  */
 export async function getEstatisticas(): Promise<any> {
-  const result = await apiClient.get(`/juridico/estatisticas`);
+  const result: any = await apiClient.get(`/juridico/estatisticas`);
   return result.data;
 }
 
@@ -341,7 +341,7 @@ export async function createAssessoria(payload: {
  * Busca a última assessoria de um cliente
  */
 export async function getLatestAssessoria(clienteId: string): Promise<any> {
-  const result = await apiClient.get(`/juridico/assessoria/${clienteId}`);
+  const result: any = await apiClient.get(`/juridico/assessoria/${clienteId}`);
   return result.data;
 }
 
@@ -349,7 +349,15 @@ export async function getLatestAssessoria(clienteId: string): Promise<any> {
  * Busca o processo ativo de um cliente
  */
 export async function getProcessoByCliente(clienteId: string): Promise<any> {
-  const result = await apiClient.get(`/juridico/processo-cliente/${clienteId}`);
+  const result: any = await apiClient.get(`/juridico/processo-cliente/${clienteId}`);
+  return result.data;
+}
+
+/**
+ * Busca um processo específico pelo seu ID
+ */
+export async function getProcessoById(processoId: string): Promise<any> {
+  const result: any = await apiClient.get(`/juridico/processo/${processoId}`);
   return result.data;
 }
 
@@ -364,7 +372,7 @@ export async function getAgendamentos(): Promise<any[]> {
  * Busca assessorias delegadas a um responsável
  */
 export async function getAssessoriasByResponsavel(responsavelId: string): Promise<any[]> {
-  const result = await apiClient.get(`/juridico/assessorias/por-responsavel/${responsavelId}`);
+  const result: any = await apiClient.get(`/juridico/assessorias/por-responsavel/${responsavelId}`);
   return result.data;
 }
 
@@ -372,7 +380,7 @@ export async function getAssessoriasByResponsavel(responsavelId: string): Promis
  * Busca agendamentos delegados a um responsável
  */
 export async function getAgendamentosByResponsavel(responsavelId: string): Promise<any[]> {
-  const result = await apiClient.get(`/juridico/agendamentos/por-responsavel/${responsavelId}`);
+  const result: any = await apiClient.get(`/juridico/agendamentos/por-responsavel/${responsavelId}`);
   return result.data;
 }
 
@@ -388,7 +396,7 @@ export async function requestApostille(documentoId: string, documentoUrl?: strin
  */
 export async function getProfileById(profileId: string): Promise<any> {
   try {
-    const result = await apiClient.get(`/juridico/funcionario/${profileId}`);
+    const result: any = await apiClient.get(`/juridico/funcionario/${profileId}`);
     return result.data;
   } catch (error) {
     // Handle 404 errors gracefully
@@ -400,7 +408,7 @@ export async function getProfileById(profileId: string): Promise<any> {
  * Verifica se o cliente já preencheu o formulário
  */
 export async function verificarFormularioPreenchido(clienteId: string): Promise<boolean> {
-  const result = await apiClient.get(`/juridico/formulario-preenchido/${clienteId}`);
+  const result: any = await apiClient.get(`/juridico/formulario-preenchido/${clienteId}`);
   return result.preenchido === true;
 }
 
@@ -412,7 +420,7 @@ export async function pedidoReagendamento(agendamentoId: string, mensagem: strin
 }
 
 export async function getAllSubservices(): Promise<any[]> {
-  const result = await apiClient.get(`/juridico/subservicos`);
+  const result: any = await apiClient.get(`/juridico/subservicos`);
   return result.data;
 }
 
@@ -476,6 +484,7 @@ export default {
     createAssessoria,
     getLatestAssessoria,
     getProcessoByCliente,
+    getProcessoById,
     getAgendamentos,
     getAssessoriasByResponsavel,
     getAgendamentosByResponsavel,
@@ -509,7 +518,5 @@ export default {
     getAllSubservices,
     verificarFormularioPreenchido,
     pedidoReagendamento,
-    marcarConsultoriaEmAndamento,
-    marcarConsultoriaRealizada,
     getUsuariosComerciaisC2,
 };

@@ -149,9 +149,21 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                 // Auto-select process from URL
                 const processId = searchParams.get('processoId');
                 if (processId) {
-                    const process = mapped.find(p => p.id === processId);
-                    if (process) {
-                        setSelectedFolder(process);
+                    const found = mapped.find(p => p.id === processId);
+                    if (found) {
+                        setSelectedFolder(found);
+                    } else {
+                        // Not in my personal list, let's fetch it specifically
+                        try {
+                            const specificProc = await juridicoService.getProcessoById(processId);
+                            if (specificProc) {
+                                const viewProc = mapProcessoToView(specificProc);
+                                setProcesses(prev => [...prev, viewProc]);
+                                setSelectedFolder(viewProc);
+                            }
+                        } catch (e) {
+                            console.error("Could not fetch specific process from URL", e);
+                        }
                     }
                 }
             } catch (error) {
