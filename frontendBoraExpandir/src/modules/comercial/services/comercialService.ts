@@ -121,6 +121,11 @@ export async function enviarContratoAssinatura(id: string, email: string): Promi
     return result.data
 }
 
+export async function apagarContratoServico(id: string): Promise<any> {
+    const result = await apiClient.delete(`/comercial/contratos/${id}`)
+    return result.data
+}
+
 export async function getPosConsultoria(): Promise<any[]> {
     const result = await apiClient.get('/comercial/pos-consultoria');
     return result.data || [];
@@ -150,6 +155,7 @@ export default {
     updateContratoDraft,
     gerarContratoPdf,
     enviarContratoAssinatura,
+    apagarContratoServico,
     getPosConsultoria,
     getConsultoriasCount
 };

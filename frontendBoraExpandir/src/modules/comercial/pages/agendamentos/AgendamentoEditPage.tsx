@@ -319,6 +319,10 @@ export function AgendamentoEditPage() {
 
     const produtoDetalhe = produtos.find(p => p.id === agendamento.produto_id)
     const nomeProduto = produtoDetalhe?.name || agendamento.produto_nome || agendamento.produto_id || 'Não especificado'
+    const isFixoOrContratos =
+        produtoDetalhe?.type === 'fixo' ||
+        agendamento.tipo_servico?.toLowerCase().includes('contratos') ||
+        agendamento.tipo_servico?.toLowerCase() === 'fixo'
 
     const formatDataHoraDisplay = (dataHora: string) => {
         try {
@@ -444,11 +448,10 @@ export function AgendamentoEditPage() {
                                     <CreditCard className="w-3 h-3" /> Pix {agendamento.comprovante_url ? '✓' : '—'}
                                 </span>
                             )}
-                            {(() => {
-                                const frontendUrl = import.meta.env.VITE_FRONTEND_URL?.trim() || window.location.origin
+                            {!isFixoOrContratos && (() => {
                                 const isFormPreenchido = agendamento.formulario_preenchido;
                                 const isPgtoAprovado = agendamento.pagamento_status === 'aprovado'
-                                
+
                                 if (isFormPreenchido) {
                                     return (
                                         <span className="px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400">

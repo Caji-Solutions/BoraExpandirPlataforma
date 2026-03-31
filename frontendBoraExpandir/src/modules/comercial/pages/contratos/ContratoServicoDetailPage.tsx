@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Calendar, CheckCircle2, FileCheck, FileText, Loader2, Upload, XCircle, CreditCard, PenTool, Eye } from 'lucide-react'
+import { ArrowLeft, Calendar, CheckCircle2, FileCheck, FileText, Loader2, Upload, XCircle, CreditCard, PenTool, Eye, Clock } from 'lucide-react'
 import comercialService from '../../services/comercialService'
 import type { ContratoServico } from '../../../types/comercial'
 import { Badge } from '@/modules/shared/components/ui/badge'
@@ -48,6 +48,7 @@ export default function ContratoServicoDetailPage() {
   const [uploadingContrato, setUploadingContrato] = useState(false)
   const [uploadingComprovante, setUploadingComprovante] = useState(false)
   const [processing, setProcessing] = useState(false)
+  const [agendamentoExistente, setAgendamentoExistente] = useState<any>(null)
 
   const fetchContrato = async () => {
     if (!id) return
@@ -59,6 +60,17 @@ export default function ContratoServicoDetailPage() {
         return
       }
       setContrato(data)
+      if (data?.cliente_id && data?.servico_id) {
+        try {
+          const agendamentos = await comercialService.getAgendamentosByCliente(data.cliente_id)
+          const ativo = agendamentos.find(
+            (a: any) => a.produto_id === data.servico_id && a.status !== 'cancelado'
+          )
+          setAgendamentoExistente(ativo || null)
+        } catch {
+          setAgendamentoExistente(null)
+        }
+      }
     } catch (err) {
       console.error('Erro ao buscar contrato:', err)
       toast.error('Erro ao carregar contrato')
@@ -242,6 +254,35 @@ export default function ContratoServicoDetailPage() {
         )}
       </div>
 
+      {/* Actions Card */}
+      {contrato.pagamento_status === 'aprovado' && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-200 dark:border-blue-800/30 rounded-2xl p-6">
+          <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3">Proximos passos</h3>
+          {agendamentoExistente ? (
+            <button
+              onClick={() => navigate(`/comercial/agendamento/${agendamentoExistente.id}`)}
+              className="px-6 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-all active:scale-95 shadow-lg shadow-emerald-600/20 flex items-center gap-2"
+            >
+              <Calendar className="w-5 h-5" />
+              <span>Ver agendamento</span>
+              {agendamentoExistente.data_hora && (
+                <span className="flex items-center gap-1 text-emerald-100 font-normal text-sm ml-1">
+                  <Clock className="w-4 h-4" />
+                  {new Date(agendamentoExistente.data_hora).toLocaleDateString('pt-BR')} {new Date(agendamentoExistente.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={handleAgendar}
+              className="px-6 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-600/20 flex items-center gap-2"
+            >
+              <Calendar className="w-5 h-5" /> Agendar servico
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Assinatura Card */}
       <div className="bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-2xl shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 dark:border-neutral-800 bg-gray-50/50 dark:bg-neutral-800/30">
@@ -383,17 +424,9 @@ export default function ContratoServicoDetailPage() {
           )}
 
           {contrato.pagamento_status === 'aprovado' && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 p-3 rounded-xl text-sm border border-emerald-100 dark:border-emerald-500/20 font-medium">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                Pagamento aprovado!
-              </div>
-              <button
-                onClick={handleAgendar}
-                className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-600/20 flex items-center gap-2"
-              >
-                <Calendar className="w-4 h-4" /> Agendar servico
-              </button>
+            <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 p-3 rounded-xl text-sm border border-emerald-100 dark:border-emerald-500/20 font-medium">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              Pagamento aprovado!
             </div>
           )}
 

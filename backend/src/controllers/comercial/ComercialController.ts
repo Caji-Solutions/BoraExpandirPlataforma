@@ -1293,17 +1293,23 @@ class ComercialController {
             }
 
             let membrosCount: number | undefined = undefined
-            if (mergedDraft.dependentes) {
+            if (mergedDraft.dependentes || mergedDraft.titularesAdicionais) {
                 try {
-                    const deps = typeof mergedDraft.dependentes === 'string' 
-                        ? JSON.parse(mergedDraft.dependentes) 
-                        : mergedDraft.dependentes
-                    
-                    if (Array.isArray(deps)) {
-                        membrosCount = 1 + deps.length
-                    }
+                    const titularesCount = 1
+                    const adicionaisCount = mergedDraft.titularesAdicionais
+                        ? (typeof mergedDraft.titularesAdicionais === 'string'
+                            ? JSON.parse(mergedDraft.titularesAdicionais).length
+                            : mergedDraft.titularesAdicionais.length)
+                        : 0
+                    const deps = mergedDraft.dependentes
+                        ? (typeof mergedDraft.dependentes === 'string'
+                            ? JSON.parse(mergedDraft.dependentes)
+                            : mergedDraft.dependentes)
+                        : []
+                    const dependentesCount = Array.isArray(deps) ? deps.length : 0
+                    membrosCount = titularesCount + adicionaisCount + dependentesCount
                 } catch (e) {
-                    console.error('[ComercialController] Erro ao parear dependentes para membros_count:', e)
+                    console.error('[ComercialController] Erro ao calcular membros_count:', e)
                 }
             }
 
@@ -1610,6 +1616,32 @@ class ComercialController {
         } catch (error: any) {
             console.error('[ComercialController] Erro ao cancelar contrato:', error)
             return res.status(500).json({ message: 'Erro ao cancelar contrato', error: error.message })
+        }
+    }
+
+    // =============================================
+    // APAGAR CONTRATO (DELETE FISICO)
+    // =============================================
+
+    async apagarContrato(req: any, res: any) {
+        try {
+            const { id } = req.params
+
+            const contrato = await ContratoServicoRepository.getContratoById(id)
+            if (!contrato) {
+                return res.status(404).json({ message: 'Contrato nao encontrado' })
+            }
+
+            if (contrato.contrato_gerado_url) {
+                return res.status(400).json({ message: 'Nao e possivel apagar um contrato ja enviado para assinatura' })
+            }
+
+            await ContratoServicoRepository.deleteContrato(id)
+
+            return res.status(200).json({ message: 'Contrato apagado com sucesso' })
+        } catch (error: any) {
+            console.error('[ComercialController] Erro ao apagar contrato:', error)
+            return res.status(500).json({ message: 'Erro ao apagar contrato', error: error.message })
         }
     }
 

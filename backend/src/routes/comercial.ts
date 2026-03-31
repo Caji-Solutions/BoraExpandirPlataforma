@@ -36,6 +36,9 @@ comercial.post('/contratos/:id/enviar-assinatura', ComercialController.enviarCon
 // Cancelamento de contrato
 comercial.post('/contratos/:id/cancelar', authMiddleware, ComercialController.cancelarContrato.bind(ComercialController))
 
+// Apagar contrato (delete fisico — apenas quando nao foi enviado para assinatura)
+comercial.delete('/contratos/:id', authMiddleware, ComercialController.apagarContrato.bind(ComercialController))
+
 // Upload comprovante de multa
 comercial.post('/contratos/:id/multa/comprovante', authMiddleware, upload.single('file'), ComercialController.uploadComprovanteMulta.bind(ComercialController))
 

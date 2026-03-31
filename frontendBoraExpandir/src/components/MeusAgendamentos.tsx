@@ -694,15 +694,9 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                             if (!selectedItem) return;
                             const targetId = selectedItem.cliente_id || selectedItem.id;
                             const pId = selectedItem.produto_id || selectedItem.servico_id || '';
-                            // Se já está em andamento, apenas navega
-                            if (selectedItem.status === 'em_assessoria') {
-                              navigate(`/juridico/assessoria?clienteId=${targetId}&produtoId=${pId}&agendamentoId=${selectedItem.id}`);
-                              return;
-                            }
                             try {
                               setIsMarkingEmAndamento(true);
                               await juridicoService.marcarAssessoriaEmAndamento(selectedItem.id);
-                              setSelectedItem((prev: any) => prev ? { ...prev, status: 'em_assessoria' } : prev);
                               navigate(`/juridico/assessoria?clienteId=${targetId}&produtoId=${pId}&agendamentoId=${selectedItem.id}`);
                             } catch (err: any) {
                               console.warn('Erro ao marcar assessoria em andamento:', err);
@@ -713,7 +707,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                           className="w-full py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                         >
                           <Briefcase className="h-3.5 w-3.5" />
-                          {isMarkingEmAndamento ? 'Iniciando...' : selectedItem.status === 'em_assessoria' ? 'Continuar Atendimento' : 'Iniciar Atendimento'}
+                          {isMarkingEmAndamento ? 'Iniciando...' : 'Iniciar Atendimento'}
                         </button>
                       </div>
                     )}

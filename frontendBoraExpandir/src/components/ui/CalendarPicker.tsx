@@ -21,7 +21,7 @@ export function CalendarPicker({
   disableWeekends,
   minDate
 }: CalendarPickerProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date())
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); const [currentMonth, setCurrentMonth] = useState(new Date(tomorrow.getFullYear(), tomorrow.getMonth(), 1))
 
   const monthName = currentMonth.toLocaleString("pt-BR", { month: "long" })
   const year = currentMonth.getFullYear()
