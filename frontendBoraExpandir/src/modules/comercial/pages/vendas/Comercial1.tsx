@@ -193,6 +193,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
   const { id: editId } = useParams<{ id: string }>()
   const [loadingEdit, setLoadingEdit] = useState(false)
+  const [creatingAgendamento, setCreatingAgendamento] = useState(false)
 
   // Guard: sem serviço pré-selecionado e sem edição, redirecionar
   useEffect(() => {
@@ -565,6 +566,8 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   }
 
   const handleFinalizarAgendamento = async () => {
+    if (creatingAgendamento) return
+    
     if (!clienteSelecionado || !dataSelecionada || !horaSelecionada || !produtoSelecionado) {
       error('Nao foi possivel finalizar o agendamento. Revise os dados e tente novamente.')
       return
@@ -605,8 +608,10 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     })
 
     if (isPaidFromContrato) {
+      setCreatingAgendamento(true)
       const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || ''
       if (!backendUrl) {
+        setCreatingAgendamento(false)
         error('Backend não configurado para criar agendamento.')
         return
       }
@@ -619,12 +624,14 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
         if (response.status === 409) {
           const body = await response.json().catch(() => ({}))
+          setCreatingAgendamento(false)
           error(body?.message || 'Este horário não está mais disponível.')
           return
         }
 
         if (!response.ok) {
           const body = await response.json().catch(() => ({}))
+          setCreatingAgendamento(false)
           error(body?.message || 'Não foi possível criar o agendamento.')
           return
         }
@@ -634,6 +641,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
         return
       } catch (err) {
         console.error('Erro ao criar agendamento pago:', err)
+        setCreatingAgendamento(false)
         error('Erro ao criar agendamento.')
         return
       }
@@ -931,7 +939,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                   </div>
                 )}
 
-                <BotoesNavegacao canNext={!!dataSelecionada && !!horaSelecionada && !!clienteSelecionado && !!produtoSelecionado} />
+                <BotoesNavegacao canNext={false} />
               </div>
             )}
 
@@ -1207,10 +1215,20 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                 ) : (
                   <button
                     onClick={handleProxPasso}
-                    className="w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-500/20"
+                    disabled={creatingAgendamento}
+                    className={"w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] " + 
+                      (creatingAgendamento 
+                        ? 'bg-emerald-400/50 text-white/70 cursor-not-allowed' 
+                        : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-500/20')
+                    }
                   >
-                    <Check className="h-5 w-5" />
-                    Criar Agendamento
+                    {creatingAgendamento ? (
+                      <><Loader2 className="h-5 w-5 animate-spin" />
+                        Criando Agendamento...</>
+                    ) : (
+                      <><Check className="h-5 w-5" />
+                        Criar Agendamento</>
+                    )}
                   </button>
                 )}
               </div>

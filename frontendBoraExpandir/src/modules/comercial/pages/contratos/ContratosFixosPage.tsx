@@ -1,9 +1,10 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, FileText, Loader2, PencilLine, CheckCircle2, Clock, CreditCard, ChevronRight, Filter, Ban, ShieldAlert, XCircle, Receipt } from 'lucide-react'
+import { AlertTriangle, FileText, Loader2, PencilLine, CheckCircle2, Clock, CreditCard, ChevronRight, Ban, ShieldAlert, XCircle, Receipt, Trash2 } from 'lucide-react'
 import { Badge } from '@/modules/shared/components/ui/badge'
-import comercialService from '../../services/comercialService'
+import comercialService, { apagarContratoServico } from '../../services/comercialService'
 import type { ContratoServico } from '../../../types/comercial'
+import { useToast, ToastContainer } from '@/components/ui/Toast'
 
 const assinaturaVariant = (status: string) => {
   if (status === 'aprovado') return 'success'
@@ -65,9 +66,12 @@ const STATUS_FILTERS = [
 
 export default function ContratosFixosPage() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [contratos, setContratos] = useState<ContratoServico[]>([])
   const [statusFilter, setStatusFilter] = useState('TODOS')
+  const [deletingContrato, setDeletingContrato] = useState<ContratoServico | null>(null)
+  const [confirmandoDelete, setConfirmandoDelete] = useState(false)
 
   useEffect(() => {
     const fetchContratos = async () => {
@@ -108,6 +112,21 @@ export default function ContratosFixosPage() {
     if (statusFilter === 'TODOS') return contratos
     return contratos.filter(c => (c as any).status_contrato === statusFilter || (!( c as any).status_contrato && statusFilter === 'ATIVO'))
   }, [contratos, statusFilter])
+
+  const handleConfirmDelete = async () => {
+    if (!deletingContrato) return
+    try {
+      setConfirmandoDelete(true)
+      await apagarContratoServico(deletingContrato.id)
+      toast.success('Contrato apagado com sucesso')
+      setContratos(prev => prev.filter(c => c.id !== deletingContrato.id))
+      setDeletingContrato(null)
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao apagar contrato')
+    } finally {
+      setConfirmandoDelete(false)
+    }
+  }
 
   const handleOpenContrato = (contrato: ContratoServico) => {
     if (contrato.is_draft) {
@@ -180,10 +199,13 @@ export default function ContratosFixosPage() {
             const hasDraftError = contrato.draft_dados?.__erroGeracao?.ativo
 
             return (
-              <button
+              <div
                 key={contrato.id}
                 onClick={() => handleOpenContrato(contrato)}
-                className={`w-full text-left bg-white dark:bg-neutral-900 border rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-200 group hover:shadow-lg active:scale-[0.99] ${
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && handleOpenContrato(contrato)}
+                className={`w-full cursor-pointer text-left bg-white dark:bg-neutral-900 border rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-200 group hover:shadow-lg active:scale-[0.99] ${
                   hasDraftError
                     ? 'border-red-200 dark:border-red-900/30 hover:border-red-300 dark:hover:border-red-800'
                     : 'border-gray-200 dark:border-neutral-800 hover:border-emerald-300 dark:hover:border-emerald-700'
@@ -243,12 +265,57 @@ export default function ContratosFixosPage() {
                     </Badge>
                   )}
                   <ChevronRight className="w-4 h-4 text-gray-400 hidden md:block group-hover:text-emerald-500 transition-colors ml-1" />
+                  {!contrato.contrato_gerado_url && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setDeletingContrato(contrato)
+                        setMotivoCancelamento('')
+                      }}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors ml-1"
+                      title="Apagar contrato"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
-              </button>
+              </div>
             )
           })}
         </div>
       )}
+
+      {deletingContrato && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-gray-200 dark:border-neutral-800 p-6 w-full max-w-md shadow-xl space-y-4">
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">Apagar contrato</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Tem certeza que deseja apagar o contrato de{' '}
+              <span className="font-semibold">{getServicoNome(deletingContrato)}</span> -{' '}
+              <span className="font-semibold">{getClienteNome(deletingContrato)}</span>?
+              Esta acao nao pode ser desfeita.
+            </p>
+            <div className="flex items-center gap-3 justify-end">
+              <button
+                onClick={() => setDeletingContrato(null)}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={confirmandoDelete}
+                className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-60 transition-all active:scale-95 flex items-center gap-2"
+              >
+                {confirmandoDelete ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Apagar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
     </div>
   )
 }

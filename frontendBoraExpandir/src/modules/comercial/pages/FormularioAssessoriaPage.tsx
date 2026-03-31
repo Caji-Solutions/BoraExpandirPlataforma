@@ -109,6 +109,7 @@ export default function FormularioAssessoriaPage() {
   const [erroGeracao, setErroGeracao] = useState<any>(null)
   const [dependentes, setDependentes] = useState<Array<{nome: string, grau: string, data_nascimento: string, valor: string}>>([])
   const [valorTitular, setValorTitular] = useState('')
+  const [titularesAdicionais, setTitularesAdicionais] = useState<Array<{ nome: string; valor: string }>>([])
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [consultoriaDesconto, setConsultoriaDesconto] = useState<{ total: number; valor: number } | null>(null)
   const [consultoriaOverride, setConsultoriaOverride] = useState('')
@@ -119,12 +120,17 @@ export default function FormularioAssessoriaPage() {
     return isNaN(n) ? 0 : n
   }
 
-  const valorFinalReal = Math.max(0, (parseNumericoLocal(formData.valor_desconto) || 0) - (consultoriaDesconto?.valor || 0))
+  const consultoriaValorEfetivo = consultoriaOverride.trim()
+    ? parseNumericoLocal(consultoriaOverride)
+    : (consultoriaDesconto?.valor || 0)
+  const valorFinalReal = Math.max(0, (parseNumericoLocal(formData.valor_desconto) || 0) - consultoriaValorEfetivo)
 
   // Auto-calcular valor_pavao quando titular ou dependentes mudam
   const valorTitularNum = parseNumericoLocal(valorTitular)
   const valorTotalCalculado = valorTitularNum > 0
-    ? valorTitularNum + dependentes.reduce((sum, dep) => sum + parseNumericoLocal(dep.valor || ''), 0)
+    ? valorTitularNum
+      + titularesAdicionais.reduce((sum, t) => sum + parseNumericoLocal(t.valor || ''), 0)
+      + dependentes.reduce((sum, dep) => sum + parseNumericoLocal(dep.valor || ''), 0)
     : 0
 
   const initializedRef = useRef(false)
@@ -188,7 +194,15 @@ export default function FormularioAssessoriaPage() {
       setDependentes([])
     }
 
-
+    try {
+      const titData = draft.titularesAdicionais ? JSON.parse(draft.titularesAdicionais) : []
+      setTitularesAdicionais(Array.isArray(titData) ? titData.map((t: any) => ({
+        nome: t.nome || '',
+        valor: t.valor || ''
+      })) : [])
+    } catch {
+      setTitularesAdicionais([])
+    }
 
     const etapaErro = Number(erro?.etapa || 4)
     const etapaPersistida = Number(data.etapa_fluxo || 1)
@@ -311,17 +325,26 @@ export default function FormularioAssessoriaPage() {
       payload.documento = normalizeCpf(payload.documento)
     }
 
+    const adicionaisText = titularesAdicionais.length > 0
+      ? `; ` + titularesAdicionais.map(t => `${t.nome} (Titular)`).filter(Boolean).join(' / ')
+      : ''
     const depText = dependentes.length > 0
       ? `; ` + dependentes.map(d => `${d.nome} (${d.grau})`).filter(Boolean).join(' / ')
       : ''
-    payload.descricao_pessoas = `${payload.nome} (Titular)${depText}`
+    payload.descricao_pessoas = `${payload.nome} (Titular)${adicionaisText}${depText}`
     payload.dependentes = JSON.stringify(dependentes)
+
+    if (titularesAdicionais.length > 0) {
+      payload.titularesAdicionais = JSON.stringify(titularesAdicionais)
+    }
 
     // Salvar valor do titular e recalcular valor_pavao se houver valores individuais
     const vTitularNum = parseNumerico(valorTitular) || 0
     if (vTitularNum > 0) {
       payload.valor_titular = valorTitular
-      const totalCalculado = vTitularNum + dependentes.reduce((sum, dep) => sum + (parseNumerico(dep.valor || '') || 0), 0)
+      const totalCalculado = vTitularNum
+        + titularesAdicionais.reduce((sum, t) => sum + (parseNumerico(t.valor || '') || 0), 0)
+        + dependentes.reduce((sum, dep) => sum + (parseNumerico(dep.valor || '') || 0), 0)
       payload.valor_pavao = formatarMoeda(String(totalCalculado))
     }
 
@@ -371,7 +394,7 @@ export default function FormularioAssessoriaPage() {
       if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData, etapaAtual, id, isLockedByGeracaoErro])
+  }, [formData, titularesAdicionais, etapaAtual, id, isLockedByGeracaoErro])
 
   const validateStep = (step: number): Record<string, string> => {
     const errors: Record<string, string> = {}
@@ -678,7 +701,15 @@ export default function FormularioAssessoriaPage() {
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Titulares e Dependentes (Descrição)</label>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-md">Total Membros: {1 + dependentes.length}</span>
+                  <span className="text-xs font-semibold px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-md">Total Membros: {1 + titularesAdicionais.length + dependentes.length}</span>
+                  <button
+                    type="button"
+                    disabled={saving || isLockedByGeracaoErro}
+                    onClick={() => setTitularesAdicionais(prev => [...prev, { nome: '', valor: '' }])}
+                    className="text-blue-600 hover:text-blue-700 font-medium text-sm disabled:opacity-50 flex items-center gap-1"
+                  >
+                    + Adicionar Outro Titular
+                  </button>
                   <button
                     type="button"
                     disabled={saving || isLockedByGeracaoErro}
@@ -707,7 +738,9 @@ export default function FormularioAssessoriaPage() {
                         // Recalcular total automaticamente
                         const titNum = parseNumericoLocal(e.target.value)
                         if (titNum > 0) {
-                          const total = titNum + dependentes.reduce((sum, dep) => sum + parseNumericoLocal(dep.valor || ''), 0)
+                          const total = titNum
+                            + titularesAdicionais.reduce((sum, t) => sum + parseNumericoLocal(t.valor || ''), 0)
+                            + dependentes.reduce((sum, dep) => sum + parseNumericoLocal(dep.valor || ''), 0)
                           setFormData(prev => ({ ...prev, valor_pavao: String(total) }))
                         }
                       }}
@@ -718,11 +751,72 @@ export default function FormularioAssessoriaPage() {
                     <div className="text-right">
                       <p className="text-[10px] text-gray-500 uppercase tracking-wider">Total Calculado</p>
                       <p className="text-lg font-bold text-emerald-600">€ {valorTotalCalculado}</p>
-                      <p className="text-[10px] text-gray-400">{1 + dependentes.length} membro(s)</p>
+                      <p className="text-[10px] text-gray-400">{1 + titularesAdicionais.length + dependentes.length} membro(s)</p>
                     </div>
                   )}
                 </div>
               </div>
+
+              {titularesAdicionais.length > 0 && (
+                <div className="bg-blue-50/50 dark:bg-blue-950/10 p-3 rounded-xl border border-blue-200/50 dark:border-blue-800/30 space-y-3 mt-2">
+                  {titularesAdicionais.map((tit, i) => (
+                    <div key={i} className="flex flex-col sm:flex-row gap-3 items-end bg-white dark:bg-neutral-800 p-3 rounded-lg border border-blue-100 dark:border-blue-900/30 relative group">
+                      <div className="flex-1 w-full">
+                        <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Nome Completo</label>
+                        <input
+                          type="text"
+                          disabled={saving || isLockedByGeracaoErro}
+                          value={tit.nome}
+                          onChange={(e) => setTitularesAdicionais(prev => prev.map((x, idx) => idx === i ? { ...x, nome: e.target.value } : x))}
+                          className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-neutral-900"
+                        />
+                      </div>
+                      <div className="w-full sm:w-28">
+                        <label className="block text-[10px] font-semibold text-blue-600 uppercase tracking-wider mb-1">Valor (€)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          placeholder="Ex: 1000"
+                          disabled={saving || isLockedByGeracaoErro}
+                          value={tit.valor || ''}
+                          onChange={(e) => {
+                            const newTits = titularesAdicionais.map((x, idx) => idx === i ? { ...x, valor: e.target.value } : x)
+                            setTitularesAdicionais(newTits)
+                            const titNum = parseNumericoLocal(valorTitular)
+                            if (titNum > 0) {
+                              const total = titNum
+                                + newTits.reduce((sum, t) => sum + parseNumericoLocal(t.valor || ''), 0)
+                                + dependentes.reduce((sum, dep) => sum + parseNumericoLocal(dep.valor || ''), 0)
+                              setFormData(prev => ({ ...prev, valor_pavao: String(total) }))
+                            }
+                          }}
+                          className="w-full border border-blue-200 dark:border-blue-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-neutral-900"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        disabled={saving || isLockedByGeracaoErro}
+                        onClick={() => {
+                          const newTits = titularesAdicionais.filter((_, idx) => idx !== i)
+                          setTitularesAdicionais(newTits)
+                          const titNum = parseNumericoLocal(valorTitular)
+                          if (titNum > 0) {
+                            const total = titNum
+                              + newTits.reduce((sum, t) => sum + parseNumericoLocal(t.valor || ''), 0)
+                              + dependentes.reduce((sum, dep) => sum + parseNumericoLocal(dep.valor || ''), 0)
+                            setFormData(prev => ({ ...prev, valor_pavao: String(total) }))
+                          }
+                        }}
+                        className="text-gray-400 hover:text-red-500 p-2 font-bold disabled:opacity-50 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 absolute -right-2 top-2 sm:relative sm:-right-0 sm:-top-0"
+                        title="Remover titular adicional"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {dependentes.length > 0 && (
                 <div className="bg-gray-50 dark:bg-neutral-800/50 p-3 rounded-xl border border-gray-200 dark:border-neutral-700 space-y-3 mt-1">
@@ -774,7 +868,9 @@ export default function FormularioAssessoriaPage() {
                             // Recalcular total
                             const titNum = parseNumericoLocal(valorTitular)
                             if (titNum > 0) {
-                              const total = titNum + newDeps.reduce((sum, dep) => sum + parseNumericoLocal(dep.valor || ''), 0)
+                              const total = titNum
+                                + titularesAdicionais.reduce((sum, t) => sum + parseNumericoLocal(t.valor || ''), 0)
+                                + newDeps.reduce((sum, dep) => sum + parseNumericoLocal(dep.valor || ''), 0)
                               setFormData(prev => ({ ...prev, valor_pavao: String(total) }))
                             }
                           }}
@@ -790,7 +886,9 @@ export default function FormularioAssessoriaPage() {
                           // Recalcular total
                           const titNum = parseNumericoLocal(valorTitular)
                           if (titNum > 0) {
-                            const total = titNum + newDeps.reduce((sum, dep) => sum + parseNumericoLocal(dep.valor || ''), 0)
+                            const total = titNum
+                              + titularesAdicionais.reduce((sum, t) => sum + parseNumericoLocal(t.valor || ''), 0)
+                              + newDeps.reduce((sum, dep) => sum + parseNumericoLocal(dep.valor || ''), 0)
                             setFormData(prev => ({ ...prev, valor_pavao: String(total) }))
                           }
                         }}

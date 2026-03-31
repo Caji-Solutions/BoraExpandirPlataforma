@@ -105,6 +105,18 @@ class ContratoServicoRepository {
     return data
   }
 
+  async deleteContrato(id: string) {
+    const { error } = await supabase
+      .from('contratos_servicos')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('[ContratoServicoRepository] Erro ao apagar contrato:', error)
+      throw error
+    }
+  }
+
   /**
    * Busca um contrato pelo ID do documento da Autentique.
    */

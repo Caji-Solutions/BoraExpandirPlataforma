@@ -1192,16 +1192,8 @@ class JuridicoController {
             if (agError) throw agError;
             if (!agendamento) return res.status(404).json({ message: 'Agendamento nao encontrado' });
 
-            // Atualizar status do agendamento
-            const { error: updateAgError } = await supabase
-                .from('agendamentos')
-                .update({ status: 'em_assessoria' })
-                .eq('id', id);
-
-            if (updateAgError) throw updateAgError;
-
             if (agendamento.cliente_id) {
-                // Atualizar stage do cliente
+                // Atualizar stage do cliente — a timeline e controlada por clientes.stage
                 const { error: updateClienteError } = await supabase
                     .from('clientes')
                     .update({ stage: 'assessoria_andamento', status: 'assessoria_andamento' })
