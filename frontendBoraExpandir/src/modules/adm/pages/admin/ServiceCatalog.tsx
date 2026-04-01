@@ -26,6 +26,8 @@ import {
   Layers,
   ChevronDown,
   ChevronRight,
+  Calendar,
+  Wrench,
 } from "lucide-react";
 import {
   Table,
@@ -538,6 +540,67 @@ export default function ServiceCatalog() {
           </DialogHeader>
 
           <div className="p-8 space-y-8">
+            {/* ─── SELETOR DE CATEGORIA ─── */}
+            <div className="space-y-3">
+              <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">
+                Tipo de Serviço
+              </Label>
+              <div className="grid grid-cols-3 gap-3">
+                {/* Consultoria */}
+                <button
+                  type="button"
+                  onClick={() => handleSelectCategoria("consultoria")}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 text-sm font-bold transition-all ${
+                    categoria === "consultoria"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-muted/30 text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                  }`}
+                >
+                  <Calendar className="h-6 w-6" />
+                  <span>Consultoria</span>
+                  <span className="text-xs font-normal opacity-70 text-center leading-tight">
+                    Requer agendamento
+                  </span>
+                </button>
+
+                {/* Assessoria */}
+                <button
+                  type="button"
+                  onClick={() => handleSelectCategoria("assessoria")}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 text-sm font-bold transition-all ${
+                    categoria === "assessoria"
+                      ? "border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-400"
+                      : "border-border bg-muted/30 text-muted-foreground hover:border-blue-500/50 hover:text-foreground"
+                  }`}
+                >
+                  <FileText className="h-6 w-6" />
+                  <span>Assessoria</span>
+                  <span className="text-xs font-normal opacity-70 text-center leading-tight">
+                    Gera contrato formal
+                  </span>
+                </button>
+
+                {/* Diverso */}
+                <button
+                  type="button"
+                  onClick={() => handleSelectCategoria("diverso")}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 text-sm font-bold transition-all ${
+                    categoria === "diverso"
+                      ? "border-orange-500 bg-orange-500/10 text-orange-700 dark:text-orange-400"
+                      : "border-border bg-muted/30 text-muted-foreground hover:border-orange-500/50 hover:text-foreground"
+                  }`}
+                >
+                  <Wrench className="h-6 w-6" />
+                  <span>Diverso</span>
+                  <span className="text-xs font-normal opacity-70 text-center leading-tight">
+                    Serviço avulso
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <Separator className="bg-border/50" />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2 md:col-span-2">
                 <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Nome do Servico</Label>
