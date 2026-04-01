@@ -506,8 +506,8 @@ class ClienteController {
 
   async registerLead(req: any, res: any) {
     try {
-      const { nome, email, whatsapp, parceiro_id, criado_por, criado_por_nome } = req.body
-      const whatsappNormalizado = normalizePhone(whatsapp)
+      const { nome, email, whatsapp, telefone, parceiro_id, criado_por, criado_por_nome } = req.body
+      const whatsappNormalizado = normalizePhone(whatsapp || telefone)
 
       if (!nome || !whatsappNormalizado) {
         return res.status(400).json({ message: 'Nome e WhatsApp são obrigatórios' })
@@ -520,6 +520,7 @@ class ClienteController {
         whatsapp: whatsappNormalizado,
         parceiro_id: parceiro_id || null,
         status: 'LEAD',
+        stage: 'formularios',
         criado_por: criado_por || null,
         criado_por_nome: criado_por_nome || null,
       }

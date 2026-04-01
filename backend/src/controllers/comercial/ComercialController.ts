@@ -192,13 +192,18 @@ class ComercialController {
             // Atualizar stage do cliente baseado no novo agendamento
             if (cliente_id) {
                 try {
-                    const [{ data: clienteAtual }, { data: outrosAgendamentos }, { data: servicoAgendado }] = await Promise.all([
+                    const [{ data: clienteAtual, error: clienteErr }, { data: outrosAgendamentos }, { data: servicoAgendado, error: servicoErr }] = await Promise.all([
                         supabase.from('clientes').select('stage, status').eq('id', cliente_id).single(),
                         supabase.from('agendamentos').select('id').eq('cliente_id', cliente_id).neq('id', createdData.id),
                         supabase.from('catalogo_servicos').select('tipo').eq('id', produto_id).single()
                     ])
+
+                    if (clienteErr) console.warn('[ComercialController] Erro ao buscar cliente para stage:', clienteErr)
+                    if (servicoErr) console.warn('[ComercialController] Erro ao buscar servico para stage:', servicoErr)
+
                     const isPrimeiroAgendamento = !outrosAgendamentos || outrosAgendamentos.length === 0
                     const isServicoFixo = servicoAgendado?.tipo === 'fixo'
+                    console.log(`[ComercialController] Stage check: cliente_id=${cliente_id}, stageAtual=${clienteAtual?.stage}, tipoServico=${servicoAgendado?.tipo}, isFixo=${isServicoFixo}, primeiro=${isPrimeiroAgendamento}`)
 
                     // Stages que já estão adiante da assessoria — não retroagir
                     const stagesAdiante = ['assessoria_andamento', 'assessoria_finalizada']
@@ -206,11 +211,15 @@ class ComercialController {
 
                     if (isServicoFixo && !stagesAdiante.includes(stageAtual)) {
                         // Qualquer agendamento de serviço fixo (assessoria) -> aguardando_assessoria
-                        await supabase.from('clientes').update({
+                        const { error: updateErr } = await supabase.from('clientes').update({
                             stage: 'aguardando_assessoria',
                             status: 'aguardando_assessoria'
                         }).eq('id', cliente_id)
-                        console.log(`[ComercialController] Cliente ${cliente_id} movido para aguardando_assessoria (servico fixo)`)
+                        if (updateErr) {
+                            console.error(`[ComercialController] Erro ao atualizar stage para aguardando_assessoria:`, updateErr)
+                        } else {
+                            console.log(`[ComercialController] Cliente ${cliente_id} movido para aguardando_assessoria (servico fixo)`)
+                        }
                     } else if (!isServicoFixo && isPrimeiroAgendamento) {
                         // Primeiro agendamento de serviço variável (consultoria) -> aguardando_consultoria
                         const stagesConsultoriaAdiante = ['em_consultoria', 'clientes_c2', 'aguardando_assessoria', 'assessoria_andamento', 'assessoria_finalizada']
@@ -953,22 +962,30 @@ class ComercialController {
 
             const contrato = await ContratoServicoRepository.createContrato(contratoPayload)
 
-            // Verificar se e o primeiro contrato/produto do cliente
-            const { count: totalContratos } = await supabase
-                .from('contratos_servicos')
-                .select('id', { count: 'exact', head: true })
-                .eq('cliente_id', cliente_id)
+            // Atualizar stage do cliente para aguardando_assessoria (servico fixo)
+            // Só não atualiza se o cliente já está em stages posteriores
+            const stagesAdiante = ['assessoria_andamento', 'assessoria_finalizada']
+            const stageAtual = cliente.stage || ''
 
-            // Se for o primeiro contrato (assessoria), pular timeline para aguardando_assessoria
-            if ((totalContratos || 0) <= 1) {
-                await supabase.from('clientes').update({ stage: 'aguardando_assessoria', status: 'aguardando_assessoria' }).eq('id', cliente_id);
+            if (!stagesAdiante.includes(stageAtual)) {
+                const { error: stageError } = await supabase
+                    .from('clientes')
+                    .update({ stage: 'aguardando_assessoria', status: 'aguardando_assessoria', atualizado_em: new Date().toISOString() })
+                    .eq('id', cliente_id);
+
+                if (stageError) {
+                    console.error(`[ComercialController] Erro ao atualizar stage do cliente ${cliente_id} para aguardando_assessoria:`, stageError)
+                } else {
+                    console.log(`[ComercialController] Cliente ${cliente_id} movido para aguardando_assessoria (contrato fixo criado, stage anterior: ${stageAtual || 'null'})`)
+                }
+
                 const { data: processoAtivo } = await supabase
                     .from('processos')
                     .select('id')
                     .eq('cliente_id', cliente_id)
                     .order('criado_em', { ascending: false })
                     .limit(1)
-                    .single();
+                    .maybeSingle();
                 if (processoAtivo && processoAtivo.id) {
                    await supabase.from('processos').update({
                         status: 'aguardando_assessoria',

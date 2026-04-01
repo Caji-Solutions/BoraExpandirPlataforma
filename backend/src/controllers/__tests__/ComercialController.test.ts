@@ -552,7 +552,7 @@ describe('ComercialController - Contract Stage Progression', () => {
         (ContratoServicoRepository.getUltimoContratoComDados as any).mockResolvedValue(null);
         (ContratoServicoRepository.getContratoById as any).mockResolvedValue(mockPayload);
 
-        // Mock supabase para retornar count=1 (primeiro contrato) e lidar com updates
+        // Mock supabase para lidar com queries e updates
         const { supabase: supabaseMock } = await import('../../config/SupabaseClient');
         const mockClienteUpdateEq = vi.fn().mockResolvedValue({ error: null });
         const mockClienteUpdate = vi.fn().mockReturnValue({ eq: mockClienteUpdateEq });
@@ -560,13 +560,6 @@ describe('ComercialController - Contract Stage Progression', () => {
         const mockProcessoUpdate = vi.fn().mockReturnValue({ eq: mockProcessoUpdateEq });
 
         (supabaseMock.from as any).mockImplementation((table: string) => {
-            if (table === 'contratos_servicos') {
-                return {
-                    select: vi.fn().mockReturnValue({
-                        eq: vi.fn().mockResolvedValue({ count: 1, error: null })
-                    })
-                };
-            }
             if (table === 'clientes') {
                 return {
                     select: vi.fn().mockReturnValue({
@@ -583,7 +576,7 @@ describe('ComercialController - Contract Stage Progression', () => {
                         eq: vi.fn().mockReturnValue({
                             order: vi.fn().mockReturnValue({
                                 limit: vi.fn().mockReturnValue({
-                                    single: vi.fn().mockResolvedValue({ data: { id: 'proc-1' }, error: null })
+                                    maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'proc-1' }, error: null })
                                 })
                             })
                         })
@@ -615,7 +608,7 @@ describe('ComercialController - Contract Stage Progression', () => {
             });
 
         expect(res.status).toBe(201);
-        expect(mockClienteUpdate).toHaveBeenCalledWith({ stage: 'aguardando_assessoria', status: 'aguardando_assessoria' });
+        expect(mockClienteUpdate).toHaveBeenCalledWith(expect.objectContaining({ stage: 'aguardando_assessoria', status: 'aguardando_assessoria' }));
         expect(mockProcessoUpdate).toHaveBeenCalledWith(expect.objectContaining({
             status: 'aguardando_assessoria',
             tipo_servico: 'Assessoria',
