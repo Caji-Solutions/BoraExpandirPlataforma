@@ -601,6 +601,7 @@ export default function ServiceCatalog() {
 
             <Separator className="bg-border/50" />
 
+            {categoria && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2 md:col-span-2">
                 <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Nome do Servico</Label>
@@ -612,7 +613,8 @@ export default function ServiceCatalog() {
                 />
               </div>
 
-              {/* Toggle: É Agendável? */}
+              {/* Toggle: É Agendável? — apenas para Diverso (Consultoria e Assessoria são travadas) */}
+              {categoria === "diverso" && (
               <div className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-xl">
                 <div className="space-y-0.5">
                   <Label className="text-sm font-bold">É Agendável?</Label>
@@ -623,8 +625,10 @@ export default function ServiceCatalog() {
                   onCheckedChange={(val) => setFormData({ ...formData, isAgendavel: val })}
                 />
               </div>
+              )}
 
               {/* Tipo de Preço */}
+              {categoria !== "assessoria" && (
               <div className="space-y-2 md:col-span-2">
                 <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo de Preço</Label>
                 <div className="flex gap-3">
@@ -654,8 +658,9 @@ export default function ServiceCatalog() {
                   </button>
                 </div>
               </div>
+              )}
 
-              {formData.tipoPreco === 'fixo' && (
+              {formData.tipoPreco === "fixo" && categoria !== "assessoria" && (
                 <div className="space-y-2">
                   <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">
                     Valor (EUR)
@@ -673,8 +678,12 @@ export default function ServiceCatalog() {
                 </div>
               )}
 
+              {/* Duração — oculta para Assessoria; label contextual para Consultoria */}
+              {categoria !== "assessoria" && (
               <div className="space-y-2">
-                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Duracao Estimada</Label>
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">
+                  {categoria === "consultoria" ? "Duração da Sessão" : "Duração Estimada"}
+                </Label>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -699,27 +708,54 @@ export default function ServiceCatalog() {
                   </Select>
                 </div>
               </div>
+              )}
 
-              {/* Contrato Vinculado (opcional) */}
+              {/* Contrato Vinculado:
+                  - Assessoria: campo principal em destaque, obrigatório (asterisco)
+                  - Diverso: campo opcional
+                  - Consultoria: campo oculto */}
+              {(categoria === "assessoria" || categoria === "diverso") && (
               <div className="space-y-2 md:col-span-2">
                 <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">
-                  Contrato Vinculado <span className="text-muted-foreground font-normal">(Opcional)</span>
+                  Contrato Vinculado
+                  {categoria === "assessoria" ? (
+                    <span className="ml-1 text-destructive font-black">*</span>
+                  ) : (
+                    <span className="text-muted-foreground font-normal"> (Opcional)</span>
+                  )}
                 </Label>
+                {categoria === "assessoria" && (
+                  <p className="text-xs text-muted-foreground ml-1 -mt-1">
+                    Selecione o template de contrato que será gerado para este serviço
+                  </p>
+                )}
                 <Select
                   value={formData.contratoTemplateId || "none"}
                   onValueChange={(val) => setFormData({ ...formData, contratoTemplateId: val === "none" ? null : val })}
                 >
-                  <SelectTrigger className="w-full h-12 border-border bg-muted/30 rounded-xl px-4">
-                    <SelectValue placeholder="Selecione um template de contrato..." />
+                  <SelectTrigger className={`w-full h-12 rounded-xl px-4 ${
+                    categoria === "assessoria"
+                      ? "border-2 border-blue-500/50 bg-blue-500/5 focus:border-blue-500"
+                      : "border-border bg-muted/30"
+                  }`}>
+                    <SelectValue placeholder={
+                      contratoTemplates.length === 0
+                        ? "Nenhum contrato disponível"
+                        : "Selecione um template de contrato..."
+                    } />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Nenhum</SelectItem>
+                    {categoria !== "assessoria" && <SelectItem value="none">Nenhum</SelectItem>}
                     {contratoTemplates.map((t) => (
                       <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>
                     ))}
+                    {contratoTemplates.length === 0 && (
+                      <SelectItem value="__empty__" disabled>Nenhum contrato cadastrado</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
+              )}
 
               {/* Toggle: Possui Subserviços */}
               <div className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-xl md:col-span-2">
@@ -747,6 +783,7 @@ export default function ServiceCatalog() {
               </div>
 
             </div>
+            )}
 
             {/* ─── SEÇÃO DE DOCUMENTOS / SUBSERVIÇOS ─── */}
             <Separator className="bg-border/50" />
@@ -942,9 +979,9 @@ export default function ServiceCatalog() {
               <Button variant="ghost" onClick={() => setIsServiceDialogOpen(false)} disabled={isSaving} className="rounded-xl px-6 font-bold text-muted-foreground">
                 Cancelar
               </Button>
-              <Button onClick={handleSaveService} disabled={isSaving} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl px-10 font-bold shadow-xl shadow-primary/20 h-12 transition-all active:scale-95">
+              <Button onClick={handleSaveService} disabled={isSaving || !categoria} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl px-10 font-bold shadow-xl shadow-primary/20 h-12 transition-all active:scale-95">
                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {editingService ? "Atualizar Servico" : "Confirmar Cadastro"}
+                {editingService ? "Salvar Alterações" : "Cadastrar Serviço"}
               </Button>
             </div>
           </DialogFooter>
