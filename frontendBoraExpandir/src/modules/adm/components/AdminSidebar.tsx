@@ -11,12 +11,10 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
 const mainMenuItems = [
   { title: "Dashboard Mestre", url: "/adm", icon: Activity },
   { title: "DNA do Cliente", url: "/adm/dna", icon: Dna },
-  { title: "Auditoria & Logs", url: "/adm/audit", icon: FileText },
 ];
 
 const adminMenuItems = [
-  { title: "Cockpit do Dono", url: "/adm/cockpit", icon: Activity },
-  { title: "Auditoria & Aprovações", url: "/adm/approvals", icon: ShieldAlert },
+  { title: "Meus Contratos", url: "/adm/contratos", icon: FileText },
   { title: "Configurar Serviços", url: "/adm/services", icon: Settings2 },
   { title: "Gestão de Equipe", url: "/adm/team", icon: Users },
   { title: "Metas Comerciais", url: "/adm/metas", icon: Target },

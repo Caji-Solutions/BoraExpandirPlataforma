@@ -9,6 +9,8 @@ import AuditoriaAprovacoes from "./pages/admin/AuditoriaAprovacoes";
 import GestaoTradutores from "./pages/admin/GestaoTradutores";
 import PagamentosAdmin from "./pages/admin/PagamentosAdmin";
 import FinanceiroPrecos from "./pages/admin/FinanceiroPrecos";
+import ContratosTemplatesPage from "./pages/admin/ContratosTemplatesPage";
+import ContratoEditorPage from "./pages/admin/ContratoEditorPage";
 import { Config } from "@/components/ui/Config";
 import { ClientDNAPage } from "@/components/ui/ClientDNA";
 import MetasComerciais from "./pages/admin/MetasComerciais";
@@ -97,9 +99,8 @@ const App = () => (
       <Route path="team" element={<UserManagement />} />
       <Route path="services" element={<ServiceCatalog />} />
       <Route path="tradutores" element={<GestaoTradutores />} />
-      <Route path="audit" element={<AuditLogs />} />
-      <Route path="cockpit" element={<CockpitDoDoNo />} />
-      <Route path="approvals" element={<AuditoriaAprovacoes />} />
+      <Route path="contratos" element={<ContratosTemplatesPage />} />
+      <Route path="contratos/:id" element={<ContratoEditorPage />} />
       <Route path="dna" element={<ClientDNAPage />} />
 
       {/* Rotas Financeiras */}
