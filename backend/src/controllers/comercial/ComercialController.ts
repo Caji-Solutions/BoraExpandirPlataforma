@@ -189,11 +189,11 @@ class ComercialController {
             const createdData = await ComercialRepository.createAgendamento(agendamento)
             console.log('Agendamento criado com sucesso:', createdData)
 
-            // Atualizar stage do cliente baseado no novo agendamento
+            // Atualizar stage e atribuição do cliente baseado no novo agendamento
             if (cliente_id) {
                 try {
                     const [{ data: clienteAtual, error: clienteErr }, { data: outrosAgendamentos }, { data: servicoAgendado, error: servicoErr }] = await Promise.all([
-                        supabase.from('clientes').select('stage, status').eq('id', cliente_id).single(),
+                        supabase.from('clientes').select('stage, status, criado_por').eq('id', cliente_id).single(),
                         supabase.from('agendamentos').select('id').eq('cliente_id', cliente_id).neq('id', createdData.id),
                         supabase.from('catalogo_servicos').select('tipo').eq('id', produto_id).single()
                     ])
@@ -205,7 +205,23 @@ class ComercialController {
                     const isServicoFixo = servicoAgendado?.tipo === 'fixo'
                     console.log(`[ComercialController] Stage check: cliente_id=${cliente_id}, stageAtual=${clienteAtual?.stage}, tipoServico=${servicoAgendado?.tipo}, isFixo=${isServicoFixo}, primeiro=${isPrimeiroAgendamento}`)
 
-                    // Stages que já estão adiante da assessoria — não retroagir
+                    // 1. Atribuir 'criado_por' se estiver vago (para comissao de quem converteu o lead/cliente agora)
+                    if (clienteAtual && !clienteAtual.criado_por && (usuario_id || req.userId)) {
+                        const targetUsuarioId = usuario_id || req.userId;
+                        const { data: profile } = await supabase
+                            .from('profiles')
+                            .select('full_name')
+                            .eq('id', targetUsuarioId)
+                            .maybeSingle();
+
+                        console.log(`[ComercialController] Atribuindo criado_por ${targetUsuarioId} ao cliente ${cliente_id}`);
+                        await supabase.from('clientes').update({
+                            criado_por: targetUsuarioId,
+                            criado_por_nome: profile?.full_name || null
+                        }).eq('id', cliente_id);
+                    }
+
+                    // 2. Stages que já estão adiante da assessoria — não retroagir
                     const stagesAdiante = ['assessoria_andamento', 'assessoria_finalizada']
                     const stageAtual = clienteAtual?.stage || ''
 
@@ -239,7 +255,7 @@ class ComercialController {
                         console.log(`[ComercialController] Cliente ${cliente_id} restaurado de cancelado para aguardando_consultoria`)
                     }
                 } catch (stageErr) {
-                    console.warn('[ComercialController] Erro ao atualizar stage do cliente apos agendamento:', stageErr)
+                    console.warn('[ComercialController] Erro ao atualizar stage/criado_por do cliente apos agendamento:', stageErr)
                 }
             }
 

@@ -10,7 +10,9 @@ import {
     ShieldCheck, 
     DollarSign, 
     Calendar,
-    FileSearch
+    FileSearch,
+    Languages,
+    FileCheck
 } from 'lucide-react';
 
 interface ProcessActionProps {
@@ -34,13 +36,33 @@ export function ProcessAction({
     const ALL_BUTTONS = [
         {
             id: 'solicitar_documentos',
-            name: activeProfile?.role === 'comercial' ? 'Solicitar Orçamento Apostilagem' : 'Solicitar Documento',
+            name: 'Solicitar Documento',
             icon: FileText,
             color: 'blue',
-            description: activeProfile?.role === 'comercial' ? 'Solicitar orçamento de apostilamento' : 'Registrar pendência de arquivo no sistema',
-            roles: ['super_admin', 'juridico', 'comercial', 'administrativo', 'tradutor'],
+            description: 'Registrar pendência de arquivo no sistema',
+            roles: ['super_admin', 'juridico', 'administrativo'],
             area: 'juridico',
             isJuridico: true
+        },
+        {
+            id: 'solicitar_apostilagem',
+            name: 'Solicitar Apostilagem',
+            icon: FileCheck,
+            color: 'blue',
+            description: 'Solicitar orçamento de apostilamento de documentos',
+            roles: ['super_admin', 'comercial'],
+            area: 'comercial',
+            isJuridico: false
+        },
+        {
+            id: 'solicitar_traducao',
+            name: 'Solicitar Tradução',
+            icon: Languages,
+            color: 'indigo',
+            description: 'Solicitar orçamento para tradução juramentada',
+            roles: ['super_admin', 'comercial'],
+            area: 'comercial',
+            isJuridico: false
         },
         {
             id: 'solicitar_formulario',
@@ -74,10 +96,10 @@ export function ProcessAction({
         },
         {
             id: 'comercial_agenda',
-            name: activeProfile?.role === 'comercial' ? 'Agendar Consultoria' : 'Agendar Reunião',
+            name: 'Agendamento',
             icon: Calendar,
             color: 'blue',
-            description: activeProfile?.role === 'comercial' ? 'Agendar consultoria inicial' : 'Marcar call de boas-vindas comercial',
+            description: activeProfile?.role === 'comercial' ? 'Agendar consultoria inicial' : 'Marcar reunião comercial',
             roles: ['comercial', 'super_admin'],
             area: 'comercial',
             isJuridico: false
@@ -95,6 +117,7 @@ export function ProcessAction({
     ];
 
     const handleAction = (actionId: string) => {
+        console.log(`[ProcessAction] handleAction: ${actionId}`);
         const btn = ALL_BUTTONS.find(b => b.id === actionId);
         
         // Regra de Impersonation: Se for admin clicando em função jurídica e houver um responsável

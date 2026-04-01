@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Copy, Check, Link as LinkIcon, TrendingUp, Users, Zap } from 'lucide-react';
+import { Copy, Check, Link as LinkIcon, TrendingUp, Users, Zap, Rocket, Calendar, MessageCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/modules/shared/components/ui/badge';
 import { Client } from '../../../cliente/types';
 import { parceiroService } from '../../../cliente/services/parceiroService';
@@ -44,15 +45,41 @@ const statusConfig = {
 
 interface ParceiroProps {
   client: Client;
+  bannerOnly?: boolean;
 }
 
-export default function Parceiro({ client }: ParceiroProps) {
+export default function Parceiro({ client, bannerOnly = false }: ParceiroProps) {
+  const navigate = useNavigate();
   const [metrics, setMetrics] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [termoAceito, setTermoAceito] = useState<boolean | null>(null);
   const [aceitaTermoCheckbox, setAceitaTermoCheckbox] = useState(false);
   const [isAceitandoTermo, setIsAceitandoTermo] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
+
+  const handleBecomeClient = async () => {
+    if (!client?.id) return;
+    try {
+      setIsConverting(true);
+      
+      // Atualizar status para LEAD no backend
+      await parceiroService.becomeLead(client.id);
+      
+      // Preparar redirecionamento WhatsApp (Número do financeiro/suporte oficial)
+      const msg = encodeURIComponent(`Olá, sou ${client.name}, sou parceiro e gostaria de me tornar cliente.`);
+      const phone = "552997892095"; // Número oficial de leads
+      const waUrl = `https://wa.me/${phone}?text=${msg}`;
+      
+      window.open(waUrl, '_blank');
+      
+    } catch (error) {
+      console.error('Erro ao converter para lead:', error);
+      alert('Erro ao processar solicitação. Por favor, tente novamente ou contate o suporte.');
+    } finally {
+      setIsConverting(false);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -178,6 +205,54 @@ export default function Parceiro({ client }: ParceiroProps) {
     );
   }
 
+  if (bannerOnly) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <div>
+          <h1 className="text-4xl sm:text-5xl font-light tracking-tight text-gray-900 dark:text-white">Bem-vindo, Parceiro!</h1>
+          <p className="text-lg text-gray-500 dark:text-gray-400 font-light mt-2">Escolha uma opção para começar ou veja suas métricas no menu ao lado.</p>
+        </div>
+
+        {/* Torne-se Cliente - CTA Card (Same as in main dashboard) */}
+        <div className="relative group overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 p-1 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1 mt-8">
+          <div className="absolute top-0 right-0 p-8 opacity-10 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform duration-700">
+             <Rocket size={120} />
+          </div>
+          
+          <div className="relative bg-white dark:bg-gray-900 rounded-[calc(1.5rem-2px)] p-8 sm:p-10 flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="space-y-4 max-w-2xl text-center md:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider">
+                <Zap size={14} className="animate-pulse" />
+                Oportunidade Exclusiva
+              </div>
+              <h3 className="text-3xl sm:text-4xl font-light text-gray-900 dark:text-white tracking-tight leading-tight">
+                Inicie seu próprio <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">processo</span>
+              </h3>
+              <p className="text-lg text-gray-600 dark:text-gray-400 font-light max-w-xl">
+                Como nosso parceiro, você tem condições especiais para realizar seu próprio processo de cidadania ou visto. Comece sua jornada internacional hoje mesmo!
+              </p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+              <button 
+                onClick={handleBecomeClient}
+                disabled={isConverting}
+                className="group flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold rounded-2xl transition-all duration-300 shadow-[0_10px_20px_-10px_rgba(37,99,235,0.5)] hover:shadow-[0_20px_30px_-10px_rgba(37,99,235,0.5)] transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {isConverting ? (
+                  <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <MessageCircle size={20} className="group-hover:rotate-12 transition-transform" />
+                )}
+                {isConverting ? 'Processando...' : 'Se tornar cliente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header */}
@@ -295,6 +370,43 @@ export default function Parceiro({ client }: ParceiroProps) {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Torne-se Cliente - CTA Card */}
+      <div className="relative group overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 p-1 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1">
+        <div className="absolute top-0 right-0 p-8 opacity-10 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform duration-700">
+           <Rocket size={120} />
+        </div>
+        
+        <div className="relative bg-white dark:bg-gray-900 rounded-[calc(1.5rem-2px)] p-8 sm:p-10 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="space-y-4 max-w-2xl text-center md:text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider">
+              <Zap size={14} className="animate-pulse" />
+              Oportunidade Exclusiva
+            </div>
+            <h3 className="text-3xl sm:text-4xl font-light text-gray-900 dark:text-white tracking-tight leading-tight">
+              Transforme sua parceria em <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">sucesso pessoal</span>
+            </h3>
+            <p className="text-lg text-gray-600 dark:text-gray-400 font-light max-w-xl">
+              Como nosso parceiro, você tem condições especiais para iniciar seu próprio processo de cidadania ou visto. Comece sua jornada internacional hoje mesmo!
+            </p>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+            <button 
+              onClick={handleBecomeClient}
+              disabled={isConverting}
+              className="group flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold rounded-2xl transition-all duration-300 shadow-[0_10px_20px_-10px_rgba(37,99,235,0.5)] hover:shadow-[0_20px_30px_-10px_rgba(37,99,235,0.5)] transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {isConverting ? (
+                <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <MessageCircle size={20} className="group-hover:rotate-12 transition-transform" />
+              )}
+              {isConverting ? 'Processando...' : 'Se tornar cliente'}
+            </button>
+          </div>
         </div>
       </div>
 

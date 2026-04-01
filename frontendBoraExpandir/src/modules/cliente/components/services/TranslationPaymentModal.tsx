@@ -41,6 +41,7 @@ export function TranslationQuoteModal({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    console.log(`[TranslationQuoteModal] useEffect - isOpen: ${isOpen}, docs: ${allDocuments?.length || 0}`);
     if (isOpen) {
       initializeFlow()
     } else {
@@ -48,19 +49,24 @@ export function TranslationQuoteModal({
       setComprovanteFile(null)
       setError(null)
     }
-  }, [isOpen, documentoId])
+  }, [isOpen, documentoId, allDocuments])
 
   const initializeFlow = async () => {
     try {
       setIsLoading(true)
       setError(null)
       
-      const candidates = allDocuments.filter(d => d.id === documentoId)
+      const candidates = allDocuments.filter(d => {
+        const s = d.status?.toLowerCase()
+        return !documentoId || d.id === documentoId || s === 'waiting_translation' || s === 'waiting_translation_quote' || d.isApostilled
+      })
       setCandidateDocuments(candidates)
       
-      const budget = await traducoesService.getOrcamentoByDocumento(documentoId)
+      const docIdToUse = documentoId || (candidates.length > 0 ? candidates[0].id : '')
+      
+      const budget = (await traducoesService.getOrcamentoByDocumento(docIdToUse)) as any
       if (budget) {
-        setAllBudgets({ [documentoId]: budget })
+        setAllBudgets({ [docIdToUse]: budget })
         if (budget.status === 'pendente_verificacao') {
           setStep('waiting_confirmation')
         }

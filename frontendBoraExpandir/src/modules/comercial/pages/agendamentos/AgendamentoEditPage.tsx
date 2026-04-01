@@ -267,7 +267,12 @@ export function AgendamentoEditPage() {
 
             toast.success('Comprovante enviado com sucesso!')
             
-            // Update local state to show it was sent
+            // Redirecionar automaticamente para a lista de agendamentos
+            setTimeout(() => {
+                navigate('/comercial/meus-agendamentos')
+            }, 1500)
+            
+            // Update local state (safe if navigation takes a moment)
             setAgendamento((prev: any) => ({
                 ...prev,
                 comprovante_url: 'enviado',
@@ -641,7 +646,7 @@ export function AgendamentoEditPage() {
                                             {uploadingComprovante ? (
                                                 <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</>
                                             ) : (
-                                                <><Upload className="h-4 w-4" /> Enviar Comprovante para o Financeiro</>
+                                                <><Upload className="h-4 w-4" /> Salvar e Enviar Comprovante</>
                                             )}
                                         </button>
                                     </div>

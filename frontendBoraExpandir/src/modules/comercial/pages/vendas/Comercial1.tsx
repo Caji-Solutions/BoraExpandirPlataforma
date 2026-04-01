@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 // import { useToast } from '../../components/Toast'
 // Update the import path below if Toast is located elsewhere:
 import { useToast } from '@/components/ui/Toast'
-import { SUCESSO, ERRO, AVISO } from '../../components/MockFrases'
+import { SUCESSO, ERRO, AVISO } from '@/components/MockFrases'
 import { CalendarPicker } from '@/components/ui/CalendarPicker'
 import { AgendamentoConfirmacaoModal } from '../../components/AgendamentoConfirmacaoModal'
 import { useAuth } from '../../../../contexts/AuthContext'
@@ -685,6 +685,8 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
         nome: novoCliente.nome,
         email: novoCliente.email,
         telefone: novoCliente.telefone,
+        criado_por: activeProfile?.id,
+        criado_por_nome: activeProfile?.full_name
       }
       //Criar endpoint de cadastro de lead
       const response = await fetch(`${backendUrl}/leads`, {

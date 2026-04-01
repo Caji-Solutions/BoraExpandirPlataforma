@@ -42,6 +42,7 @@ export function ApostilleQuoteModal({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    console.log(`[ApostilleQuoteModal] useEffect - isOpen: ${isOpen}, docs: ${allDocuments?.length || 0}`);
     if (isOpen) {
       initializeFlow()
     } else {
@@ -50,7 +51,7 @@ export function ApostilleQuoteModal({
       setError(null)
       setOrcamentoIds([])
     }
-  }, [isOpen, documentoId])
+  }, [isOpen, documentoId, allDocuments])
 
   const initializeFlow = async () => {
     try {
@@ -59,13 +60,13 @@ export function ApostilleQuoteModal({
       
       const candidates = allDocuments.filter(d => {
         const s = d.status?.toLowerCase()
-        return s === 'waiting_apostille' || d.id === documentoId || s === 'waiting_quote_approval'
+        return !documentoId || d.id === documentoId || s === 'waiting_apostille' || s === 'waiting_quote_approval'
       })
 
       setCandidateDocuments(candidates)
       
       const initialSelection = new Set<string>()
-      initialSelection.add(documentoId)
+      if (documentoId) initialSelection.add(documentoId)
       
       candidates.forEach(d => {
         if (d.status?.toLowerCase() === 'waiting_apostille') {

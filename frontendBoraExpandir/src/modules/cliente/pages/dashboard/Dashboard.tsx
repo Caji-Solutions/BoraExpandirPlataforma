@@ -431,8 +431,16 @@ export function Dashboard({
         <div className="mb-16 sm:mb-20">
           <div className="flex flex-col sm:flex-row sm:items-end gap-6 sm:gap-8">
             <Link to="/cliente/configuracoes?tab=meus-dados" className="flex-shrink-0 group">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-600 to-blue-700 rounded-3xl flex items-center justify-center shadow-2xl group-hover:shadow-3xl group-hover:-translate-y-1 transition-all duration-300">
-                <User className="h-10 w-10 sm:h-12 sm:w-12 text-white" />
+              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-600 to-blue-700 rounded-3xl flex items-center justify-center shadow-2xl group-hover:shadow-3xl group-hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+                {client.avatarUrl ? (
+                  <img 
+                    src={client.avatarUrl} 
+                    alt={client.name} 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                  />
+                ) : (
+                  <User className="h-10 w-10 sm:h-12 sm:w-12 text-white" />
+                )}
               </div>
             </Link>
 
