@@ -1374,7 +1374,8 @@ class ComercialController {
             }
 
             const HtmlPdfService = (await import('../../services/HtmlPdfService')).default
-            const pdfResult = await HtmlPdfService.gerarContratoAssessoria(id, contrato.draft_dados)
+            const templateId = (contrato.servico as any)?.contrato_template_id ?? null
+            const pdfResult = await HtmlPdfService.gerarContratoAssessoria(templateId, contrato.draft_dados)
             
             let pdfUrl = null;
             let totalPages = 1;
