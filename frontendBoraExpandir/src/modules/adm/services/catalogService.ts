@@ -32,7 +32,6 @@ export interface Service {
   possuiSubservicos: boolean;     // NEW
   showInCommercial: boolean;
   showToClient: boolean;
-  requiresLegalDelegation: boolean;
   documents: DocumentRequirement[];
   subservices: Subservice[];
 }

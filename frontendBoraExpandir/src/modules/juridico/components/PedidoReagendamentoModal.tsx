@@ -36,7 +36,7 @@ export function PedidoReagendamentoModal({ isOpen, onClose, agendamento, onSuces
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="z-[60] sm:max-w-[600px] p-0 overflow-hidden border-none shadow-2xl rounded-3xl">
+      <DialogContent className="z-[60] s m:max-w-[600px] p-0 overflow-hidden border-none shadow-2xl rounded-3xl">
         <DialogHeader className="p-6 pb-4 border-b border-gray-100 dark:border-neutral-700">
           <DialogTitle className="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-white">
             <CalendarClock className="h-5 w-5 text-amber-500" />

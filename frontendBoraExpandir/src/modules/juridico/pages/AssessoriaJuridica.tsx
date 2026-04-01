@@ -102,6 +102,7 @@ export function AssessoriaJuridica() {
   const [subserviceSearchTerm, setSubserviceSearchTerm] = useState("");
   const [filteredSubservices, setFilteredSubservices] = useState<any[]>([]);
   const [selectedSubserviceId, setSelectedSubserviceId] = useState<string>("");
+  const [requiresSubservice, setRequiresSubservice] = useState<boolean>(true);
 
   // CRM Form state
   const [formData, setFormData] = useState<CRMFormData>({ ...initialFormData });
@@ -330,6 +331,23 @@ export function AssessoriaJuridica() {
     setFilteredSubservices(filtered);
   }, [subserviceSearchTerm, allSubservices, produtoIdParam]);
 
+  // Determine if subservice selection is required for the current product
+  useEffect(() => {
+    if (produtoIdParam && allSubservices.length > 0) {
+      const productSubservices = allSubservices.filter(
+        s => s.servico?.id === produtoIdParam || s.servico_id === produtoIdParam
+      );
+      const hasSubservices = productSubservices.length > 0;
+      setRequiresSubservice(hasSubservices);
+      // Auto-select if only one subservice exists and none is selected yet
+      if (hasSubservices && productSubservices.length === 1 && !selectedSubserviceId) {
+        setSelectedSubserviceId(productSubservices[0].id);
+      }
+    } else {
+      setRequiresSubservice(false);
+    }
+  }, [allSubservices, produtoIdParam]);
+
   const handleFormChange = (field: keyof CRMFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -351,7 +369,7 @@ export function AssessoriaJuridica() {
     setIsSubmitting(true);
     setError(null);
     try {
-      if (!selectedSubserviceId) {
+      if (requiresSubservice && !selectedSubserviceId) {
         setError("Por favor, selecione um subserviço.");
         setIsSubmitting(false);
         return;
@@ -422,6 +440,7 @@ export function AssessoriaJuridica() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-6">
+          {requiresSubservice && (
           <div className="bg-white rounded-3xl border shadow-sm p-6 space-y-6">
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-blue-600">
@@ -434,8 +453,8 @@ export function AssessoriaJuridica() {
             <div className="space-y-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Buscar subserviço..."
                   className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm transition-all"
                   value={subserviceSearchTerm}
@@ -450,8 +469,8 @@ export function AssessoriaJuridica() {
                       key={sub.id}
                       onClick={() => setSelectedSubserviceId(sub.id)}
                       className={`w-full text-left p-4 rounded-2xl transition-all border-2 flex items-center justify-between group ${
-                        selectedSubserviceId === sub.id 
-                          ? 'bg-blue-50 border-blue-600 shadow-sm' 
+                        selectedSubserviceId === sub.id
+                          ? 'bg-blue-50 border-blue-600 shadow-sm'
                           : 'bg-white border-gray-100 hover:border-blue-300'
                       }`}
                     >
@@ -473,6 +492,7 @@ export function AssessoriaJuridica() {
               </div>
             </div>
           </div>
+          )}
           
           {selectedCliente && (
             <div className="bg-blue-50/50 rounded-3xl border border-blue-100 p-6 space-y-4">
@@ -948,17 +968,17 @@ export function AssessoriaJuridica() {
             </div>
 
             <div className="pt-8 border-t flex flex-col gap-4">
-               <button 
+               <button
                 onClick={handleSubmit}
-                disabled={isSubmitting || !selectedSubserviceId}
+                disabled={isSubmitting || (requiresSubservice && !selectedSubserviceId)}
                 className={`w-full py-6 rounded-2xl font-black text-xl uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-3 ${
-                  isSubmitting || !selectedSubserviceId
+                  isSubmitting || (requiresSubservice && !selectedSubserviceId)
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-none'
                     : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:scale-[1.01] hover:shadow-blue-500/30'
                 }`}
               >
                 {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : <Save size={24} />}
-                {isSubmitting ? "Salvando..." : (!selectedSubserviceId ? "Selecione um Subserviço" : "Finalizar Assessoria")}
+                {isSubmitting ? "Salvando..." : (requiresSubservice && !selectedSubserviceId ? "Selecione um Subserviço" : "Finalizar Assessoria")}
               </button>
               
               {showSuccess && (

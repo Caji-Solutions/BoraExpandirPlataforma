@@ -192,8 +192,24 @@ class HtmlPdfService {
                 logoBase64: logoBase64 ? `data:image/png;base64,${logoBase64}` : null,
             };
 
+            // Whitelist das unicas variaveis que o corpo do contrato pode usar.
+            // Qualquer outro {{...}} — seja anotacao de texto vinda do DOCX
+            // (ex: "{{nome do(s) documento(s)}}") ou helper orfao (ex: "{{/each}}"
+            // sem {{#each}} correspondente) — vira entidade HTML para nao quebrar
+            // o Handlebars nem o html-pdf-node, que tambem roda Handlebars internamente.
+            const VARIAVEIS_CONTRATO = new Set([
+                'nome', 'nacionalidade', 'estado_civil', 'profissao', 'documento',
+                'endereco', 'email', 'telefone', 'tipo_servico', 'descricao_pessoas',
+                'valor_pavao', 'valor_desconto', 'valor_consultoria', 'forma_pagamento',
+                'data', 'pendencias', 'logoBase64',
+            ]);
+            const safeConteudoHTML = conteudoHTML.replace(/\{\{([^{}]*)\}\}/g, (match, inner) => {
+                if (VARIAVEIS_CONTRATO.has(inner.trim())) return match;
+                return match.replace(/\{/g, '&#123;').replace(/\}/g, '&#125;');
+            });
+
             // Compilar template base (body do contrato selecionado)
-            const templateBD = Handlebars.compile(conteudoHTML);
+            const templateBD = Handlebars.compile(safeConteudoHTML);
             const htmlConteudoPreenchido = templateBD(context);
 
             // Injetar no master

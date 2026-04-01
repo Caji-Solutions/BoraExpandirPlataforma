@@ -88,7 +88,6 @@ export default function ServiceCatalog() {
     possuiSubservicos: false,
     showInCommercial: true,
     showToClient: true,
-    requiresLegalDelegation: false,
     documents: [],
     subservices: [],
   });
@@ -133,7 +132,6 @@ export default function ServiceCatalog() {
       possuiSubservicos: false,
       showInCommercial: true,
       showToClient: true,
-      requiresLegalDelegation: false,
       documents: [],
       subservices: [],
     });
@@ -155,7 +153,6 @@ export default function ServiceCatalog() {
       possuiSubservicos: service.possuiSubservicos ?? false,
       showInCommercial: service.showInCommercial,
       showToClient: service.showToClient,
-      requiresLegalDelegation: service.requiresLegalDelegation,
       documents: service.documents,
       subservices: service.subservices || [],
     });
@@ -619,16 +616,6 @@ export default function ServiceCatalog() {
                 />
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-xl">
-                <div className="space-y-0.5">
-                  <Label className="text-sm font-bold">Requer Delegacao Juridica</Label>
-                  <p className="text-xs text-muted-foreground">Exige atribuicao de responsavel</p>
-                </div>
-                <Switch
-                  checked={formData.requiresLegalDelegation}
-                  onCheckedChange={(val) => setFormData({ ...formData, requiresLegalDelegation: val })}
-                />
-              </div>
             </div>
 
             {/* ─── SEÇÃO DE DOCUMENTOS / SUBSERVIÇOS ─── */}

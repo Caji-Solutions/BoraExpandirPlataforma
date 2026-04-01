@@ -124,11 +124,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
             const serviceType = typeMap[item.produto_id];
             return serviceType === 'agendavel' || !serviceType;
           })
-          .map((item: any) => {
-            const req = item.requer_delegacao;
-            console.log(`DEBUG: Item ${item.id} - requer_delegacao: ${req}`);
-            return item;
-          });
+          .map((item: any) => item);
         console.log("DEBUG: Consultorias (Total):", filtered.length);
         setConsultorias(filtered);
       } else if (activeTab === 'assessorias' && effectiveUserId) {

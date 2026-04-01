@@ -18,7 +18,6 @@ export class AdmController {
         possuiSubservicos: s.possui_subservicos ?? false,
         showInCommercial: s.exibir_comercial,
         showToClient: s.exibir_cliente,
-        requiresLegalDelegation: s.requer_delegacao_juridico || false,
         documents: (s.requisitos || [])
           .filter((r: any) => !r.subservico_id)
           .map((r: any) => ({

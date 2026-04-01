@@ -92,35 +92,10 @@ function calcularEtapaAtual(
     return mapStageToStep(clientStage)
   }
 
-  // Fallback: cálculo baseado em agendamentos e documentos (compatibilidade com dados antigos)
-  const consultoriasAgendadas = agendamentos.filter(a =>
-    String(a.produto_nome || '').toLowerCase().includes('consultoria')
-  )
-  const assessoriasAgendadas = agendamentos.filter(a =>
-    !String(a.produto_nome || '').toLowerCase().includes('consultoria')
-  )
-
-  const consultoriaRealizada = consultoriasAgendadas.some(a => a.status === 'realizado')
-  const consultoriaEmAndamento = consultoriasAgendadas.some(a => a.status === 'em_consultoria')
-  const assessoriaRealizada = assessoriasAgendadas.some(a => a.status === 'realizado')
-
-  const temDocumentos = documents.length > 0
-  const todosAprovados = temDocumentos && documents.every(d => {
-    const statusLower = String(d.status || '').toLowerCase()
-    return statusLower === 'approved' || statusLower === 'apostilled' || statusLower === 'translated'
-  })
-
-  // Sem processo = Etapas 0-1 (Consultoria)
-  if (!process) {
-    if (consultoriaRealizada) return 1  // 1: Consultoria Realizada
-    return 0                             // 0: Consultoria Agendada/Pendente (inclui em_consultoria)
-  }
-
-  // Com processo = Etapas 2-6
-  if (todosAprovados) return 5           // 5: Protocolar
-  if (assessoriaRealizada) return 4      // 4: Assessoria Realizada → Documentação
-  if (assessoriasAgendadas.length > 0) return 3  // 3: Assessoria Agendada
-  return 2                               // 2: Processo Contratado
+  // Fallback para registros legados sem stage definido.
+  // A fonte de verdade e o campo clientes.stage atualizado pelo backend.
+  // Este fallback sera removido quando todos os registros tiverem stage valido.
+  return 0
 }
 
 export function ProcessTimeline({ process, requerimentos = [], familyMembers = [], agendamentos = [], documents = [], clientStage }: ProcessTimelineProps) {

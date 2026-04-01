@@ -121,7 +121,6 @@ class ComercialController {
                 status,
                 usuario_id,
                 cliente_id,
-                requer_delegacao,
                 pagamento_status,
                 metodo_pagamento,
                 boleto_valor_entrada,
@@ -183,21 +182,7 @@ class ComercialController {
                 pagamento_status: pagamento_status || 'pendente',
                 usuario_id: usuario_id || null,
                 cliente_id: cliente_id || null,
-                requer_delegacao: requer_delegacao !== undefined ? requer_delegacao : false,
                 ...boletoPayload
-            }
-
-            // Fallback: se o frontend não enviou requer_delegacao, tenta buscar do catálogo
-            if (requer_delegacao === undefined && produto_id) {
-                try {
-                    const servico = await AdmRepository.getServiceById(produto_id)
-                    if (servico && servico.requer_delegacao_juridico) {
-                        agendamento.requer_delegacao = true;
-                        console.log('Fallbakc: requer_delegacao atribuido via catalogo para produto:', produto_id);
-                    }
-                } catch (err) {
-                    console.error('Erro no fallback de requer_delegacao:', err);
-                }
             }
 
             console.log('Objeto agendamento final para envio ao DB:', agendamento)
@@ -227,8 +212,15 @@ class ComercialController {
                         }).eq('id', cliente_id)
                         console.log(`[ComercialController] Cliente ${cliente_id} movido para aguardando_assessoria (servico fixo)`)
                     } else if (!isServicoFixo && isPrimeiroAgendamento) {
-                        // Primeiro agendamento de serviço variável (consultoria) — não altera stage extra
-                        console.log(`[ComercialController] Primeiro agendamento de servico variavel para cliente ${cliente_id}`)
+                        // Primeiro agendamento de serviço variável (consultoria) -> aguardando_consultoria
+                        const stagesConsultoriaAdiante = ['em_consultoria', 'clientes_c2', 'aguardando_assessoria', 'assessoria_andamento', 'assessoria_finalizada']
+                        if (!stagesConsultoriaAdiante.includes(stageAtual)) {
+                            await supabase.from('clientes').update({
+                                stage: 'aguardando_consultoria',
+                                status: 'aguardando_consultoria'
+                            }).eq('id', cliente_id)
+                            console.log(`[ComercialController] Cliente ${cliente_id} movido para aguardando_consultoria (primeiro agendamento consultoria)`)
+                        }
                     } else if (clienteAtual?.stage === 'cancelado') {
                         // Cliente que havia cancelado criou novo agendamento -> restaurar stage
                         await supabase.from('clientes').update({

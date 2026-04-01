@@ -52,7 +52,6 @@ interface Produto {
   imagem?: string
   isEuro?: boolean
   duracaoMinutos?: number
-  requiresLegalDelegation: boolean
   type?: string
 }
 
@@ -142,7 +141,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
             show: s.showInCommercial,
             isEuro: true,
             duracaoMinutos: parseDurationToMinutes(s.duration) || 60,
-            requiresLegalDelegation: s.requiresLegalDelegation,
             type: s.type || 'agendavel'
           }))
         setProdutos(mappedProdutos)
@@ -590,7 +588,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       pagamento_status: isPaidFromContrato ? 'aprovado' : undefined,
       usuario_id: activeProfile?.id,
       cliente_id: clienteSelecionado.id,
-      requer_delegacao: produtoSelecionado.requiresLegalDelegation,
       id: editId || undefined
     }
 

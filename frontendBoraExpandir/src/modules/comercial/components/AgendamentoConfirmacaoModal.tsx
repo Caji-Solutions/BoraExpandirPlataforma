@@ -20,7 +20,6 @@ interface AgendamentoConfirmacaoModalProps {
     status: string
     usuario_id?: string
     cliente_id?: string
-    requer_delegacao?: boolean
     id?: string
   }
   exchangeRate?: number
@@ -130,7 +129,6 @@ Obrigado! 🚀
         ...payload,
         status: 'pendente',
         metodo_pagamento: metodo,
-        requer_delegacao: payload.requer_delegacao
       }
 
       if (metodo === 'boleto') {

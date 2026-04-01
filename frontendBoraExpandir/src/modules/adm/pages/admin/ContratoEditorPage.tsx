@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
-import { Save, ArrowLeft } from "lucide-react";
+import { Save, ArrowLeft, Upload, FileText } from "lucide-react";
+import mammoth from "mammoth";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/modules/shared/components/ui/use-toast";
 
@@ -42,25 +43,29 @@ export default function ContratoEditorPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { token } = useAuth();
-  
+
   const isNew = id === "novo";
-  
+
   const [nome, setNome] = useState("");
   const [conteudo, setConteudo] = useState("");
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  // DEBUG - REMOVE BEFORE PROD
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const quillRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const insertTag = (tag: string) => {
     if (quillRef.current) {
       const editor = quillRef.current.getEditor();
-      const selection = editor.getSelection(true); // get true selection focus
+      const selection = editor.getSelection(true);
       const cursorPosition = selection ? selection.index : editor.getLength() - 1;
-      
+
       editor.insertText(cursorPosition, tag);
       editor.setSelection(cursorPosition + tag.length, 0);
-      
+
       toast({ title: "Adicionado", description: `Tag ${tag} inserida no texto.` });
     }
   };
@@ -104,7 +109,7 @@ export default function ContratoEditorPage() {
     try {
       const method = isNew ? "POST" : "PUT";
       const url = `${BACKEND_URL}/adm/contratos${isNew ? "" : `/${id}`}`;
-      
+
       const res = await fetch(url, {
         method,
         headers: {
@@ -131,6 +136,67 @@ export default function ContratoEditorPage() {
     }
   };
 
+  const handleDocxUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith(".docx")) {
+      toast({ title: "Erro", description: "Apenas arquivos DOCX são aceitos.", variant: "destructive" });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.convertToHtml({ arrayBuffer }, {
+        styleMap: [
+          "p[style-name='Heading 1'] => h1:fresh",
+          "p[style-name='Heading 2'] => h2:fresh",
+          "p[style-name='Heading 3'] => h3:fresh",
+          "p[style-name='Normal'] => p:fresh",
+        ],
+      });
+
+      setConteudo(result.value);
+      toast({ title: "Sucesso", description: "DOCX convertido para HTML com sucesso!" });
+    } catch (err) {
+      console.error("Erro ao converter DOCX:", err);
+      toast({ title: "Erro", description: "Falha ao converter o arquivo DOCX.", variant: "destructive" });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  // DEBUG - REMOVE BEFORE PROD
+  const handlePreviewPdf = async () => {
+    if (!id || isNew) {
+      toast({ title: "Aviso", description: "Salve o contrato primeiro para testar o preview.", variant: "destructive" });
+      return;
+    }
+
+    setGeneratingPdf(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/adm/contratos/${id}/preview-pdf`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error("Falha ao gerar PDF");
+
+      const data = await res.json();
+      if (data.url) {
+        window.open(data.url, "_blank");
+        toast({ title: "Sucesso", description: "Preview aberto em nova aba." });
+      }
+    } catch (err) {
+      console.error("Erro ao gerar preview:", err);
+      toast({ title: "Erro", description: "Falha ao gerar o preview do PDF.", variant: "destructive" });
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
   if (loading) return <div className="p-8"><div className="w-6 h-6 border-2 border-primary border-t-transparent animate-spin rounded-full"></div></div>;
 
   return (
@@ -147,14 +213,43 @@ export default function ContratoEditorPage() {
             {isNew ? "Novo Contrato" : "Editar Contrato"}
           </h1>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition disabled:opacity-50"
-        >
-          <Save className="h-4 w-4" />
-          {saving ? "Salvando..." : "Salvar Contrato"}
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            onChange={handleDocxUpload}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-2 bg-secondary border border-border text-foreground px-4 py-2 rounded-md hover:bg-secondary/80 transition disabled:opacity-50"
+          >
+            <Upload className="h-4 w-4" />
+            {uploading ? "Convertendo..." : "Importar DOCX"}
+          </button>
+          {/* DEBUG BUTTON - REMOVE BEFORE PROD */}
+          {!isNew && (
+            <button
+              onClick={handlePreviewPdf}
+              disabled={generatingPdf}
+              className="flex items-center gap-2 bg-yellow-500 text-black px-4 py-2 rounded-md hover:bg-yellow-400 transition disabled:opacity-50"
+              title="DEBUG: Gerar PDF para testar (REMOVER ANTES DO LANCAMENTO)"
+            >
+              <FileText className="h-4 w-4" />
+              {generatingPdf ? "Gerando..." : "Debug PDF"}
+            </button>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" />
+            {saving ? "Salvando..." : "Salvar Contrato"}
+          </button>
+        </div>
       </div>
 
       <div className="mb-4">
@@ -219,7 +314,7 @@ export default function ContratoEditorPage() {
           </div>
         </div>
       </div>
-      
+
       {/* We need some CSS to fix ReactQuill height inside flex container */}
       <style>{`
         .compose-editor .ql-container {

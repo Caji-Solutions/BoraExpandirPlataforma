@@ -70,41 +70,6 @@ class ComercialRepository {
             throw error
         }
 
-        // Se o status for confirmado, verifica se o serviço requer delegação jurídica
-        if (status === 'confirmado' && data?.pagamento_status === 'aprovado') {
-            try {
-                // 1. Verificar no catálogo se este serviço requer delegação
-                const { data: service } = await supabase
-                    .from('catalogo_servicos')
-                    .select('requer_delegacao_juridico, nome')
-                    .eq('id', data.produto_id)
-                    .single()
-
-                if (service?.requer_delegacao_juridico) {
-                    console.log(`Servico "${service.nome}" requer delegacao juridica. Verificando processo...`)
-
-                    const JuridicoRepository = (await import('./JuridicoRepository')).default
-                    const existingProcess = await JuridicoRepository.getProcessoByClienteId(data.cliente_id)
-
-                    if (!existingProcess) {
-                        console.log('Nenhum processo ativo encontrado. Criando novo processo vago...')
-                        await JuridicoRepository.createProcess({
-                            clienteId: data.cliente_id,
-                            tipoServico: service.nome,
-                            status: 'waiting_delegation',
-                            etapaAtual: 1,
-                            responsavelId: undefined
-                        })
-                        console.log('Processo vago criado com sucesso.')
-                    } else {
-                        console.log('Processo ja existente para este cliente.')
-                    }
-                }
-            } catch (err) {
-                console.error('Erro ao processar delegacao juridica automatica:', err)
-            }
-        }
-
         // Se o status for confirmado, cria uma notificação para o cliente
         if (status === 'confirmado' && data?.pagamento_status === 'aprovado' && data.cliente_id) {
             try {

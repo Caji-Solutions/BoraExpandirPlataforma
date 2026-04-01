@@ -22,5 +22,7 @@ router.get('/contratos/:id', ContratosTemplateController.getById);
 router.post('/contratos', ContratosTemplateController.create);
 router.put('/contratos/:id', ContratosTemplateController.update);
 router.delete('/contratos/:id', ContratosTemplateController.delete);
+// DEBUG - REMOVE BEFORE PROD
+router.post('/contratos/:id/preview-pdf', ContratosTemplateController.previewPdf);
 
 export default router;

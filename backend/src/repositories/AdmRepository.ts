@@ -27,7 +27,7 @@ export class AdmRepository {
 
   async createCatalogService(data: any) {
     const {
-      name, value, duration, showInCommercial, showToClient, requiresLegalDelegation,
+      name, value, duration, showInCommercial, showToClient,
       documents, subservices,
       isAgendavel, tipoPreco, contratoTemplateId, possuiSubservicos
     } = data;
@@ -45,7 +45,6 @@ export class AdmRepository {
         tipo: tipoDerivado,
         exibir_comercial: showInCommercial ?? true,
         exibir_cliente: showToClient ?? true,
-        requer_delegacao_juridico: requiresLegalDelegation || false,
         contrato_template_id: contratoTemplateId ?? null,
         possui_subservicos: possuiSubservicos ?? false,
         tipo_preco: tipoPreco ?? 'por_contrato',
@@ -140,7 +139,6 @@ export class AdmRepository {
       tipo: tipoDerivado,  // ALWAYS derived, never from data.tipo
       exibir_comercial: showInCommercial,
       exibir_cliente: data.showToClient,
-      requer_delegacao_juridico: data.requiresLegalDelegation,
       contrato_template_id: contratoTemplateId ?? null,
       possui_subservicos: possuiSubservicos ?? false,
       tipo_preco: tipoPreco ?? 'por_contrato',
@@ -294,7 +292,7 @@ export class AdmRepository {
   async getAllSubservices() {
     const { data, error } = await supabase
       .from('subservicos')
-      .select('*, servico:catalogo_servicos(id, nome), requisitos:servico_requisitos(*)')
+      .select('*, servico:catalogo_servicos(id, nome, possui_subservicos), requisitos:servico_requisitos(*)')
       .order('nome', { ascending: true });
 
     if (error) {

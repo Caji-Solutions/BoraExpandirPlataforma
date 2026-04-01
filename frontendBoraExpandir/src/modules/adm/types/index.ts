@@ -24,7 +24,6 @@ export interface Service {
   type: ServiceType;
   showInCommercial: boolean;
   showToClient: boolean;
-  requiresLegalDelegation: boolean;
   documents: DocumentRequirement[];
   subservices: Subservice[];
 }

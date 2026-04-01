@@ -1338,6 +1338,62 @@ class JuridicoController {
             return res.status(500).json({ message: 'Erro ao marcar consultoria realizada', error: error.message });
         }
     }
+    // POST /juridico/agendamentos/:id/assessoria-realizada
+    async marcarAssessoriaRealizada(req: any, res: any) {
+        try {
+            const { id } = req.params;
+
+            if (!id) {
+                return res.status(400).json({ message: 'Agendamento ID e obrigatorio' });
+            }
+
+            const { data: agendamento, error: agError } = await supabase
+                .from('agendamentos')
+                .select('cliente_id, status')
+                .eq('id', id)
+                .single();
+
+            if (agError) throw agError;
+            if (!agendamento) return res.status(404).json({ message: 'Agendamento nao encontrado' });
+
+            // Atualizar status do agendamento para realizado
+            const { error: updateAgError } = await supabase
+                .from('agendamentos')
+                .update({ status: 'realizado' })
+                .eq('id', id);
+
+            if (updateAgError) throw updateAgError;
+
+            if (agendamento.cliente_id) {
+                // Atualizar stage do cliente para assessoria_finalizada
+                const { error: updateClienteError } = await supabase
+                    .from('clientes')
+                    .update({ stage: 'assessoria_finalizada', status: 'assessoria_finalizada' })
+                    .eq('id', agendamento.cliente_id);
+
+                if (updateClienteError) {
+                    console.error('Erro ao atualizar stage do cliente:', updateClienteError);
+                }
+
+                try {
+                    await NotificationService.createNotification({
+                        clienteId: agendamento.cliente_id,
+                        titulo: 'Assessoria Finalizada',
+                        mensagem: 'Sua assessoria juridica foi finalizada. Proximo passo: documentacao e protocolo.',
+                        tipo: 'success'
+                    });
+                } catch (notifError: any) {
+                    console.error('[marcarAssessoriaRealizada] Erro ao criar notificacao:', notifError?.message || notifError);
+                }
+            }
+
+            return res.status(200).json({ success: true, message: 'Assessoria finalizada com sucesso.' });
+        } catch (error: any) {
+            console.error('Erro ao marcar assessoria realizada:', error);
+            return res.status(500).json({ message: 'Erro ao marcar assessoria realizada', error: error.message });
+        }
+    }
+
     // =============================================
     // VALIDACAO DE CONTRATOS
     // =============================================
