@@ -1,6 +1,12 @@
 import { supabase } from '../config/SupabaseClient';
 
 export class AdmRepository {
+  private derivarTipo(data: { contratoTemplateId?: string | null; isAgendavel?: boolean }): 'fixo' | 'agendavel' | 'diverso' {
+    if (data.contratoTemplateId) return 'fixo';
+    if (data.isAgendavel) return 'agendavel';
+    return 'diverso';
+  }
+
   async getCatalogServices() {
     const { data: services, error: servicesError } = await supabase
       .from('catalogo_servicos')
@@ -20,19 +26,30 @@ export class AdmRepository {
   }
 
   async createCatalogService(data: any) {
-    const { name, value, duration, showInCommercial, documents, type, subservices } = data;
-    
+    const {
+      name, value, duration, showInCommercial, showToClient, requiresLegalDelegation,
+      documents, subservices,
+      isAgendavel, tipoPreco, contratoTemplateId, possuiSubservicos
+    } = data;
+
+    const tipoDerivado = this.derivarTipo({ contratoTemplateId, isAgendavel });
+    const valorFinal = tipoPreco === 'fixo' ? (value || null) : null;
+
     // Inserir servico
     const { data: service, error: serviceError } = await supabase
       .from('catalogo_servicos')
       .insert([{
         nome: name,
-        valor: value,
+        valor: valorFinal,
         duracao: duration,
-        tipo: type || data.tipo || 'agendavel',
-        exibir_comercial: showInCommercial,
-        exibir_cliente: data.showToClient ?? true,
-        requer_delegacao_juridico: data.requiresLegalDelegation || false
+        tipo: tipoDerivado,
+        exibir_comercial: showInCommercial ?? true,
+        exibir_cliente: showToClient ?? true,
+        requer_delegacao_juridico: requiresLegalDelegation || false,
+        contrato_template_id: contratoTemplateId ?? null,
+        possui_subservicos: possuiSubservicos ?? false,
+        tipo_preco: tipoPreco ?? 'por_contrato',
+        is_agendavel: isAgendavel ?? false,
       }])
       .select()
       .single();
@@ -51,7 +68,8 @@ export class AdmRepository {
             servico_id: service.id,
             nome: doc.name,
             etapa: doc.stage,
-            obrigatorio: doc.required
+            obrigatorio: doc.required,
+            tipo_documento: doc.tipoDocumento ?? 'titular',
           }))
         );
 
@@ -88,7 +106,8 @@ export class AdmRepository {
                 subservico_id: createdSub.id,
                 nome: doc.name,
                 etapa: doc.stage,
-                obrigatorio: doc.required
+                obrigatorio: doc.required,
+                tipo_documento: doc.tipoDocumento ?? 'titular',
               }))
             );
 
@@ -105,22 +124,29 @@ export class AdmRepository {
   }
 
   async updateCatalogService(id: string, data: any) {
-    const { name, value, duration, showInCommercial, documents, type, subservices } = data;
+    const {
+      name, value, duration, showInCommercial, documents, subservices,
+      isAgendavel, tipoPreco, contratoTemplateId, possuiSubservicos
+    } = data;
+
+    const tipoDerivado = this.derivarTipo({ contratoTemplateId, isAgendavel });
+    const valorFinal = tipoPreco === 'fixo' ? (value || null) : null;
 
     // Atualizar dados basicos
     const updatePayload: any = {
       nome: name,
-      valor: value,
+      valor: valorFinal,
       duracao: duration,
+      tipo: tipoDerivado,  // ALWAYS derived, never from data.tipo
       exibir_comercial: showInCommercial,
       exibir_cliente: data.showToClient,
       requer_delegacao_juridico: data.requiresLegalDelegation,
-      atualizado_em: new Date().toISOString()
-    }
-
-    if (type || data.tipo) {
-      updatePayload.tipo = type || data.tipo
-    }
+      contrato_template_id: contratoTemplateId ?? null,
+      possui_subservicos: possuiSubservicos ?? false,
+      tipo_preco: tipoPreco ?? 'por_contrato',
+      is_agendavel: isAgendavel ?? false,
+      atualizado_em: new Date().toISOString(),
+    };
 
     const { error: updateError } = await supabase
       .from('catalogo_servicos')
@@ -155,7 +181,8 @@ export class AdmRepository {
               servico_id: id,
               nome: doc.name,
               etapa: doc.stage,
-              obrigatorio: doc.required
+              obrigatorio: doc.required,
+              tipo_documento: doc.tipoDocumento ?? 'titular',
             }))
           );
 
@@ -218,7 +245,8 @@ export class AdmRepository {
                   subservico_id: createdSub.id,
                   nome: doc.name,
                   etapa: doc.stage,
-                  obrigatorio: doc.required
+                  obrigatorio: doc.required,
+                  tipo_documento: doc.tipoDocumento ?? 'titular',
                 }))
               );
 

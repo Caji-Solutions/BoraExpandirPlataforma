@@ -65,7 +65,7 @@ describe('ComercialController - Drafts', () => {
     describe('POST /api/comercial/contratos', () => {
         it('Deve criar um contrato inicializado como draft (is_draft = true) na etapa 1', async () => {
             // Setup do AdmRepository para passar na validacao do servico
-            const mockServico = { id: 'servico-1', tipo: 'fixo', nome: 'Assessoria' };
+            const mockServico = { id: 'servico-1', tipo: 'fixo', nome: 'Assessoria', contrato_template_id: 'template-uuid-1' };
             (AdmRepository.getServiceById as any).mockResolvedValue(mockServico);
 
             // Setup do mock para createContrato
@@ -536,7 +536,7 @@ describe('ComercialController - Contract Stage Progression', () => {
     });
 
     it('Deve mover cliente para aguardando_assessoria quando e o primeiro contrato', async () => {
-        const mockServico = { id: 'servico-1', tipo: 'fixo', nome: 'Assessoria' };
+        const mockServico = { id: 'servico-1', tipo: 'fixo', nome: 'Assessoria', contrato_template_id: 'template-uuid-1' };
         (AdmRepository.getServiceById as any).mockResolvedValue(mockServico);
 
         const mockPayload = {

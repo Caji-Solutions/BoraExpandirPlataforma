@@ -10,6 +10,21 @@ vi.mock('../../config/SupabaseClient', () => {
     };
 });
 
+describe('derivarTipo', () => {
+  it('retorna fixo quando contratoTemplateId está preenchido', () => {
+    const repo = new AdmRepository();
+    expect((repo as any).derivarTipo({ contratoTemplateId: 'abc-123', isAgendavel: true })).toBe('fixo');
+  });
+  it('retorna agendavel quando sem contrato e isAgendavel=true', () => {
+    const repo = new AdmRepository();
+    expect((repo as any).derivarTipo({ contratoTemplateId: null, isAgendavel: true })).toBe('agendavel');
+  });
+  it('retorna diverso quando sem contrato e sem agendavel', () => {
+    const repo = new AdmRepository();
+    expect((repo as any).derivarTipo({ contratoTemplateId: null, isAgendavel: false })).toBe('diverso');
+  });
+});
+
 describe('AdmRepository - Catalogo', () => {
     let repo: AdmRepository;
     
@@ -87,7 +102,8 @@ describe('AdmRepository - Catalogo', () => {
             name: 'Basic Auth',
             value: 100,
             duration: 60,
-            type: 'fixo',
+            contratoTemplateId: 'template-abc',
+            tipoPreco: 'fixo',
             showInCommercial: true
         };
 
@@ -122,7 +138,7 @@ describe('AdmRepository - Catalogo', () => {
 
         const payload = {
             name: 'Pai',
-            type: 'fixo',
+            contratoTemplateId: 'template-xyz',
             subservices: [
                 { name: 'Filho 1' }
             ]

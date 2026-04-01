@@ -6,6 +6,7 @@ export interface DocumentRequirement {
   name: string;
   stage: string;
   required: boolean;
+  tipoDocumento: 'titular' | 'dependente';  // NEW
 }
 
 export interface Subservice {
@@ -17,6 +18,7 @@ export interface Subservice {
 }
 
 export type ServiceType = 'fixo' | 'agendavel' | 'diverso';
+export type TipoPreco = 'fixo' | 'por_contrato';  // NEW
 
 export interface Service {
   id: string;
@@ -24,6 +26,10 @@ export interface Service {
   value: string;
   duration: string;
   type: ServiceType;
+  isAgendavel: boolean;           // NEW
+  tipoPreco: TipoPreco;           // NEW
+  contratoTemplateId: string | null; // NEW
+  possuiSubservicos: boolean;     // NEW
   showInCommercial: boolean;
   showToClient: boolean;
   requiresLegalDelegation: boolean;
@@ -62,46 +68,9 @@ export async function deleteCatalogService(id: string): Promise<void> {
   await apiClient.delete(`/adm/catalog/${id}`);
 }
 
-// ======= Subservicos =======
-
-/**
- * Busca todos os subservicos
- */
-export async function getSubservices(): Promise<Subservice[]> {
-  const result = await apiClient.get<{ data: Subservice[] }>('/adm/subservices');
-  return result.data || [];
-}
-
-/**
- * Cria um novo subservico
- */
-export async function createSubservice(payload: { name: string; servicoId?: string; documents?: DocumentRequirement[] }): Promise<Subservice> {
-  const result = await apiClient.post<{ data: Subservice }>('/adm/subservices', payload);
-  return result.data;
-}
-
-/**
- * Atualiza um subservico existente
- */
-export async function updateSubservice(id: string, payload: { name?: string; servicoId?: string; documents?: DocumentRequirement[] }): Promise<Subservice> {
-  const result = await apiClient.patch<{ data: Subservice }>(`/adm/subservices/${id}`, payload);
-  return result.data;
-}
-
-/**
- * Exclui um subservico
- */
-export async function deleteSubservice(id: string): Promise<void> {
-  await apiClient.delete(`/adm/subservices/${id}`);
-}
-
 export const catalogService = {
   getCatalogServices,
   createCatalogService,
   updateCatalogService,
   deleteCatalogService,
-  getSubservices,
-  createSubservice,
-  updateSubservice,
-  deleteSubservice,
 };

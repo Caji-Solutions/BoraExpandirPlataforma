@@ -5,6 +5,7 @@ import htmlPdf from 'html-pdf-node';
 import Handlebars from 'handlebars';
 import { PDFDocument } from 'pdf-lib';
 import { formatCpfDisplay, formatPhoneDisplay } from '../utils/normalizers';
+import ContratosTemplateRepository from '../repositories/ContratosTemplateRepository';
 
 interface ContratoPayload {
     nome: string;
@@ -111,20 +112,38 @@ function calcularPosicoesAssinatura(
 }
 
 class HtmlPdfService {
-    private getTemplatePath(): string {
-        return path.resolve(__dirname, '../../assets/contrato-assessoria.html');
+    private getMasterTemplatePath(): string {
+        return path.resolve(__dirname, '../../assets/master-template.html');
     }
 
     async gerarContratoAssessoria(contratoId: string, payload: ContratoPayload): Promise<ContratoPdfResult | null> {
         try {
             console.log(`[HtmlPdfService] Gerando contrato para: ${payload.nome}`);
 
-            const templatePath = this.getTemplatePath();
-            if (!fs.existsSync(templatePath)) {
-                throw new Error(`Template nao encontrado: ${templatePath}`);
+            let conteudoHTML = '';
+            
+            // Busca o contrato selecionado ou o primeiro por padrao
+            if (contratoId && contratoId.length > 10) {
+                const dbContrato = await ContratosTemplateRepository.findById(contratoId);
+                if (dbContrato) conteudoHTML = dbContrato.conteudo_html;
+            }
+            
+            // Fallback para o primeiro se nao achar ou nao passar contratoId correto
+            if (!conteudoHTML) {
+                const contratos = await ContratosTemplateRepository.findAll();
+                if (contratos && contratos.length > 0) {
+                    conteudoHTML = contratos[0].conteudo_html;
+                } else {
+                    throw new Error("Nenhum contrato encontrado no banco de dados.");
+                }
             }
 
-            const templateSource = fs.readFileSync(templatePath, 'utf-8');
+            const masterPath = this.getMasterTemplatePath();
+            if (!fs.existsSync(masterPath)) {
+                throw new Error(`Master Template nao encontrado: ${masterPath}`);
+            }
+
+            const masterSource = fs.readFileSync(masterPath, 'utf-8');
 
             // Formatar dados
             const documentoDigits = String(payload.documento || '').replace(/\D/g, '');
@@ -153,9 +172,6 @@ class HtmlPdfService {
                 logoBase64 = fs.readFileSync(logoPath, 'base64');
             }
 
-            // Compilar template com Handlebars
-            const template = Handlebars.compile(templateSource);
-
             const context: Record<string, any> = {
                 nome: sanitizeText(payload.nome),
                 nacionalidade: sanitizeText(payload.nacionalidade),
@@ -176,10 +192,16 @@ class HtmlPdfService {
                 logoBase64: logoBase64 ? `data:image/png;base64,${logoBase64}` : null,
             };
 
-            const html = template(context);
+            // Compilar template base (body do contrato selecionado)
+            const templateBD = Handlebars.compile(conteudoHTML);
+            const htmlConteudoPreenchido = templateBD(context);
 
-            // Gerar PDF
-            const file = { content: html };
+            // Injetar no master
+            const masterTemplate = Handlebars.compile(masterSource);
+            const contextCompleto = { ...context, conteudo_contrato: htmlConteudoPreenchido };
+            const htmlFinal = masterTemplate(contextCompleto);
+
+            const file = { content: htmlFinal };
             const pdfBuffer = await htmlPdf.generatePdf(file, { format: 'A4', printBackground: true }) as unknown as Buffer;
 
             // Ler dimensoes reais da pagina e calcular posicoes exatas das assinaturas

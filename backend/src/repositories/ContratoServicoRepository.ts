@@ -76,7 +76,7 @@ class ContratoServicoRepository {
       .select(`
         *,
         cliente:clientes(id, nome, email, whatsapp, status, client_id),
-        servico:catalogo_servicos(id, nome, valor, tipo)
+        servico:catalogo_servicos(id, nome, valor, tipo, contrato_template_id)
       `)
       .eq('id', id)
       .single()

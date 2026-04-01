@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contrato Bora Expandir</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap');
+
+  @page {
+    size: A4;
+    margin: 25mm 20mm 20mm 20mm;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: 'Courier Prime', 'Courier New', Courier, monospace;
+    font-size: 11pt;
+    color: #000;
+    margin: 0;
+    padding: 0;
+    position: relative;
+  }
+
+  /* Watermark fixo repetido em cada pagina pela impressao */
+  .watermark-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    z-index: -10;
+    opacity: 0.07;
+    width: 100%;
+  }
+
+  {{#if logoBase64}}
+  .watermark-container {
+    background-image: url('{{logoBase64}}');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    filter: grayscale(100%);
+    opacity: 0.1;
+    height: 80vh;
+  }
+  .watermark-bora, .watermark-expandir, .watermark-sub { display: none; }
+  {{/if}}
+
+  .watermark-bora {
+    font-family: 'Courier Prime', monospace;
+    font-size: 72pt;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: #000;
+    display: block;
+    line-height: 1;
+  }
+
+  .watermark-expandir {
+    font-family: 'Courier Prime', monospace;
+    font-size: 48pt;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    color: #000;
+    display: block;
+    line-height: 1.2;
+  }
+
+  .watermark-sub {
+    font-family: 'Courier Prime', monospace;
+    font-size: 13pt;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: #000;
+    display: block;
+    margin-top: 8px;
+  }
+
+  /* Faixa vermelha de topo fixo */
+  .header-red {
+    position: fixed;
+    top: -25mm;
+    left: -20mm;
+    width: calc(100vw + 40mm);
+    height: 8px;
+    background: #cc0000;
+    z-index: 100;
+  }
+
+  /* Faixa vermelha de base fixa */
+  .footer-red {
+    position: fixed;
+    bottom: -20mm;
+    left: -20mm;
+    width: calc(100vw + 40mm);
+    height: 8px;
+    background: #cc0000;
+    z-index: 100;
+  }
+
+  /* Estilos do conteudo vindo do Quill / BD */
+  h1, h2, h3, h4, h5 { font-family: 'Courier Prime', monospace; }
+
+  h1 {
+    font-size: 11pt;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 24pt;
+    text-decoration: underline;
+  }
+
+  h2 {
+    font-size: 11pt;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 18pt 0 10pt 0;
+  }
+
+  h3 {
+    font-size: 11pt;
+    font-weight: 700;
+    text-decoration: underline;
+    margin: 10pt 0 6pt 0;
+  }
+
+  p {
+    font-size: 10.5pt;
+    line-height: 1.6;
+    text-align: justify;
+    margin-bottom: 10pt;
+  }
+  
+  ul, ol {
+    margin-bottom: 10pt;
+    padding-left: 20pt;
+  }
+  
+  li {
+    font-size: 10.5pt;
+    line-height: 1.6;
+    text-align: justify;
+    margin-bottom: 6pt;
+  }
+
+  strong, b { font-weight: 700; }
+  em, i { font-style: italic; }
+  u { text-decoration: underline; }
+
+  .highlight, mark {
+    background-color: transparent;
+    padding: 0 1px;
+  }
+
+  /* Bloco de assinatura automatico */
+  .signature-block {
+    margin-top: 40pt;
+    font-size: 10.5pt;
+    line-height: 1.8;
+    page-break-inside: avoid; /* Nao quebrar assinatura no meio */
+  }
+
+  .signature-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 40pt;
+    margin-top: 16pt;
+  }
+
+  .signature-field { flex: 1; }
+
+  .signature-line {
+    border-bottom: 1px solid #000;
+    width: 100%;
+    margin-top: 40pt;
+    margin-bottom: 4pt;
+  }
+
+  .signature-name {
+    font-size: 9pt;
+    font-weight: 700;
+    margin-top: 2pt;
+  }
+
+  .signature-doc {
+    font-size: 8.5pt;
+    color: #555;
+  }
+</style>
+</head>
+<body>
+
+  <div class="header-red"></div>
+  <div class="footer-red"></div>
+
+  <div class="watermark-container">
+    <span class="watermark-bora">BORA</span><br>
+    <span class="watermark-expandir">EXPANDIR</span>
+    <span class="watermark-sub">AGÊNCIA DE VIAGENS E ASSESSORIA DE IMIGRAÇÃO</span>
+  </div>
+
+  <div class="content">
+    {{{conteudo_contrato}}}
+
+    <!-- Bloco de Assinaturas (Fixo ao final do documento) -->
+    <div class="signature-block">
+      <p>Ribeirão Preto, {{data}}.</p>
+      
+      <div class="signature-row">
+        <div class="signature-field">
+          <div class="signature-line"></div>
+          <p class="signature-name">BORA EXPANDIR LTDA</p>
+          <p class="signature-doc">CNPJ 55.218.947/0001-65</p>
+          <p class="signature-doc">CADASTRUR: 55.218.947/0001-65</p>
+        </div>
+
+        <div class="signature-field">
+          <div class="signature-marker"></div>
+          <div class="signature-line"></div>
+          <p class="signature-name">{{nome}}</p>
+          <p class="signature-doc">Doc: {{documento}}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
