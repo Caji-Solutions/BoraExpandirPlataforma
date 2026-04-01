@@ -9,9 +9,13 @@ export class AdmController {
       const mapped = services.map((s: any) => ({
         id: s.id,
         name: s.nome,
-        value: s.valor.toString(),
+        value: s.valor != null ? s.valor.toString() : '',   // null-safe
         duration: s.duracao,
         type: s.tipo || 'agendavel',
+        isAgendavel: s.is_agendavel ?? false,
+        tipoPreco: s.tipo_preco ?? 'por_contrato',
+        contratoTemplateId: s.contrato_template_id ?? null,
+        possuiSubservicos: s.possui_subservicos ?? false,
         showInCommercial: s.exibir_comercial,
         showToClient: s.exibir_cliente,
         requiresLegalDelegation: s.requer_delegacao_juridico || false,
@@ -21,7 +25,8 @@ export class AdmController {
             id: r.id,
             name: r.nome,
             stage: r.etapa,
-            required: r.obrigatorio
+            required: r.obrigatorio,
+            tipoDocumento: r.tipo_documento ?? 'titular',
           })),
         subservices: (s.subservicos || []).map((sub: any) => ({
           id: sub.id,
@@ -30,7 +35,8 @@ export class AdmController {
             id: r.id,
             name: r.nome,
             stage: r.etapa,
-            required: r.obrigatorio
+            required: r.obrigatorio,
+            tipoDocumento: r.tipo_documento ?? 'titular',
           }))
         }))
       }));
