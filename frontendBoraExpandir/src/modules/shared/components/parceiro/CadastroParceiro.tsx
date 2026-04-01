@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 
 interface FormData {
   nome: string;
@@ -27,6 +27,16 @@ export default function CadastroParceiro() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Redirecionamento após sucesso
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        navigate("/login");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success, navigate]);
 
   const logoUrl = "/assets/bora-logo.png";
 
@@ -106,11 +116,6 @@ export default function CadastroParceiro() {
       const json = await res.json();
       setSuccess(true);
       setData(initial);
-      
-      // Redireciona para login após 3 segundos
-      setTimeout(() => {
-        navigate("/cliente"); // Ajuste para a rota de login correta
-      }, 3000);
       
     } catch (err: any) {
       setError(err.message || "Erro ao cadastrar. Tente novamente.");
@@ -339,12 +344,12 @@ export default function CadastroParceiro() {
           <div className="text-center pt-4 border-t border-gray-200">
             <p className="text-sm text-gray-600">
               Já possui cadastro?{" "}
-              <a
-                href="/cliente"
+              <Link
+                to="/login"
                 className="text-blue-600 hover:text-blue-700 font-semibold hover:underline"
               >
                 Fazer login
-              </a>
+              </Link>
             </p>
           </div>
         </form>

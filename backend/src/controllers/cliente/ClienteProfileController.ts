@@ -462,6 +462,22 @@ class ClienteProfileController {
       })
     }
   }
+
+  async becomeLead(req: any, res: any) {
+    try {
+      const { clienteId } = req.body
+      if (!clienteId) return res.status(400).json({ message: 'clienteId é obrigatório' })
+      
+      const updatedData = await ClienteRepository.attStatusById(clienteId, 'LEAD')
+      return res.status(200).json({
+        message: 'Status atualizado para LEAD com sucesso',
+        data: updatedData
+      })
+    } catch (error: any) {
+      console.error('[ClienteProfileController] Erro ao tornar lead:', error)
+      return res.status(500).json({ message: 'Erro ao tornar lead', error: error.message })
+    }
+  }
 }
 
 export default new ClienteProfileController()

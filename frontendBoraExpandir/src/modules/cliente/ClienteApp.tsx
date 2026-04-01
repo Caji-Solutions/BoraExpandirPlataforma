@@ -490,7 +490,7 @@ export function ClienteApp() {
   if (isPartnerOnly) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Sidebar groups={sidebarGroups} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <Sidebar groups={sidebarGroups} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} avatarUrl={client.avatarUrl} />
         {!sidebarOpen && (
           <button
             onClick={() => setSidebarOpen(true)}
@@ -504,10 +504,10 @@ export function ClienteApp() {
         )}
         <main className="md:ml-64 p-4 md:p-8 pt-16 md:pt-8">
           <Routes>
-            <Route index element={<Parceiro client={client} />} />
+            <Route index element={<Parceiro client={client} bannerOnly={true} />} />
             <Route path="parceiro" element={<Parceiro client={client} />} />
             <Route path="agendamento" element={<ClienteAgendamento client={client} />} />
-            <Route path="configuracoes" element={<Config />} />
+            <Route path="configuracoes" element={<Config client={client} documents={documents} onRefresh={async () => { if (client.id) { await fetchDocuments(client.id); await fetchClientData(client.id); } }} />} />
           </Routes>
         </main>
       </div>
@@ -540,7 +540,7 @@ export function ClienteApp() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Sidebar groups={sidebarGroups} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+      <Sidebar groups={sidebarGroups} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} avatarUrl={client.avatarUrl} />
 
       {!sidebarOpen && (
         <button

@@ -25,6 +25,7 @@ type SidebarProps = {
   setSidebarOpen?: (open: boolean) => void
   children?: React.ReactNode
   className?: string
+  avatarUrl?: string
 }
 
 // Component for rendering individual sidebar items (with support for expandable children)
@@ -103,11 +104,13 @@ function SidebarItemComponent({ item }: { item: SidebarItem }) {
 }
 
 
-export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen, children, className }: SidebarProps) {
+export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen, children, className, avatarUrl }: SidebarProps) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [localSidebarOpen, setLocalSidebarOpen] = useState(false)
   const { impersonatedProfile, setImpersonatedProfile, profile, activeProfile } = useAuth()
+  
+  const finalAvatarUrl = avatarUrl || activeProfile?.avatar_url;
 
   // Use props if provided, otherwise use local state
   const isOpen = sidebarOpen !== undefined ? sidebarOpen : localSidebarOpen
@@ -191,7 +194,23 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen, children,
               </button>
             </div>
           </div>
-          <div className="text-xs text-muted-foreground truncate">{userName}</div>
+          <div className="flex items-center gap-3 mt-4">
+            <div className="w-10 h-10 rounded-xl bg-sidebar-accent flex items-center justify-center overflow-hidden border border-sidebar-border shadow-sm">
+              {finalAvatarUrl ? (
+                <img src={finalAvatarUrl} alt={userName} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 font-bold text-xs uppercase">
+                  {userName.substring(0, 2)}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col min-w-0">
+              <div className="text-xs font-bold text-foreground truncate">{userName}</div>
+              <div className="text-[10px] text-muted-foreground uppercase font-medium tracking-tighter opacity-70">
+                {activeProfile?.role || 'Visitante'}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Banner de impersonação — Super Admin visualizando como outro usuário */}

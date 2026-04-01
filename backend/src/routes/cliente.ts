@@ -30,6 +30,7 @@ cliente.get('/contratos', ClienteContratosController.getContratos.bind(ClienteCo
 cliente.post('/attstatusbywpp', ClienteProfileController.AttStatusClientebyWpp.bind(ClienteProfileController))
 cliente.post('/profile-photo', upload.single('file'), ClienteProfileController.uploadProfilePhoto.bind(ClienteProfileController))
 cliente.post('/uploadDoc', upload.single('file'), ClienteDocumentController.uploadDoc.bind(ClienteDocumentController))
+cliente.post('/become-lead', ClienteProfileController.becomeLead.bind(ClienteProfileController))
 cliente.post('/timezone', ClienteController.saveTimezone.bind(ClienteController))
 cliente.post('/lead-notas', ClienteController.createLeadNote.bind(ClienteController))
 cliente.post('/contratos/:id/upload', upload.single('file'), ClienteContratosController.uploadContratoAssinado.bind(ClienteContratosController))

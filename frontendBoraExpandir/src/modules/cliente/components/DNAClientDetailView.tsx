@@ -21,6 +21,8 @@ import { ClientDNAData, ClientNote, CATEGORIAS_LIST, formatDate } from '@/module
 import { ProcessAction } from '@/modules/juridico/components/ProcessAction'
 import { DocumentRequestModal } from '@/modules/juridico/components/DocumentRequestModal'
 import { RequirementRequestModal } from '@/modules/juridico/components/RequirementRequestModal'
+import { ApostilleQuoteModal } from '@/modules/cliente/components/services/ApostilleQuoteModal'
+import { TranslationQuoteModal } from '@/modules/cliente/components/services/TranslationPaymentModal'
 import { FormsDeclarationsSection } from '@/modules/juridico/components/FormsDeclarationsSection'
 import { ClientQuestionnaireAnswers } from './ClientQuestionnaireAnswers'
 import { RequirementsSection } from '@/modules/juridico/components/RequirementsSection'
@@ -28,6 +30,7 @@ import juridicoService from '@/modules/juridico/services/juridicoService'
 import comercialService from '@/modules/comercial/services/comercialService'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/modules/shared/services/api'
+import { Document as ClientDocument } from '@/modules/cliente/types/index'
 
 export function DNAClientDetailView({
     client,
@@ -63,6 +66,11 @@ export function DNAClientDetailView({
     const [leadNotesData, setLeadNotesData] = useState<any[]>([])
     const [loadingLeadNotes, setLoadingLeadNotes] = useState(false)
     const [leadNotesExpanded, setLeadNotesExpanded] = useState(false)
+    const [reqTitle, setReqTitle] = useState('')
+    const [isApostilleModalOpen, setIsApostilleModalOpen] = useState(false)
+    const [isTranslationModalOpen, setIsTranslationModalOpen] = useState(false)
+    const [clientDocuments, setClientDocuments] = useState<ClientDocument[]>([])
+    const [loadingDocuments, setLoadingDocuments] = useState(false)
 
     // Handle adding document to a specific requirement
     const handleAddDocToReq = (reqId: string) => {
@@ -132,6 +140,35 @@ export function DNAClientDetailView({
         }
         fetchMembers()
     }, [client.id, client.true_id, client.nome])
+    
+    useEffect(() => {
+        async function getDocList() {
+            if (!client.true_id && !client.id) return
+            setLoadingDocuments(true)
+            try {
+                console.log(`[DNAClientDetailView] Fetching documents for client ID: ${client.true_id || client.id}`);
+                // Se temos um processo_id, pegamos os documentos dele
+                if (client.processo_id) {
+                    console.log(`[DNAClientDetailView] Fetching documents for process ID: ${client.processo_id}`);
+                    const proc = await juridicoService.getProcessoById(client.processo_id)
+                    if (proc && proc.documentos) {
+                        console.log(`[DNAClientDetailView] Loaded ${proc.documentos.length} documents from process`);
+                        setClientDocuments(proc.documentos)
+                    }
+                } else {
+                    // Tenta buscar por cliente se não houver processo
+                    const result = await apiClient.get<{ data: ClientDocument[] }>(`/cliente/documentos/${client.true_id || client.id}`)
+                    console.log(`[DNAClientDetailView] Loaded ${result.data?.length || 0} documents from client direct fetch`);
+                    setClientDocuments(result.data || [])
+                }
+            } catch (err) {
+                console.error('Erro ao buscar documentos do cliente:', err)
+            } finally {
+                setLoadingDocuments(false)
+            }
+        }
+        getDocList()
+    }, [client.id, client.true_id, client.processo_id])
 
     useEffect(() => {
         if (activeTab === 'contrato_comprovantes') {
@@ -254,6 +291,40 @@ export function DNAClientDetailView({
 
     return (
         <div className="p-8">
+            <ApostilleQuoteModal
+                isOpen={isApostilleModalOpen}
+                onClose={() => setIsApostilleModalOpen(false)}
+                documentoId=""
+                documentoNome={client.nome}
+                allDocuments={clientDocuments}
+            />
+
+            <TranslationQuoteModal
+                isOpen={isTranslationModalOpen}
+                onClose={() => setIsTranslationModalOpen(false)}
+                documentoId=""
+                documentoNome={client.nome}
+                allDocuments={clientDocuments}
+            />
+
+            <RequirementRequestModal
+                isOpen={isReqModalOpen}
+                onOpenChange={setIsReqModalOpen}
+                clienteId={client.true_id || client.id}
+                processoId={client.processo_id}
+                members={members}
+                initialTitle={reqTitle}
+            />
+
+            <DocumentRequestModal
+                isOpen={isDocModalOpen}
+                onOpenChange={setIsDocModalOpen}
+                clienteId={client.true_id || client.id}
+                processoId={client.processo_id}
+                members={members}
+                initialRequerimentoId={selectedRequerimentoId}
+            />
+
             <div className="max-w-6xl mx-auto space-y-8">
                 {/* Header */}
                 <div className="bg-card p-6 border border-border rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -1029,6 +1100,10 @@ export function DNAClientDetailView({
                                         setIsDocModalOpen(true)
                                     } else if (action === 'solicitar_formulario') {
                                         setIsFormModalOpen(true)
+                                    } else if (action === 'solicitar_apostilagem') {
+                                        setIsApostilleModalOpen(true)
+                                    } else if (action === 'solicitar_traducao') {
+                                        setIsTranslationModalOpen(true)
                                     } else if (action === 'comercial_agenda') {
                                         navigate('/comercial/agendamento', {
                                             state: {
@@ -1056,24 +1131,6 @@ export function DNAClientDetailView({
                     </div>
                 </div>
             </div>
-
-            <DocumentRequestModal
-                isOpen={isDocModalOpen}
-                onOpenChange={setIsDocModalOpen}
-                clienteId={client.true_id || client.id}
-                processoId={client.processo_id}
-                members={members}
-                initialRequerimentoId={selectedRequerimentoId}
-            />
-
-            <RequirementRequestModal
-                isOpen={isReqModalOpen}
-                onOpenChange={setIsReqModalOpen}
-                clienteId={client.true_id || client.id}
-                processoId={client.processo_id}
-                members={members}
-            />
-
         </div>
     )
 }

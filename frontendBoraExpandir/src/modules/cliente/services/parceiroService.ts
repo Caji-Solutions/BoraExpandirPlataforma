@@ -13,5 +13,10 @@ export const parceiroService = {
   async aceitarTermo(clienteId: string) {
     const result = await apiClient.post<ApiResponse>(`/cliente/parceiro/termo-aceitar`, { clienteId });
     return result.data;
+  },
+
+  async becomeLead(clienteId: string) {
+    const result = await apiClient.post<ApiResponse>(`/cliente/become-lead`, { clienteId });
+    return result.data;
   }
 };

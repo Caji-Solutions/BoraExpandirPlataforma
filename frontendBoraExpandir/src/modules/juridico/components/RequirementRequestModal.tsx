@@ -40,6 +40,7 @@ interface RequirementRequestModalProps {
     members?: { id: string, name: string, type: string, isTitular: boolean }[];
     initialMemberId?: string;
     onSuccess?: () => void;
+    initialTitle?: string;
 }
 
 const REQUIREMENT_TYPES = [
@@ -66,11 +67,19 @@ export function RequirementRequestModal({
     processoId,
     members = [],
     initialMemberId,
-    onSuccess
+    onSuccess,
+    initialTitle = ''
 }: RequirementRequestModalProps) {
-    const [identificador, setIdentificador] = useState('');
+    const [identificador, setIdentificador] = useState(initialTitle);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [files, setFiles] = useState<File[]>([]);
+
+    // Sync title when it changes and modal opens
+    React.useEffect(() => {
+        if (isOpen && initialTitle) {
+            setIdentificador(initialTitle);
+        }
+    }, [isOpen, initialTitle]);
 
     // List of documents to request within this requirement
     const [documentsToRequest, setDocumentsToRequest] = useState<{ id: string, type: string, memberId: string }[]>([]);

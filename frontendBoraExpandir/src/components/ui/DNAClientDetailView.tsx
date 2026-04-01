@@ -27,6 +27,7 @@ import { FormsDeclarationsSection } from '../../modules/juridico/components/Form
 import { RequirementsSection } from '../../modules/juridico/components/RequirementsSection'
 import { FormUploadModal } from '../../modules/juridico/components/FormUploadModal'
 import { ApostilleQuoteModal } from '../../modules/cliente/components/services/ApostilleQuoteModal'
+import { TranslationQuoteModal } from '../../modules/cliente/components/services/TranslationPaymentModal'
 import juridicoService from '../../modules/juridico/services/juridicoService'
 import comercialService from '../../modules/comercial/services/comercialService'
 import { useAuth } from '../../contexts/AuthContext'
@@ -67,6 +68,7 @@ export function DNAClientDetailView({
     const [loadingLeadNotes, setLoadingLeadNotes] = useState(false)
     const [leadNotesExpanded, setLeadNotesExpanded] = useState(false)
     const [isApostilleModalOpen, setIsApostilleModalOpen] = useState(false)
+    const [isTranslationModalOpen, setIsTranslationModalOpen] = useState(false)
     const [allClientDocs, setAllClientDocs] = useState<any[]>([])
     const [localProcessoId, setLocalProcessoId] = useState<string | undefined>(client.processo_id)
 
@@ -321,6 +323,22 @@ export function DNAClientDetailView({
 
     return (
         <div className="p-6 lg:p-8">
+            <ApostilleQuoteModal
+                isOpen={isApostilleModalOpen}
+                onClose={() => setIsApostilleModalOpen(false)}
+                documentoId=""
+                documentoNome={client.nome}
+                allDocuments={allClientDocs}
+            />
+
+            <TranslationQuoteModal
+                isOpen={isTranslationModalOpen}
+                onClose={() => setIsTranslationModalOpen(false)}
+                documentoId=""
+                documentoNome={client.nome}
+                allDocuments={allClientDocs}
+            />
+
             <div className="max-w-6xl mx-auto space-y-5">
                 {/* Header */}
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -989,13 +1007,13 @@ export function DNAClientDetailView({
                                 areaFilter={areaFilter}
                                 onActionClick={(action) => {
                                     if (action === 'solicitar_documentos') {
-                                        if (activeProfile?.role === 'comercial') {
-                                            setIsApostilleModalOpen(true)
-                                        } else {
-                                            setIsDocModalOpen(true)
-                                        }
+                                        setIsDocModalOpen(true)
                                     } else if (action === 'solicitar_formulario') {
                                         setIsFormModalOpen(true)
+                                    } else if (action === 'solicitar_apostilagem') {
+                                        setIsApostilleModalOpen(true)
+                                    } else if (action === 'solicitar_traducao') {
+                                        setIsTranslationModalOpen(true)
                                     } else if (action === 'comercial_agenda') {
                                         navigate('/comercial/agendamento', {
                                             state: {
@@ -1067,22 +1085,6 @@ export function DNAClientDetailView({
                 members={members}
                 onSuccess={() => fetchNotes()}
             />
-
-            {allClientDocs.length > 0 && (
-                <ApostilleQuoteModal
-                    isOpen={isApostilleModalOpen}
-                    onClose={() => setIsApostilleModalOpen(false)}
-                    clienteEmail={client.email}
-                    documentoId={allClientDocs[0]?.id}
-                    documentoNome={allClientDocs[0]?.nome || allClientDocs[0]?.name}
-                    allDocuments={allClientDocs}
-                    onPaymentSuccess={() => {
-                        setIsApostilleModalOpen(false)
-                        fetchNotes()
-                    }}
-                />
-            )}
-
         </div>
     )
 }

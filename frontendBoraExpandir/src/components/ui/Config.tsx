@@ -214,7 +214,9 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
                 
                 <div className="text-center">
                   <p className="font-medium text-gray-900 dark:text-white">{client.name}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Cliente</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {(client.isPartner && !client.isClient) ? 'Parceiro' : 'Cliente'}
+                  </p>
                 </div>
               </div>
 
