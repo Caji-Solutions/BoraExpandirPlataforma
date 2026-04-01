@@ -102,6 +102,9 @@ export default function ServiceCatalog() {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Categoria do serviço (controla o formulário adaptativo)
+  const [categoria, setCategoria] = useState<ServiceCategoria | null>(null);
+
   // Contrato templates
   const [contratoTemplates, setContratoTemplates] = useState<ContratoTemplate[]>([]);
 
@@ -126,6 +129,16 @@ export default function ServiceCatalog() {
   });
   const [durationValue, setDurationValue] = useState("");
   const [durationUnit, setDurationUnit] = useState("horas");
+
+  const handleSelectCategoria = (cat: ServiceCategoria) => {
+    const currentCat = categoria ?? "diverso";
+    setCategoria(cat);
+    setFormData(prev => ({
+      ...prev,
+      ...getPresetForCategoria(cat),
+      ...getClearedFieldsForSwitch(currentCat, cat),
+    }));
+  };
 
   useEffect(() => {
     fetchAll();
@@ -154,6 +167,7 @@ export default function ServiceCatalog() {
 
   const handleOpenAddService = () => {
     setEditingService(null);
+    setCategoria(null);
     setFormData({
       name: "",
       value: "",
@@ -175,6 +189,14 @@ export default function ServiceCatalog() {
 
   const handleOpenEditService = (service: Service) => {
     setEditingService(service);
+
+    // Derive category from service.type — fallback to 'diverso' for unknown/null values
+    const categoriaDerivada: ServiceCategoria =
+      service.type === "agendavel" ? "consultoria"
+      : service.type === "fixo"     ? "assessoria"
+      : "diverso";
+    setCategoria(categoriaDerivada);
+
     setFormData({
       name: service.name,
       value: service.value,
@@ -201,11 +223,23 @@ export default function ServiceCatalog() {
   };
 
   const handleSaveService = async () => {
+    // Validation 1: categoria required (save button disabled is the first guard)
+    if (!categoria) {
+      toast.error("Selecione uma categoria para o serviço.");
+      return;
+    }
+    // Validation 2: name required
     if (!formData.name) {
       toast.error("Nome e obrigatorio.");
       return;
     }
-    if (formData.tipoPreco === 'fixo' && !formData.value) {
+    // Validation 3: contract required for Assessoria
+    if (categoria === "assessoria" && !formData.contratoTemplateId) {
+      toast.error("Selecione um contrato vinculado para serviços de Assessoria.");
+      return;
+    }
+    // Validation 4: value required for fixed price
+    if (formData.tipoPreco === "fixo" && !formData.value) {
       toast.error("Valor e obrigatorio para servicos com preco fixo.");
       return;
     }
