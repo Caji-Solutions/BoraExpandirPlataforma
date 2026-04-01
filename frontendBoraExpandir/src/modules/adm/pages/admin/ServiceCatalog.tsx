@@ -55,36 +55,36 @@ interface ContratoTemplate {
 }
 
 // ─── Tipos de Categoria (exportados para teste) ───────────────────────────────
-export type ServiceCategoria = 'consultoria' | 'assessoria' | 'diverso'
+export type ServiceCategoria = "consultoria" | "assessoria" | "diverso";
 
 // ─── Helpers puros (exportados para teste) ───────────────────────────────────
-export function getPresetForCategoria(cat: ServiceCategoria): Partial<Omit<Service, 'id'>> {
+export function getPresetForCategoria(cat: ServiceCategoria): Partial<Omit<Service, "id">> {
   switch (cat) {
-    case 'consultoria':
-      return { type: 'agendavel', isAgendavel: true, tipoPreco: 'por_contrato' }
-    case 'assessoria':
-      return { type: 'fixo', isAgendavel: false, tipoPreco: 'por_contrato' }
-    case 'diverso':
-      return { type: 'diverso', isAgendavel: false }
+    case "consultoria":
+      return { type: "agendavel", isAgendavel: true, tipoPreco: "por_contrato" };
+    case "assessoria":
+      return { type: "fixo", isAgendavel: false, tipoPreco: "por_contrato" };
+    case "diverso":
+      return { type: "diverso", isAgendavel: false };
   }
 }
 
 export function getClearedFieldsForSwitch(
   prevCat: ServiceCategoria,
   nextCat: ServiceCategoria
-): Partial<Omit<Service, 'id'>> {
-  if (prevCat === nextCat) return {}
+): Partial<Omit<Service, "id">> {
+  if (prevCat === nextCat) return {};
 
-  const transitions: Record<string, Partial<Omit<Service, 'id'>>> = {
-    'consultoria->assessoria': { value: '', duration: '', tipoPreco: 'por_contrato' },
-    'consultoria->diverso':    { isAgendavel: false },
-    'assessoria->consultoria': { contratoTemplateId: null, tipoPreco: 'por_contrato' },
-    'assessoria->diverso':     { contratoTemplateId: null },
-    'diverso->consultoria':    { isAgendavel: true, contratoTemplateId: null },
-    'diverso->assessoria':     { value: '', duration: '', tipoPreco: 'por_contrato' },
-  }
+  const transitions: Record<string, Partial<Omit<Service, "id">>> = {
+    "consultoria->assessoria": { value: "", duration: "", tipoPreco: "por_contrato" },
+    "consultoria->diverso":    { isAgendavel: false },
+    "assessoria->consultoria": { contratoTemplateId: null, tipoPreco: "por_contrato" },
+    "assessoria->diverso":     { contratoTemplateId: null },
+    "diverso->consultoria":    { isAgendavel: true, contratoTemplateId: null },
+    "diverso->assessoria":     { value: "", duration: "", tipoPreco: "por_contrato" },
+  };
 
-  return transitions[`${prevCat}->${nextCat}`] ?? {}
+  return transitions[`${prevCat}->${nextCat}`] ?? {};
 }
 
 export default function ServiceCatalog() {
