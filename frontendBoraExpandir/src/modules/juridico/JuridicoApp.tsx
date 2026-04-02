@@ -1,18 +1,17 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { Home, FolderOpen, FileSearch, CheckSquare, Settings, Users, FileStack, Dna, Clock } from "lucide-react";
+import { Home, FolderOpen, FileSearch, CheckSquare, Settings, Dna, Clock, FileCheck } from "lucide-react";
 import { Sidebar } from "@/components/ui/Sidebar";
 import type { SidebarGroup } from "@/components/ui/Sidebar";
 import { Dashboard } from "./pages/Dashboard";
 import { ProcessQueue } from "./components/ProcessQueue";
 import { ReviewPanel } from "./components/ReviewPanel";
 import { Config } from "@/components/ui/Config";
-import { DelegacaoDocumentos } from "./components/DelegacaoDocumentos";
-import { EquipeJuridica } from "./components/EquipeJuridica";
 import { AssessoriaJuridica } from "./pages/AssessoriaJuridica";
+import { ProcessosProtocolados } from "./pages/ProcessosProtocolados";
+import { ProcessoProtocoladoDetalhes } from "./pages/ProcessoProtocoladoDetalhes";
 import { MeusAgendamentos } from "../../components/MeusAgendamentos";
 import { ClientDNAPage } from "@/components/ui/ClientDNA";
-import DelegacaoFila from "./pages/DelegacaoFila";
 import juridicoService, { Processo } from "./services/juridicoService";
 
 import { ProcessTable, ProcessData } from "./components/ProcessTable";
@@ -95,18 +94,11 @@ const Tarefas = () => {
   );
 };
 
-// Simulação: Usuário logado é Supervisor
-// Em produção, isso viria do contexto de autenticação
 const Index = () => {
   const { activeProfile } = useAuth();
-  
-  const USUARIO_LOGADO = {
-    nome: activeProfile?.full_name || "Usuário",
-    isSupervisor: activeProfile?.is_supervisor || false,
-  };
 
-  // Configuração da sidebar seguindo o padrão do projeto
-  // Itens exclusivos para supervisor são adicionados condicionalmente
+  const isSupervisor = activeProfile?.is_supervisor || activeProfile?.role === 'super_admin';
+
   const sidebarGroups: SidebarGroup[] = [
     {
       label: "Menu Principal",
@@ -115,20 +107,11 @@ const Index = () => {
         { label: "DNA do Cliente", to: "/juridico/dna", icon: Dna },
         { label: "Meus Processos", to: "/juridico/processos", icon: FolderOpen },
         { label: "Fila de Análise", to: "/juridico/analise", icon: FileSearch },
+        ...(isSupervisor ? [{ label: "Processos Protocolados", to: "/juridico/protocolados", icon: FileCheck }] : []),
         { label: "Tarefas", to: "/juridico/tarefas", icon: CheckSquare },
         { label: "Agendamentos", to: "/juridico/meus-agendamentos", icon: Clock },
       ],
     },
-    // Grupo exclusivo para Supervisores
-    ...(USUARIO_LOGADO.isSupervisor ? [{
-      label: "Supervisão",
-      items: [
-        { label: "Delegação de Processos", to: "/juridico/delegacao-processos", icon: FileStack },
-        { label: "Delegação de Documentos", to: "/juridico/delegacao", icon: FileStack },
-        { label: "Equipe Jurídica", to: "/juridico/equipe", icon: Users },
-      ],
-    }] : []),
-
   ];
 
   return (
@@ -149,18 +132,12 @@ const Index = () => {
             <Route path="tarefas" element={<Tarefas />} />
             <Route path="dna" element={<ClientDNAPage />} />
             <Route path="assessoria" element={<AssessoriaJuridica />} />
+            <Route path="protocolados" element={<ProcessosProtocolados />} />
+            <Route path="protocolado/:id" element={<ProcessoProtocoladoDetalhes />} />
             <Route path="meus-agendamentos" element={<MeusAgendamentos userId={activeProfile?.id} />} />
 
             <Route path="configuracoes" element={<Config />} />
 
-            {/* Rotas exclusivas para Supervisores */}
-            {USUARIO_LOGADO.isSupervisor && (
-              <>
-                <Route path="delegacao-processos" element={<DelegacaoFila />} />
-                <Route path="delegacao" element={<DelegacaoDocumentos />} />
-                <Route path="equipe" element={<EquipeJuridica />} />
-              </>
-            )}
 
             <Route path="*" element={<Navigate to="." replace />} />
           </Routes>

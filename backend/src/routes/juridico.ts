@@ -70,7 +70,7 @@ juridico.get('/clientes/por-responsavel/:responsavelId', JuridicoController.getC
 juridico.get('/cliente/:clienteId', JuridicoController.getClienteComResponsavel.bind(JuridicoController))
 
 juridico.post('/atribuir-responsavel', JuridicoController.atribuirResponsavel.bind(JuridicoController))
-juridico.get('/agendamentos/delegacao', JuridicoController.getAgendamentosDelegacao.bind(JuridicoController))
+
 juridico.post('/atribuir-responsavel-agendamento', JuridicoController.atribuirResponsavelAgendamento.bind(JuridicoController))
 juridico.get('/formulario-preenchido/:clienteId', JuridicoController.verificarFormularioPreenchido.bind(JuridicoController))
 juridico.post('/agendamentos/pedido-reagendamento', JuridicoController.pedidoReagendamento.bind(JuridicoController))
@@ -126,6 +126,25 @@ juridico.delete('/notas/:noteId', JuridicoController.deleteNote.bind(JuridicoCon
 // ROTAS DE VALIDACAO DE CONTRATOS
 // =============================================
 juridico.post('/contratos/:id/invalidar', JuridicoController.invalidarContrato.bind(JuridicoController))
+
+// =============================================
+// ROTAS DE PROTOCOLAÇÃO
+// =============================================
+
+// Lista supervisores do jurídico
+juridico.get('/supervisores', JuridicoController.getSupervisores.bind(JuridicoController))
+
+// Lista processos protocolados (supervisor only)
+juridico.get('/processos-protocolados', JuridicoController.getProcessosProtocolados.bind(JuridicoController))
+
+// Detalhes de um processo protocolado
+juridico.get('/processo/:id/protocolado', JuridicoController.getProcessoProtocoladoDetails.bind(JuridicoController))
+
+// Enviar processo para protocolação
+juridico.post('/processo/:id/enviar-protocolacao', JuridicoController.enviarParaProtocolacao.bind(JuridicoController))
+
+// Atualizar detalhes da protocolação
+juridico.put('/processo/:id/atualizar-protocolo', JuridicoController.atualizarProtocolo.bind(JuridicoController))
 
 export default juridico
 

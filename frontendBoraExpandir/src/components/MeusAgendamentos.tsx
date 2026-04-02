@@ -6,6 +6,7 @@ import {
   Briefcase,
   AlertCircle,
   CheckSquare,
+  Check,
   Clock,
   User,
   X,
@@ -68,6 +69,9 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
   const [servicosCatalogo, setServicosCatalogo] = useState<Service[]>([]);
   const [isC2SelectionOpen, setIsC2SelectionOpen] = useState(false);
   const [c2SearchQuery, setC2SearchQuery] = useState('');
+  const [isFormularioModalOpen, setIsFormularioModalOpen] = useState(false);
+  const [dnaData, setDnaData] = useState<Record<string, any> | null>(null);
+  const [isLoadingDna, setIsLoadingDna] = useState(false);
 
   const effectiveUserId = userId || activeProfile?.id;
 
@@ -260,6 +264,8 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
 
     setHasStartedConsultoria(selectedItem.status === 'em_consultoria');
     setSelectedVendedorId(selectedItem.vendedor_id || '');
+    setIsFormularioModalOpen(false);
+    setDnaData(null);
   }, [selectedItem?.id, selectedItem?.status, selectedItem?.vendedor_id]);
 
   const handleAssign = async () => {
@@ -679,6 +685,28 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                               {checkingSecurity ? 'Verificando...' : hasFormulario ? 'Formulario preenchido' : 'Dados pendentes'}
                             </p>
                           </div>
+                          <button
+                            onClick={async () => {
+                              const clienteId = selectedItem?.cliente_id;
+                              if (!clienteId) return;
+                              setIsLoadingDna(true);
+                              try {
+                                const data = await juridicoService.getClienteDNA(clienteId);
+                                setDnaData(data);
+                                setIsFormularioModalOpen(true);
+                              } catch (err) {
+                                console.error('Erro ao buscar DNA:', err);
+                                toast.error('Erro ao carregar dados do formulario.');
+                              } finally {
+                                setIsLoadingDna(false);
+                              }
+                            }}
+                            disabled={!hasFormulario || isLoadingDna}
+                            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors shrink-0"
+                          >
+                            <FileText className="h-3 w-3" />
+                            {isLoadingDna ? 'Carregando...' : 'Exibir Formulário'}
+                          </button>
                         </div>
                       </div>
                     )}
@@ -960,6 +988,184 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
               >
                 <CheckSquare className="h-3.5 w-3.5" />
                 {isMarkingRealizada ? 'Salvando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+          <style>{`
+            @keyframes slideUp { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+          `}</style>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal de Formulario (DNA) */}
+      {isFormularioModalOpen && selectedItem && dnaData && createPortal(
+        <div className="fixed inset-0 z-[1200] w-screen h-screen bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setIsFormularioModalOpen(false)}>
+          <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-200 dark:border-neutral-800 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[80vh]" style={{ animation: 'slideUp 0.25s ease-out' }} onClick={(e) => e.stopPropagation()}>
+
+            {/* Header */}
+            <div className="sticky top-0 z-30 px-6 py-4 border-b border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-950 flex justify-between items-center">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base font-bold text-gray-900 dark:text-white truncate flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-blue-500 shrink-0" />
+                  Formulário de Consultoria
+                </h2>
+                <p className="text-[10px] text-gray-400 dark:text-neutral-500 mt-0.5 truncate">
+                  {selectedItem.nome || 'Cliente'}
+                  {selectedItem.status === 'realizado' && (
+                    <span className="ml-2 inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
+                      <Check className="h-3 w-3" /> Realizado
+                    </span>
+                  )}
+                </p>
+              </div>
+              <button
+                onClick={() => setIsFormularioModalOpen(false)}
+                className="ml-3 p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg transition-all"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Body - DNA Sections */}
+            <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-neutral-800">
+              <div className="px-6 py-5">
+                {(() => {
+                  const dna = dnaData;
+                  const sections: { title: string; color: string; fields: { q: string; a: string }[] }[] = [];
+
+                  const push = (title: string, color: string, fields: [string, any][]) => {
+                    const filled = fields.filter(([, v]) => v).map(([q, v]) => ({ q, a: String(v) }));
+                    if (filled.length > 0) sections.push({ title, color, fields: filled });
+                  };
+
+                  push('Perfil Pessoal', 'from-blue-500 to-sky-500', [
+                    ['Nacionalidade', dna.nacionalidade],
+                    ['Estado Civil', dna.estado_civil],
+                    ['Cidade / País de Residência', dna.cidade_pais_residencia],
+                    ['Esteve na Europa por mais de 6 meses?', dna.esteve_europa_6meses],
+                  ]);
+                  push('Família', 'from-pink-500 to-rose-500', [
+                    ['Filhos — Quantidade e Idades', dna.filhos_qtd_idades],
+                    ['Familiares na Espanha', dna.familiares_espanha],
+                    ['Filhos com Nacionalidade Europeia', dna.filhos_nacionalidade_europeia],
+                  ]);
+                  push('Mobilidade & Vínculos com a Europa', 'from-emerald-500 to-teal-500', [
+                    ['Visto UE', dna.visto_ue],
+                    ['Trabalho Destacado na UE', dna.trabalho_destacado_ue],
+                    ['CNH — Categoria e Ano', dna.possui_cnh_categoria_ano],
+                    ['Proposta de Trabalho na Espanha', dna.proposta_trabalho_espanha],
+                  ]);
+                  push('Trabalho, Formação & Planos', 'from-violet-500 to-purple-500', [
+                    ['Situação Profissional', dna.situacao_profissional],
+                    ['Profissão (online / presencial)', dna.profissao_online_presencial],
+                    ['Escolaridade', dna.escolaridade],
+                    ['Área de Formação', dna.area_formacao],
+                    ['Tipo de Visto Planejado', dna.tipo_visto_planejado],
+                    ['Pretende Trabalhar na Espanha', dna.pretende_trabalhar_espanha],
+                    ['Disposto a Estudar', dna.disposto_estudar],
+                    ['Pretende Ser Autônomo', dna.pretende_autonomo],
+                  ]);
+
+                  if (sections.length === 0 && !dna.duvidas_consultoria) {
+                    return (
+                      <div className="py-10 text-center">
+                        <FileText className="h-8 w-8 text-gray-300 dark:text-neutral-600 mx-auto mb-2" />
+                        <p className="text-sm text-gray-400 dark:text-neutral-500">Nenhum dado de formulário encontrado.</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-0">
+                      {/* Progress bar */}
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Respostas preenchidas</span>
+                          <span className="text-[10px] font-bold text-gray-500 dark:text-neutral-400 tabular-nums">
+                            {sections.reduce((acc, s) => acc + s.fields.length, 0)}
+                          </span>
+                        </div>
+                        <div className="relative h-1 bg-gray-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                          <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-emerald-500 to-blue-500 w-full transition-all duration-700 ease-out" />
+                        </div>
+                      </div>
+
+                      {/* Timeline sections */}
+                      {sections.map((section, sIdx) => {
+                        const isLast = sIdx === sections.length - 1 && !dna.duvidas_consultoria;
+                        return (
+                          <div key={sIdx} className="relative">
+                            <div className="relative flex gap-3 py-2.5">
+                              {/* Timeline indicator */}
+                              <div className="flex flex-col items-center flex-shrink-0 w-8">
+                                <div className={`relative z-10 w-6 h-6 rounded-full flex items-center justify-center bg-gradient-to-br text-white shadow-sm ${section.color}`}>
+                                  <Check className="h-3 w-3" />
+                                </div>
+                                {!isLast && (
+                                  <div className="w-0.5 flex-1 min-h-[8px] bg-emerald-400/30" />
+                                )}
+                              </div>
+
+                              {/* Content */}
+                              <div className="flex-1 min-w-0 -mt-0.5 pb-1">
+                                <h4 className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">{section.title}</h4>
+                                <div className="space-y-2.5">
+                                  {section.fields.map((field, fIdx) => (
+                                    <div key={fIdx} className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-4">
+                                      <span className="text-[11px] text-gray-400 dark:text-neutral-500 font-semibold sm:min-w-[200px] sm:text-right flex-shrink-0">
+                                        {field.q}
+                                      </span>
+                                      <span className="text-[13px] font-semibold text-gray-900 dark:text-white leading-relaxed whitespace-pre-line">
+                                        {field.a}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Dúvidas section */}
+                      {dna.duvidas_consultoria && (
+                        <div className="relative">
+                          <div className="relative flex gap-3 py-2.5">
+                            <div className="flex flex-col items-center flex-shrink-0 w-8">
+                              <div className="relative z-10 w-6 h-6 rounded-full flex items-center justify-center bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm">
+                                <AlertCircle className="h-3 w-3" />
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0 -mt-0.5">
+                              <h4 className="text-xs font-bold text-amber-600 dark:text-amber-400 mb-1.5">Dúvidas para a Consultoria</h4>
+                              <p className="text-xs text-gray-700 dark:text-neutral-300 font-medium leading-relaxed border-l-2 border-amber-400/30 pl-2.5 italic">
+                                "{String(dna.duvidas_consultoria)}"
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Footer with Realizada button */}
+            <div className="sticky bottom-0 z-40 px-6 py-4 border-t border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-950">
+              <button
+                onClick={() => {
+                  setIsFormularioModalOpen(false);
+                  setSelectedVendedorId('');
+                  setC2SearchQuery('');
+                  setIsC2SelectionOpen(true);
+                }}
+                disabled={isRealizadaDisabled}
+                className="w-full px-4 py-3 font-bold text-xs bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <CheckSquare className="h-3.5 w-3.5" />
+                {selectedItem.status === 'realizado' ? 'Realizado' : isMarkingRealizada ? 'Salvando...' : 'Realizada'}
               </button>
             </div>
           </div>

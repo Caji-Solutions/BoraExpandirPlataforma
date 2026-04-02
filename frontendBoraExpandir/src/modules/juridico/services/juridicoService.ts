@@ -104,13 +104,6 @@ export async function removerResponsavel(clienteId: string): Promise<AtribuirRes
   return apiClient.post(`/juridico/atribuir-responsavel`, { clienteId, responsavelId: null });
 }
 
-/**
- * Busca agendamentos que requerem delegação
- */
-export async function getAgendamentosDelegacao(): Promise<any[]> {
-  const result: any = await apiClient.get(`/juridico/agendamentos/delegacao`);
-  return result.data;
-}
 
 /**
  * Atribui um responsável jurídico a um agendamento
@@ -454,6 +447,42 @@ export async function getUsuariosComerciaisC2(): Promise<any[]> {
   return (result as any).data || [];
 }
 
+export async function getClienteDNA(clienteId: string): Promise<Record<string, any>> {
+  const result = await apiClient.get(`/cliente/${clienteId}/dna`) as any;
+  return result.data || result || {};
+}
+
+/**
+ * Busca supervisores do jurídico
+ */
+export async function getSupervisores(): Promise<FuncionarioJuridico[]> {
+  const result: any = await apiClient.get(`/juridico/supervisores`);
+  return result.data;
+}
+
+/**
+ * Busca processos protocolados
+ */
+export async function getProcessosProtocolados(): Promise<Processo[]> {
+  const result: any = await apiClient.get(`/juridico/processos-protocolados`);
+  return result.data;
+}
+
+/**
+ * Busca detalhes de um processo protocolado
+ */
+export async function getProcessoProtocoladoDetails(processoId: string): Promise<any> {
+  const result: any = await apiClient.get(`/juridico/processo/${processoId}/protocolado`);
+  return result.data;
+}
+
+/**
+ * Envia processo para protocolação
+ */
+export async function enviarParaProtocolacao(processoId: string, supervisorId: string): Promise<any> {
+  return apiClient.post(`/juridico/processo/${processoId}/enviar-protocolacao`, { supervisorId });
+}
+
 export default {
     getProcessos,
     getProcessosByResponsavel,
@@ -461,7 +490,7 @@ export default {
     atribuirResponsavel,
     removerResponsavel,
     getFuncionariosJuridico,
-    getAgendamentosDelegacao,
+
     atribuirResponsavelAgendamento,
     getClientesVagos,
     getAllClientesComResponsavel,
@@ -519,4 +548,9 @@ export default {
     verificarFormularioPreenchido,
     pedidoReagendamento,
     getUsuariosComerciaisC2,
+    getClienteDNA,
+    getSupervisores,
+    getProcessosProtocolados,
+    getProcessoProtocoladoDetails,
+    enviarParaProtocolacao,
 };

@@ -161,29 +161,6 @@ class JuridicoController {
         }
     }
 
-    // GET /juridico/agendamentos/delegacao - Lista agendamentos que requerem delegação
-    async getAgendamentosDelegacao(req: any, res: any) {
-        try {
-            const agendamentos = await JuridicoRepository.getAgendamentosDelegacao()
-
-            const agendamentosBrt = agendamentos.map((ag: any) => ({
-                ...ag,
-                data_hora: toBrtFromUtc(ag.data_hora)
-            }))
-
-            return res.status(200).json({
-                message: 'Agendamentos para delegação recuperados com sucesso',
-                data: agendamentosBrt,
-                total: agendamentosBrt.length
-            })
-        } catch (error: any) {
-            console.error('Erro ao buscar agendamentos para delegacao:', error)
-            return res.status(500).json({ 
-                message: 'Erro ao buscar agendamentos para delegação', 
-                error: error.message 
-            })
-        }
-    }
 
     // POST /juridico/atribuir-responsavel-agendamento - Atribuir responsável a um agendamento
     async atribuirResponsavelAgendamento(req: any, res: any) {
@@ -918,6 +895,34 @@ class JuridicoController {
                 // Não falha a requisição da assessoria se o processo falhar
             }
 
+            // 3. Atualizar stage do cliente para 'assessoria_andamento' (se não estiver em stage posterior)
+            try {
+                const { data: clienteAtual } = await supabase
+                    .from('clientes')
+                    .select('stage')
+                    .eq('id', clienteId)
+                    .single()
+
+                const stagesAdiante = ['assessoria_finalizada']
+                if (!stagesAdiante.includes(clienteAtual?.stage || '')) {
+                    const { error: updateStageError } = await supabase
+                        .from('clientes')
+                        .update({
+                            stage: 'assessoria_andamento',
+                            status: 'assessoria_andamento',
+                            atualizado_em: new Date().toISOString()
+                        })
+                        .eq('id', clienteId)
+
+                    if (updateStageError) {
+                        console.error('Erro ao atualizar stage do cliente para assessoria_andamento:', updateStageError)
+                    }
+                }
+            } catch (stageError) {
+                console.error('Erro ao atualizar stage do cliente:', stageError)
+                // Não falha a requisição da assessoria se a atualização de stage falhar
+            }
+
             return res.status(201).json({
                 message: 'Assessoria jurídica criada com sucesso e processo sincronizado',
                 data: assessoria
@@ -1465,6 +1470,137 @@ class JuridicoController {
         } catch (error: any) {
             console.error('[JuridicoController] Erro ao invalidar contrato:', error)
             return res.status(500).json({ message: 'Erro ao invalidar contrato', error: error.message })
+        }
+    }
+
+    // =============================================
+    // PROTOCOLAÇÃO DE PROCESSOS
+    // =============================================
+
+    // GET /juridico/supervisores - Lista supervisores do jurídico
+    async getSupervisores(req: any, res: any) {
+        try {
+            const supervisores = await JuridicoRepository.getSupervisores()
+
+            return res.status(200).json({
+                message: 'Supervisores do juridico recuperados com sucesso',
+                data: supervisores
+            })
+        } catch (error: any) {
+            console.error('Erro ao buscar supervisores do juridico:', error)
+            return res.status(500).json({
+                message: 'Erro ao buscar supervisores do juridico',
+                error: error.message
+            })
+        }
+    }
+
+    // GET /juridico/processos-protocolados - Lista processos protocolados
+    async getProcessosProtocolados(req: any, res: any) {
+        try {
+            const processos = await JuridicoRepository.getProcessosProtocolados()
+
+            return res.status(200).json({
+                message: 'Processos protocolados recuperados com sucesso',
+                data: processos,
+                total: processos.length
+            })
+        } catch (error: any) {
+            console.error('Erro ao buscar processos protocolados:', error)
+            return res.status(500).json({
+                message: 'Erro ao buscar processos protocolados',
+                error: error.message
+            })
+        }
+    }
+
+    // GET /juridico/processo/:id/protocolado - Detalhes de um processo protocolado
+    async getProcessoProtocoladoDetails(req: any, res: any) {
+        try {
+            const { id } = req.params
+
+            if (!id) {
+                return res.status(400).json({ message: 'id e obrigatorio' })
+            }
+
+            const processo = await JuridicoRepository.getProcessoProtocoladoDetails(id)
+
+            if (!processo) {
+                return res.status(404).json({ message: 'Processo nao encontrado' })
+            }
+
+            return res.status(200).json({
+                message: 'Detalhes do processo protocolado recuperados com sucesso',
+                data: processo
+            })
+        } catch (error: any) {
+            console.error('Erro ao buscar detalhes do processo protocolado:', error)
+            return res.status(500).json({
+                message: 'Erro ao buscar detalhes do processo protocolado',
+                error: error.message
+            })
+        }
+    }
+
+    // POST /juridico/processo/:id/enviar-protocolacao - Enviar processo para protocolação
+    async enviarParaProtocolacao(req: any, res: any) {
+        try {
+            const { id } = req.params
+            const { supervisorId } = req.body
+
+            if (!id) {
+                return res.status(400).json({ message: 'id e obrigatorio' })
+            }
+
+            if (!supervisorId) {
+                return res.status(400).json({ message: 'supervisorId e obrigatorio' })
+            }
+
+            // Verificar se o supervisor existe e é do jurídico
+            const supervisor = await JuridicoRepository.getFuncionarioById(supervisorId)
+            if (!supervisor) {
+                return res.status(400).json({
+                    message: 'supervisorId invalido - funcionario nao encontrado'
+                })
+            }
+
+            const processo = await JuridicoRepository.enviarParaProtocolacao(id, supervisorId)
+
+            return res.status(200).json({
+                message: 'Processo enviado para protocolacao com sucesso',
+                data: processo
+            })
+        } catch (error: any) {
+            console.error('Erro ao enviar processo para protocolacao:', error)
+            return res.status(500).json({
+                message: 'Erro ao enviar processo para protocolacao',
+                error: error.message
+            })
+        }
+    }
+
+    // PUT /juridico/processo/:id/atualizar-protocolo - Atualizar detalhes da protocolação
+    async atualizarProtocolo(req: any, res: any) {
+        try {
+            const { id } = req.params
+            const updates = req.body
+
+            if (!id) {
+                return res.status(400).json({ message: 'id e obrigatorio' })
+            }
+
+            const processo = await JuridicoRepository.atualizarProtocolo(id, updates)
+
+            return res.status(200).json({
+                message: 'Protocolo atualizado com sucesso',
+                data: processo
+            })
+        } catch (error: any) {
+            console.error('Erro ao atualizar protocolo:', error)
+            return res.status(500).json({
+                message: 'Erro ao atualizar protocolo',
+                error: error.message
+            })
         }
     }
 }

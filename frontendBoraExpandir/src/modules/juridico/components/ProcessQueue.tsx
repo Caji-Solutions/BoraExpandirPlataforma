@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom';
-import { FileText, User, ChevronRight, Folder, ChevronLeft, Search } from "lucide-react";
+import { FileText, User, ChevronRight, Folder, ChevronLeft, Search, Send } from "lucide-react";
 import { Button } from '@/modules/shared/components/ui/button';
 import { Badge } from '@/modules/shared/components/ui/badge';
 import { Card } from '@/modules/shared/components/ui/card';
@@ -8,6 +8,7 @@ import { ProcessAnalysis, JuridicoDocument, AnalysisStage } from './ProcessAnaly
 import juridicoService, { Processo } from '../services/juridicoService';
 import { FormsDeclarationsSection } from './FormsDeclarationsSection';
 import { ProcessMemberCard } from './ProcessMemberCard';
+import { ModalSelecionarSupervisor } from './ModalSelecionarSupervisor';
 import { useAuth } from '../../../contexts/AuthContext';
 import { clienteService } from '../../cliente/services/clienteService';
 
@@ -61,6 +62,9 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
     const [loading, setLoading] = useState(false);
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [protocolacaoModalOpen, setProtocolacaoModalOpen] = useState(false);
+    const [protocolacaoProcessId, setProtocolacaoProcessId] = useState<string | null>(null);
+    const [protocolacaoLoading, setProtocolacaoLoading] = useState(false);
     const [filters, setFilters] = useState({
         status: 'todos',
         serviceType: 'todos',
@@ -143,7 +147,9 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                     data = await juridicoService.getProcessosByResponsavel(activeProfile.id);
                 }
                 
-                const mapped = data.map(mapProcessoToView);
+                const mapped = data
+                    .filter((p: Processo) => p.status !== 'PROTOCOLADO')
+                    .map(mapProcessoToView);
                 setProcesses(mapped);
 
                 // Auto-select process from URL
@@ -195,6 +201,22 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
         }
         fetchData();
     }, [selectedFolder]);
+
+    const handleEnviarProtocolacao = async (supervisorId: string) => {
+        if (!protocolacaoProcessId) return;
+        setProtocolacaoLoading(true);
+        try {
+            await juridicoService.enviarParaProtocolacao(protocolacaoProcessId, supervisorId);
+            // Remove from local list
+            setProcesses(prev => prev.filter(p => p.id !== protocolacaoProcessId));
+            setProtocolacaoModalOpen(false);
+            setProtocolacaoProcessId(null);
+        } catch (error) {
+            console.error('Erro ao enviar para protocolacao:', error);
+        } finally {
+            setProtocolacaoLoading(false);
+        }
+    };
 
     const serviceTypes = useMemo(() => {
         return Array.from(new Set(processes.map(p => p.serviceType)));
@@ -688,13 +710,29 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                                         'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'
                                     }`} />
                                 </div>
-                                <div className="col-span-2 flex justify-center">
-                                    <Button 
+                                <div className="col-span-2 flex justify-center gap-2">
+                                    <Button
                                         size="sm"
                                         className="bg-primary text-primary-foreground hover:bg-primary/90 text-[10px] font-bold h-8 px-4 rounded-xl shadow-sm group-hover:scale-105 transition-all"
                                     >
                                         Acessar Processo
                                     </Button>
+                                    {process.documentsTotal > 0 &&
+                                     process.documentsApproved === process.documentsTotal && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="text-[10px] font-bold h-8 px-3 rounded-xl border-green-300 text-green-700 hover:bg-green-50 hover:text-green-800 transition-all"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setProtocolacaoProcessId(process.id);
+                                                setProtocolacaoModalOpen(true);
+                                            }}
+                                        >
+                                            <Send className="h-3 w-3 mr-1" />
+                                            Protocolar
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -707,6 +745,13 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                     </div>
                 </div>
             </div>
+
+            <ModalSelecionarSupervisor
+                open={protocolacaoModalOpen}
+                onOpenChange={setProtocolacaoModalOpen}
+                onConfirm={handleEnviarProtocolacao}
+                loading={protocolacaoLoading}
+            />
         </div>
     );
 }

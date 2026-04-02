@@ -2,6 +2,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import JuridicoController from '../juridico/JuridicoController';
 import ComercialRepository from '../../repositories/ComercialRepository';
 import JuridicoRepository from '../../repositories/JuridicoRepository';
+import AdmRepository from '../../repositories/AdmRepository';
 import NotificationService from '../../services/NotificationService';
 import { supabase } from '../../config/SupabaseClient';
 import DNAService from '../../services/DNAService';
@@ -603,5 +604,371 @@ describe('JuridicoController - getUsuariosComerciaisC2', () => {
         await JuridicoController.getUsuariosComerciaisC2(req, res);
 
         expect(res.status).toHaveBeenCalledWith(500);
+    });
+});
+
+// =============================================
+// PROTOCOLAÇÃO DE PROCESSOS
+// =============================================
+
+describe('JuridicoController - getSupervisores', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('deve retornar lista de supervisores com status 200', async () => {
+        const mockSupervisores = [
+            { id: 'sup-1', full_name: 'Supervisor A', email: 'a@test.com' },
+            { id: 'sup-2', full_name: 'Supervisor B', email: 'b@test.com' }
+        ];
+        (JuridicoRepository.getSupervisores as any).mockResolvedValue(mockSupervisores);
+
+        const req: any = {};
+        const res = makeRes();
+        await JuridicoController.getSupervisores(req, res);
+
+        expect(JuridicoRepository.getSupervisores).toHaveBeenCalledTimes(1);
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({
+            message: 'Supervisores do juridico recuperados com sucesso',
+            data: mockSupervisores
+        });
+    });
+
+    it('deve retornar 500 quando houver erro ao buscar supervisores', async () => {
+        (JuridicoRepository.getSupervisores as any).mockRejectedValue(new Error('db error'));
+
+        const req: any = {};
+        const res = makeRes();
+        await JuridicoController.getSupervisores(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(500);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            message: 'Erro ao buscar supervisores do juridico'
+        }));
+    });
+});
+
+describe('JuridicoController - getProcessosProtocolados', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('deve retornar lista de processos protocolados com total', async () => {
+        const mockProcessos = [
+            { id: 'proc-1', status: 'PROTOCOLADO', cliente_id: 'cli-1' },
+            { id: 'proc-2', status: 'PROTOCOLADO', cliente_id: 'cli-2' }
+        ];
+        (JuridicoRepository.getProcessosProtocolados as any).mockResolvedValue(mockProcessos);
+
+        const req: any = {};
+        const res = makeRes();
+        await JuridicoController.getProcessosProtocolados(req, res);
+
+        expect(JuridicoRepository.getProcessosProtocolados).toHaveBeenCalledTimes(1);
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({
+            message: 'Processos protocolados recuperados com sucesso',
+            data: mockProcessos,
+            total: 2
+        });
+    });
+
+    it('deve retornar lista vazia quando nao ha processos protocolados', async () => {
+        (JuridicoRepository.getProcessosProtocolados as any).mockResolvedValue([]);
+
+        const req: any = {};
+        const res = makeRes();
+        await JuridicoController.getProcessosProtocolados(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({
+            message: 'Processos protocolados recuperados com sucesso',
+            data: [],
+            total: 0
+        });
+    });
+
+    it('deve retornar 500 quando houver erro ao buscar processos protocolados', async () => {
+        (JuridicoRepository.getProcessosProtocolados as any).mockRejectedValue(new Error('db error'));
+
+        const req: any = {};
+        const res = makeRes();
+        await JuridicoController.getProcessosProtocolados(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(500);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            message: 'Erro ao buscar processos protocolados'
+        }));
+    });
+});
+
+describe('JuridicoController - getProcessoProtocoladoDetails', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('deve retornar detalhes do processo protocolado com status 200', async () => {
+        const mockProcesso = {
+            id: 'proc-1',
+            status: 'PROTOCOLADO',
+            cliente_id: 'cli-1',
+            clientes: { id: 'cli-1', nome: 'Cliente Teste' },
+            documentos: [{ id: 'doc-1', nome: 'Passaporte' }],
+            responsavel: { id: 'sup-1', full_name: 'Supervisor A' }
+        };
+        (JuridicoRepository.getProcessoProtocoladoDetails as any).mockResolvedValue(mockProcesso);
+
+        const req: any = { params: { id: 'proc-1' } };
+        const res = makeRes();
+        await JuridicoController.getProcessoProtocoladoDetails(req, res);
+
+        expect(JuridicoRepository.getProcessoProtocoladoDetails).toHaveBeenCalledWith('proc-1');
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({
+            message: 'Detalhes do processo protocolado recuperados com sucesso',
+            data: mockProcesso
+        });
+    });
+
+    it('deve retornar 404 quando processo nao encontrado', async () => {
+        (JuridicoRepository.getProcessoProtocoladoDetails as any).mockResolvedValue(null);
+
+        const req: any = { params: { id: 'proc-999' } };
+        const res = makeRes();
+        await JuridicoController.getProcessoProtocoladoDetails(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(404);
+        expect(res.json).toHaveBeenCalledWith({ message: 'Processo nao encontrado' });
+    });
+
+    it('deve retornar 500 quando houver erro ao buscar detalhes', async () => {
+        (JuridicoRepository.getProcessoProtocoladoDetails as any).mockRejectedValue(new Error('db error'));
+
+        const req: any = { params: { id: 'proc-1' } };
+        const res = makeRes();
+        await JuridicoController.getProcessoProtocoladoDetails(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(500);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            message: 'Erro ao buscar detalhes do processo protocolado'
+        }));
+    });
+});
+
+describe('JuridicoController - enviarParaProtocolacao', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('deve enviar processo para protocolacao com sucesso', async () => {
+        const mockSupervisor = { id: 'sup-1', full_name: 'Supervisor A', email: 'sup@test.com' };
+        const mockProcesso = { id: 'proc-1', status: 'PROTOCOLADO', responsavel_id: 'sup-1' };
+
+        (JuridicoRepository.getFuncionarioById as any).mockResolvedValue(mockSupervisor);
+        (JuridicoRepository.enviarParaProtocolacao as any).mockResolvedValue(mockProcesso);
+
+        const req: any = { params: { id: 'proc-1' }, body: { supervisorId: 'sup-1' } };
+        const res = makeRes();
+        await JuridicoController.enviarParaProtocolacao(req, res);
+
+        expect(JuridicoRepository.getFuncionarioById).toHaveBeenCalledWith('sup-1');
+        expect(JuridicoRepository.enviarParaProtocolacao).toHaveBeenCalledWith('proc-1', 'sup-1');
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({
+            message: 'Processo enviado para protocolacao com sucesso',
+            data: mockProcesso
+        });
+    });
+
+    it('deve retornar 400 quando supervisorId nao fornecido', async () => {
+        const req: any = { params: { id: 'proc-1' }, body: {} };
+        const res = makeRes();
+        await JuridicoController.enviarParaProtocolacao(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({ message: 'supervisorId e obrigatorio' });
+    });
+
+    it('deve retornar 400 quando supervisor nao encontrado', async () => {
+        (JuridicoRepository.getFuncionarioById as any).mockResolvedValue(null);
+
+        const req: any = { params: { id: 'proc-1' }, body: { supervisorId: 'sup-inexistente' } };
+        const res = makeRes();
+        await JuridicoController.enviarParaProtocolacao(req, res);
+
+        expect(JuridicoRepository.getFuncionarioById).toHaveBeenCalledWith('sup-inexistente');
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({
+            message: 'supervisorId invalido - funcionario nao encontrado'
+        });
+    });
+
+    it('deve retornar 500 quando houver erro ao enviar para protocolacao', async () => {
+        const mockSupervisor = { id: 'sup-1', full_name: 'Supervisor A' };
+        (JuridicoRepository.getFuncionarioById as any).mockResolvedValue(mockSupervisor);
+        (JuridicoRepository.enviarParaProtocolacao as any).mockRejectedValue(new Error('db error'));
+
+        const req: any = { params: { id: 'proc-1' }, body: { supervisorId: 'sup-1' } };
+        const res = makeRes();
+        await JuridicoController.enviarParaProtocolacao(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(500);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            message: 'Erro ao enviar processo para protocolacao'
+        }));
+    });
+});
+
+describe('JuridicoController - atualizarProtocolo', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('deve atualizar protocolo com sucesso', async () => {
+        const mockProcesso = { id: 'proc-1', status: 'PROTOCOLADO', observacoes: 'teste' };
+        (JuridicoRepository.atualizarProtocolo as any).mockResolvedValue(mockProcesso);
+
+        const req: any = { params: { id: 'proc-1' }, body: { observacoes: 'teste' } };
+        const res = makeRes();
+        await JuridicoController.atualizarProtocolo(req, res);
+
+        expect(JuridicoRepository.atualizarProtocolo).toHaveBeenCalledWith('proc-1', { observacoes: 'teste' });
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({
+            message: 'Protocolo atualizado com sucesso',
+            data: mockProcesso
+        });
+    });
+
+    it('deve retornar 500 quando houver erro ao atualizar protocolo', async () => {
+        (JuridicoRepository.atualizarProtocolo as any).mockRejectedValue(new Error('db error'));
+
+        const req: any = { params: { id: 'proc-1' }, body: { observacoes: 'teste' } };
+        const res = makeRes();
+        await JuridicoController.atualizarProtocolo(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(500);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            message: 'Erro ao atualizar protocolo'
+        }));
+    });
+});
+
+// =============================================
+// createAssessoria - stage update to assessoria_andamento
+// =============================================
+
+describe('JuridicoController - createAssessoria (stage update)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('deve atualizar stage do cliente para assessoria_andamento ao criar assessoria', async () => {
+        const mockAssessoria = { id: 'assess-1', cliente_id: 'cli-1' };
+        (JuridicoRepository.createAssessoria as any).mockResolvedValue(mockAssessoria);
+        (JuridicoRepository.getProcessoByClienteId as any).mockResolvedValue(null);
+        (JuridicoRepository.createProcess as any).mockResolvedValue({ id: 'proc-1' });
+
+        // Mock supabase calls for stage update
+        const mockEqUpdate = vi.fn().mockResolvedValue({ error: null });
+        const mockUpdate = vi.fn().mockReturnValue({ eq: mockEqUpdate });
+        const mockSingle = vi.fn().mockResolvedValue({ data: { stage: 'formularios' }, error: null });
+        const mockEqSelect = vi.fn().mockReturnValue({ single: mockSingle });
+        const mockSelect = vi.fn().mockReturnValue({ eq: mockEqSelect });
+
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'clientes') {
+                return { select: mockSelect, update: mockUpdate };
+            }
+            return {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                single: vi.fn().mockResolvedValue({ data: null, error: null })
+            };
+        });
+
+        const req: any = {
+            body: { clienteId: 'cli-1', respostas: { q1: 'a1' }, servicoId: null },
+            userId: 'user-1'
+        };
+        const res = makeRes();
+        await JuridicoController.createAssessoria(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+        expect(supabase.from).toHaveBeenCalledWith('clientes');
+        expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({
+            stage: 'assessoria_andamento',
+            status: 'assessoria_andamento'
+        }));
+    });
+
+    it('nao deve regredir stage se cliente ja estiver em assessoria_finalizada', async () => {
+        const mockAssessoria = { id: 'assess-1', cliente_id: 'cli-1' };
+        (JuridicoRepository.createAssessoria as any).mockResolvedValue(mockAssessoria);
+        (JuridicoRepository.getProcessoByClienteId as any).mockResolvedValue(null);
+        (JuridicoRepository.createProcess as any).mockResolvedValue({ id: 'proc-1' });
+
+        const mockUpdate = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+        const mockSingle = vi.fn().mockResolvedValue({ data: { stage: 'assessoria_finalizada' }, error: null });
+        const mockEqSelect = vi.fn().mockReturnValue({ single: mockSingle });
+        const mockSelect = vi.fn().mockReturnValue({ eq: mockEqSelect });
+
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'clientes') {
+                return { select: mockSelect, update: mockUpdate };
+            }
+            return {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                single: vi.fn().mockResolvedValue({ data: null, error: null })
+            };
+        });
+
+        const req: any = {
+            body: { clienteId: 'cli-1', respostas: { q1: 'a1' }, servicoId: null },
+            userId: 'user-1'
+        };
+        const res = makeRes();
+        await JuridicoController.createAssessoria(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(201);
+        // update should NOT have been called since stage is already ahead
+        expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it('deve retornar 201 mesmo se atualizacao de stage falhar (nao bloqueia assessoria)', async () => {
+        const mockAssessoria = { id: 'assess-1', cliente_id: 'cli-1' };
+        (JuridicoRepository.createAssessoria as any).mockResolvedValue(mockAssessoria);
+        (JuridicoRepository.getProcessoByClienteId as any).mockResolvedValue(null);
+        (JuridicoRepository.createProcess as any).mockResolvedValue({ id: 'proc-1' });
+
+        // Mock supabase to throw on stage update select
+        (supabase.from as any).mockImplementation((table: string) => {
+            if (table === 'clientes') {
+                return {
+                    select: vi.fn().mockReturnValue({
+                        eq: vi.fn().mockReturnValue({
+                            single: vi.fn().mockRejectedValue(new Error('stage query failed'))
+                        })
+                    })
+                };
+            }
+            return {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                single: vi.fn().mockResolvedValue({ data: null, error: null })
+            };
+        });
+
+        const req: any = {
+            body: { clienteId: 'cli-1', respostas: { q1: 'a1' }, servicoId: null },
+            userId: 'user-1'
+        };
+        const res = makeRes();
+        await JuridicoController.createAssessoria(req, res);
+
+        // Should still succeed - stage update failure is non-blocking
+        expect(res.status).toHaveBeenCalledWith(201);
     });
 });

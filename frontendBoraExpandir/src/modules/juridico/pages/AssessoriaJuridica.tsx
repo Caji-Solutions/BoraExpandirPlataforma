@@ -5,35 +5,26 @@ import {
   Loader2,
   AlertCircle,
   ClipboardCheck,
-  User,
   Scale,
-  PlusCircle,
   HelpCircle,
   Save,
   CheckCircle2,
-  Trash2,
-  FileSearch,
   Send,
   RotateCcw,
   MapPin,
+  Briefcase,
   FileText,
-  MessageSquare,
-  AlertTriangle,
-  ListChecks,
-  Briefcase
+  ExternalLink
 } from "lucide-react";
-import { Badge } from '@/modules/shared/components/ui/badge';
-import { Button } from "@/components/ui/Button";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import juridicoService, { ClienteComResponsavel } from "../services/juridicoService";
-import { RequirementRequestModal } from '../components/RequirementRequestModal';
+import { getContratosServicos } from "../../comercial/services/comercialService";
 
 interface CRMFormData {
   // Section 1: Dados do caso
   servico_contratado: string;
   titular_nome: string;
-  dependentes_info: string;
   pedido_para: 'titular_somente' | 'titular_dependentes' | '';
   pedido_para_detalhe: string;
   // Section 2: Onde sera o pedido
@@ -42,29 +33,16 @@ interface CRMFormData {
   cidade_protocolo: string;
   cidade_chegada: string;
   data_chegada: string;
-  // Section 3: Resumo consultoria
-  resumo_executivo: string;
-  // Section 4: Documentos e orientacoes
-  docs_titular: string;
-  docs_dependentes: string;
-  orientacoes_praticas: string;
-  // Section 5: Duvidas e respostas
-  duvidas_cliente: string;
-  respostas_dadas: string;
-  // Section 6: Pontos fracos e prazos
-  pontos_fracos: string;
-  prazos_delicados: string;
-  // Section 7: Proximos passos
-  proximos_cliente: string;
-  proximos_equipe: string;
-  // Section 8: Resumo 1 linha
-  resumo_1_linha: string;
+  // Section 3: Tipo de agendamento
+  tipo_agendamento: 'data_prevista' | 'data_confirmada' | '';
+  // Section 4: Tem Parceiro CAP?
+  tem_parceiro_cap: boolean;
+  nome_parceiro_cap: string;
 }
 
 const initialFormData: CRMFormData = {
   servico_contratado: '',
   titular_nome: '',
-  dependentes_info: '',
   pedido_para: '',
   pedido_para_detalhe: '',
   local_solicitacao: '',
@@ -72,17 +50,9 @@ const initialFormData: CRMFormData = {
   cidade_protocolo: '',
   cidade_chegada: '',
   data_chegada: '',
-  resumo_executivo: '',
-  docs_titular: '',
-  docs_dependentes: '',
-  orientacoes_praticas: '',
-  duvidas_cliente: '',
-  respostas_dadas: '',
-  pontos_fracos: '',
-  prazos_delicados: '',
-  proximos_cliente: '',
-  proximos_equipe: '',
-  resumo_1_linha: '',
+  tipo_agendamento: '',
+  tem_parceiro_cap: false,
+  nome_parceiro_cap: '',
 };
 
 export function AssessoriaJuridica() {
@@ -108,57 +78,38 @@ export function AssessoriaJuridica() {
   const [formData, setFormData] = useState<CRMFormData>({ ...initialFormData });
 
   const [catalogServices, setCatalogServices] = useState<any[]>([]); // kept for fetchData compatibility
-  const [dependentes, setDependentes] = useState<any[]>([]);
-  const [loadingDependentes, setLoadingDependentes] = useState(false);
-  const [isReqModalOpen, setIsReqModalOpen] = useState(false);
-  const [reqModalMember, setReqModalMember] = useState<any>(null);
   const [currentProcess, setCurrentProcess] = useState<any>(null);
+  const [contrato, setContrato] = useState<any>(null);
+  const [contratoDependentes, setContratoDependentes] = useState<{nome: string; grau: string}[]>([]);
   const navigate = useNavigate();
-
-  // Estado para o formulário de dependente
-  const [depForm, setDepForm] = useState({
-    nome: '',
-    parentesco: '',
-    dataNascimento: '',
-    cpf: '',
-    rg: '',
-    passaporte: '',
-    nacionalidade: 'Brasileira',
-    email: '',
-    telefone: '',
-    isAncestral: false
-  });
-
-  const fetchDependentes = async () => {
-    if (!selectedCliente) {
-      setDependentes([]);
-      return;
-    }
-
-    try {
-      setLoadingDependentes(true);
-      const data = await juridicoService.getDependentes(selectedCliente.id);
-      setDependentes(data || []);
-    } catch (err) {
-      console.error("Erro ao buscar dependentes:", err);
-    } finally {
-      setLoadingDependentes(false);
-    }
-  };
 
   useEffect(() => {
     const fetchInitialData = async () => {
-      fetchDependentes();
-      
       if (selectedCliente) {
         try {
-          // Buscar última assessoria e processo em paralelo
-          const [assessoria, processo] = await Promise.all([
+          // Buscar última assessoria, processo e contratos em paralelo
+          const [assessoria, processo, contratos] = await Promise.all([
             juridicoService.getLatestAssessoria(selectedCliente.id),
-            juridicoService.getProcessoByCliente(selectedCliente.id)
+            juridicoService.getProcessoByCliente(selectedCliente.id),
+            getContratosServicos(selectedCliente.id)
           ]);
 
           setCurrentProcess(processo);
+
+          // Encontrar contrato ativo (não-draft ou mais recente)
+          const contratoAtivo = contratos?.find((c: any) => !c.is_draft) || contratos?.[0] || null;
+          setContrato(contratoAtivo);
+
+          // Extrair dependentes do draft_dados do contrato
+          if (contratoAtivo?.draft_dados?.dependentes) {
+            const deps = contratoAtivo.draft_dados.dependentes.map((d: any) => ({
+              nome: d.nome || '',
+              grau: d.grau || d.parentesco || ''
+            }));
+            setContratoDependentes(deps);
+          } else {
+            setContratoDependentes([]);
+          }
 
           if (assessoria) {
             // Mapear respostas de volta para o CRM form
@@ -189,15 +140,9 @@ export function AssessoriaJuridica() {
               if (dna.cidade_protocolo) preFilled.cidade_protocolo = dna.cidade_protocolo;
               if (dna.cidade_chegada) preFilled.cidade_chegada = dna.cidade_chegada;
               if (dna.data_chegada) preFilled.data_chegada = dna.data_chegada;
-              if (dna.resumo_executivo) preFilled.resumo_executivo = dna.resumo_executivo;
               if (dna.servico_contratado) preFilled.servico_contratado = dna.servico_contratado;
               if (dna.pedido_para) preFilled.pedido_para = dna.pedido_para;
               if (dna.pedido_para_detalhe) preFilled.pedido_para_detalhe = dna.pedido_para_detalhe;
-              if (dna.pontos_fracos) preFilled.pontos_fracos = dna.pontos_fracos;
-              if (dna.prazos_delicados) preFilled.prazos_delicados = dna.prazos_delicados;
-              if (dna.docs_titular) preFilled.docs_titular = dna.docs_titular;
-              if (dna.docs_dependentes) preFilled.docs_dependentes = dna.docs_dependentes;
-              if (dna.orientacoes_praticas) preFilled.orientacoes_praticas = dna.orientacoes_praticas;
 
               setFormData(prev => ({ ...initialFormData, ...preFilled }));
             } else {
@@ -210,7 +155,7 @@ export function AssessoriaJuridica() {
         }
       }
     };
-    
+
     fetchInitialData();
   }, [selectedCliente?.id]);
 
@@ -352,16 +297,25 @@ export function AssessoriaJuridica() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Auto-fill titular and dependentes when client/dependentes change
+  // Auto-fill titular when client changes
   useEffect(() => {
     if (selectedCliente) {
       setFormData(prev => ({
         ...prev,
         titular_nome: selectedCliente.nome || '',
-        dependentes_info: dependentes.map(d => `${d.nome_completo} (${d.parentesco})`).join(', '),
       }));
     }
-  }, [selectedCliente?.nome, dependentes]);
+  }, [selectedCliente?.nome]);
+
+  // Auto-fill servico_contratado from catalog service name (produto do agendamento)
+  useEffect(() => {
+    if (produtoIdParam && catalogServices.length > 0) {
+      const servico = catalogServices.find((s: any) => s.id === produtoIdParam);
+      if (servico?.nome) {
+        setFormData(prev => prev.servico_contratado ? prev : { ...prev, servico_contratado: servico.nome });
+      }
+    }
+  }, [produtoIdParam, catalogServices]);
 
   const handleSubmit = async () => {
     if (!selectedCliente || !activeProfile?.id) return;
@@ -375,8 +329,8 @@ export function AssessoriaJuridica() {
         return;
       }
 
-      if (!formData.resumo_1_linha.trim()) {
-        setError("O campo 'Resumo em 1 linha' (Seção 8) é obrigatório.");
+      if (!formData.tipo_agendamento) {
+        setError("Por favor, selecione o tipo de agendamento.");
         setIsSubmitting(false);
         return;
       }
@@ -391,7 +345,7 @@ export function AssessoriaJuridica() {
       await juridicoService.createAssessoria({
         clienteId: selectedCliente.id,
         respostas: respostasMap,
-        observacoes: formData.resumo_executivo,
+        observacoes: '',
         responsavelId: activeProfile.id,
         servicoId: selectedSubserviceId
       });
@@ -513,6 +467,25 @@ export function AssessoriaJuridica() {
               </div>
             </div>
           )}
+
+          {contrato && (
+            <button
+              onClick={() => {
+                const url = contrato.contrato_assinado_url || contrato.contrato_gerado_url;
+                if (url) window.open(url, '_blank');
+              }}
+              disabled={!contrato.contrato_assinado_url && !contrato.contrato_gerado_url}
+              className={`w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm transition-all border-2 ${
+                contrato.contrato_assinado_url || contrato.contrato_gerado_url
+                  ? 'bg-white border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-400 shadow-sm'
+                  : 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              <FileText size={16} />
+              Exibir Contrato
+              <ExternalLink size={14} />
+            </button>
+          )}
         </div>
 
         <div className="lg:col-span-2 space-y-8">
@@ -564,13 +537,22 @@ export function AssessoriaJuridica() {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Dependente(s) (nome + vínculo)</label>
-                  <input
-                    type="text"
-                    value={formData.dependentes_info}
-                    onChange={(e) => handleFormChange('dependentes_info', e.target.value)}
-                    className="w-full p-3 bg-blue-50/50 border-2 border-blue-100 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                    placeholder="Preenchido automaticamente a partir dos dependentes cadastrados"
-                  />
+                  {contratoDependentes.length > 0 ? (
+                    <div className="border-2 border-blue-100 rounded-xl overflow-hidden">
+                      <div className="grid grid-cols-2 bg-blue-50 border-b border-blue-100">
+                        <div className="px-4 py-2 text-xs font-bold text-blue-700 uppercase tracking-wider">Nome</div>
+                        <div className="px-4 py-2 text-xs font-bold text-blue-700 uppercase tracking-wider">Vínculo</div>
+                      </div>
+                      {contratoDependentes.map((dep, idx) => (
+                        <div key={idx} className={`grid grid-cols-2 ${idx < contratoDependentes.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                          <div className="px-4 py-3 text-sm text-gray-900">{dep.nome}</div>
+                          <div className="px-4 py-3 text-sm text-gray-600">{dep.grau}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic p-3 bg-gray-50 rounded-xl">Nenhum dependente encontrado no contrato.</p>
+                  )}
                 </div>
 
                 <div>
@@ -689,6 +671,34 @@ export function AssessoriaJuridica() {
                 )}
 
                 <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Selecione o tipo de agendamento</label>
+                  <div className="flex gap-3 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => handleFormChange('tipo_agendamento', 'data_prevista')}
+                      className={`py-2.5 px-5 rounded-xl font-bold transition-all border-2 text-sm ${
+                        formData.tipo_agendamento === 'data_prevista'
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
+                          : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
+                      }`}
+                    >
+                      Data Prevista
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleFormChange('tipo_agendamento', 'data_confirmada')}
+                      className={`py-2.5 px-5 rounded-xl font-bold transition-all border-2 text-sm ${
+                        formData.tipo_agendamento === 'data_confirmada'
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
+                          : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
+                      }`}
+                    >
+                      Data Confirmada
+                    </button>
+                  </div>
+                </div>
+
+                <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Data prevista de chegada na Espanha</label>
                   <input
                     type="date"
@@ -702,268 +712,48 @@ export function AssessoriaJuridica() {
 
             <hr className="border-gray-100" />
 
-            {/* SECTION 3: Resumo consultoria */}
+            {/* SECTION 4: Tem Parceiro CAP? */}
             <div className="space-y-6">
               <div className="flex items-center gap-2 text-blue-700">
-                <FileText size={18} />
-                <h3 className="font-black text-xs uppercase tracking-wider">Seção 3 — Resumo do que foi explicado pela consultoria</h3>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Resumo executivo (bullet points, 6-12 linhas)</label>
-                <textarea
-                  value={formData.resumo_executivo}
-                  onChange={(e) => handleFormChange('resumo_executivo', e.target.value)}
-                  className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all min-h-[180px]"
-                  placeholder={"- Orientação principal 1\n- Orientação principal 2\n- Orientação principal 3\n..."}
-                />
-              </div>
-            </div>
-
-            <hr className="border-gray-100" />
-
-            {/* SECTION 4: Documentos e orientacoes */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 text-blue-700">
-                <FileSearch size={18} />
-                <h3 className="font-black text-xs uppercase tracking-wider">Seção 4 — Documentos e orientações práticas</h3>
+                <Users size={18} />
+                <h3 className="font-black text-xs uppercase tracking-wider">Tem Parceiro CAP?</h3>
               </div>
 
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Documentos principais do TITULAR mencionados</label>
-                  <textarea
-                    value={formData.docs_titular}
-                    onChange={(e) => handleFormChange('docs_titular', e.target.value)}
-                    className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all min-h-[120px]"
-                    placeholder={"- Passaporte\n- Certidão de nascimento\n- Antecedentes criminais\n..."}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Documentos principais do(s) DEPENDENTE(S) mencionados</label>
-                  <textarea
-                    value={formData.docs_dependentes}
-                    onChange={(e) => handleFormChange('docs_dependentes', e.target.value)}
-                    className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all min-h-[120px]"
-                    placeholder={"- Passaporte do dependente\n- Certidão de casamento\n..."}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Orientações práticas citadas (assinaturas, impressão, taxas, cópias, etc.)</label>
-                  <textarea
-                    value={formData.orientacoes_praticas}
-                    onChange={(e) => handleFormChange('orientacoes_praticas', e.target.value)}
-                    className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all min-h-[120px]"
-                    placeholder={"- Assinar documentos com caneta azul\n- Imprimir em papel A4\n..."}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <hr className="border-gray-100" />
-
-            {/* SECTION 5: Duvidas e respostas */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 text-blue-700">
-                <MessageSquare size={18} />
-                <h3 className="font-black text-xs uppercase tracking-wider">Seção 5 — Principais dúvidas do cliente (e respostas)</h3>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Dúvidas do cliente (3-8 bullets)</label>
-                  <textarea
-                    value={formData.duvidas_cliente}
-                    onChange={(e) => handleFormChange('duvidas_cliente', e.target.value)}
-                    className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all min-h-[140px]"
-                    placeholder={"- Quanto tempo demora o processo?\n- Posso trabalhar durante a espera?\n..."}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Respostas/orientações dadas (curtas e diretas)</label>
-                  <textarea
-                    value={formData.respostas_dadas}
-                    onChange={(e) => handleFormChange('respostas_dadas', e.target.value)}
-                    className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all min-h-[140px]"
-                    placeholder={"- Prazo médio: X meses\n- Sim, com autorização de trabalho\n..."}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <hr className="border-gray-100" />
-
-            {/* SECTION 6: Pontos fracos e prazos */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 text-amber-600">
-                <AlertTriangle size={18} />
-                <h3 className="font-black text-xs uppercase tracking-wider">Seção 6 — Pontos fracos e prazos delicados</h3>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Pontos fracos/alertas do caso (objetivo e prático)</label>
-                  <textarea
-                    value={formData.pontos_fracos}
-                    onChange={(e) => handleFormChange('pontos_fracos', e.target.value)}
-                    className="w-full p-4 bg-amber-50/50 border-2 border-amber-100 rounded-xl focus:bg-white focus:border-amber-500 focus:outline-none transition-all min-h-[120px]"
-                    placeholder={"- Renda insuficiente para comprovar\n- Documento vencido\n..."}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Prazos delicados do processo (com números e gatilhos)</label>
-                  <textarea
-                    value={formData.prazos_delicados}
-                    onChange={(e) => handleFormChange('prazos_delicados', e.target.value)}
-                    className="w-full p-4 bg-amber-50/50 border-2 border-amber-100 rounded-xl focus:bg-white focus:border-amber-500 focus:outline-none transition-all min-h-[120px]"
-                    placeholder={"- 20 dias úteis para análise\n- 30 dias após aprovação para TIE\n- Validade 90 dias de antecedentes\n..."}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <hr className="border-gray-100" />
-
-            {/* SECTION 7: Proximos passos */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 text-blue-700">
-                <ListChecks size={18} />
-                <h3 className="font-black text-xs uppercase tracking-wider">Seção 7 — Próximos passos (resumo)</h3>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">O que o cliente ficou de fazer</label>
-                  <textarea
-                    value={formData.proximos_cliente}
-                    onChange={(e) => handleFormChange('proximos_cliente', e.target.value)}
-                    className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all min-h-[120px]"
-                    placeholder={"- Enviar documentos até...\n- Agendar apostilamento\n..."}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">O que a equipe ficou de fazer</label>
-                  <textarea
-                    value={formData.proximos_equipe}
-                    onChange={(e) => handleFormChange('proximos_equipe', e.target.value)}
-                    className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all min-h-[120px]"
-                    placeholder={"- Revisar documentação\n- Protocolar pedido\n..."}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <hr className="border-gray-100" />
-
-            {/* SECTION 8: Resumo em 1 linha (OBRIGATORIO) */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 text-red-600">
-                <ClipboardCheck size={18} />
-                <h3 className="font-black text-xs uppercase tracking-wider">Seção 8 — Resumo em 1 linha (OBRIGATÓRIO)</h3>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  Formato: [Tipo do Processo] | Titular: [nome] | Dependentes: [nomes] | Pedido: [local] | Chegada/Consulado: [data] | Consultora: [nome] / Assessoria realizada dia:
-                </label>
-                <textarea
-                  value={formData.resumo_1_linha}
-                  onChange={(e) => handleFormChange('resumo_1_linha', e.target.value)}
-                  className="w-full p-4 bg-red-50/30 border-2 border-red-200 rounded-xl focus:bg-white focus:border-red-500 focus:outline-none transition-all min-h-[80px]"
-                  placeholder={`Ex: Visto D7 | Titular: João Silva | Dependentes: Maria (cônjuge) | Pedido: Consulado — São Paulo | Chegada: 15/06/2026 | Consultora: ${activeProfile?.full_name || 'Nome'} / Assessoria realizada dia:`}
-                />
-              </div>
-            </div>
-
-            <div className="pt-8 border-t space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-blue-600" />
-                  <h3 className="font-bold text-gray-900">Gerenciar Dependentes</h3>
-                </div>
-              </div>
-
-              {dependentes.length > 0 && (
-                <div className="grid grid-cols-1 gap-3">
-                  {dependentes.map((dep: any) => (
-                    <div key={dep.id} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all group">
-                      <div className="flex items-start gap-4">
-                        <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-                          <User className="h-5 w-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-bold text-gray-900 truncate">{dep.nome_completo}</p>
-                            <Badge variant="outline" className="text-[9px] uppercase font-bold py-0 h-4 bg-gray-50">
-                              {dep.parentesco}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            setReqModalMember({
-                              id: dep.id,
-                              name: dep.nome_completo,
-                              type: dep.parentesco
-                            });
-                            setIsReqModalOpen(true);
-                          }}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-2 text-xs font-semibold"
-                        >
-                          <Send className="h-4 w-4" />
-                          <span className="hidden sm:inline">Solicitar Docs</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="bg-gray-50 rounded-2xl p-6 border border-dashed border-gray-300 space-y-4">
-                <h4 className="text-sm font-bold text-gray-800">Novo Dependente</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input 
-                    type="text" 
-                    value={depForm.nome}
-                    onChange={(e) => setDepForm({...depForm, nome: e.target.value})}
-                    placeholder="Nome Completo" 
-                    className="w-full p-3 bg-white border rounded-xl text-sm" 
-                  />
-                  <select 
-                    value={depForm.parentesco}
-                    onChange={(e) => setDepForm({...depForm, parentesco: e.target.value})}
-                    className="w-full p-3 bg-white border rounded-xl text-sm"
+                <div className="flex gap-3 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, tem_parceiro_cap: true }))}
+                    className={`py-2.5 px-5 rounded-xl font-bold transition-all border-2 text-sm ${
+                      formData.tem_parceiro_cap === true
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
+                        : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
+                    }`}
                   >
-                    <option value="">Parentesco...</option>
-                    <option value="filho">Filho(a)</option>
-                    <option value="conjuge">Cônjuge</option>
-                    <option value="pai_mae">Pai/Mãe</option>
-                    <option value="outro">Outro</option>
-                  </select>
+                    Sim
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, tem_parceiro_cap: false, nome_parceiro_cap: '' }))}
+                    className={`py-2.5 px-5 rounded-xl font-bold transition-all border-2 text-sm ${
+                      formData.tem_parceiro_cap === false
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
+                        : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
+                    }`}
+                  >
+                    Não
+                  </button>
                 </div>
-                <Button 
-                  onClick={async () => {
-                    if (!depForm.nome || !depForm.parentesco || !selectedCliente) return;
-                    await juridicoService.createDependent(selectedCliente.id, depForm.nome, depForm.parentesco, depForm);
-                    setDepForm({
-                      nome: '', parentesco: '', dataNascimento: '', cpf: '', rg: '', passaporte: '',
-                      nacionalidade: 'Brasileira', email: '', telefone: '', isAncestral: false
-                    });
-                    fetchDependentes();
-                  }}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 rounded-xl"
-                >
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Cadastrar Dependente
-                </Button>
+
+                {formData.tem_parceiro_cap && (
+                  <input
+                    type="text"
+                    value={formData.nome_parceiro_cap}
+                    onChange={(e) => handleFormChange('nome_parceiro_cap', e.target.value)}
+                    className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
+                    placeholder="Nome do parceiro CAP..."
+                  />
+                )}
               </div>
             </div>
 
@@ -978,7 +768,7 @@ export function AssessoriaJuridica() {
                 }`}
               >
                 {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : <Save size={24} />}
-                {isSubmitting ? "Salvando..." : (requiresSubservice && !selectedSubserviceId ? "Selecione um Subserviço" : "Finalizar Assessoria")}
+                {isSubmitting ? "Salvando..." : (requiresSubservice && !selectedSubserviceId ? "Selecione um Subserviço" : "Enviar Formulário")}
               </button>
               
               {showSuccess && (
@@ -1015,19 +805,6 @@ export function AssessoriaJuridica() {
         </div>
       ) : renderAssessoriaForm()}
 
-      {selectedCliente && (
-        <RequirementRequestModal
-          isOpen={isReqModalOpen}
-          onOpenChange={setIsReqModalOpen}
-          clienteId={selectedCliente.id}
-          processoId={currentProcess?.id}
-          members={[
-            { id: selectedCliente.id, name: selectedCliente.nome, type: 'Titular', isTitular: true },
-            ...dependentes.map(d => ({ id: d.id, name: d.nome_completo, type: d.parentesco, isTitular: false }))
-          ]}
-          initialMemberId={reqModalMember?.id}
-        />
-      )}
     </div>
   );
 }

@@ -275,84 +275,8 @@ class JuridicoRepository {
         return data
     }
 
-    // Listar agendamentos que requerem delegação
-    async getAgendamentosDelegacao(): Promise<any[]> {
-        const { data: agendamentos, error } = await supabase
-            .from('agendamentos')
-            .select(`
-                *,
-                clientes:clientes!cliente_id (
-                    id,
-                    nome,
-                    email,
-                    whatsapp,
-                    status,
-                    previsao_chegada
-                ),
-                formularios_cliente!agendamento_id (*)
-            `)
-            .eq('requer_delegacao', true)
-            .eq('status', 'confirmado')
-            .order('data_hora', { ascending: true })
 
-        if (error) {
-            console.error('Erro ao buscar agendamentos para delegacao:', error)
-            throw error
-        }
 
-        if (!agendamentos || agendamentos.length === 0) return []
-
-        // Enriquecer com dados do catálogo manualmente (já que não há FK no momento)
-        const produtoIds = [...new Set(agendamentos.map(a => a.produto_id).filter(Boolean))]
-        let catalogoMap: Record<string, any> = {}
-
-        if (produtoIds.length > 0) {
-            const { data: catalogo } = await supabase
-                .from('catalogo_servicos')
-                .select('id, nome, valor, duracao')
-                .in('id', produtoIds)
-            
-            if (catalogo) {
-                catalogoMap = catalogo.reduce((acc, item) => {
-                    acc[item.id] = item
-                    return acc
-                }, {} as Record<string, any>)
-            }
-        }
-
-        // Buscar responsáveis únicos
-        const responsavelIds = [...new Set(
-            agendamentos
-                .filter(a => a.responsavel_juridico_id)
-                .map(a => a.responsavel_juridico_id)
-        )]
-
-        let responsaveisMap: Record<string, FuncionarioJuridico> = {}
-
-        if (responsavelIds.length > 0) {
-            const { data: responsaveis } = await supabase
-                .from('profiles')
-                .select('id, full_name, email, telefone, horario_trabalho')
-                .in('id', responsavelIds)
-
-            if (responsaveis) {
-                responsaveisMap = responsaveis.reduce((acc, r) => {
-                    acc[r.id] = r as FuncionarioJuridico
-                    return acc
-                }, {} as Record<string, FuncionarioJuridico>)
-            }
-        }
-
-        // Mapear com seus responsáveis e dados do catálogo
-        return agendamentos.map(agendamento => ({
-            ...agendamento,
-            catalogo_servicos: agendamento.produto_id ? catalogoMap[agendamento.produto_id] || null : null,
-            responsavel: agendamento.responsavel_juridico_id 
-                ? responsaveisMap[agendamento.responsavel_juridico_id] || null 
-                : null
-        }))
-    }
-    
     // Listar agendamentos de um responsável específico
     async getAgendamentosPorResponsavel(responsavelId: string): Promise<any[]> {
         const { data, error } = await supabase
@@ -1380,6 +1304,165 @@ class JuridicoRepository {
         }
 
         return data || []
+    }
+
+    // =============================================
+    // PROTOCOLAÇÃO DE PROCESSOS
+    // =============================================
+
+    // Buscar supervisores do jurídico
+    async getSupervisores(): Promise<FuncionarioJuridico[]> {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, telefone, horario_trabalho')
+            .eq('role', 'juridico')
+            .eq('is_supervisor', true)
+            .order('full_name', { ascending: true })
+
+        if (error) {
+            console.error('Erro ao buscar supervisores do juridico:', error)
+            throw error
+        }
+
+        return (data || []) as FuncionarioJuridico[]
+    }
+
+    // Listar processos protocolados
+    async getProcessosProtocolados(): Promise<any[]> {
+        const { data: processos, error } = await supabase
+            .from('processos')
+            .select(`
+                *,
+                clientes:clientes!cliente_id (
+                    id,
+                    nome,
+                    email,
+                    whatsapp,
+                    status,
+                    previsao_chegada
+                ),
+                documentos (*)
+            `)
+            .eq('status', 'PROTOCOLADO')
+            .order('atualizado_em', { ascending: false })
+
+        if (error) {
+            console.error('Erro ao buscar processos protocolados:', error)
+            throw error
+        }
+
+        if (!processos || processos.length === 0) return []
+
+        // Buscar responsáveis únicos
+        const responsavelIds = [...new Set(
+            processos
+                .filter(p => p.responsavel_id)
+                .map(p => p.responsavel_id)
+        )]
+
+        let responsaveisMap: Record<string, FuncionarioJuridico> = {}
+
+        if (responsavelIds.length > 0) {
+            const { data: responsaveis } = await supabase
+                .from('profiles')
+                .select('id, full_name, email, telefone')
+                .in('id', responsavelIds)
+
+            if (responsaveis) {
+                responsaveisMap = responsaveis.reduce((acc, r) => {
+                    acc[r.id] = r as FuncionarioJuridico
+                    return acc
+                }, {} as Record<string, FuncionarioJuridico>)
+            }
+        }
+
+        return processos.map(processo => ({
+            ...processo,
+            responsavel: processo.responsavel_id
+                ? responsaveisMap[processo.responsavel_id] || null
+                : null
+        }))
+    }
+
+    // Buscar detalhes de um processo protocolado
+    async getProcessoProtocoladoDetails(processoId: string): Promise<any | null> {
+        const { data, error } = await supabase
+            .from('processos')
+            .select(`
+                *,
+                clientes:clientes!cliente_id (
+                    id,
+                    nome,
+                    email,
+                    whatsapp,
+                    status,
+                    previsao_chegada
+                ),
+                documentos (*)
+            `)
+            .eq('id', processoId)
+            .maybeSingle()
+
+        if (error) {
+            console.error('Erro ao buscar detalhes do processo protocolado:', error)
+            throw error
+        }
+
+        if (!data) return null
+
+        // Buscar responsável
+        if (data.responsavel_id) {
+            const { data: responsavel } = await supabase
+                .from('profiles')
+                .select('id, full_name, email, telefone')
+                .eq('id', data.responsavel_id)
+                .single()
+
+            return { ...data, responsavel: responsavel || null }
+        }
+
+        return { ...data, responsavel: null }
+    }
+
+    // Enviar processo para protocolação
+    async enviarParaProtocolacao(processoId: string, supervisorId: string): Promise<any> {
+        const { data, error } = await supabase
+            .from('processos')
+            .update({
+                status: 'PROTOCOLADO',
+                responsavel_id: supervisorId,
+                atualizado_em: new Date().toISOString()
+            })
+            .eq('id', processoId)
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro ao enviar processo para protocolacao:', error)
+            throw error
+        }
+
+        return data
+    }
+
+    // Atualizar detalhes do protocolo
+    async atualizarProtocolo(processoId: string, updates: Record<string, any>): Promise<any> {
+        const { data, error } = await supabase
+            .from('processos')
+            .update({
+                ...updates,
+                atualizado_em: new Date().toISOString()
+            })
+            .eq('id', processoId)
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro ao atualizar protocolo:', error)
+            throw error
+        }
+
+        return data
     }
 }
 
