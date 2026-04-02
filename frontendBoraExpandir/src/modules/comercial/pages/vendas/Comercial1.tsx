@@ -1,16 +1,12 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
-import { Clock, ShoppingCart, Check, ChevronLeft, ChevronRight, Search, X, Trash2, Loader2, AlertCircle } from 'lucide-react'
-import { useNavigate, useParams } from 'react-router-dom'
-// import { useToast } from '../../components/Toast'
-// Update the import path below if Toast is located elsewhere:
+import { Clock, Check, ChevronLeft, ChevronRight, Search, X, Trash2, Loader2, AlertCircle } from 'lucide-react'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useToast } from '@/components/ui/Toast'
-import { SUCESSO, ERRO, AVISO } from '@/components/MockFrases'
 import { CalendarPicker } from '@/components/ui/CalendarPicker'
 import { AgendamentoConfirmacaoModal } from '../../components/AgendamentoConfirmacaoModal'
 import { useAuth } from '../../../../contexts/AuthContext'
 import { catalogService, Service } from '../../../adm/services/catalogService'
 import comercialService from '../../services/comercialService'
-import { useLocation } from 'react-router-dom'
 import juridicoService from '../../../juridico/services/juridicoService'
 import { parseBackendDate } from '../../../../utils/dateUtils'
 
@@ -97,7 +93,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const navigationState = location.state as { preSelectedClient?: Cliente, preSelectedProduto?: string, preSelectedValor?: number, step?: 'produto' | 'data_hora' | 'cliente', paid?: boolean } | undefined
   const isPaidFromContrato = navigationState?.paid === true
 
-  const [agendamentos, setAgendamentos] = useState<Agendamento[]>([])
+  const [agendamentosDia, setAgendamentosDia] = useState<any[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [loadingProdutos, setLoadingProdutos] = useState(false)
@@ -190,7 +186,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   )
 
   const { id: editId } = useParams<{ id: string }>()
-  const [loadingEdit, setLoadingEdit] = useState(false)
   const [creatingAgendamento, setCreatingAgendamento] = useState(false)
 
   // Guard: sem serviço pré-selecionado e sem edição, redirecionar
@@ -248,7 +243,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     if (!editId || produtos.length === 0) return
 
     async function carregarAgendamento() {
-      setLoadingEdit(true)
       try {
         const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/comercial/agendamento/${editId}`)
         if (response.ok) {
@@ -278,8 +272,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
         }
       } catch (err) {
         console.error('Erro ao carregar agendamento para edicao', err)
-      } finally {
-        setLoadingEdit(false)
       }
     }
 
@@ -287,10 +279,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   }, [editId, produtos, clientes])
 
   const [searchCliente, setSearchCliente] = useState('')
-  const [mostrarListaClientes, setMostrarListaClientes] = useState(false)
-  const [agendamentosDia, setAgendamentosDia] = useState<any[]>([])
   const [dataSelecionadaIso, setDataSelecionadaIso] = useState<string>('')
-  const [showNovoCliente, setShowNovoCliente] = useState(false)
   const [showModalPagamento, setShowModalPagamento] = useState(false)
   const [paymentLink, setPaymentLink] = useState('')
   const [shareMessage, setShareMessage] = useState('')
@@ -365,8 +354,9 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       // Fecha lista de clientes
+      // Fecha lista de clientes
       if (clienteSelectorRef.current && !clienteSelectorRef.current.contains(event.target as Node)) {
-        setMostrarListaClientes(false)
+        // setSearchCliente('') // Opcional: limpar busca ao clicar fora
       }
 
       // Fecha popup de conflito
@@ -424,8 +414,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
   const handleRemoverCliente = () => {
     setClienteSelecionado(null)
-    setMostrarListaClientes(false)
-    setShowNovoCliente(false)
     setSearchCliente('')
     setEmailTemporario('')
   }
@@ -448,7 +436,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const handleSelecionarCliente = (cliente: Cliente) => {
     setClienteSelecionado(cliente)
     setSearchCliente('')
-    setMostrarListaClientes(false)
     // Preencher email temporário se o lead já tiver email real
     if (cliente.email && !cliente.email.includes('lead_')) {
       setEmailTemporario(cliente.email)
@@ -510,8 +497,8 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       }
       const data = await response.json()
       setAgendamentosDia(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error('Erro ao buscar agendamentos do dia:', error)
+    } catch (err) {
+      console.error('Erro ao buscar agendamentos do dia:', err)
       setAgendamentosDia([])
     }
   }
@@ -671,8 +658,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       }
       setClientes((prev) => [...prev, cliente])
       setClienteSelecionado(cliente)
-      setShowNovoCliente(false)
-      setMostrarListaClientes(false)
       setNovoCliente({ id: '', nome: '', email: '', telefone: '' })
       success('Lead cadastrado e selecionado.')
       // O avanço de etapa agora é controlado pelo botão "Próximo"
@@ -715,8 +700,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
 
       setClientes((prev) => [...prev, cliente])
       setClienteSelecionado(cliente)
-      setShowNovoCliente(false)
-      setMostrarListaClientes(false)
       setNovoCliente({ id: '', nome: '', email: '', telefone: '' })
 
       // Abre popup para garantir e-mail válido também em novos cadastros
@@ -788,7 +771,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                     onDateSelect={handleSelecionarData}
                     selectedDate={dataSelecionada || undefined}
                     disabledDates={[]}
-                    disablePastDates={true}
                     disableWeekends={true}
                     minDate={(() => {
                       // Impede agendamento para o dia atual, apenas dia seguinte em diante
@@ -1354,6 +1336,6 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
           />
         )}
       </div>
-    </div >
+    </div>
   )
 }

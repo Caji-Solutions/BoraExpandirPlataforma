@@ -439,6 +439,20 @@ export async function marcarConsultoriaRealizada(agendamentoId: string, vendedor
 }
 
 /**
+ * Marca uma assessoria como realizada (atualiza stage do cliente para assessoria_finalizada)
+ */
+export async function marcarAssessoriaRealizada(agendamentoId: string): Promise<any> {
+  return apiClient.post(`/juridico/agendamentos/${agendamentoId}/assessoria-realizada`, {});
+}
+
+/**
+ * Marca uma assessoria como realizada usando o ID do cliente
+ */
+export async function marcarAssessoriaFinalizadaPeloCliente(clienteId: string): Promise<any> {
+  return apiClient.post(`/juridico/cliente/${clienteId}/finalizar-assessoria`, {});
+}
+
+/**
  * Busca usuários comerciais nível C2
  */
 export async function getUsuariosComerciaisC2(): Promise<any[]> {
@@ -520,6 +534,8 @@ export default {
     marcarConsultoriaEmAndamento,
     marcarAssessoriaEmAndamento,
     marcarConsultoriaRealizada,
+    marcarAssessoriaRealizada,
+    marcarAssessoriaFinalizadaPeloCliente,
     createDependent: async (
       clienteId: string,
       nomeCompleto: string,
@@ -535,7 +551,7 @@ export default {
         isAncestralDireto?: boolean
       }
     ) => {
-      const result = await apiClient.post(`/cliente/${clienteId}/dependentes`, {
+      const result: any = await apiClient.post(`/cliente/${clienteId}/dependentes`, {
         nomeCompleto,
         parentesco,
         ...extra

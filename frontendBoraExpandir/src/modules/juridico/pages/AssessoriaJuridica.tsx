@@ -350,7 +350,12 @@ export function AssessoriaJuridica() {
         servicoId: selectedSubserviceId
       });
 
-      // 2. Buscar o processo (novo ou atualizado) para atualizar o estado local
+      // 2. Marcar assessoria como em andamento (atualiza stage do cliente)
+      if (agendamentoIdParam) {
+        await juridicoService.marcarAssessoriaEmAndamento(agendamentoIdParam);
+      }
+
+      // 3. Buscar o processo (novo ou atualizado) para atualizar o estado local
       const proc = await juridicoService.getProcessoByCliente(selectedCliente.id);
       setCurrentProcess(proc);
 
@@ -369,420 +374,411 @@ export function AssessoriaJuridica() {
   };
 
   // FORMULÁRIO DE ASSESSORIA
-  const renderAssessoriaForm = () => (
-    <div className="space-y-8 animate-in slide-in-from-right-4 duration-500 pb-20">
-      <div className="bg-white rounded-3xl border shadow-lg border-blue-100 overflow-hidden sticky top-4 z-40">
-        <div className="p-6 bg-gradient-to-r from-blue-600 to-indigo-700 flex items-center justify-between text-white">
-          <div className="flex items-center gap-5">
-            <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 shadow-xl">
-              <Scale size={28} />
-            </div>
-            <div>
-              <p className="text-blue-100 text-xs font-black uppercase tracking-widest mb-1">Assessoria em Andamento</p>
-              <h1 className="text-2xl font-bold">Realizando assessoria de: <span className="text-white underline decoration-blue-300/50 underline-offset-4">{selectedCliente?.nome}</span></h1>
-            </div>
-          </div>
-          <button 
-            onClick={handleBackToSelection}
-            className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-all border border-white/20 group backdrop-blur-sm"
-          >
-            <RotateCcw size={16} className="group-hover:-rotate-45 transition-transform" />
-            Voltar
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-1 space-y-6">
-          {requiresSubservice && (
-          <div className="bg-white rounded-3xl border shadow-sm p-6 space-y-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-blue-600">
-                <HelpCircle size={18} className="font-bold" />
-                <h3 className="font-black text-xs uppercase tracking-wider">Selecione o Subserviço</h3>
+  const renderAssessoriaForm = () => {
+    return (
+      <div className="space-y-8 animate-in slide-in-from-right-4 duration-500 pb-20">
+        <div className="bg-white rounded-3xl border shadow-lg border-blue-100 overflow-hidden sticky top-4 z-40">
+          <div className="p-4 sm:p-6 bg-gradient-to-r from-blue-600 to-indigo-700 flex flex-col sm:flex-row sm:items-center justify-between text-white gap-4">
+            <div className="flex items-center gap-4 sm:gap-5">
+              <div className="h-10 w-10 sm:h-14 sm:w-14 rounded-xl sm:rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 shadow-xl">
+                <Scale size={20} className="sm:hidden" />
+                <Scale size={28} className="hidden sm:block" />
               </div>
-              <p className="text-xs text-gray-500">Busque o serviço específico para este cliente.</p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Buscar subserviço..."
-                  className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm transition-all"
-                  value={subserviceSearchTerm}
-                  onChange={(e) => setSubserviceSearchTerm(e.target.value)}
-                />
-              </div>
-
-              <div className="max-h-[300px] overflow-y-auto space-y-2 custom-scrollbar pr-2">
-                {filteredSubservices.length > 0 ? (
-                  filteredSubservices.map(sub => (
-                    <button
-                      key={sub.id}
-                      onClick={() => setSelectedSubserviceId(sub.id)}
-                      className={`w-full text-left p-4 rounded-2xl transition-all border-2 flex items-center justify-between group ${
-                        selectedSubserviceId === sub.id
-                          ? 'bg-blue-50 border-blue-600 shadow-sm'
-                          : 'bg-white border-gray-100 hover:border-blue-300'
-                      }`}
-                    >
-                      <div className="flex-1">
-                        <p className={`text-sm font-bold ${selectedSubserviceId === sub.id ? 'text-blue-700' : 'text-gray-900'}`}>
-                          {sub.nome}
-                        </p>
-                      </div>
-                      <div className={`h-6 w-6 rounded-full flex items-center justify-center transition-all ${
-                        selectedSubserviceId === sub.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-transparent'
-                      }`}>
-                        <CheckCircle2 size={12} />
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <p className="text-center py-8 text-xs text-gray-400">Nenhum subserviço encontrado.</p>
-                )}
+              <div>
+                <p className="text-blue-100 text-[10px] font-black uppercase tracking-widest mb-0.5 sm:mb-1">Assessoria em Andamento</p>
+                <h1 className="text-sm sm:text-2xl font-bold leading-tight">
+                  <span className="hidden sm:inline">Realizando assessoria de: </span>
+                  <span className="text-white underline decoration-blue-300/50 underline-offset-4">{selectedCliente?.nome}</span>
+                </h1>
               </div>
             </div>
-          </div>
-          )}
-          
-          {selectedCliente && (
-            <div className="bg-blue-50/50 rounded-3xl border border-blue-100 p-6 space-y-4">
-              <h3 className="font-black text-[10px] uppercase tracking-widest text-blue-600">Dados do Contato</h3>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center text-blue-500 shadow-sm border border-blue-100">
-                    <Send size={14} />
-                  </div>
-                  <p className="text-sm font-medium text-gray-700">{selectedCliente.email || 'N/A'}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center text-green-500 shadow-sm border border-blue-100">
-                    <HelpCircle size={14} />
-                  </div>
-                  <p className="text-sm font-medium text-gray-700">{selectedCliente.whatsapp || 'N/A'}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {contrato && (
-            <button
-              onClick={() => {
-                const url = contrato.contrato_assinado_url || contrato.contrato_gerado_url;
-                if (url) window.open(url, '_blank');
-              }}
-              disabled={!contrato.contrato_assinado_url && !contrato.contrato_gerado_url}
-              className={`w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm transition-all border-2 ${
-                contrato.contrato_assinado_url || contrato.contrato_gerado_url
-                  ? 'bg-white border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-400 shadow-sm'
-                  : 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed'
-              }`}
+            <button 
+              onClick={handleBackToSelection}
+              className="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all border border-white/20 group backdrop-blur-sm"
             >
-              <FileText size={16} />
-              Exibir Contrato
-              <ExternalLink size={14} />
+              <RotateCcw size={14} className="group-hover:-rotate-45 transition-transform" />
+              Voltar
             </button>
-          )}
+          </div>
         </div>
 
-        <div className="lg:col-span-2 space-y-8">
-          <div className="bg-white rounded-3xl border shadow-sm p-8 space-y-8">
-            <div className="flex items-center gap-3 pb-4 border-b">
-              <ClipboardCheck className="h-6 w-6 text-blue-600" />
-              <h2 className="text-2xl font-bold text-gray-900">CRM da Assessoria</h2>
-            </div>
-
-            {error && (
-              <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-4 text-red-700 animate-in shake duration-500">
-                <AlertCircle className="h-6 w-6 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-bold text-sm">Atenção</p>
-                  <p className="text-xs opacity-80">{error}</p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-1 space-y-6">
+            {selectedCliente && (
+              <div className="bg-blue-50/50 rounded-3xl border border-blue-100 p-6 space-y-4">
+                <h3 className="font-black text-[10px] uppercase tracking-widest text-blue-600">Dados do Contato</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center text-blue-500 shadow-sm border border-blue-100">
+                      <Send size={14} />
+                    </div>
+                    <p className="text-sm font-medium text-gray-700">{selectedCliente.email || 'N/A'}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center text-green-500 shadow-sm border border-blue-100">
+                      <HelpCircle size={14} />
+                    </div>
+                    <p className="text-sm font-medium text-gray-700">{selectedCliente.whatsapp || 'N/A'}</p>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* SECTION 1: Dados do caso */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 text-blue-700">
-                <Briefcase size={18} />
-                <h3 className="font-black text-xs uppercase tracking-wider">Seção 1 — Dados do Caso (já contratado)</h3>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Processo/serviço contratado (tipo de visto/autorização)</label>
-                  <input
-                    type="text"
-                    value={formData.servico_contratado}
-                    onChange={(e) => handleFormChange('servico_contratado', e.target.value)}
-                    className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                    placeholder="Ex: Visto D7, Autorização de Residência..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Titular (nome completo)</label>
-                  <input
-                    type="text"
-                    value={formData.titular_nome}
-                    onChange={(e) => handleFormChange('titular_nome', e.target.value)}
-                    className="w-full p-3 bg-blue-50/50 border-2 border-blue-100 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                    placeholder="Preenchido automaticamente"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Dependente(s) (nome + vínculo)</label>
-                  {contratoDependentes.length > 0 ? (
-                    <div className="border-2 border-blue-100 rounded-xl overflow-hidden">
-                      <div className="grid grid-cols-2 bg-blue-50 border-b border-blue-100">
-                        <div className="px-4 py-2 text-xs font-bold text-blue-700 uppercase tracking-wider">Nome</div>
-                        <div className="px-4 py-2 text-xs font-bold text-blue-700 uppercase tracking-wider">Vínculo</div>
-                      </div>
-                      {contratoDependentes.map((dep, idx) => (
-                        <div key={idx} className={`grid grid-cols-2 ${idx < contratoDependentes.length - 1 ? 'border-b border-gray-100' : ''}`}>
-                          <div className="px-4 py-3 text-sm text-gray-900">{dep.nome}</div>
-                          <div className="px-4 py-3 text-sm text-gray-600">{dep.grau}</div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-400 italic p-3 bg-gray-50 rounded-xl">Nenhum dependente encontrado no contrato.</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Pedido para</label>
-                  <div className="flex gap-3 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => handleFormChange('pedido_para', 'titular_somente')}
-                      className={`py-2.5 px-5 rounded-xl font-bold transition-all border-2 text-sm ${
-                        formData.pedido_para === 'titular_somente'
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
-                          : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
-                      }`}
-                    >
-                      Titular somente
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleFormChange('pedido_para', 'titular_dependentes')}
-                      className={`py-2.5 px-5 rounded-xl font-bold transition-all border-2 text-sm ${
-                        formData.pedido_para === 'titular_dependentes'
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
-                          : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
-                      }`}
-                    >
-                      Titular + dependente(s)
-                    </button>
-                  </div>
-                  {formData.pedido_para === 'titular_dependentes' && (
-                    <input
-                      type="text"
-                      value={formData.pedido_para_detalhe}
-                      onChange={(e) => handleFormChange('pedido_para_detalhe', e.target.value)}
-                      className="w-full mt-3 p-3 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                      placeholder="Detalhe sobre os dependentes incluídos no pedido..."
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <hr className="border-gray-100" />
-
-            {/* SECTION 2: Onde sera o pedido */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 text-blue-700">
-                <MapPin size={18} />
-                <h3 className="font-black text-xs uppercase tracking-wider">Seção 2 — Onde será o pedido</h3>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Local de solicitação</label>
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => handleFormChange('local_solicitacao', 'consulado')}
-                      className={`py-2.5 px-5 rounded-xl font-bold transition-all border-2 text-sm ${
-                        formData.local_solicitacao === 'consulado'
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
-                          : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
-                      }`}
-                    >
-                      Consulado
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleFormChange('local_solicitacao', 'espanha')}
-                      className={`py-2.5 px-5 rounded-xl font-bold transition-all border-2 text-sm ${
-                        formData.local_solicitacao === 'espanha'
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
-                          : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
-                      }`}
-                    >
-                      Dentro da Espanha
-                    </button>
-                  </div>
-                </div>
-
-                {formData.local_solicitacao === 'consulado' && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Qual consulado (cidade/país)</label>
-                    <input
-                      type="text"
-                      value={formData.consulado_cidade}
-                      onChange={(e) => handleFormChange('consulado_cidade', e.target.value)}
-                      className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                      placeholder="Ex: São Paulo, Brasil"
-                    />
-                  </div>
-                )}
-
-                {formData.local_solicitacao === 'espanha' && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Cidade prevista para protocolar</label>
-                      <input
-                        type="text"
-                        value={formData.cidade_protocolo}
-                        onChange={(e) => handleFormChange('cidade_protocolo', e.target.value)}
-                        className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                        placeholder="Onde estarão no momento do pedido"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Cidade de chegada inicial (se mencionada)</label>
-                      <input
-                        type="text"
-                        value={formData.cidade_chegada}
-                        onChange={(e) => handleFormChange('cidade_chegada', e.target.value)}
-                        className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                        placeholder="Opcional"
-                      />
-                    </div>
-                  </>
-                )}
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Selecione o tipo de agendamento</label>
-                  <div className="flex gap-3 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => handleFormChange('tipo_agendamento', 'data_prevista')}
-                      className={`py-2.5 px-5 rounded-xl font-bold transition-all border-2 text-sm ${
-                        formData.tipo_agendamento === 'data_prevista'
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
-                          : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
-                      }`}
-                    >
-                      Data Prevista
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleFormChange('tipo_agendamento', 'data_confirmada')}
-                      className={`py-2.5 px-5 rounded-xl font-bold transition-all border-2 text-sm ${
-                        formData.tipo_agendamento === 'data_confirmada'
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
-                          : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
-                      }`}
-                    >
-                      Data Confirmada
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Data prevista de chegada na Espanha</label>
-                  <input
-                    type="date"
-                    value={formData.data_chegada}
-                    onChange={(e) => handleFormChange('data_chegada', e.target.value)}
-                    className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <hr className="border-gray-100" />
-
-            {/* SECTION 4: Tem Parceiro CAP? */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 text-blue-700">
-                <Users size={18} />
-                <h3 className="font-black text-xs uppercase tracking-wider">Tem Parceiro CAP?</h3>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex gap-3 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, tem_parceiro_cap: true }))}
-                    className={`py-2.5 px-5 rounded-xl font-bold transition-all border-2 text-sm ${
-                      formData.tem_parceiro_cap === true
-                        ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
-                        : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
-                    }`}
-                  >
-                    Sim
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, tem_parceiro_cap: false, nome_parceiro_cap: '' }))}
-                    className={`py-2.5 px-5 rounded-xl font-bold transition-all border-2 text-sm ${
-                      formData.tem_parceiro_cap === false
-                        ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
-                        : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
-                    }`}
-                  >
-                    Não
-                  </button>
-                </div>
-
-                {formData.tem_parceiro_cap && (
-                  <input
-                    type="text"
-                    value={formData.nome_parceiro_cap}
-                    onChange={(e) => handleFormChange('nome_parceiro_cap', e.target.value)}
-                    className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                    placeholder="Nome do parceiro CAP..."
-                  />
-                )}
-              </div>
-            </div>
-
-            <div className="pt-8 border-t flex flex-col gap-4">
-               <button
-                onClick={handleSubmit}
-                disabled={isSubmitting || (requiresSubservice && !selectedSubserviceId)}
-                className={`w-full py-6 rounded-2xl font-black text-xl uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-3 ${
-                  isSubmitting || (requiresSubservice && !selectedSubserviceId)
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-none'
-                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:scale-[1.01] hover:shadow-blue-500/30'
+            {contrato && (
+              <button
+                onClick={() => {
+                  const url = contrato.contrato_assinado_url || contrato.contrato_gerado_url;
+                  if (url) window.open(url, '_blank');
+                }}
+                disabled={!contrato.contrato_assinado_url && !contrato.contrato_gerado_url}
+                className={`w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm transition-all border-2 ${
+                  contrato.contrato_assinado_url || contrato.contrato_gerado_url
+                    ? 'bg-white border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-400 shadow-sm'
+                    : 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed'
                 }`}
               >
-                {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : <Save size={24} />}
-                {isSubmitting ? "Salvando..." : (requiresSubservice && !selectedSubserviceId ? "Selecione um Subserviço" : "Enviar Formulário")}
+                <FileText size={16} />
+                Exibir Contrato
+                <ExternalLink size={14} />
               </button>
-              
-              {showSuccess && (
-                <div className="flex items-center justify-center gap-2 text-green-600 font-bold animate-pulse">
-                  <CheckCircle2 size={20} />
-                  Assessoria salva com sucesso!
+            )}
+
+            {requiresSubservice && (
+              <div className="bg-white rounded-3xl border shadow-sm p-6 space-y-6">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-blue-600">
+                    <HelpCircle size={18} className="font-bold" />
+                    <h3 className="font-black text-xs uppercase tracking-wider">Selecione o Subserviço</h3>
+                  </div>
+                  <p className="text-xs text-gray-500">Busque o serviço específico para este cliente.</p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Buscar subserviço..."
+                      className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm transition-all"
+                      value={subserviceSearchTerm}
+                      onChange={(e) => setSubserviceSearchTerm(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="max-h-[300px] overflow-y-auto space-y-2 custom-scrollbar pr-2 text-start">
+                    {filteredSubservices.length > 0 ? (
+                      filteredSubservices.map(sub => (
+                        <button
+                          key={sub.id}
+                          onClick={() => setSelectedSubserviceId(sub.id)}
+                          className={`w-full text-left p-4 rounded-2xl transition-all border-2 flex items-center justify-between group ${
+                            selectedSubserviceId === sub.id
+                              ? 'bg-blue-50 border-blue-600 shadow-sm'
+                              : 'bg-white border-gray-100 hover:border-blue-300'
+                          }`}
+                        >
+                          <div className="flex-1">
+                            <p className={`text-sm font-bold ${selectedSubserviceId === sub.id ? 'text-blue-700' : 'text-gray-900'}`}>
+                              {sub.nome}
+                            </p>
+                          </div>
+                          <div className={`h-6 w-6 rounded-full flex items-center justify-center transition-all ${
+                            selectedSubserviceId === sub.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-transparent'
+                          }`}>
+                            <CheckCircle2 size={12} />
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <p className="text-center py-8 text-xs text-gray-400">Nenhum subserviço encontrado.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="lg:col-span-2 space-y-8">
+            <div className="bg-white rounded-3xl border shadow-sm p-5 sm:p-8 space-y-8 min-h-[400px]">
+              {error && (
+                <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-4 text-red-700 animate-in shake duration-500">
+                  <AlertCircle className="h-6 w-6 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-sm">Atenção</p>
+                    <p className="text-xs opacity-80">{error}</p>
+                  </div>
                 </div>
               )}
+
+              {/* CRM FORM FIELDS */}
+              <div className="space-y-8">
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <Briefcase size={18} />
+                    <h3 className="font-black text-xs uppercase tracking-wider">Dados do Caso</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Titular (nome completo)</label>
+                      <input
+                        type="text"
+                        value={formData.titular_nome}
+                        onChange={(e) => handleFormChange('titular_nome', e.target.value)}
+                        className="w-full p-3 bg-blue-50/50 border-2 border-blue-100 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
+                        placeholder="Preenchido automaticamente"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Dependente(s) (nome + vínculo)</label>
+                      {contratoDependentes.length > 0 ? (
+                        <div className="border-2 border-blue-100 rounded-xl overflow-hidden">
+                          <div className="grid grid-cols-2 bg-blue-50 border-b border-blue-100">
+                            <div className="px-4 py-2 text-xs font-bold text-blue-700 uppercase tracking-wider">Nome</div>
+                            <div className="px-4 py-2 text-xs font-bold text-blue-700 uppercase tracking-wider">Vínculo</div>
+                          </div>
+                          {contratoDependentes.map((dep, idx) => (
+                            <div key={idx} className={`grid grid-cols-2 ${idx < contratoDependentes.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                              <div className="px-4 py-3 text-sm text-gray-900">{dep.nome}</div>
+                              <div className="px-4 py-3 text-sm text-gray-600">{dep.grau}</div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic p-3 bg-gray-50 rounded-xl">Nenhum dependente encontrado no contrato.</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Pedido para</label>
+                      <div className="flex gap-3 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => handleFormChange('pedido_para', 'titular_somente')}
+                          className={`py-2.5 px-5 rounded-xl font-bold transition-all border-2 text-sm ${
+                            formData.pedido_para === 'titular_somente'
+                              ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
+                              : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
+                          }`}
+                        >
+                          Titular somente
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleFormChange('pedido_para', 'titular_dependentes')}
+                          className={`py-2.5 px-5 rounded-xl font-bold transition-all border-2 text-sm ${
+                            formData.pedido_para === 'titular_dependentes'
+                              ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
+                              : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
+                          }`}
+                        >
+                          Titular + dependente(s)
+                        </button>
+                      </div>
+                      {formData.pedido_para === 'titular_dependentes' && (
+                        <input
+                          type="text"
+                          value={formData.pedido_para_detalhe}
+                          onChange={(e) => handleFormChange('pedido_para_detalhe', e.target.value)}
+                          className="w-full mt-3 p-3 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
+                          placeholder="Detalhe sobre os dependentes incluídos no pedido..."
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <hr className="border-gray-100" />
+
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <MapPin size={18} />
+                    <h3 className="font-black text-xs uppercase tracking-wider">Localização & Chegada</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Local de solicitação</label>
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleFormChange('local_solicitacao', 'consulado')}
+                          className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all border-2 text-sm ${
+                            formData.local_solicitacao === 'consulado'
+                              ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
+                              : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
+                          }`}
+                        >
+                          No Consulado
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleFormChange('local_solicitacao', 'espanha')}
+                          className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all border-2 text-sm ${
+                            formData.local_solicitacao === 'espanha'
+                              ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
+                              : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
+                          }`}
+                        >
+                          Dentro da Espanha
+                        </button>
+                      </div>
+                    </div>
+
+                    {formData.local_solicitacao === 'consulado' && (
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Cidade do Consulado</label>
+                        <input
+                          type="text"
+                          value={formData.consulado_cidade}
+                          onChange={(e) => handleFormChange('consulado_cidade', e.target.value)}
+                          className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
+                          placeholder="Ex: São Paulo, Salvador..."
+                        />
+                      </div>
+                    )}
+
+                    {formData.local_solicitacao === 'espanha' && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Cidade prevista para protocolar</label>
+                          <input
+                            type="text"
+                            value={formData.cidade_protocolo}
+                            onChange={(e) => handleFormChange('cidade_protocolo', e.target.value)}
+                            className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
+                            placeholder="Onde estarão no momento do pedido"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Cidade de chegada inicial (se mencionada)</label>
+                          <input
+                            type="text"
+                            value={formData.cidade_chegada}
+                            onChange={(e) => handleFormChange('cidade_chegada', e.target.value)}
+                            className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
+                            placeholder="Opcional"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Selecione o tipo de agendamento</label>
+                      <div className="flex gap-3 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => handleFormChange('tipo_agendamento', 'data_prevista')}
+                          className={`py-2.5 px-5 rounded-xl font-bold transition-all border-2 text-sm ${
+                            formData.tipo_agendamento === 'data_prevista'
+                              ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
+                              : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
+                          }`}
+                        >
+                          Data Prevista
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleFormChange('tipo_agendamento', 'data_confirmada')}
+                          className={`py-2.5 px-5 rounded-xl font-bold transition-all border-2 text-sm ${
+                            formData.tipo_agendamento === 'data_confirmada'
+                              ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
+                              : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
+                          }`}
+                        >
+                          Data Confirmada
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Data prevista de chegada na Espanha</label>
+                      <input
+                        type="date"
+                        value={formData.data_chegada}
+                        onChange={(e) => handleFormChange('data_chegada', e.target.value)}
+                        className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <hr className="border-gray-100" />
+
+                {/* SECTION 4: Tem Parceiro CAP? */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <Users size={18} />
+                    <h3 className="font-black text-xs uppercase tracking-wider">Tem Parceiro CAP?</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex gap-3 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, tem_parceiro_cap: true }))}
+                        className={`py-2.5 px-5 rounded-xl font-bold transition-all border-2 text-sm ${
+                          formData.tem_parceiro_cap === true
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
+                            : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
+                        }`}
+                      >
+                        Sim
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, tem_parceiro_cap: false, nome_parceiro_cap: '' }))}
+                        className={`py-2.5 px-5 rounded-xl font-bold transition-all border-2 text-sm ${
+                          formData.tem_parceiro_cap === false
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
+                            : 'bg-white border-gray-100 text-gray-600 hover:border-blue-200'
+                        }`}
+                      >
+                        Não
+                      </button>
+                    </div>
+
+                    {formData.tem_parceiro_cap && (
+                      <input
+                        type="text"
+                        value={formData.nome_parceiro_cap}
+                        onChange={(e) => handleFormChange('nome_parceiro_cap', e.target.value)}
+                        className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
+                        placeholder="Nome do parceiro CAP..."
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-8 border-t flex flex-col gap-4">
+                  <button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting || (requiresSubservice && !selectedSubserviceId)}
+                    className={`w-full py-6 rounded-2xl font-black text-xl uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-3 ${
+                      isSubmitting || (requiresSubservice && !selectedSubserviceId)
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-none'
+                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:scale-[1.01] hover:shadow-blue-500/30'
+                    }`}
+                  >
+                    {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : <Save size={24} />}
+                    {isSubmitting ? "Salvando..." : (requiresSubservice && !selectedSubserviceId ? "Selecione um Subserviço" : "Enviar Formulário")}
+                  </button>
+                  
+                  {showSuccess && (
+                    <div className="flex items-center justify-center gap-2 text-green-600 font-bold animate-pulse text-sm">
+                      <CheckCircle2 size={16} />
+                      Assessoria salva com sucesso!
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

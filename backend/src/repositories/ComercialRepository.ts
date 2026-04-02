@@ -73,6 +73,7 @@ class ComercialRepository {
         // Se o status for confirmado, cria uma notificação para o cliente
         if (status === 'confirmado' && data?.pagamento_status === 'aprovado' && data.cliente_id) {
             try {
+                // 1. Notificar o cliente
                 const NotificationService = (await import('../services/NotificationService')).default
                 await NotificationService.createNotification({
                     clienteId: data.cliente_id,
@@ -81,8 +82,25 @@ class ComercialRepository {
                     tipo: 'agendamento',
                     dataPrazo: data.data_hora // O "prazo" da notificação é a própria data do agendamento
                 })
-            } catch (notifError) {
-                console.error('Erro ao criar notificacao de agendamento aprovado:', notifError)
+
+                // 2. Se for um serviço fixo (Assessoria), atualiza o stage do cliente
+                const { data: servico } = await supabase
+                    .from('catalogo_servicos')
+                    .select('tipo')
+                    .eq('id', data.produto_id)
+                    .single()
+
+                if (servico?.tipo === 'fixo') {
+                    console.log(`[ComercialRepository] Agendamento de assessoria confirmado. Movendo cliente ${data.cliente_id} para 'aguardando_assessoria'`)
+                    await supabase
+                        .from('clientes')
+                        .update({ 
+                            stage: 'aguardando_assessoria'
+                        })
+                        .eq('id', data.cliente_id)
+                }
+            } catch (repoErr) {
+                console.error('[ComercialRepository] Erro ao processar pos-confirmacao:', repoErr)
             }
         }
 

@@ -6,6 +6,9 @@ interface CalendarPickerProps {
   onDateSelect: (date: Date) => void
   selectedDate?: Date
   disabledDates?: Date[]
+  disablePastDates?: boolean
+  disableWeekends?: boolean
+  minDate?: Date
 }
 
 const dayNames = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"]
@@ -13,9 +16,12 @@ const dayNames = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"]
 export function CalendarPicker({ 
   onDateSelect, 
   selectedDate,
-  disabledDates = [] 
+  disabledDates = [],
+  disablePastDates,
+  disableWeekends,
+  minDate
 }: CalendarPickerProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date())
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); const [currentMonth, setCurrentMonth] = useState(new Date(tomorrow.getFullYear(), tomorrow.getMonth(), 1))
 
   const monthName = currentMonth.toLocaleString("pt-BR", { month: "long" })
   const year = currentMonth.getFullYear()
@@ -54,12 +60,38 @@ export function CalendarPicker({
 
   const isDateDisabled = (day: number) => {
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
-    return disabledDates.some(
+    
+    if (disabledDates.some(
       disabledDate =>
         disabledDate.getDate() === date.getDate() &&
         disabledDate.getMonth() === date.getMonth() &&
         disabledDate.getFullYear() === date.getFullYear()
-    )
+    )) return true
+
+    if (disableWeekends) {
+      const dayOfWeek = date.getDay()
+      if (dayOfWeek === 0 || dayOfWeek === 6) return true
+    }
+
+    if (disablePastDates) {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      if (date < today) return true
+    }
+
+    if (minDate) {
+      const min = new Date(minDate)
+      min.setHours(0, 0, 0, 0)
+      if (date < min) return true
+    }
+
+    return false
+  }
+
+  const isWeekend = (day: number) => {
+    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
+    const dayOfWeek = date.getDay()
+    return dayOfWeek === 0 || dayOfWeek === 6
   }
 
   const isDateSelected = (day: number) => {
@@ -129,6 +161,7 @@ export function CalendarPicker({
           const disabled = isDateDisabled(day)
           const selected = isDateSelected(day)
           const today = isToday(day)
+          const isWknd = isWeekend(day)
 
           return (
             <button
@@ -136,14 +169,17 @@ export function CalendarPicker({
               onClick={() => !disabled && handleDayClick(day)}
               disabled={disabled}
               className={`
-                aspect-square rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer
-                ${disabled 
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                aspect-square rounded-lg text-sm font-medium transition-all duration-200
+                ${
+                  disabled && isWknd && disableWeekends
+                  ? 'bg-gray-300 dark:bg-neutral-700 text-gray-500 opacity-40 cursor-not-allowed pointer-events-none'
+                  : disabled 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed pointer-events-none' 
                   : selected
-                  ? 'bg-emerald-600 text-white shadow-md hover:bg-emerald-700'
+                  ? 'bg-emerald-600 text-white shadow-md hover:bg-emerald-700 cursor-pointer'
                   : today
-                  ? 'bg-blue-100 text-blue-900 font-bold hover:bg-blue-200'
-                  : 'bg-gray-50 text-gray-900 hover:bg-gray-200'
+                  ? 'bg-blue-100 text-blue-900 font-bold hover:bg-blue-200 cursor-pointer'
+                  : 'bg-gray-50 text-gray-900 hover:bg-gray-200 cursor-pointer'
                 }
               `}
             >

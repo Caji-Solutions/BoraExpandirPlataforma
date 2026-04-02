@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import {
     User,
     Clock,
@@ -116,15 +116,17 @@ export function DNAClientListView({
         })
     }, [clientes, searchTerm, filters, activeProfile?.id])
 
-    // Lógica de Paginação
-    const [currentPage, setCurrentPage] = useState(1)
-    const ITEMS_PER_PAGE = 10
-    const totalPages = Math.ceil(filteredClientes.length / ITEMS_PER_PAGE)
-
+    // Infinite Scroll / Lazy Loading
+    const [displayCount, setDisplayCount] = useState(20)
     const paginatedClientes = useMemo(() => {
-        const start = (currentPage - 1) * ITEMS_PER_PAGE
-        return filteredClientes.slice(start, start + ITEMS_PER_PAGE)
-    }, [filteredClientes, currentPage])
+        return filteredClientes.slice(0, displayCount)
+    }, [filteredClientes, displayCount])
+
+    const loadMore = useCallback(() => {
+        if (displayCount < filteredClientes.length) {
+            setDisplayCount(prev => prev + 20)
+        }
+    }, [displayCount, filteredClientes.length])
 
     // Helper para verificar urgência (< 7 dias)
     const isUrgent = (dateString?: string) => {
@@ -134,11 +136,6 @@ export function DNAClientListView({
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
         return diffDays >= 0 && diffDays <= 7
     }
-
-    // Resetar para página 1 quando filtros mudarem
-    useEffect(() => {
-        setCurrentPage(1)
-    }, [searchTerm, filters])
 
     return (
         <div className="p-8">
@@ -318,7 +315,7 @@ export function DNAClientListView({
 
                 {/* Lista de clientes */}
                 <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-                    <div className="grid grid-cols-12 gap-4 px-6 py-4 border-b bg-muted/30 text-[10px] uppercase font-bold text-muted-foreground tracking-widest text-center">
+                    <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-4 border-b bg-muted/30 text-[10px] uppercase font-bold text-muted-foreground tracking-widest text-center">
                         <div className="col-span-1">ID</div>
                         <div className="col-span-3 text-left">Cliente</div>
                         <div className="col-span-2">Criador</div>
@@ -328,53 +325,68 @@ export function DNAClientListView({
                     </div>
 
                     {filteredClientes.length === 0 ? (
-                        <div className="p-12 text-center text-center">
+                        <div className="p-12 text-center">
                             <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
                             <p className="text-muted-foreground">Nenhum cliente encontrado com os critérios selecionados</p>
                         </div>
                     ) : (
                         <div className="divide-y divide-border">
-                            {paginatedClientes.map((cliente) => {
+                            {paginatedClientes.map((cliente, index) => {
                                 const urgent = isUrgent(cliente.previsaoChegada)
+                                const isLast = index === paginatedClientes.length - 1
+                                
                                 return (
                                     <div
                                         key={cliente.id}
+                                        ref={isLast ? (el) => {
+                                            if (!el) return;
+                                            const observer = new IntersectionObserver((entries) => {
+                                                if (entries[0].isIntersecting) {
+                                                    loadMore();
+                                                    observer.disconnect();
+                                                }
+                                            }, { threshold: 0.1 });
+                                            observer.observe(el);
+                                        } : undefined}
                                         className={cn(
-                                            "grid grid-cols-12 gap-4 px-6 py-4 items-center transition-colors",
+                                            "flex flex-col md:grid md:grid-cols-12 gap-4 px-6 py-5 items-center transition-colors border-b last:border-0",
                                             urgent ? "bg-red-50/70 hover:bg-red-100/70 dark:bg-red-500/10 dark:hover:bg-red-500/20" : "hover:bg-muted/30"
                                         )}
                                     >
-                                        <div className="col-span-1 text-center">
-                                            <span className="text-xs font-mono text-muted-foreground">{cliente.id.replace('CLI-', '')}</span>
+                                        <div className="hidden md:block col-span-1 text-center font-mono text-xs text-muted-foreground">
+                                            {cliente.id.replace('CLI-', '')}
                                         </div>
-                                        <div className="col-span-3 flex items-center gap-3">
-                                            <div className={cn(
-                                                "h-9 w-9 rounded-full flex items-center justify-center shrink-0",
-                                                urgent ? "bg-red-100 dark:bg-red-500/20" : "bg-primary/10"
-                                            )}>
-                                                <User className={cn("h-4 w-4", urgent ? "text-red-600 dark:text-red-400" : "text-primary")} />
-                                            </div>
-                                            <div className="min-w-0">
-                                                <div className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                                    {cliente.nome}
-                                                    {cliente.priority === 'high' && (
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-                                                    )}
+                                        
+                                        <div className="w-full md:col-span-3 flex items-center justify-between md:justify-start gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className={cn(
+                                                    "h-10 w-10 md:h-9 md:w-9 rounded-full flex items-center justify-center shrink-0 shadow-sm",
+                                                    urgent ? "bg-red-100 dark:bg-red-500/20" : "bg-primary/10"
+                                                )}>
+                                                    <User className={cn("h-4 w-4 md:h-4 md:w-4", urgent ? "text-red-600 dark:text-red-400" : "text-primary")} />
                                                 </div>
-                                                <div className="text-xs text-muted-foreground truncate">{cliente.email}</div>
-                                                {cliente.responsavel && (
-                                                    <div className="flex items-center gap-1 mt-0.5">
-                                                        <Briefcase className="h-3 w-3 text-blue-500" />
-                                                        <span className="text-[10px] font-medium text-blue-600">{cliente.responsavel.nome}</span>
+                                                <div className="min-w-0">
+                                                    <div className="text-sm md:text-sm font-bold text-foreground flex items-center gap-2">
+                                                        {cliente.nome}
+                                                        {cliente.priority === 'high' && (
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                                                        )}
                                                     </div>
-                                                )}
+                                                    <div className="text-[11px] md:text-xs text-muted-foreground truncate">{cliente.email}</div>
+                                                </div>
+                                            </div>
+                                            <div className="md:hidden">
+                                                <Badge className={cn("text-[9px] uppercase font-bold", urgent ? "bg-red-100 text-red-600 border-red-200" : "bg-primary/5 text-primary border-primary/10")}>
+                                                    #{cliente.id.replace('CLI-', '')}
+                                                </Badge>
                                             </div>
                                         </div>
-                                        <div className="col-span-2 flex justify-center items-center">
+
+                                        <div className="w-full md:col-span-2 flex justify-between md:justify-center items-center gap-2">
+                                            <span className="md:hidden text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Criador:</span>
                                             {cliente.criador ? (
-                                                <div className="flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-1 rounded-full border border-indigo-100 dark:border-indigo-500/20">
-                                                    <User className="h-3 w-3 text-indigo-500" />
-                                                    <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 capitalize max-w-[100px] truncate">
+                                                <div className="flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 md:py-1 rounded-full border border-indigo-100 dark:border-indigo-500/20">
+                                                    <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 capitalize max-w-[120px] truncate">
                                                         {cliente.criador.nome}
                                                     </span>
                                                 </div>
@@ -382,86 +394,56 @@ export function DNAClientListView({
                                                 <span className="text-[10px] italic text-muted-foreground">---</span>
                                             )}
                                         </div>
-                                        <div className="col-span-2 text-center">
-                                            <div className="text-xs font-medium text-foreground">{cliente.tipoAssessoria}</div>
-                                            <div className="text-[10px] text-muted-foreground">
-                                                {CATEGORIAS_LIST.find(cat => cat.id === cliente.categoria)?.label || cliente.categoria}
+
+                                        <div className="w-full md:col-span-2 flex justify-between md:flex-col md:justify-center items-center md:text-center">
+                                            <span className="md:hidden text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Serviço:</span>
+                                            <div className="text-right md:text-center">
+                                                <div className="text-xs font-bold md:font-medium text-foreground">{cliente.tipoAssessoria}</div>
+                                                <div className="text-[10px] text-muted-foreground font-medium md:font-normal">
+                                                    {CATEGORIAS_LIST.find(cat => cat.id === cliente.categoria)?.label || cliente.categoria}
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="col-span-2 text-center text-xs font-medium text-foreground">
-                                            <div className="flex flex-col items-center gap-1">
-                                                {formatDate(cliente.previsaoChegada)}
+
+                                        <div className="w-full md:col-span-2 flex justify-between md:justify-center items-center md:text-center">
+                                            <span className="md:hidden text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Previsão:</span>
+                                            <div className="flex flex-col items-end md:items-center gap-1">
+                                                <span className="text-xs font-bold md:font-medium text-foreground">{formatDate(cliente.previsaoChegada)}</span>
                                                 {urgent && (
-                                                    <span className="text-[10px] px-2 py-0.5 bg-red-600 text-white rounded-full font-black animate-pulse uppercase">
+                                                    <span className="text-[9px] px-1.5 py-0.5 bg-red-600 text-white rounded font-black animate-pulse uppercase tracking-tighter">
                                                         URGENTE
                                                     </span>
                                                 )}
                                             </div>
                                         </div>
-                                        <div className="col-span-2 flex justify-center gap-2">
-                                                <button
-                                                    onClick={() => onSelectClient(cliente)}
-                                                    className={cn(
-                                                        "px-3 py-1.5 rounded-lg text-xs font-medium transition shadow-sm",
-                                                        urgent
-                                                            ? "bg-red-600 text-white hover:bg-red-700"
-                                                            : "bg-primary text-primary-foreground hover:bg-primary/90"
-                                                    )}
-                                                >
-                                                    Ver Detalhes
-                                                </button>
+
+                                        <div className="w-full md:col-span-2 flex justify-center mt-2 md:mt-0">
+                                            <button
+                                                onClick={() => onSelectClient(cliente)}
+                                                className={cn(
+                                                    "w-full md:w-auto px-6 md:px-3 py-2 md:py-1.5 rounded-xl text-xs font-bold md:font-medium transition-all shadow-sm active:scale-95",
+                                                    urgent
+                                                        ? "bg-red-600 text-white hover:bg-red-700 shadow-red-200"
+                                                        : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/10"
+                                                )}
+                                            >
+                                                Ver Detalhes
+                                            </button>
                                         </div>
                                     </div>
                                 )
                             })}
                         </div>
-                    )
-                    }</div>
+                    )}
+                </div>
 
-                {/* Paginação */}
-                {filteredClientes.length > ITEMS_PER_PAGE && (
-                    <div className="flex items-center justify-between bg-card border border-border px-6 py-4 rounded-2xl shadow-sm">
-                        <div className="text-xs text-muted-foreground font-medium">
-                            Mostrando <span className="text-foreground font-bold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> a <span className="text-foreground font-bold">{Math.min(currentPage * ITEMS_PER_PAGE, filteredClientes.length)}</span> de <span className="text-foreground font-bold">{filteredClientes.length}</span> clientes
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                                disabled={currentPage === 1}
-                                className="p-2 border border-border rounded-xl hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                            >
-                                <ChevronLeft className="h-4 w-4" />
-                            </button>
-
-                            <div className="flex items-center gap-1">
-                                {[...Array(totalPages)].map((_, i) => (
-                                    <button
-                                        key={i + 1}
-                                        onClick={() => setCurrentPage(i + 1)}
-                                        className={cn(
-                                            "w-8 h-8 rounded-xl text-xs font-bold transition-all",
-                                            currentPage === i + 1
-                                                ? "bg-primary text-primary-foreground shadow-sm"
-                                                : "hover:bg-muted text-muted-foreground"
-                                        )}
-                                    >
-                                        {i + 1}
-                                    </button>
-                                ))}
-                            </div>
-
-                            <button
-                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                disabled={currentPage === totalPages}
-                                className="p-2 border border-border rounded-xl hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                            >
-                                <ChevronRight className="h-4 w-4" />
-                            </button>
-                        </div>
+                {displayCount < filteredClientes.length && (
+                    <div className="flex flex-col items-center justify-center p-8 border border-dashed border-border rounded-2xl bg-muted/10">
+                        <Loader2 className="h-6 w-6 text-primary animate-spin mb-2" />
+                        <p className="text-sm text-muted-foreground">Carregando mais clientes...</p>
                     </div>
                 )}
             </div>
-
         </div>
     )
 }

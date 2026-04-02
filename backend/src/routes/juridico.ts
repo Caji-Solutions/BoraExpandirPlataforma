@@ -78,6 +78,7 @@ juridico.post('/agendamentos/:id/em-andamento', JuridicoController.marcarConsult
 juridico.post('/agendamentos/:id/assessoria-em-andamento', JuridicoController.marcarAssessoriaEmAndamento.bind(JuridicoController))
 juridico.post('/agendamentos/:id/assessoria-realizada', JuridicoController.marcarAssessoriaRealizada.bind(JuridicoController))
 juridico.post('/agendamentos/:id/realizada', JuridicoController.marcarConsultoriaRealizada.bind(JuridicoController))
+juridico.post('/cliente/:clienteId/finalizar-assessoria', JuridicoController.finalizarAssessoriaByCliente.bind(JuridicoController))
 
 
 

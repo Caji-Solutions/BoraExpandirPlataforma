@@ -37,7 +37,9 @@ import {
   updateRequerimentoStatus,
   getDependentes,
   updateDocumentStatus,
-  requestApostille
+  requestApostille,
+  marcarAssessoriaFinalizadaPeloCliente,
+  getDocumentosCliente
 } from '../services/juridicoService';
 import { ReviewActionButtons } from './ReviewActionButtons';
 import { RejectModal } from './RejectModal';
@@ -307,6 +309,9 @@ export function ProcessAnalysis({
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
+  // Auxiliar para verificar se todos os documentos de todos os membros estão aprovados e finalizar a assessoria
+  
+
   const confirmApproval = async () => {
     if (!selectedDoc) return;
     setIsUpdatingStatus(true);
@@ -333,6 +338,9 @@ export function ProcessAnalysis({
     }
 
     await onUpdateDocument(selectedDoc.id, updates);
+
+   
+
     setIsUpdatingStatus(false);
     setApproveModalOpen(false);
   };

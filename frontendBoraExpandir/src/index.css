@@ -166,6 +166,10 @@
   .animate-pulse-scale {
     animation: pulse-scale 1.5s ease-in-out infinite;
   }
+
+  .touch-target {
+    @apply min-w-[44px] min-h-[44px] flex items-center justify-center;
+  }
 }
 
 /* Dark mode text normalization for legacy classes */
