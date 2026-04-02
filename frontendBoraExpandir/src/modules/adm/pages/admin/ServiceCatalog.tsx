@@ -63,7 +63,7 @@ export type ServiceCategoria = "consultoria" | "assessoria" | "diverso";
 export function getPresetForCategoria(cat: ServiceCategoria): Partial<Omit<Service, "id">> {
   switch (cat) {
     case "consultoria":
-      return { type: "agendavel", isAgendavel: true, tipoPreco: "por_contrato" };
+      return { type: "agendavel", isAgendavel: true, tipoPreco: "fixo" };
     case "assessoria":
       return { type: "fixo", isAgendavel: false, tipoPreco: "por_contrato" };
     case "diverso":
@@ -632,6 +632,8 @@ export default function ServiceCatalog() {
               <div className="space-y-2 md:col-span-2">
                 <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo de Preço</Label>
                 <div className="flex gap-3">
+                  {/* Opção "Por Contrato" — oculta para Consultoria */}
+                  {categoria !== "consultoria" && (
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, tipoPreco: 'por_contrato', value: '' })}
@@ -644,6 +646,7 @@ export default function ServiceCatalog() {
                     Por Contrato
                     <p className="text-xs font-normal mt-0.5 opacity-70">Definido no C2</p>
                   </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, tipoPreco: 'fixo' })}
@@ -678,11 +681,11 @@ export default function ServiceCatalog() {
                 </div>
               )}
 
-              {/* Duração — oculta para Assessoria; label contextual para Consultoria */}
-              {categoria !== "assessoria" && (
+              {/* Duração — oculta para Assessoria e Consultoria */}
+              {categoria !== "assessoria" && categoria !== "consultoria" && (
               <div className="space-y-2">
                 <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">
-                  {categoria === "consultoria" ? "Duração da Sessão" : "Duração Estimada"}
+                  Duração Estimada
                 </Label>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
@@ -757,7 +760,8 @@ export default function ServiceCatalog() {
               </div>
               )}
 
-              {/* Toggle: Possui Subserviços */}
+              {/* Toggle: Possui Subserviços — oculto para Consultoria */}
+              {categoria !== "consultoria" && (
               <div className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-xl md:col-span-2">
                 <div className="space-y-0.5">
                   <Label className="text-sm font-bold">Possui Subserviços?</Label>
@@ -770,7 +774,10 @@ export default function ServiceCatalog() {
                   onCheckedChange={handleTogglePossuiSubservicos}
                 />
               </div>
+              )}
 
+              {/* Toggle: Exibir para Cliente — apenas para Diverso */}
+              {categoria === "diverso" && (
               <div className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-xl">
                 <div className="space-y-0.5">
                   <Label className="text-sm font-bold">Exibir para Cliente</Label>
@@ -781,11 +788,14 @@ export default function ServiceCatalog() {
                   onCheckedChange={(val) => setFormData({ ...formData, showToClient: val })}
                 />
               </div>
+              )}
 
             </div>
             )}
 
-            {/* ─── SEÇÃO DE DOCUMENTOS / SUBSERVIÇOS ─── */}
+            {/* ─── SEÇÃO DE DOCUMENTOS / SUBSERVIÇOS — oculta para Consultoria ─── */}
+            {categoria !== "consultoria" && (
+            <>
             <Separator className="bg-border/50" />
 
             {formData.possuiSubservicos ? (
@@ -970,6 +980,8 @@ export default function ServiceCatalog() {
                   </div>
                 ))}
               </div>
+            )}
+            </>
             )}
 
           </div>

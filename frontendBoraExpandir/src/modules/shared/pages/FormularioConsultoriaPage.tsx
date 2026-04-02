@@ -10,6 +10,8 @@ export default function FormularioConsultoria() {
   const [step, setStep] = useState<FormStepState>(agendamentoId ? 'loading' : 'form')
   const [error, setError] = useState<string | null>(null)
   const [emailEnviado, setEmailEnviado] = useState('')
+  // ID efetivo do agendamento — pode ser diferente do URL quando o backend faz fallback por email
+  const [efectiveAgendamentoId, setEfectiveAgendamentoId] = useState<string | undefined>(agendamentoId)
 
   // Dados de resposta do backend
   const [pagamentoStatus, setPagamentoStatus] = useState<PagamentoStatus>(null)
@@ -140,7 +142,10 @@ export default function FormularioConsultoria() {
 
     async function checkStatus() {
       try {
-        const response = await fetch(`${backendUrl}/formulario/consultoria/${agendamentoId}/status`)
+        // Passa o email como query param para permitir fallback no backend
+        // quando o agendamento_id do link for antigo/inválido
+        const emailParam = preEmail ? `&email=${encodeURIComponent(preEmail)}` : ''
+        const response = await fetch(`${backendUrl}/formulario/consultoria/${agendamentoId}/status?${emailParam.replace(/^&/, '')}`)
         if (!response.ok) {
           setStep('nao_encontrado')
           return
@@ -150,6 +155,12 @@ export default function FormularioConsultoria() {
         if (!data.found) {
           setStep('nao_encontrado')
           return
+        }
+
+        // Se o backend encontrou via fallback por email, usa o ID real do agendamento
+        if (data.redirect_id && data.redirect_id !== agendamentoId) {
+          console.log('[FormularioConsultoria] Redirecionando para agendamento ativo:', data.redirect_id)
+          setEfectiveAgendamentoId(data.redirect_id)
         }
         if (data.bloqueado_cron) {
           setStep('bloqueado')
@@ -256,7 +267,7 @@ export default function FormularioConsultoria() {
       const response = await fetch(`${backendUrl}/formulario/consultoria`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, profissao_online_presencial: profissaoOlinePresencial, agendamento_id: agendamentoId || null })
+        body: JSON.stringify({ ...formData, profissao_online_presencial: profissaoOlinePresencial, agendamento_id: efectiveAgendamentoId || agendamentoId || null })
       })
 
       const data = await response.json()

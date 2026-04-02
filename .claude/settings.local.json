@@ -33,7 +33,9 @@
       "Bash(git push:*)",
       "Bash(find 'C:\\\\Users\\\\Bruno Porto\\\\Desktop\\\\BoraExpandirPlataforma' -type f \\\\\\(-name *.ts -o -name *.tsx -o -name *.sql \\\\\\))",
       "Bash(cd /c/Users/Bruno Porto/Desktop/BoraExpandirPlataforma/backend)",
-      "Bash(cd /c/Users/Bruno Porto/Desktop/BoraExpandirPlataforma/frontendBoraExpandir)"
+      "Bash(cd /c/Users/Bruno Porto/Desktop/BoraExpandirPlataforma/frontendBoraExpandir)",
+      "Bash(find . -path */routes/* -name *.ts -type f)",
+      "Bash(find 'C:/Users/Bruno Porto/Desktop/BoraExpandirPlataforma/frontendBoraExpandir' -name *.test.* -o -name *.spec.*)"
     ]
   },
   "hooks": {

@@ -888,6 +888,26 @@ class FinanceiroController {
                                 .update({ stage: 'aguardando_assessoria', status: 'aguardando_assessoria', atualizado_em: new Date().toISOString() })
                                 .eq('id', contrato.cliente_id)
                             console.log(`[FinanceiroController] Cliente ${contrato.cliente_id} movido para aguardando_assessoria (contrato fixo aprovado)`)
+
+                            // Atualiza também o processo ativo
+                            const { data: processoAtivo } = await supabase
+                                .from('processos')
+                                .select('id')
+                                .eq('cliente_id', contrato.cliente_id)
+                                .order('criado_em', { ascending: false })
+                                .limit(1)
+                                .maybeSingle()
+
+                            if (processoAtivo?.id) {
+                                await supabase.from('processos')
+                                    .update({
+                                        status: 'aguardando_assessoria',
+                                        servico_id: contrato.servico_id || null,
+                                        atualizado_em: new Date().toISOString()
+                                    })
+                                    .eq('id', processoAtivo.id)
+                                console.log(`[FinanceiroController] Processo ${processoAtivo.id} atualizado para aguardando_assessoria`)
+                            }
                         }
                     }
                 } catch (stageErr) {
