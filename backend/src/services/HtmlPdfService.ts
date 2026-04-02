@@ -22,6 +22,7 @@ interface ContratoPayload {
     valor_desconto?: string;
     valor_consultoria?: string;
     forma_pagamento?: string;
+    valor_final_extenso?: string;
     data: string;
     pendencias?: string; // JSON string of Array<{nome, parentesco, valor}>
 }
@@ -192,19 +193,32 @@ class HtmlPdfService {
                 logoBase64: logoBase64 ? `data:image/png;base64,${logoBase64}` : null,
             };
 
-            // Whitelist das unicas variaveis que o corpo do contrato pode usar.
-            // Qualquer outro {{...}} — seja anotacao de texto vinda do DOCX
-            // (ex: "{{nome do(s) documento(s)}}") ou helper orfao (ex: "{{/each}}"
-            // sem {{#each}} correspondente) — vira entidade HTML para nao quebrar
-            // o Handlebars nem o html-pdf-node, que tambem roda Handlebars internamente.
+            // Whitelist das variaveis e helpers que o corpo do contrato pode usar.
+            // Helpers do Handlebars (#if, /if, #each, /each, this.xxx) sao preservados.
+            // Qualquer outro {{...}} inesperado (ex: anotacoes do DOCX) vira entidade HTML.
             const VARIAVEIS_CONTRATO = new Set([
                 'nome', 'nacionalidade', 'estado_civil', 'profissao', 'documento',
                 'endereco', 'email', 'telefone', 'tipo_servico', 'descricao_pessoas',
                 'valor_pavao', 'valor_desconto', 'valor_consultoria', 'forma_pagamento',
-                'data', 'pendencias', 'logoBase64',
+                'data', 'pendencias', 'logoBase64', 'valor_final_extenso',
             ]);
+
+            const isHandlebarsToken = (inner: string) => {
+                const trimmed = inner.trim();
+                // Variaveis simples da whitelist
+                if (VARIAVEIS_CONTRATO.has(trimmed)) return true;
+                // Helpers de bloco: #if, #each, /if, /each, else
+                if (/^[#\/]?(if|each|else|unless)(\s|$)/.test(trimmed)) return true;
+                // Acesso de propriedades em loop: this, this.nome, this.valor, etc.
+                if (/^this(\.\w+)?$/.test(trimmed)) return true;
+                // Nesting de helpers Handlebars validos: > partial, log, etc.
+                if (/^(>|log|lookup|with)\s/.test(trimmed)) return true;
+                return false;
+            };
+
             const safeConteudoHTML = conteudoHTML.replace(/\{\{([^{}]*)\}\}/g, (match, inner) => {
-                if (VARIAVEIS_CONTRATO.has(inner.trim())) return match;
+                if (isHandlebarsToken(inner)) return match;
+                // Escapa chaves para nao quebrar o Handlebars
                 return match.replace(/\{/g, '&#123;').replace(/\}/g, '&#125;');
             });
 
@@ -218,7 +232,11 @@ class HtmlPdfService {
             const htmlFinal = masterTemplate(contextCompleto);
 
             const file = { content: htmlFinal };
-            const pdfBuffer = await htmlPdf.generatePdf(file, { format: 'A4', printBackground: true }) as unknown as Buffer;
+            const pdfBuffer = await htmlPdf.generatePdf(file, {
+                format: 'A4',
+                printBackground: true,
+                margin: { top: '15mm', right: '0mm', bottom: '15mm', left: '0mm' },
+            }) as unknown as Buffer;
 
             // Ler dimensoes reais da pagina e calcular posicoes exatas das assinaturas
             let totalPages = 1;

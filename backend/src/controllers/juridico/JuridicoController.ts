@@ -1240,10 +1240,9 @@ class JuridicoController {
             }
 
             // 2. Marcar o agendamento como 'realizado'
+            // NOTA: vendedor_id nao existe como coluna na tabela agendamentos.
+            // O vinculo com o vendedor C2 e salvo no perfil_unificado (DNA) do cliente via DNAService.mergeDNA abaixo.
             const updateData: any = { status: 'realizado' };
-            if (vendedorId) {
-                updateData.vendedor_id = vendedorId;
-            }
 
             console.log('[marcarConsultoriaRealizada] Atualizando agendamento:', id, updateData);
             const { data: agendamento, error: agError } = await supabase

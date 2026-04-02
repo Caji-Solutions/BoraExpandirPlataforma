@@ -517,17 +517,47 @@ class FormularioController {
                 return res.status(400).json({ found: false, message: 'ID do agendamento é obrigatório' })
             }
 
-            // 1. Buscar agendamento
-            const { data: agendamento, error: agErr } = await supabase
+            // 1. Buscar agendamento pelo ID principal
+            let { data: agendamento, error: agErr } = await supabase
                 .from('agendamentos')
                 .select('id, status, data_hora, pagamento_status, pagamento_nota_recusa, email, telefone, cliente_id')
                 .eq('id', agendamento_id)
-                .single()
+                .maybeSingle()
 
             if (agErr || !agendamento) {
-                console.error('[FormularioController] Erro ao buscar agendamento status:', agErr)
-                return res.status(404).json({ found: false })
+                // FALLBACK: agendamento não encontrado pelo ID (ex: link antigo de email com ID diferente).
+                // Tentar buscar o agendamento ativo pelo email passado como query param.
+                console.warn('[FormularioController] Agendamento nao encontrado pelo ID, tentando fallback por email...')
+                const emailParam = req.query?.email as string | undefined
+                if (emailParam) {
+                    const emailDecoded = decodeURIComponent(emailParam).trim().toLowerCase()
+                    const { data: agFallback } = await supabase
+                        .from('agendamentos')
+                        .select('id, status, data_hora, pagamento_status, pagamento_nota_recusa, email, telefone, cliente_id')
+                        .ilike('email', emailDecoded)
+                        .not('status', 'eq', 'cancelado')
+                        .eq('pagamento_status', 'aprovado')
+                        .order('data_hora', { ascending: false })
+                        .limit(1)
+                        .maybeSingle()
+
+                    if (agFallback) {
+                        console.log(`[FormularioController] Fallback encontrou agendamento ativo ${agFallback.id} para email ${emailDecoded}`)
+                        agendamento = agFallback
+                        agErr = null
+                    } else {
+                        console.error('[FormularioController] Fallback por email nao encontrou agendamento ativo.')
+                        return res.status(404).json({ found: false })
+                    }
+                } else {
+                    console.error('[FormularioController] Erro ao buscar agendamento status:', agErr)
+                    return res.status(404).json({ found: false })
+                }
             }
+
+            // ID efetivo do agendamento (pode ser diferente do agendamento_id da URL se veio do fallback)
+            const efetiveId = agendamento.id
+            const usouFallback = efetiveId !== agendamento_id
 
             // 1.5. Buscar DNA do cliente se existir
             let dnaData = null
@@ -548,7 +578,7 @@ class FormularioController {
             const { data: formEnviado } = await supabase
                 .from('formularios_cliente')
                 .select('id')
-                .eq('agendamento_id', agendamento_id)
+                .eq('agendamento_id', efetiveId)  // usar o ID efetivo (pode ter vindo do fallback)
                 .maybeSingle()
 
             if (formEnviado) {
@@ -568,6 +598,7 @@ class FormularioController {
             // 5. Retornar dados
             return res.status(200).json({
                 found: true,
+                redirect_id: usouFallback ? efetiveId : undefined, // ID real quando veio do fallback
                 status: agendamento.status,
                 pagamento_status: agendamento.pagamento_status || 'pendente',
                 formulario_preenchido: formularioPreenchido,

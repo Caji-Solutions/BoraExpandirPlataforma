@@ -55,6 +55,7 @@ type FormularioDraft = {
   estado_civil: string
   profissao: string
   documento: string
+  tipo_documento: 'cpf' | 'passaporte'
   endereco: string
   email: string
   telefone: string
@@ -64,7 +65,9 @@ type FormularioDraft = {
   valor_desconto: string
   valor_consultoria: string
   valor_final?: string
-  metodo_pagamento: 'pix' | 'boleto' | ''
+  metodo_pagamento: 'pix' | 'boleto' | 'cartao' | ''
+  cartao_tipo: 'debito' | 'credito' | ''
+  cartao_parcelas: string
   forma_pagamento: string
   formaPagamento: string
   boleto_valor_entrada: string
@@ -79,6 +82,7 @@ const emptyFormData: FormularioDraft = {
   estado_civil: '',
   profissao: '',
   documento: '',
+  tipo_documento: 'cpf',
   endereco: '',
   email: '',
   telefone: '',
@@ -88,6 +92,8 @@ const emptyFormData: FormularioDraft = {
   valor_desconto: '',
   valor_consultoria: '',
   metodo_pagamento: '',
+  cartao_tipo: '',
+  cartao_parcelas: '1',
   forma_pagamento: '',
   formaPagamento: '',
   boleto_valor_entrada: '',
@@ -156,6 +162,7 @@ export default function FormularioAssessoriaPage() {
       estado_civil: draft.estado_civil || '',
       profissao: draft.profissao || '',
       documento: documentoFormatado,
+      tipo_documento: (draft.tipo_documento || (onlyDigits(documentoBase).length === 11 ? 'cpf' : draft.documento ? 'passaporte' : 'cpf')) as 'cpf' | 'passaporte',
       endereco: draft.endereco || data.cliente?.endereco || '',
       email: draft.email || data.cliente_email || data.cliente?.email || '',
       telefone: formatPhoneDisplay(draft.telefone || data.cliente_telefone || data.cliente?.whatsapp || ''),
@@ -164,7 +171,9 @@ export default function FormularioAssessoriaPage() {
       valor_pavao: String(draft.valor_pavao || ''),
       valor_desconto: String(draft.valor_desconto || ''),
       valor_consultoria: String(draft.valor_consultoria || ''),
-      metodo_pagamento: (draft.metodo_pagamento || (draft.forma_pagamento?.toLowerCase().includes('boleto') ? 'boleto' : 'pix')) as 'pix' | 'boleto' | '',
+      metodo_pagamento: (draft.metodo_pagamento || (draft.forma_pagamento?.toLowerCase().includes('boleto') ? 'boleto' : draft.forma_pagamento?.toLowerCase().includes('cart') ? 'cartao' : 'pix')) as 'pix' | 'boleto' | 'cartao' | '',
+      cartao_tipo: (draft.cartao_tipo || '') as 'debito' | 'credito' | '',
+      cartao_parcelas: String(draft.cartao_parcelas || '1'),
       forma_pagamento: draft.forma_pagamento || draft.formaPagamento || '',
       formaPagamento: draft.forma_pagamento || draft.formaPagamento || '',
       boleto_valor_entrada: String(draft.boleto_valor_entrada || data.boleto_valor_entrada || ''),
@@ -267,13 +276,18 @@ export default function FormularioAssessoriaPage() {
         ? 'boleto'
         : source.metodo_pagamento === 'pix'
           ? 'pix'
-          : ''
+          : source.metodo_pagamento === 'cartao'
+            ? 'cartao'
+            : ''
     const boletoQtd = Math.max(1, Math.min(3, Number(source.boleto_quantidade_parcelas || '1')))
+    const cartaoParcQtd = Math.max(1, Math.min(12, Number(source.cartao_parcelas || '1')))
     const formaPagamentoContrato = metodoPagamento === 'boleto'
       ? `Pagamento via BOLETO: entrada de R$ ${source.boleto_valor_entrada || '0,00'} + ${boletoQtd} parcela(s) de R$ ${source.boleto_valor_parcela || '0,00'}, com cobrança mensal no mesmo dia da criação do serviço.`
       : metodoPagamento === 'pix'
         ? 'Pagamento via PIX (com envio de comprovante).'
-        : ''
+        : metodoPagamento === 'cartao'
+          ? `Pagamento via CARTÃO ${source.cartao_tipo === 'debito' ? 'DÉBITO' : source.cartao_tipo === 'credito' ? `CRÉDITO (${cartaoParcQtd}x)` : ''} (com envio de comprovante).`
+          : ''
 
     const parseNumerico = (val: string) => parseFloat(val.trim().replace(/\./g, '').replace(/,/g, '.'))
     
@@ -316,6 +330,10 @@ export default function FormularioAssessoriaPage() {
       payload.boleto_valor_entrada = ''
       payload.boleto_valor_parcela = ''
       payload.boleto_quantidade_parcelas = '1'
+    }
+    if (metodoPagamento !== 'cartao') {
+      payload.cartao_tipo = ''
+      payload.cartao_parcelas = '1'
     }
 
     payload.telefone = normalizePhone(payload.telefone)
@@ -400,11 +418,16 @@ export default function FormularioAssessoriaPage() {
     const errors: Record<string, string> = {}
     if (step === 1) {
       if (!formData.nome.trim()) errors.nome = 'Informe o nome'
-      const cpfDigits = onlyDigits(formData.documento)
-      if (!cpfDigits) {
-        errors.documento = 'Informe o CPF'
-      } else if (cpfDigits.length !== 11) {
-        errors.documento = 'CPF deve ter exatamente 11 dígitos'
+      if (formData.tipo_documento === 'cpf') {
+        const cpfDigits = onlyDigits(formData.documento)
+        if (!cpfDigits) {
+          errors.documento = 'Informe o CPF'
+        } else if (cpfDigits.length !== 11) {
+          errors.documento = 'CPF deve ter exatamente 11 dígitos'
+        }
+      } else {
+        if (!formData.documento.trim()) errors.documento = 'Informe o número do passaporte'
+        else if (formData.documento.trim().length < 5) errors.documento = 'Passaporte inválido'
       }
       if (!formData.nacionalidade.trim()) errors.nacionalidade = 'Informe a nacionalidade'
       if (!formData.estado_civil) errors.estado_civil = 'Selecione o estado civil'
@@ -617,23 +640,67 @@ export default function FormularioAssessoriaPage() {
                 {validationErrors.nome && <p className="text-red-500 text-xs mt-1">{validationErrors.nome}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CPF *</label>
-                <input
-                  type="text"
-                  disabled={saving || isLockedByGeracaoErro}
-                  value={formData.documento}
-                  maxLength={14}
-                  onChange={(e) => {
-                    const valor = e.target.value
-                    const digits = onlyDigits(valor)
-                    if (digits.length > 11) return
-                    const masked = maskCpfInput(valor)
-                    setFormData({ ...formData, documento: masked })
-                    if (digits.length === 11) setValidationErrors(prev => ({ ...prev, documento: '' }))
-                  }}
-                  placeholder="000.000.000-00"
-                  className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm ${validationErrors.documento ? 'border-red-400' : 'border-gray-200 dark:border-neutral-700'}`}
-                />
+                {/* Toggle CPF / Passaporte */}
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {formData.tipo_documento === 'cpf' ? 'CPF' : 'Passaporte'} *
+                  </label>
+                  <div className="ml-auto flex bg-gray-100 dark:bg-neutral-800 rounded-lg p-0.5 text-xs">
+                    <button
+                      type="button"
+                      disabled={saving || isLockedByGeracaoErro}
+                      onClick={() => setFormData({ ...formData, tipo_documento: 'cpf', documento: '' })}
+                      className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+                        formData.tipo_documento === 'cpf'
+                          ? 'bg-white dark:bg-neutral-700 text-gray-900 dark:text-white shadow-sm'
+                          : 'text-gray-500 dark:text-neutral-400'
+                      }`}
+                    >CPF</button>
+                    <button
+                      type="button"
+                      disabled={saving || isLockedByGeracaoErro}
+                      onClick={() => setFormData({ ...formData, tipo_documento: 'passaporte', documento: '' })}
+                      className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+                        formData.tipo_documento === 'passaporte'
+                          ? 'bg-white dark:bg-neutral-700 text-gray-900 dark:text-white shadow-sm'
+                          : 'text-gray-500 dark:text-neutral-400'
+                      }`}
+                    >Passaporte</button>
+                  </div>
+                </div>
+
+                {formData.tipo_documento === 'cpf' ? (
+                  <input
+                    type="text"
+                    disabled={saving || isLockedByGeracaoErro}
+                    value={formData.documento}
+                    maxLength={14}
+                    onChange={(e) => {
+                      const valor = e.target.value
+                      const digits = onlyDigits(valor)
+                      if (digits.length > 11) return
+                      const masked = maskCpfInput(valor)
+                      setFormData({ ...formData, documento: masked })
+                      if (digits.length === 11) setValidationErrors(prev => ({ ...prev, documento: '' }))
+                    }}
+                    placeholder="000.000.000-00"
+                    className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm ${validationErrors.documento ? 'border-red-400' : 'border-gray-200 dark:border-neutral-700'}`}
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    disabled={saving || isLockedByGeracaoErro}
+                    value={formData.documento}
+                    maxLength={20}
+                    onChange={(e) => {
+                      const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')
+                      setFormData({ ...formData, documento: val })
+                      if (val.trim().length >= 5) setValidationErrors(prev => ({ ...prev, documento: '' }))
+                    }}
+                    placeholder="Ex: AB123456"
+                    className={`w-full border rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm font-mono tracking-wider ${validationErrors.documento ? 'border-red-400' : 'border-gray-200 dark:border-neutral-700'}`}
+                  />
+                )}
                 {validationErrors.documento && <p className="text-red-500 text-xs mt-1">{validationErrors.documento}</p>}
               </div>
               <div>
@@ -963,13 +1030,16 @@ export default function FormularioAssessoriaPage() {
         {etapaAtual === 3 && (
           <div className="space-y-4 animate-in fade-in">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Forma de Pagamento</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* PIX */}
               <button
                 type="button"
                 disabled={saving || isLockedByGeracaoErro}
                 onClick={() => setFormData({
                   ...formData,
                   metodo_pagamento: 'pix',
+                  cartao_tipo: '',
+                  cartao_parcelas: '1',
                   forma_pagamento: 'Pagamento via PIX (com envio de comprovante).',
                   formaPagamento: 'Pagamento via PIX (com envio de comprovante).'
                 })}
@@ -980,15 +1050,18 @@ export default function FormularioAssessoriaPage() {
                 }`}
               >
                 <p className="font-bold text-gray-900 dark:text-white">PIX</p>
-                <p className="text-xs text-gray-500 mt-1">Fluxo atual de comprovante e validação.</p>
+                <p className="text-xs text-gray-500 mt-1">Comprovante obrigatório.</p>
               </button>
 
+              {/* Boleto */}
               <button
                 type="button"
                 disabled={saving || isLockedByGeracaoErro}
                 onClick={() => setFormData({
                   ...formData,
                   metodo_pagamento: 'boleto',
+                  cartao_tipo: '',
+                  cartao_parcelas: '1',
                   forma_pagamento: '',
                   formaPagamento: ''
                 })}
@@ -1000,6 +1073,28 @@ export default function FormularioAssessoriaPage() {
               >
                 <p className="font-bold text-gray-900 dark:text-white">Boleto</p>
                 <p className="text-xs text-gray-500 mt-1">Entrada + parcelamento mensal (1 a 3x).</p>
+              </button>
+
+              {/* Cartão */}
+              <button
+                type="button"
+                disabled={saving || isLockedByGeracaoErro}
+                onClick={() => setFormData({
+                  ...formData,
+                  metodo_pagamento: 'cartao',
+                  cartao_tipo: '',
+                  cartao_parcelas: '1',
+                  forma_pagamento: '',
+                  formaPagamento: ''
+                })}
+                className={`rounded-xl border-2 p-4 text-left transition-all ${
+                  formData.metodo_pagamento === 'cartao'
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/15'
+                    : 'border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800'
+                }`}
+              >
+                <p className="font-bold text-gray-900 dark:text-white">Cartão</p>
+                <p className="text-xs text-gray-500 mt-1">Débito ou crédito com comprovante.</p>
               </button>
             </div>
 
@@ -1076,6 +1171,67 @@ export default function FormularioAssessoriaPage() {
               </div>
             )}
 
+            {/* Cartão: sub-opts */}
+            {formData.metodo_pagamento === 'cartao' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo do Cartão *</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      disabled={saving || isLockedByGeracaoErro}
+                      onClick={() => setFormData({ ...formData, cartao_tipo: 'debito', cartao_parcelas: '1' })}
+                      className={`rounded-xl border-2 p-3 text-left transition-all ${
+                        formData.cartao_tipo === 'debito'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/15'
+                          : 'border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800'
+                      }`}
+                    >
+                      <p className="font-bold text-sm text-gray-900 dark:text-white">💳 Débito</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Pagamento à vista no cartão.</p>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={saving || isLockedByGeracaoErro}
+                      onClick={() => setFormData({ ...formData, cartao_tipo: 'credito' })}
+                      className={`rounded-xl border-2 p-3 text-left transition-all ${
+                        formData.cartao_tipo === 'credito'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/15'
+                          : 'border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800'
+                      }`}
+                    >
+                      <p className="font-bold text-sm text-gray-900 dark:text-white">💳 Crédito</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Pagamento parcelado no crédito.</p>
+                    </button>
+                  </div>
+                </div>
+
+                {formData.cartao_tipo === 'credito' && (
+                  <div className="max-w-[200px]">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Número de Parcelas *</label>
+                    <select
+                      disabled={saving || isLockedByGeracaoErro}
+                      value={formData.cartao_parcelas}
+                      onChange={(e) => setFormData({ ...formData, cartao_parcelas: e.target.value })}
+                      className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm"
+                    >
+                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => (
+                        <option key={n} value={String(n)}>{n}x</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                  {formData.cartao_tipo === 'debito'
+                    ? 'Cartão DÉBITO: o comprovante da transação deverá ser enviado para validação.'
+                    : formData.cartao_tipo === 'credito'
+                      ? `Cartão CRÉDITO em ${formData.cartao_parcelas}x: o comprovante da transação deverá ser enviado para validação.`
+                      : 'Selecione o tipo do cartão para continuar.'}
+                </div>
+              </div>
+            )}
+
             {formData.metodo_pagamento === 'pix' && (
               <div className="text-sm text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
                 O contrato será salvo com pagamento via PIX e comprovante obrigatório.
@@ -1128,7 +1284,9 @@ export default function FormularioAssessoriaPage() {
                         ? 'Boleto'
                         : formData.metodo_pagamento === 'pix'
                           ? 'PIX'
-                          : '-'}
+                          : formData.metodo_pagamento === 'cartao'
+                            ? `Cartão ${formData.cartao_tipo === 'debito' ? 'Débito' : formData.cartao_tipo === 'credito' ? `Crédito ${formData.cartao_parcelas}x` : ''}`
+                            : '-'}
                     </p>
                   </div>
                   <div>

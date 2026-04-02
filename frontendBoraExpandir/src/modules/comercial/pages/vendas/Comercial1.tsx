@@ -1111,26 +1111,7 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
                   <div>
                     <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Produto</p>
                     <p className="text-lg font-semibold text-gray-900 dark:text-white">{produtoSelecionado.nome}</p>
-
-                    {(produtoSelecionado as any).isEuro ? (
-                      <div className="mt-2">
-                        <p className="text-2xl font-bold text-emerald-600">
-                          € {produtoSelecionado.valor.toFixed(2)}
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Aprox. R$ {(produtoSelecionado.valor * (exchangeRate || 6.27)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </p>
-                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
-                          * Cotação estimada: €1 = R${(exchangeRate || 6.27).toFixed(2)}
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-2xl font-bold text-emerald-600 mt-2">
-                        R$ {produtoSelecionado.valor}
-                      </p>
-                    )}
                   </div>
-                  {/* produto fixo — alteracao feita na pagina de servicos */}
                 </div>
               ) : (
                 <div className="mb-4 pb-4 border-b border-dashed border-gray-200 dark:border-neutral-700">

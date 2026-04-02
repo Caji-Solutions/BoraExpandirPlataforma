@@ -978,39 +978,10 @@ class ComercialController {
 
             const contrato = await ContratoServicoRepository.createContrato(contratoPayload)
 
-            // Atualizar stage do cliente para aguardando_assessoria (servico fixo)
-            // Só não atualiza se o cliente já está em stages posteriores
-            const stagesAdiante = ['assessoria_andamento', 'assessoria_finalizada']
-            const stageAtual = cliente.stage || ''
+            // NOTA: O stage do cliente NAO é alterado aqui na criação do contrato.
+            // A mudança para 'aguardando_assessoria' ocorre apenas quando o pagamento
+            // é aprovado em FinanceiroController.aprovarComprovanteContrato.
 
-            if (!stagesAdiante.includes(stageAtual)) {
-                const { error: stageError } = await supabase
-                    .from('clientes')
-                    .update({ stage: 'aguardando_assessoria', status: 'aguardando_assessoria', atualizado_em: new Date().toISOString() })
-                    .eq('id', cliente_id);
-
-                if (stageError) {
-                    console.error(`[ComercialController] Erro ao atualizar stage do cliente ${cliente_id} para aguardando_assessoria:`, stageError)
-                } else {
-                    console.log(`[ComercialController] Cliente ${cliente_id} movido para aguardando_assessoria (contrato fixo criado, stage anterior: ${stageAtual || 'null'})`)
-                }
-
-                const { data: processoAtivo } = await supabase
-                    .from('processos')
-                    .select('id')
-                    .eq('cliente_id', cliente_id)
-                    .order('criado_em', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-                if (processoAtivo && processoAtivo.id) {
-                   await supabase.from('processos').update({
-                        status: 'aguardando_assessoria',
-                        tipo_servico: tipoServicoPadrao,
-                        servico_id: servico_id || null,
-                        atualizado_em: new Date().toISOString()
-                    }).eq('id', processoAtivo.id);
-                }
-            }
 
             const contratoCompleto = await ContratoServicoRepository.getContratoById(contrato.id)
 
