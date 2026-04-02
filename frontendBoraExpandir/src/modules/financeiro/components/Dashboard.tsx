@@ -137,8 +137,8 @@ export function Dashboard() {
     return [...vendedoresFiltrados]
       .map(v => ({
         ...v,
-        percentual: (v.vendas / v.meta) * 100,
-        metaBatida: v.vendas >= v.meta,
+        percentual: (v.vendas / (v.meta || 1)) * 100,
+        metaBatida: v.vendas >= (v.meta || 0),
       }))
       .sort((a, b) => b.percentual - a.percentual)
   }, [vendedoresFiltrados])
@@ -249,7 +249,7 @@ export function Dashboard() {
       </div>
 
       {/* Métricas Principais - Grid 2x2 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Meta de Vendas */}
         <div className="bg-green-600 rounded-xl p-6 shadow-lg">
           <div className="flex items-start justify-between mb-4">
@@ -365,7 +365,7 @@ export function Dashboard() {
       </div>
 
       {/* Resumo de Metas - Cards de Status */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         {/* Metas Batidas */}
         <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 shadow-lg">
           <div className="flex items-center justify-between mb-3">
@@ -520,7 +520,7 @@ export function Dashboard() {
                     <span className="font-semibold text-gray-900">
                       R$ {vendedor.vendas.toLocaleString('pt-BR')}
                     </span>
-                    <span className="text-gray-400"> / R$ {vendedor.meta.toLocaleString('pt-BR')}</span>
+                    <span className="text-gray-400"> / R$ {(vendedor.meta || 0).toLocaleString('pt-BR')}</span>
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
                     Comissão: <span className="font-medium text-gray-700">R$ {vendedor.comissao.toLocaleString('pt-BR')}</span>

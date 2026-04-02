@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import { Save, ArrowLeft, Upload, FileText } from "lucide-react";
-import mammoth from "mammoth";
+import * as mammoth from "mammoth";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/modules/shared/components/ui/use-toast";
 

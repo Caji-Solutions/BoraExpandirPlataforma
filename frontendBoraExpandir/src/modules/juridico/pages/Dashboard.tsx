@@ -193,7 +193,7 @@ export function Dashboard() {
       </div>
 
       {/* KPI Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
         <Card className="border border-gray-200 dark:border-neutral-800 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-4 lg:p-5">
             <div className="flex items-center justify-between mb-3">

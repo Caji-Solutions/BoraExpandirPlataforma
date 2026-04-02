@@ -29,7 +29,7 @@ type SidebarProps = {
 }
 
 // Component for rendering individual sidebar items (with support for expandable children)
-function SidebarItemComponent({ item }: { item: SidebarItem }) {
+function SidebarItemComponent({ item, onClose }: { item: SidebarItem, onClose?: () => void }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const { pathname } = useLocation()
   const Icon = item.icon
@@ -64,7 +64,7 @@ function SidebarItemComponent({ item }: { item: SidebarItem }) {
         {isExpanded && (
           <ul className="ml-6 mt-1 space-y-1">
             {item.children.map((child, idx) => (
-              <SidebarItemComponent key={idx} item={child} />
+              <SidebarItemComponent key={idx} item={child} onClose={onClose} />
             ))}
           </ul>
         )}
@@ -82,6 +82,11 @@ function SidebarItemComponent({ item }: { item: SidebarItem }) {
       <NavLink
         to={item.to}
         end={true}
+        onClick={() => {
+          if (window.innerWidth < 1024 && onClose) {
+            onClose()
+          }
+        }}
         className={({ isActive }) => cn(
           'group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition',
           'hover:bg-sidebar-accent',
@@ -135,7 +140,7 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen, children,
       <>
         {isOpen && (
           <div
-            className="md:hidden fixed inset-0 z-20 bg-black/50"
+            className="md:hidden fixed inset-0 z-[45] bg-black/50"
             onClick={() => setOpen(false)}
           />
         )}
@@ -146,7 +151,7 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen, children,
             'fixed left-0 top-0 h-screen w-64 shrink-0 border-r bg-sidebar background border-sidebar-border text-sidebar-foreground flex flex-col',
             'transition-transform duration-300 ease-in-out',
             'md:translate-x-0',
-            isOpen ? 'translate-x-0 z-30' : '-translate-x-full md:translate-x-0',
+            isOpen ? 'translate-x-0 z-50' : '-translate-x-full md:translate-x-0',
             className
           )}
           style={{} as React.CSSProperties}
@@ -162,7 +167,7 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen, children,
     <>
       {isOpen && (
         <div
-          className="md:hidden fixed inset-0 z-20 bg-black/50"
+          className="md:hidden fixed inset-0 z-[45] bg-black/50"
           onClick={() => setOpen(false)}
         />
       )}
@@ -173,7 +178,7 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen, children,
           'fixed left-0 top-0 h-screen w-64 shrink-0 border-r bg-sidebar background border-sidebar-border text-sidebar-foreground flex flex-col',
           'transition-transform duration-300 ease-in-out',
           'md:translate-x-0',
-          isOpen ? 'translate-x-0 z-30' : '-translate-x-full md:translate-x-0'
+          isOpen ? 'translate-x-0 z-50' : '-translate-x-full md:translate-x-0'
         )}
         style={{} as React.CSSProperties}
       >
@@ -268,7 +273,7 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen, children,
               )}
               <ul className="space-y-1">
                 {group.items.map((item, ii) => (
-                  <SidebarItemComponent key={`${gi}-${ii}`} item={item} />
+                  <SidebarItemComponent key={`${gi}-${ii}`} item={item} onClose={() => setOpen(false)} />
                 ))}
               </ul>
             </div>
@@ -348,8 +353,25 @@ export function SidebarMenuItem({ children }: { children: React.ReactNode }) {
 }
 
 export function SidebarMenuButton({ children, asChild, ...props }: { children: React.ReactNode; asChild?: boolean; [key: string]: any }) {
+  const { setOpen } = useSidebar()
+
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (props.onClick) props.onClick(e)
+    if (window.innerWidth < 1024) {
+      setOpen(false)
+    }
+  }
+
   return (
-    <button className="w-full rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent transition" {...props}>
+    <button 
+      className={cn(
+        "w-full rounded-md px-3 py-3.5 md:py-2 text-sm hover:bg-sidebar-accent transition-all duration-200 active:scale-[0.98] outline-none",
+        props.isActive ? "bg-sidebar-accent text-sidebar-primary font-bold" : "text-muted-foreground",
+        props.className
+      )} 
+      {...props}
+      onClick={handleClick}
+    >
       {children}
     </button>
   )

@@ -1467,6 +1467,58 @@ class JuridicoController {
             return res.status(500).json({ message: 'Erro ao invalidar contrato', error: error.message })
         }
     }
+    // POST /juridico/cliente/:clienteId/finalizar-assessoria
+    async finalizarAssessoriaByCliente(req: any, res: any) {
+        try {
+            const { clienteId } = req.params;
+
+            if (!clienteId) {
+                return res.status(400).json({ message: 'Cliente ID é obrigatório' });
+            }
+
+            // 1. Atualizar stage do cliente para assessoria_finalizada
+            const { error: updateClienteError } = await supabase
+                .from('clientes')
+                .update({ 
+                    stage: 'assessoria_finalizada', 
+                    status: 'assessoria_finalizada',
+                    atualizado_em: new Date().toISOString()
+                })
+                .eq('id', clienteId);
+
+            if (updateClienteError) {
+                console.error('[finalizarAssessoriaByCliente] Erro ao atualizar stage:', updateClienteError);
+                throw updateClienteError;
+            }
+
+            // 2. Tentar encontrar e finalizar agendamentos em aberto para este cliente
+            await supabase
+                .from('agendamentos')
+                .update({ status: 'realizado' })
+                .eq('cliente_id', clienteId)
+                .in('status', ['confirmado', 'agendado', 'em_consultoria']);
+
+            // 3. Notificar o cliente
+            try {
+                await NotificationService.createNotification({
+                    clienteId: clienteId,
+                    titulo: 'Assessoria Técnica Concluída',
+                    mensagem: 'Todos os seus documentos foram analisados e aprovados pelo Jurídico. Sua assessoria técnica foi finalizada com sucesso.',
+                    tipo: 'success'
+                });
+            } catch (notifError) {
+                console.error('[finalizarAssessoriaByCliente] Erro ao notificar:', notifError);
+            }
+
+            return res.status(200).json({ 
+                success: true, 
+                message: 'Assessoria finalizada e cliente atualizado.' 
+            });
+        } catch (error: any) {
+            console.error('Erro ao finalizar assessoria por cliente:', error);
+            return res.status(500).json({ message: 'Erro ao finalizar assessoria', error: error.message });
+        }
+    }
 }
 
 export default new JuridicoController()

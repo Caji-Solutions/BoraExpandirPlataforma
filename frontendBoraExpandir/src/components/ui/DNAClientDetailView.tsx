@@ -346,7 +346,7 @@ export function DNAClientDetailView({
                         <div className="flex items-center gap-4">
                             <button
                                 onClick={onBack}
-                                className="p-2.5 hover:bg-muted rounded-xl transition-all border border-transparent hover:border-border flex-shrink-0"
+                                className="touch-target p-2.5 hover:bg-muted rounded-xl transition-all border border-transparent hover:border-border flex-shrink-0"
                             >
                                 <ArrowLeft className="h-5 w-5" />
                             </button>
@@ -367,8 +367,8 @@ export function DNAClientDetailView({
                                     <span className="text-border hidden sm:inline">|</span>
                                     <div className="flex items-center gap-1.5 bg-muted/60 px-2 py-0.5 rounded-md font-mono text-[11px]">
                                         <span className="truncate max-w-[140px]">{client.id}</span>
-                                        <button onClick={handleCopyId} className="hover:text-primary transition-colors flex-shrink-0" title="Copiar ID">
-                                            {copiedId ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+                                        <button onClick={handleCopyId} className="touch-target hover:text-primary transition-colors flex-shrink-0" title="Copiar ID">
+                                            {copiedId ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
                                         </button>
                                     </div>
 
@@ -415,12 +415,12 @@ export function DNAClientDetailView({
                 </div>
 
                 {/* Tab Navigation & Filters */}
-                <div className="bg-card/80 backdrop-blur-lg border border-border rounded-xl flex flex-wrap items-center justify-between gap-3 px-2 py-1.5 sticky top-4 z-40 shadow-sm">
-                    <div className="flex items-center gap-0.5 bg-muted/40 p-0.5 rounded-lg">
+                <div className="bg-card/80 backdrop-blur-lg border border-border rounded-xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-2 py-2 sticky top-4 z-40 shadow-sm">
+                    <div className="flex items-center gap-0.5 bg-muted/40 p-0.5 rounded-lg overflow-x-auto no-scrollbar">
                         <button
                             onClick={() => setActiveTab('timeline')}
                             className={cn(
-                                "px-4 py-2 rounded-md text-[13px] font-semibold transition-all flex items-center gap-2",
+                                "flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md text-[12px] sm:text-[13px] font-semibold transition-all flex items-center justify-center gap-2 whitespace-nowrap",
                                 activeTab === 'timeline'
                                     ? "bg-background text-foreground shadow-sm border border-border/60"
                                     : "text-muted-foreground hover:text-foreground"
@@ -432,7 +432,7 @@ export function DNAClientDetailView({
                         <button
                             onClick={() => setActiveTab('formularios')}
                             className={cn(
-                                "px-4 py-2 rounded-md text-[13px] font-semibold transition-all flex items-center gap-2",
+                                "flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md text-[12px] sm:text-[13px] font-semibold transition-all flex items-center justify-center gap-2 whitespace-nowrap",
                                 activeTab === 'formularios'
                                     ? "bg-background text-foreground shadow-sm border border-border/60"
                                     : "text-muted-foreground hover:text-foreground"
@@ -445,7 +445,7 @@ export function DNAClientDetailView({
                             <button
                                 onClick={() => setActiveTab('contrato_comprovantes')}
                                 className={cn(
-                                    "px-4 py-2 rounded-md text-[13px] font-semibold transition-all flex items-center gap-2",
+                                    "flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md text-[12px] sm:text-[13px] font-semibold transition-all flex items-center justify-center gap-2 whitespace-nowrap",
                                     activeTab === 'contrato_comprovantes'
                                         ? "bg-background text-foreground shadow-sm border border-border/60"
                                         : "text-muted-foreground hover:text-foreground"
@@ -457,8 +457,8 @@ export function DNAClientDetailView({
                         )}
                     </div>
 
-                    <div className="flex items-center gap-1.5 pr-1">
-                        <span className="text-[9px] uppercase font-bold text-muted-foreground/60 mr-1 hidden sm:block tracking-wider">Área:</span>
+                    <div className="flex items-center justify-between sm:justify-end gap-1.5 pr-1">
+                        <span className="text-[9px] uppercase font-bold text-muted-foreground/60 mr-1 tracking-wider">Área:</span>
                         <div className="flex items-center gap-0.5 bg-muted/30 p-0.5 rounded-lg">
                             {(['todos', 'juridico', 'comercial', 'administrativo'] as const).map((area) => (
                                 <button
@@ -468,7 +468,7 @@ export function DNAClientDetailView({
                                         if (activeTab !== 'timeline' && activeTab !== 'notas') setActiveTab('timeline')
                                     }}
                                     className={cn(
-                                        "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all capitalize",
+                                        "px-2 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-semibold transition-all capitalize whitespace-nowrap",
                                         areaFilter === area && (activeTab === 'timeline' || activeTab === 'notas')
                                             ? "bg-primary text-primary-foreground shadow-sm"
                                             : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
