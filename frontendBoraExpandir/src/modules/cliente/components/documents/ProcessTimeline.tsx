@@ -50,69 +50,52 @@ const stepLabels = {
   analyzing: 'Em Análise',
 }
 
-// Mapear stage para etapa visual (0-7)
+// Mapear stage para etapa visual (0-6) de acordo com a ordem do banco
 function mapStageToStep(stage?: string): number {
   switch (stage) {
-    // Consultoria
     case 'formularios':
+      return 0
     case 'aguardando_consultoria':
+      return 1
     case 'em_consultoria':
-      return 0  // Consultoria Agendada/Em Andamento
-
+      return 2
     case 'clientes_c2':
-      return 1  // Consultoria Realizada
-
-    // Processo
+      return 3
     case 'aguardando_assessoria':
-      return 2  // Processo Contratado
-
+      return 4
     case 'assessoria_andamento':
-      return 3  // Assessoria em Andamento
-
+      return 5
     case 'assessoria_finalizada':
-      return 5  // Documentação/Protocolo
-
+      return 6
     case 'cancelado':
-      return -1 // Cancelado (não mostrar normalmente)
-
+      return -1
     default:
       return 0
   }
 }
 
-// Função para calcular a etapa atual baseada no stage e dados adicionais
-function calcularEtapaAtual(
-  agendamentos: any[] = [],
-  documents: Document[] = [],
-  process: Process | null = null,
-  clientStage?: string
-): number {
-  // Usar stage como fonte de verdade principal
+// Função para calcular a etapa atual baseada no stage
+function calcularEtapaAtual(clientStage?: string): number {
   if (clientStage) {
     return mapStageToStep(clientStage)
   }
-
-  // Fallback para registros legados sem stage definido.
-  // A fonte de verdade e o campo clientes.stage atualizado pelo backend.
-  // Este fallback sera removido quando todos os registros tiverem stage valido.
   return 0
 }
 
 export function ProcessTimeline({ process, requerimentos = [], familyMembers = [], agendamentos = [], documents = [], clientStage }: ProcessTimelineProps) {
-  // 7 fases detalhadas do fluxo completo
+  // 7 fases mapeadas 1:1 com o banco de dados
   const defaultSteps: ProcessStep[] = [
-    { id: 0, name: "Consultoria Agendada", description: "Agende sua consultoria jurídica para avaliar seu caso.", status: 'pending' as const },
-    { id: 1, name: "Consultoria Realizada", description: "Consultoria concluída. Próximo: contratar o processo completo.", status: 'pending' as const },
-    { id: 2, name: "Processo Contratado", description: "Você contratou o processo jurídico completo.", status: 'pending' as const },
-    { id: 3, name: "Assessoria Agendada", description: "Agende sua sessão de assessoria jurídica.", status: 'pending' as const },
-    { id: 4, name: "Assessoria Realizada", description: "Assessoria concluída. Inicia coleta de documentos.", status: 'pending' as const },
-    { id: 5, name: "Documentação", description: "Coleta e aprovação de documentos para o órgão.", status: 'pending' as const },
-    { id: 6, name: "Protocolar", description: "Envio do processo ao órgão competente.", status: 'pending' as const },
-    { id: 7, name: "Concluído", description: "Processo finalizado com sucesso.", status: 'pending' as const }
+    { id: 0, name: "Análise Inicial", description: "Estamos analisando as informações enviadas nos seus formulários.", status: 'pending' as const },
+    { id: 1, name: "Consultoria Agendada", description: "Seu horário de consultoria está reservado. Prepare seus documentos base.", status: 'pending' as const },
+    { id: 2, name: "Em Consultoria", description: "Análise técnica do seu caso em andamento durante a consultoria.", status: 'pending' as const },
+    { id: 3, name: "Proposta de Assessoria", description: "Consultoria realizada! Conferindo detalhes para o início do contrato.", status: 'pending' as const },
+    { id: 4, name: "Assessoria Contratada", description: "Contrato firmado! O time jurídico está preparando o início da execução.", status: 'pending' as const },
+    { id: 5, name: "Assessoria em Andamento", description: "Fase de coleta, apostilamento e traduções de documentos.", status: 'pending' as const },
+    { id: 6, name: "Processo Finalizado", description: "Seu processo foi concluído e protocolado com sucesso.", status: 'pending' as const }
   ];
 
   // Calcular a etapa atual dinamicamente usando o stage do cliente
-  const calculatedCurrentStep = calcularEtapaAtual(agendamentos, documents, process, clientStage)
+  const calculatedCurrentStep = calcularEtapaAtual(clientStage)
 
   // Determinar o status de cada etapa baseado na etapa atual
   const enrichedSteps = defaultSteps.map(step => {

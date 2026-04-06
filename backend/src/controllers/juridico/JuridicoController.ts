@@ -341,23 +341,18 @@ class JuridicoController {
         try {
             const { clienteId, memberId, processoId } = req.body
             const file = req.file
-
-            // TODO: Get from auth middleware when implemented
             const funcionarioJuridicoId = req.userId
 
-            console.log('========== UPLOAD FORMULARIO JURIDICO DEBUG ==========')
-            console.log('funcionarioJuridicoId:', funcionarioJuridicoId)
-            console.log('clienteId:', clienteId)
-            console.log('memberId:', memberId)
-            console.log('processoId:', processoId)
-            console.log('file:', file ? { originalname: file.originalname, size: file.size } : 'undefined')
-            console.log('======================================================')
+            console.log('========== [JuridicoController][uploadFormularioJuridico] START ==========')
+            console.log('Input:', { funcionarioJuridicoId, clienteId, memberId, processoId, fileName: file?.originalname })
 
             if (!file) {
+                console.warn('[JuridicoController][uploadFormularioJuridico] No file sent')
                 return res.status(400).json({ message: 'Nenhum arquivo enviado' })
             }
 
             if (!clienteId) {
+                console.warn('[JuridicoController][uploadFormularioJuridico] clienteId missing')
                 return res.status(400).json({ message: 'clienteId é obrigatório' })
             }
 
@@ -392,7 +387,7 @@ class JuridicoController {
                 notificar: req.body.notificar !== undefined ? req.body.notificar === 'true' || req.body.notificar === true : true
             })
 
-            return res.status(200).json({
+            const response = {
                 message: 'Documento enviado para o cliente com sucesso',
                 data: {
                     id: formularioRecord.id,
@@ -403,9 +398,12 @@ class JuridicoController {
                     memberId: memberId || null,
                     downloadUrl: uploadResult.publicUrl
                 }
-            })
+            }
+
+            console.log('[JuridicoController][uploadFormularioJuridico] SUCCESS:', response)
+            return res.status(200).json(response)
         } catch (error: any) {
-            console.error('Erro ao upload de formulario juridico:', error)
+            console.error('[JuridicoController][uploadFormularioJuridico] ERROR:', error)
             return res.status(500).json({
                 message: 'Erro ao enviar documento para o cliente',
                 error: error.message
@@ -490,6 +488,9 @@ class JuridicoController {
             const { id } = req.params
             const { status, motivoRejeicao } = req.body
 
+            console.log('========== [JuridicoController][updateFormularioClienteStatus] START ==========')
+            console.log('Input:', { id, status, motivoRejeicao })
+
             if (!id) {
                 return res.status(400).json({ message: 'id é obrigatório' })
             }
@@ -512,16 +513,19 @@ class JuridicoController {
                 motivoRejeicao
             )
 
-            return res.status(200).json({
+            const response = {
                 message: status === 'aprovado' 
                     ? 'Formulário aprovado com sucesso' 
                     : status === 'rejeitado' 
                     ? 'Formulário rejeitado com sucesso' 
                     : 'Status do formulário atualizado com sucesso',
                 data: formulario
-            })
+            }
+
+            console.log('[JuridicoController][updateFormularioClienteStatus] SUCCESS:', response)
+            return res.status(200).json(response)
         } catch (error: any) {
-            console.error('Erro ao atualizar status do formulario cliente:', error)
+            console.error('[JuridicoController][updateFormularioClienteStatus] ERROR:', error)
             return res.status(500).json({
                 message: 'Erro ao atualizar status do formulário',
                 error: error.message
@@ -537,20 +541,13 @@ class JuridicoController {
     async createNote(req: any, res: any) {
         try {
             const { clienteId, processoId, etapa, texto, autorNome, autorSetor } = req.body
-            
-            // TODO: Pegar do middleware de auth
             const autorId = req.userId
 
-            console.log('========== JURIDICO CREATE NOTE DEBUG ==========')
-            console.log('clienteId:', clienteId)
-            console.log('processoId:', processoId)
-            console.log('etapa:', etapa)
-            console.log('autorId:', autorId)
-            console.log('texto:', texto ? (texto.substring(0, 20) + '...') : 'undefined')
-            console.log('================================================')
+            console.log('========== [JuridicoController][createNote] START ==========')
+            console.log('Input:', { clienteId, processoId, etapa, autorId, autorNome, autorSetor, textoPreview: texto?.substring(0, 50) })
 
             if (!clienteId || !texto) {
-                console.warn('[JuridicoController] clienteId ou texto faltando')
+                console.warn('[JuridicoController][createNote] clienteId or texto missing')
                 return res.status(400).json({ message: 'clienteId e texto são obrigatórios' })
             }
 
@@ -564,14 +561,15 @@ class JuridicoController {
                 texto
             })
 
-            console.log('[JuridicoController] Nota criada com sucesso no DB')
-
-            return res.status(201).json({
+            const response = {
                 message: 'Nota jurídica criada com sucesso',
                 data: nota
-            })
+            }
+
+            console.log('[JuridicoController][createNote] SUCCESS:', response)
+            return res.status(201).json(response)
         } catch (error: any) {
-            console.error('[JuridicoController] Erro fatal ao criar nota juridica:', error)
+            console.error('[JuridicoController][createNote] ERROR:', error)
             return res.status(500).json({
                 message: 'Erro ao criar nota jurídica',
                 error: error.message
@@ -646,15 +644,16 @@ class JuridicoController {
     async solicitarDocumento(req: any, res: any) {
         try {
             const { clienteId, tipo, processoId, membroId, requerimentoId, notificar, prazo, solicitado_pelo_juridico } = req.body
+            const criadorId = req.userId
+
+            console.log('========== [JuridicoController][solicitarDocumento] START ==========')
+            console.log('Input:', { clienteId, tipo, processoId, membroId, requerimentoId, notificar, prazo, solicitado_pelo_juridico, criadorId })
 
             if (!clienteId || !tipo) {
                 return res.status(400).json({ 
                     message: 'clienteId e tipo são obrigatórios' 
                 })
             }
-
-            // TODO: Pegar do middleware de auth
-            const criadorId = req.userId
 
             const documento = await JuridicoRepository.solicitarDocumento({
                 clienteId,
@@ -668,12 +667,15 @@ class JuridicoController {
                 solicitado_pelo_juridico: solicitado_pelo_juridico !== undefined ? (solicitado_pelo_juridico === true || solicitado_pelo_juridico === 'true') : undefined
             })
 
-            return res.status(201).json({
+            const response = {
                 message: 'Solicitação de documento criada com sucesso',
                 data: documento
-            })
+            }
+
+            console.log('[JuridicoController][solicitarDocumento] SUCCESS:', response)
+            return res.status(201).json(response)
         } catch (error: any) {
-            console.error('Erro ao solicitar documento no controller:', error)
+            console.error('[JuridicoController][solicitarDocumento] ERROR:', error)
             return res.status(500).json({
                 message: 'Erro ao solicitar documento',
                 error: error.message
@@ -686,15 +688,16 @@ class JuridicoController {
         try {
             const { clienteId, tipo, processoId, observacoes, documentosAcoplados } = req.body
             const files = req.files // Multer array of files
+            const criadorId = req.userId
+
+            console.log('========== [JuridicoController][solicitarRequerimento] START ==========')
+            console.log('Input:', { clienteId, tipo, processoId, observacoes, docsCount: documentosAcoplados?.length, filesCount: files?.length, criadorId })
 
             if (!clienteId || !tipo) {
                 return res.status(400).json({ 
                     message: 'clienteId e tipo são obrigatórios' 
                 })
             }
-
-            // TODO: Pegar do middleware de auth
-            const criadorId = req.userId
 
             // Parse documentosAcoplados if it's a string (from FormData)
             let parsedDocs = []
@@ -720,12 +723,15 @@ class JuridicoController {
                 prazo: req.body.prazo ? parseInt(req.body.prazo) : undefined
             })
 
-            return res.status(201).json({
+            const response = {
                 message: 'Solicitação de requerimento criada com sucesso',
                 data: requerimento
-            })
+            }
+
+            console.log('[JuridicoController][solicitarRequerimento] SUCCESS:', response)
+            return res.status(201).json(response)
         } catch (error: any) {
-            console.error('Erro ao solicitar requerimento no controller:', error)
+            console.error('[JuridicoController][solicitarRequerimento] ERROR:', error)
             return res.status(500).json({
                 message: 'Erro ao solicitar requerimento',
                 error: error.message
@@ -756,6 +762,9 @@ class JuridicoController {
             const { processoId } = req.params
             const { etapa } = req.body
 
+            console.log('========== [JuridicoController][updateEtapaProcesso] START ==========')
+            console.log('Input:', { processoId, etapa })
+
             if (!processoId) {
                 return res.status(400).json({ message: 'processoId é obrigatório' })
             }
@@ -766,12 +775,15 @@ class JuridicoController {
 
             const processo = await JuridicoRepository.updateEtapaProcesso(processoId, parseInt(etapa))
 
-            return res.status(200).json({
+            const response = {
                 message: 'Etapa do processo atualizada com sucesso',
                 data: processo
-            })
+            }
+
+            console.log('[JuridicoController][updateEtapaProcesso] SUCCESS:', response)
+            return res.status(200).json(response)
         } catch (error: any) {
-            console.error('Erro ao atualizar etapa do processo:', error)
+            console.error('[JuridicoController][updateEtapaProcesso] ERROR:', error)
             return res.status(500).json({ 
                 message: 'Erro ao atualizar etapa do processo', 
                 error: error.message 

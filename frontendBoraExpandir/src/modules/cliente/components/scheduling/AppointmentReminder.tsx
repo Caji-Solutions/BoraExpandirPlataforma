@@ -6,6 +6,7 @@ import { Calendar, Clock, MapPin, CheckCircle, XCircle, Target, CreditCard, Copy
 import { Button } from '@/modules/shared/components/ui/button'
 import { clienteService } from '../../services/clienteService'
 import { getClientTimezone } from './TimezoneSelector'
+import { cn } from '../../lib/utils'
 
 interface AppointmentReminderProps {
   appointmentDate: string // ISO string format
@@ -14,6 +15,7 @@ interface AppointmentReminderProps {
   location?: string
   meetLink?: string | null
   status?: string
+  pagamentoStatus?: string | null
   checkoutUrl?: string
   agendamentoId?: string
 }
@@ -25,12 +27,46 @@ export function AppointmentReminder({
   location = "Online - WhatsApp/Zoom",
   meetLink,
   status = "agendado",
+  pagamentoStatus,
   checkoutUrl: initialCheckoutUrl,
   agendamentoId
 }: AppointmentReminderProps) {
   const [isGeneratingLink, setIsGeneratingLink] = useState(false)
   const [currentCheckoutUrl, setCurrentCheckoutUrl] = useState(initialCheckoutUrl)
   const [copied, setCopied] = useState(false)
+
+  // Mapeador de Status para Cores e Textos
+  const getStatusVisuals = (status?: string, pagStatus?: string | null) => {
+    const s = status?.toLowerCase() || ''
+    const p = pagStatus?.toLowerCase() || ''
+
+    // Se o pagamento for recusado, o alerta precisa ser alto (Vermelho)
+    if (p === 'recusado') {
+      return { label: 'Pagamento Recusado', color: 'bg-red-100 text-red-700 border-red-200', dot: 'bg-red-500' }
+    }
+
+    switch (s) {
+      case 'confirmado':
+      case 'agendado':
+      case 'realizado':
+        return { label: s.charAt(0).toUpperCase() + s.slice(1), color: 'bg-green-100 text-green-700 border-green-200', dot: 'bg-green-500' }
+      
+      case 'pendente':
+      case 'recebido':
+      case 'aguardando_verificacao':
+      case 'conflito':
+        return { label: s.replace(/_/g, ' ').charAt(0).toUpperCase() + s.replace(/_/g, ' ').slice(1), color: 'bg-amber-100 text-amber-700 border-amber-200', dot: 'bg-amber-500' }
+      
+      case 'cancelado':
+      case 'cancelada':
+        return { label: 'Cancelado', color: 'bg-red-100 text-red-700 border-red-200', dot: 'bg-red-500' }
+      
+      default:
+        return { label: s || 'Agendado', color: 'bg-blue-100 text-blue-700 border-blue-200', dot: 'bg-blue-500' }
+    }
+  }
+
+  const statusVisual = getStatusVisuals(status, pagamentoStatus)
 
   const handleCopyLink = async () => {
     const linkToCopy = meetLink || location
@@ -72,8 +108,8 @@ export function AppointmentReminder({
     }
   }
 
-  const isCancelled = status === 'cancelada' || status === 'cancelado'
-  const isPaid = status === 'aprovado' || status === 'pago' || status === 'confirmado'
+  const isCancelled = status?.toLowerCase() === 'cancelada' || status?.toLowerCase() === 'cancelado'
+  const isPaid = status?.toLowerCase() === 'confirmado' || pagamentoStatus?.toLowerCase() === 'aprovado'
 
   const handlePay = async () => {
     if (currentCheckoutUrl) {
@@ -99,10 +135,21 @@ export function AppointmentReminder({
   return (
     <Card className="relative overflow-hidden border shadow-lg transition-all h-full bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center space-x-2 text-sm uppercase tracking-wider font-bold text-blue-900 dark:text-blue-100">
-          <Calendar className="h-4 w-4" />
-          <span>Próximo Agendamento</span>
-        </CardTitle>
+        <div className="flex items-center justify-between mb-1">
+          <CardTitle className="flex items-center space-x-2 text-xs uppercase tracking-wider font-bold text-blue-900 dark:text-blue-100">
+            <Calendar className="h-3 w-3" />
+            <span>Próximo Agendamento</span>
+          </CardTitle>
+          
+          {/* Badge de Status Dinâmico */}
+          <div className={cn(
+            "flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-bold shadow-sm",
+            statusVisual.color
+          )}>
+            <span className={cn("w-1.5 h-1.5 rounded-full animate-pulse", statusVisual.dot)} />
+            {statusVisual.label}
+          </div>
+        </div>
       </CardHeader>
       
       <CardContent className="space-y-4">
@@ -168,7 +215,7 @@ export function AppointmentReminder({
           )}
         </div>
 
-        {status === 'agendado' && (
+        {!isPaid && !isCancelled && (
           <div className="pt-2">
             <Button 
               onClick={handlePay}

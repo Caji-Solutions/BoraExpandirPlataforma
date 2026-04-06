@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Copy, Check, Link as LinkIcon, TrendingUp, Users, Zap, Rocket, Calendar, MessageCircle } from 'lucide-react';
+import { Copy, Check, Link as LinkIcon, TrendingUp, Users, Zap, Rocket, Calendar, MessageCircle, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/modules/shared/components/ui/badge';
 import { Client } from '../../../cliente/types';
@@ -180,13 +180,23 @@ export default function Parceiro({ client, bannerOnly = false }: ParceiroProps) 
             </label>
           </div>
 
-          <button
-            onClick={handleAceitarTermo}
-            disabled={!aceitaTermoCheckbox || isAceitandoTermo}
-            className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-medium rounded-xl disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none"
-          >
-            {isAceitandoTermo ? 'Processando...' : 'Aceitar e Continuar'}
-          </button>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button
+              onClick={() => navigate('/cliente')}
+              className="flex-1 px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all duration-300 flex items-center justify-center gap-2"
+            >
+              <ArrowLeft size={18} />
+              Voltar
+            </button>
+            
+            <button
+              onClick={handleAceitarTermo}
+              disabled={!aceitaTermoCheckbox || isAceitandoTermo}
+              className="flex-[2] px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-medium rounded-xl disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none"
+            >
+              {isAceitandoTermo ? 'Processando...' : 'Aceitar e Continuar'}
+            </button>
+          </div>
         </div>
       </div>
     );

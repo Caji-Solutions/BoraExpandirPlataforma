@@ -83,6 +83,15 @@ export function DocumentItemCard({
                             <Badge variant="secondary" className="text-[10px] h-5">Obrigatório</Badge>
                         )}
 
+                        {item.isComplementary && (
+                            <Badge 
+                                variant="default" 
+                                className="text-[10px] h-5 bg-amber-500 hover:bg-amber-600 border-none text-white font-bold"
+                            >
+                                Solicitado pelo Jurídico
+                            </Badge>
+                        )}
+
                         {doc && stageId !== 'pending' && (
                             <div className="flex items-center gap-1.5 ml-2">
                                 <Badge

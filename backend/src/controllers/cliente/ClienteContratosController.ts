@@ -31,18 +31,28 @@ class ClienteContratosController {
     try {
       const clienteIdRaw = (req.query?.clienteId || req.query?.cliente_id || req.params?.clienteId) as string | undefined
 
+      console.log('========== GET CONTRATOS DEBUG ==========')
+      console.log('[ClienteContratosController.getContratos] Iniciando...')
+      console.log('[ClienteContratosController] clienteIdRaw recebido:', clienteIdRaw)
+
       if (!clienteIdRaw) {
+        console.log('[ClienteContratosController] ❌ Erro: clienteId é obrigatório')
         return res.status(400).json({ message: 'clienteId é obrigatório' })
       }
 
       const clienteId = String(clienteIdRaw).trim()
+      console.log('[ClienteContratosController] Buscando contratos para clienteId:', clienteId)
+      
       let contratos = await ContratoServicoRepository.getContratos({ clienteId, isDraft: false })
+      console.log(`[ClienteContratosController] Resultado inicial: ${contratos?.length || 0} contratos`)
 
       // Fallback para cenarios em que o frontend envia client_id ou Auth user_id.
       if ((!contratos || contratos.length === 0) && clienteId) {
+        console.log('[ClienteContratosController] Nenhum contrato encontrado com ID direto. Tentando fallback...')
         const supabase = (await import('../../config/SupabaseClient')).supabase
         let clienteRealId: string | null = null
 
+        console.log('[ClienteContratosController] Buscando por client_code (client_id)...')
         const { data: clienteByClientCode } = await supabase
           .from('clientes')
           .select('id')
@@ -51,9 +61,11 @@ class ClienteContratosController {
 
         if (clienteByClientCode?.id) {
           clienteRealId = clienteByClientCode.id
+          console.log('[ClienteContratosController] ✅ Encontrado via client_code:', clienteRealId)
         }
 
         if (!clienteRealId) {
+          console.log('[ClienteContratosController] Buscando via profile email...')
           const { data: profile } = await supabase
             .from('profiles')
             .select('email')
@@ -61,6 +73,7 @@ class ClienteContratosController {
             .maybeSingle()
 
           if (profile?.email) {
+            console.log('[ClienteContratosController] Email do profile encontrado:', profile.email)
             const { data: clienteByEmail } = await supabase
               .from('clientes')
               .select('id')
@@ -69,21 +82,27 @@ class ClienteContratosController {
 
             if (clienteByEmail?.id) {
               clienteRealId = clienteByEmail.id
+              console.log('[ClienteContratosController] ✅ Encontrado via email:', clienteRealId)
             }
           }
         }
 
         if (clienteRealId && clienteRealId !== clienteId) {
+          console.log('[ClienteContratosController] Buscando novamente com clienteRealId:', clienteRealId)
           contratos = await ContratoServicoRepository.getContratos({ clienteId: clienteRealId, isDraft: false })
+          console.log(`[ClienteContratosController] Resultado fallback: ${contratos?.length || 0} contratos`)
         }
       }
+
+      console.log('[ClienteContratosController] ✅ Sucesso - Retornando dados')
+      console.log('========== FIM GET CONTRATOS DEBUG ==========')
 
       return res.status(200).json({
         message: 'Contratos recuperados com sucesso',
         data: contratos
       })
     } catch (error: any) {
-      console.error('Erro ao buscar contratos do cliente:', error)
+      console.error('[ClienteContratosController] ❌ Erro ao buscar contratos do cliente:', error)
       return res.status(500).json({
         message: 'Erro ao buscar contratos',
         error: error.message

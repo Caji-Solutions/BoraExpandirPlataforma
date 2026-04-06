@@ -232,19 +232,37 @@ export function ClienteApp() {
           if (processosData.data && processosData.data.length > 0) {
             const apiProcesso = processosData.data[0]
             const phases = [
-              { id: 1, name: "Iniciado", description: "O processo foi iniciado e está aguardando documentação." },
-              { id: 2, name: "Documentação", description: "Fase de coleta e análise de documentos." },
-              { id: 3, name: "Consultoria", description: "Análise técnica e consultoria especializada." },
-              { id: 4, name: "Imigração", description: "Processo em fase final de imigração." }
+              { id: 0, name: "Análise Inicial" },
+              { id: 1, name: "Consultoria" },
+              { id: 2, name: "Análise Técnica" },
+              { id: 3, name: "Proposta" },
+              { id: 4, name: "Assessoria Contratada" },
+              { id: 5, name: "Em Andamento" },
+              { id: 6, name: "Finalizado" }
             ];
 
-            const currentStepId = apiProcesso.etapa_atual || 1;
+            // Mapear stage para etapa visual (0-6)
+            const mapStageToStep = (stage?: string): number => {
+              switch (stage) {
+                case 'formularios': return 0
+                case 'aguardando_consultoria': return 1
+                case 'em_consultoria': return 2
+                case 'clientes_c2': return 3
+                case 'aguardando_assessoria': return 4
+                case 'assessoria_andamento': return 5
+                case 'assessoria_finalizada': return 6
+                case 'cancelado': return -1
+                default: return 0
+              }
+            }
+
+            const currentStepId = mapStageToStep(currentClient?.stage);
 
             const mappedSteps: ProcessStep[] = phases.map(phase => {
               let status: 'pending' | 'in_progress' | 'completed' | 'waiting' = 'pending';
               if (phase.id < currentStepId) status = 'completed';
               else if (phase.id === currentStepId) status = 'in_progress';
-              return { id: phase.id, name: phase.name, status, description: phase.description };
+              return { id: phase.id, name: phase.name, status, description: '' };
             });
 
             const mappedProcesso: Process = {
