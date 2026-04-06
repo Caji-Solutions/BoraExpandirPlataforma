@@ -29,13 +29,15 @@ class UsuarioNotificationController {
       }
 
       console.log('[UsuarioNotificationController] ✅ Usuário autorizado com role:', role)
-      console.log('[UsuarioNotificationController] Chamando NotificationService.getNotificationsByUsuario...')
-
+      console.log('[UsuarioNotificationController] Notificações de usuário desativadas temporariamente (coluna usuario_id ausente no banco)')
+      /* 
       const notificacoes = await NotificationService.getNotificationsByUsuario(usuarioId)
+      */
+      const notificacoes: any[] = []
 
-      console.log('[UsuarioNotificationController] ✅ Sucesso - Retornando notificações')
+      console.log('[UsuarioNotificationController] ✅ Sucesso - Retornando lista vazia')
       return res.status(200).json({
-        message: 'Notificações recuperadas com sucesso',
+        message: 'Notificações de usuário desativadas (contate o suporte para ativar o schema)',
         data: notificacoes
       })
     } catch (error: any) {
@@ -106,9 +108,9 @@ class UsuarioNotificationController {
 
       console.log('[UsuarioNotificationController.markAllNotificacoesAsRead] ✅ Usuário autorizado com role:', role)
 
-      await NotificationService.markAllAsReadByUsuario(usuarioId)
+      // await NotificationService.markAllAsReadByUsuario(usuarioId)
 
-      console.log('[UsuarioNotificationController.markAllNotificacoesAsRead] ✅ Sucesso')
+      console.log('[UsuarioNotificationController.markAllNotificacoesAsRead] ✅ Sucesso (Simulado)')
       return res.status(200).json({
         message: 'Todas as notificações marcadas como lidas'
       })

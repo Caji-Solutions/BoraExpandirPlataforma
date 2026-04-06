@@ -4,6 +4,7 @@ import { X, CheckCircle, Clock, AlertTriangle } from 'lucide-react'
 import { Notification } from '../../types'
 import { formatDate } from '../../lib/utils'
 import { Badge } from '@/modules/shared/components/ui/badge'
+import { CountdownTimer } from '../scheduling/CountdownTimer'
 
 interface RequestedActionsModalProps {
     isOpen: boolean
@@ -111,7 +112,7 @@ export function RequestedActionsModal({ isOpen, onClose, notifications, document
                                                 </p>
 
                                                 <div className={`${isExpired ? 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30' : 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-100 dark:border-yellow-900/30'} rounded-lg p-3 border`}>
-                                                    <p className={`text-xs ${isExpired ? 'text-red-600 dark:text-red-400' : 'text-yellow-700 dark:text-yellow-500'} font-medium mb-1`}>
+                                                    <p className={`text-xs ${isExpired ? 'text-red-600 dark:text-red-400' : 'text-yellow-700 dark:text-yellow-500'} font-medium mb-2`}>
                                                         Prazo limite: {deadline ? formatDate(deadline) : 'N/A'}
                                                     </p>
                                                     {deadline && isExpired && (
@@ -120,8 +121,8 @@ export function RequestedActionsModal({ isOpen, onClose, notifications, document
                                                         </div>
                                                     )}
                                                     {deadline && !isExpired && (
-                                                         <div className="text-yellow-600 font-medium text-xs mt-1">
-                                                            Aguardando ação
+                                                        <div className="mt-2">
+                                                            <CountdownTimer targetDate={deadline} variant="yellow" />
                                                         </div>
                                                     )}
                                                 </div>

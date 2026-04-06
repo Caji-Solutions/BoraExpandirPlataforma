@@ -178,6 +178,7 @@ export function useDocumentActions({
                     description: reqDoc?.description,
                     _document: doc,
                     required: !!reqDoc,
+                    isComplementary: !reqDoc, // Flag para documentos extras
                     solicitado_pelo_juridico: doc.solicitado_pelo_juridico
                 }
             })
@@ -225,10 +226,16 @@ export function useDocumentActions({
                     required: reqDoc?.required || false,
                     _document: doc,
                     _isRequested: true,
+                    isComplementary: !reqDoc, // Verdadeiro se não for um documento padrão do processo
                 }
             })
 
-        return [...missing, ...requested]
+        // 🔥 FILTRO PARA EVITAR DUPLICADOS
+        // Remove da lista de 'missing' qualquer tipo que já esteja na lista de 'requested'
+        const requestedTypes = new Set(requested.map(r => r.type));
+        const uniqueMissing = missing.filter(m => !requestedTypes.has(m.type));
+
+        return [...uniqueMissing, ...requested]
     }, [memberDocs, requiredDocuments])
 
     // Count pending requirements

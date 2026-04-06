@@ -7,6 +7,7 @@ class ClienteNotificationController {
       const { clienteId } = req.params
       const { role, id: userId, email } = req.user
 
+      console.log('========== GET NOTIFICACOES DEBUG ==========')
       console.log('[ClienteNotificationController.getNotificacoes] Iniciando...')
       console.log('[ClienteNotificationController] Params:')
       console.log('  - clienteId:', clienteId)
@@ -15,7 +16,7 @@ class ClienteNotificationController {
       console.log('  - User email:', email)
 
       if (!clienteId) {
-        console.log('[ClienteNotificationController] ❌ clienteId ausente')
+        console.log('[ClienteNotificationController] ❌ Erro: clienteId ausente')
         return res.status(400).json({ message: 'clienteId é obrigatório' })
       }
 
@@ -24,7 +25,7 @@ class ClienteNotificationController {
       const rolesAutorizados = ['cliente', 'admin', 'juridico', 'super_admin']
 
       if (!rolesAutorizados.includes(role)) {
-        console.log('[ClienteNotificationController] ❌ Role não autorizado:', role)
+        console.log('[ClienteNotificationController] ❌ Erro: Role não autorizado:', role)
         return res.status(403).json({ message: 'Sem permissão para acessar notificações' })
       }
 
@@ -33,7 +34,10 @@ class ClienteNotificationController {
       console.log('[ClienteNotificationController] Chamando ClienteRepository.getNotificacoes...')
       const notificacoes = await ClienteRepository.getNotificacoes(clienteId)
 
-      console.log('[ClienteNotificationController] ✅ Sucesso - Retornando notificações')
+      console.log('[ClienteNotificationController] ✅ Sucesso - Dados recuperados')
+      console.log(`[ClienteNotificationController] Total de notificações: ${notificacoes?.length || 0}`)
+      
+      console.log('========== FIM GET NOTIFICACOES DEBUG ==========')
       return res.status(200).json({
         message: 'Notificações recuperadas com sucesso',
         data: notificacoes
@@ -53,24 +57,29 @@ class ClienteNotificationController {
     }
   }
 
-  // PATCH /cliente/notificacoes/:notificacaoId/status
   async updateNotificacaoStatus(req: any, res: any) {
-    try {
-      const { notificacaoId } = req.params
-      const { lida } = req.body
+    const { notificacaoId } = req.params
+    const { lida } = req.body
 
+    console.log('========== [ClienteNotificationController][updateNotificacaoStatus] START ==========')
+    console.log('Input:', { notificacaoId, lida })
+
+    try {
       if (!notificacaoId) {
         return res.status(400).json({ message: 'notificacaoId é obrigatório' })
       }
 
       const notification = await ClienteRepository.updateNotificacaoStatus(notificacaoId, lida)
 
-      return res.status(200).json({
+      const response = {
         message: 'Status da notificação atualizado com sucesso',
         data: notification
-      })
+      }
+
+      console.log('[ClienteNotificationController][updateNotificacaoStatus] SUCCESS:', response)
+      return res.status(200).json(response)
     } catch (error: any) {
-      console.error('Erro ao atualizar status da notificacao:', error)
+      console.error('[ClienteNotificationController][updateNotificacaoStatus] ERROR:', error)
       return res.status(500).json({
         message: 'Erro ao atualizar status da notificação',
         error: error.message

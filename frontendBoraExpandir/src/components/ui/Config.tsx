@@ -230,7 +230,7 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
                       ID do Cliente
                     </label>
                     <div className="p-3 bg-gray-100 dark:bg-neutral-900/50 rounded-lg text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-neutral-700 font-mono text-xs sm:text-sm select-all break-all overflow-hidden">
-                      {client.id}
+                      {client.clientId || client.id}
                     </div>
                   </div>
 

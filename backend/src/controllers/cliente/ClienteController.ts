@@ -1385,29 +1385,53 @@ class ClienteController {
       const file = req.file
       const clienteIdRaw = req.body.cliente_id || req.body.clienteId
 
+      console.log('========== UPLOAD COMPROVANTE PARCELA DEBUG ==========')
+      console.log('[ClienteController.uploadComprovanteParcela] Iniciando...')
+      console.log('[ClienteController] Parâmetros:', { parcelaId: id, clienteIdRaw })
+      console.log('[ClienteController] Arquivo:', file ? {
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size
+      } : 'NENHUM')
+
       if (!file) {
+        console.log('[ClienteController] ❌ Erro: Arquivo do comprovante é obrigatório')
         return res.status(400).json({ message: 'Arquivo do comprovante é obrigatório' })
       }
 
+      console.log('[ClienteController] Resolvendo clienteId...')
       const clienteId = await this.resolveClienteId(String(clienteIdRaw || ''))
       if (!clienteId) {
+        console.log('[ClienteController] ❌ Erro: cliente_id não resolvido ou ausente')
         return res.status(400).json({ message: 'cliente_id é obrigatório' })
       }
+      console.log('[ClienteController] ✅ clienteId resolvido:', clienteId)
 
+      console.log('[ClienteController] Buscando parcela no repository...')
       const parcela = await BoletoParcelasRepository.getParcelaById(id)
       if (!parcela) {
+        console.log('[ClienteController] ❌ Erro: Parcela não encontrada')
         return res.status(404).json({ message: 'Parcela não encontrada' })
       }
 
+      console.log('[ClienteController] Parcela encontrada:', {
+        id: parcela.id,
+        cliente_id: parcela.cliente_id,
+        status: parcela.status
+      })
+
       if (parcela.cliente_id !== clienteId) {
+        console.log('[ClienteController] ❌ Erro: Parcela não pertence ao cliente informado')
         return res.status(403).json({ message: 'Parcela não pertence ao cliente informado' })
       }
 
       if (parcela.status === 'pago') {
+        console.log('[ClienteController] ❌ Erro: Parcela já quitada')
         return res.status(409).json({ message: 'Esta parcela já foi quitada.' })
       }
 
       if (parcela.status === 'em_analise') {
+        console.log('[ClienteController] ❌ Erro: Parcela já possui comprovante em análise')
         return res.status(409).json({ message: 'Esta parcela já possui comprovante em análise.' })
       }
 
@@ -1458,12 +1482,15 @@ class ClienteController {
         tipo: 'info'
       })
 
+      console.log('[ClienteController] ✅ Comprovante enviado e parcela atualizada com sucesso')
+      console.log('========== FIM UPLOAD COMPROVANTE PARCELA DEBUG ==========')
+
       return res.status(200).json({
         message: 'Comprovante da parcela enviado com sucesso',
         data: updated
       })
     } catch (error: any) {
-      console.error('[ClienteController] Erro ao enviar comprovante da parcela:', error)
+      console.error('[ClienteController] ❌ Erro inesperado no upload do comprovante da parcela:', error)
       return res.status(500).json({
         message: 'Erro ao enviar comprovante da parcela',
         error: error.message

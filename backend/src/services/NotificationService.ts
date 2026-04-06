@@ -2,7 +2,6 @@ import { supabase } from '../config/SupabaseClient'
 
 export interface CreateNotificationParams {
     clienteId?: string
-    usuarioId?: string
     criadorId?: string
     titulo: string
     mensagem: string
@@ -14,7 +13,7 @@ export interface CreateNotificationParams {
 
 class NotificationService {
     /**
-     * Cria uma nova notificação para um cliente ou usuário (funcionário)
+     * Cria uma nova notificação para um cliente
      */
     async createNotification(params: CreateNotificationParams) {
         let dataPrazo = params.dataPrazo
@@ -36,15 +35,11 @@ class NotificationService {
             criado_em: new Date().toISOString()
         }
 
-        // Adicionar cliente_id ou usuario_id (constraint do banco exige um dos dois)
-        if (params.usuarioId) {
-            notificationData.usuario_id = params.usuarioId
-            notificationData.cliente_id = null
-        } else if (params.clienteId) {
+        // Adicionar cliente_id (conforme o schema real)
+        if (params.clienteId) {
             notificationData.cliente_id = params.clienteId
-            notificationData.usuario_id = null
         } else {
-            throw new Error('NotificationService: clienteId ou usuarioId é obrigatório')
+            console.warn('NotificationService: clienteId ausente. A notificação pode não ter destinatário vinculado.')
         }
 
         console.log('NotificationService: Criando notificacao...', notificationData)
@@ -69,7 +64,6 @@ class NotificationService {
     async getNotificationsByCliente(clienteId: string) {
         console.log('[NotificationService.getNotificationsByCliente] Iniciando...')
         console.log('[NotificationService] clienteId:', clienteId)
-        console.log('[NotificationService] Tentando buscar de notificacoes table...')
 
         const { data, error } = await supabase
             .from('notificacoes')
@@ -77,19 +71,11 @@ class NotificationService {
             .eq('cliente_id', clienteId)
             .order('criado_em', { ascending: false })
 
-        console.log('[NotificationService] Resposta do Supabase:')
-        console.log('[NotificationService] - data:', data ? `${data.length} registros` : 'null')
-        console.log('[NotificationService] - error:', error ? `${error.code}: ${error.message}` : 'null')
-
         if (error) {
-            console.error('[NotificationService] ❌ Erro ao buscar notificacoes:', {
-                code: error.code,
-                message: error.message
-            })
+            console.error('[NotificationService] ❌ Erro ao buscar notificacoes:', error)
             throw error
         }
 
-        console.log('[NotificationService] ✅ Notificações recuperadas com sucesso')
         return data || []
     }
 
@@ -127,58 +113,6 @@ class NotificationService {
             throw error
         }
 
-        return data
-    }
-
-    /**
-     * Busca notificações de um usuário (funcionário/profile)
-     */
-    async getNotificationsByUsuario(usuarioId: string) {
-        console.log('[NotificationService.getNotificationsByUsuario] Iniciando...')
-        console.log('[NotificationService] usuarioId:', usuarioId)
-        console.log('[NotificationService] Tentando buscar de notificacoes table...')
-
-        const { data, error } = await supabase
-            .from('notificacoes')
-            .select('*')
-            .eq('usuario_id', usuarioId)
-            .order('criado_em', { ascending: false })
-
-        console.log('[NotificationService] Resposta do Supabase:')
-        console.log('[NotificationService] - data:', data ? `${data.length} registros` : 'null')
-        console.log('[NotificationService] - error:', error ? `${error.code}: ${error.message}` : 'null')
-
-        if (error) {
-            console.error('[NotificationService] ❌ Erro ao buscar notificacoes por usuario:', {
-                code: error.code,
-                message: error.message
-            })
-            throw error
-        }
-
-        console.log('[NotificationService] ✅ Notificações de usuário recuperadas com sucesso')
-        return data || []
-    }
-
-    /**
-     * Marca todas as notificações de um usuário como lidas
-     */
-    async markAllAsReadByUsuario(usuarioId: string) {
-        console.log('[NotificationService.markAllAsReadByUsuario] Iniciando...')
-        console.log('[NotificationService] usuarioId:', usuarioId)
-
-        const { data, error } = await supabase
-            .from('notificacoes')
-            .update({ lida: true })
-            .eq('usuario_id', usuarioId)
-            .eq('lida', false)
-
-        if (error) {
-            console.error('[NotificationService] ❌ Erro ao marcar notificações como lidas:', error)
-            throw error
-        }
-
-        console.log('[NotificationService] ✅ Notificações marcadas como lidas')
         return data
     }
 }

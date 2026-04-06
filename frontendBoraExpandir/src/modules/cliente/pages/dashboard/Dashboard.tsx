@@ -137,10 +137,19 @@ export function Dashboard({
 
     return agendamentos
       .filter(a => {
-        // Exclude cancelled and completed appointments
-        if (a.status === 'cancelada' || a.status === 'cancelado' || a.status === 'realizado') return false;
-        // Keep appointments that are today or in the future
-        return new Date(a.data_hora).getTime() >= now - (24 * 60 * 60 * 1000);
+        const appointmentTime = new Date(a.data_hora).getTime();
+        
+        // Excluir cancelados e já realizados
+        if (['cancelado', 'cancelada', 'realizado'].includes(a.status?.toLowerCase())) {
+          return false;
+        }
+
+        // Mostrar apenas se for no futuro ou se for AGORA (até 30 min depois do início)
+        // Isso evita que um agendamento de ontem apareça como "Próximo"
+        const isFuture = appointmentTime > now;
+        const isHappeningNow = appointmentTime <= now && now <= (appointmentTime + 30 * 60 * 1000);
+        
+        return isFuture || isHappeningNow;
       })
       .sort((a, b) => new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime())[0];
   }, [agendamentos]);
@@ -205,10 +214,10 @@ export function Dashboard({
         const isRead = n.lida || n.read;
         const title = n.titulo || n.title;
         const notificationType = (n.tipo || n.type || 'info').toLowerCase();
+        const hasDeadline = !!(n.data_prazo || (n as any).deadline || (n as any).prazo);
 
-        // Exclude informational notifications (success, info, agendamento) from actions
-        // These are only for display, not for requiring action
-        if (notificationType === 'success' || notificationType === 'info' || notificationType === 'agendamento') {
+        // Exclude informational notifications ONLY if they don't have a deadline
+        if (!hasDeadline && (notificationType === 'success' || notificationType === 'info' || notificationType === 'agendamento')) {
           return false;
         }
 
@@ -566,6 +575,7 @@ export function Dashboard({
               service={nextAppointmentData.produto_nome || nextAppointmentData.produto?.nome || (nextAppointmentData.produto?.tipo === 'fixo' ? 'Assessoria Jurídica' : 'Consultoria')}
               meetLink={nextAppointmentData.meet_link}
               status={nextAppointmentData.status}
+              pagamentoStatus={nextAppointmentData.pagamento_status}
               checkoutUrl={nextAppointmentData.checkout_url || nextAppointmentData.checkoutUrl}
               agendamentoId={nextAppointmentData.id}
             />

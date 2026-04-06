@@ -600,11 +600,19 @@ class ComercialController {
         try {
             const { clienteId } = req.params
 
+            console.log('========== GET AGENDAMENTOS CLIENTE DEBUG ==========')
+            console.log('[ComercialController.getAgendamentosByCliente] Iniciando...')
+            console.log('[ComercialController] clienteId:', clienteId)
+
             if (!clienteId) {
+                console.log('[ComercialController] ❌ Erro: clienteId ausente')
                 return res.status(400).json({ message: 'clienteId é obrigatório' })
             }
 
+            console.log('[ComercialController] Chamando ComercialRepository.getAgendamentosByCliente...')
             const agendamentos = await ComercialRepository.getAgendamentosByCliente(clienteId)
+
+            console.log(`[ComercialController] Agendamentos encontrados: ${agendamentos?.length || 0}. Enriquecendo dados...`)
 
             // Buscar informações do catálogo para cada agendamento
             const enrichedAgendamentos = await Promise.all(agendamentos.map(async (agendamento: any) => {
@@ -618,16 +626,19 @@ class ComercialController {
                         const serviceInfo = await AdmRepository.getServiceById(baseAgendamento.produto_id)
                         return { ...baseAgendamento, produto: serviceInfo }
                     } catch (e) {
-                        console.error(`Erro ao buscar servico ${baseAgendamento.produto_id}:`, e)
+                        console.error(`[ComercialController] Erro ao buscar servico ${baseAgendamento.produto_id}:`, e)
                     }
                 }
                 return baseAgendamento
             }))
 
+            console.log('[ComercialController] ✅ Sucesso - Retornando agendamentos enriquecidos')
+            console.log('========== FIM GET AGENDAMENTOS CLIENTE DEBUG ==========')
+
             return res.status(200).json(enrichedAgendamentos)
 
         } catch (error: any) {
-            console.error('Erro ao buscar agendamentos do cliente:', error)
+            console.error('[ComercialController] ❌ Erro ao buscar agendamentos do cliente:', error)
             return res.status(500).json({
                 message: 'Erro ao buscar agendamentos do cliente',
                 error: error.message

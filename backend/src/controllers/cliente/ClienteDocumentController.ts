@@ -3,6 +3,7 @@ import ClienteRepository from '../../repositories/ClienteRepository';
 import AdmRepository from '../../repositories/AdmRepository';
 import NotificationService from '../../services/NotificationService';
 import { getDocumentosPorTipoServico, DocumentoRequeridoConfig } from '../../config/documentosConfig';
+import { supabase } from '../../config/SupabaseClient';
 
 interface DocumentoRequeridoComProcesso extends DocumentoRequeridoConfig {
   processoId: string;
@@ -12,20 +13,66 @@ interface DocumentoRequeridoComProcesso extends DocumentoRequeridoConfig {
 }
 
 class ClienteDocumentController {
+  // Método auxiliar para resolver o ID real de negócio (Cliente ID) a partir do ID de autenticação (Auth ID)
+  private async resolveClienteRealId(userId: string): Promise<string | null> {
+    try {
+      // 1. Verificar se o ID já é de um cliente na tabela 'clientes'
+      const { data: clienteDireto } = await supabase
+        .from('clientes')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (clienteDireto) return clienteDireto.id;
+
+      // 2. Se não encontrou, buscar o e-mail no profile e procurar na tabela clientes
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (profile?.email) {
+        const { data: clientePorEmail } = await supabase
+          .from('clientes')
+          .select('id')
+          .ilike('email', profile.email)
+          .maybeSingle();
+
+        if (clientePorEmail) return clientePorEmail.id;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('[ClienteDocumentController] Erro ao resolver ID real:', error);
+      return null;
+    }
+  }
+
   // GET /cliente/:clienteId/documentos
   async getDocumentos(req: any, res: any) {
     try {
-      const { clienteId } = req.params
+      let { clienteId } = req.params
       const { id: userId, role } = req.user
 
       if (!clienteId) {
         return res.status(400).json({ message: 'clienteId é obrigatório' })
       }
 
-      // Validar autorização: cliente vê só seus docs, admin/juridico/super_admin veem de qualquer um
-      const rolesAutorizados = ['admin', 'juridico', 'super_admin']
-      if (userId !== clienteId && !rolesAutorizados.includes(role)) {
-        return res.status(403).json({ message: 'Sem permissão para acessar documentos de outro cliente' })
+      // Se for cliente, resolver o ID real e garantir acesso apenas ao próprio
+      if (role === 'cliente') {
+        const idNegocio = await this.resolveClienteRealId(userId);
+        if (!idNegocio || (idNegocio !== clienteId && userId !== clienteId)) {
+          return res.status(403).json({ message: 'Sem permissão para acessar documentos de outro cliente' })
+        }
+        // Sempre usar o ID de negócio para a busca no banco
+        clienteId = idNegocio;
+      } else {
+        // Para admin/juridico, validar role
+        const rolesAutorizados = ['admin', 'juridico', 'super_admin']
+        if (!rolesAutorizados.includes(role)) {
+          return res.status(403).json({ message: 'Sem permissão para acessar documentos' })
+        }
       }
 
       const documentos = await ClienteRepository.getDocumentosByClienteId(clienteId)
@@ -79,16 +126,22 @@ class ClienteDocumentController {
   // Retorna os documentos necessários baseado nos processos do cliente
   async getDocumentosRequeridos(req: any, res: any) {
     try {
-      const { clienteId } = req.params
+      let { clienteId } = req.params
       const { id: userId, role } = req.user
 
       if (!clienteId) {
         return res.status(400).json({ message: 'clienteId é obrigatório' })
       }
 
-      // Validar autorização
-      if (userId !== clienteId && role !== 'admin' && role !== 'juridico') {
-        return res.status(403).json({ message: 'Sem permissão para acessar documentos requeridos de outro cliente' })
+      // Resolver o ID para clientes
+      if (role === 'cliente') {
+        const idNegocio = await this.resolveClienteRealId(userId);
+        if (!idNegocio || (idNegocio !== clienteId && userId !== clienteId)) {
+          return res.status(403).json({ message: 'Sem permissão para acessar documentos requeridos de outro cliente' })
+        }
+        clienteId = idNegocio;
+      } else if (role !== 'admin' && role !== 'juridico') {
+        return res.status(403).json({ message: 'Sem permissão para acessar documentos requeridos' })
       }
 
       // Buscar os processos do cliente
@@ -196,9 +249,24 @@ class ClienteDocumentController {
 
       // Gerar nome único para o arquivo
       const timestamp = Date.now()
-      const memberId = req.body.memberId
+      let memberId = req.body.memberId
       const fileExtension = file.originalname.split('.').pop()
       const fileName = `${documentType || 'doc'}_${timestamp}.${fileExtension}`
+
+      // Se for cliente logado, garantir que estamos usando o clienteId correto dele
+      let clienteIdFinal = clienteId;
+      const { id: authUserId, role } = req.user;
+      
+      if (role === 'cliente') {
+        const idNegocio = await this.resolveClienteRealId(authUserId);
+        if (idNegocio) {
+          clienteIdFinal = idNegocio;
+          // Se memberId for igual ao authUserId ou clienteId passado, ajustamos para o de negócio
+          if (!memberId || memberId === authUserId || memberId === clienteId) {
+            memberId = idNegocio;
+          }
+        }
+      }
 
       // Construir o caminho do arquivo
       let filePath = ''
@@ -225,7 +293,7 @@ class ClienteDocumentController {
       let documentoRecord;
 
       if (documentoId) {
-        const docs = await ClienteRepository.getDocumentosByClienteId(clienteId);
+        const docs = await ClienteRepository.getDocumentosByClienteId(clienteIdFinal);
         const docAtual = docs.find(d => d.id === documentoId);
 
         let novoStatus: DocumentStatus = DocumentStatus.ANALYZING;
@@ -247,7 +315,7 @@ class ClienteDocumentController {
       } else {
         // Criar novo registro
         documentoRecord = await ClienteRepository.createDocumento({
-          clienteId,
+          clienteId: clienteIdFinal,
           processoId: processoId || undefined,
           tipo: documentType,
           nomeOriginal: file.originalname,
@@ -257,7 +325,7 @@ class ClienteDocumentController {
           contentType: file.mimetype,
           tamanho: file.size,
           status: DocumentStatus.ANALYZING,
-          dependenteId: (memberId && memberId !== clienteId) ? memberId : undefined
+          dependenteId: (memberId && memberId !== clienteIdFinal) ? memberId : undefined
         })
       }
 
@@ -274,13 +342,15 @@ class ClienteDocumentController {
             .maybeSingle()
 
           if (processo?.responsavel_id) {
+            console.log(`[uploadDoc] Jurídico ${processo.responsavel_id} não pode ser notificado via DB ainda (coluna usuario_id ausente).`)
+            /* 
             await NotificationService.createNotification({
               usuarioId: processo.responsavel_id,
               titulo: 'Novo documento enviado',
               mensagem: `O cliente ${(processo.cliente as any)?.nome || 'desconhecido'} enviou o documento "${documentType || documentoRecord.tipo}". Acesse a área de documentos para revisar.`,
               tipo: 'info'
             })
-            console.log(`[uploadDoc] Notificação enviada ao jurídico ${processo.responsavel_id} sobre novo documento`)
+            */
           }
         } catch (notifyError) {
           console.error('[uploadDoc] Erro ao notificar jurídico:', notifyError)
@@ -321,8 +391,14 @@ class ClienteDocumentController {
 
       // Validar autorização: cliente só deleta seus próprios, admin/juridico deletam de qualquer um
       if (role === 'cliente') {
+        // Resolver o ID real de negócio para deletar
+        const idNegocio = await this.resolveClienteRealId(userId);
+        if (!idNegocio) {
+          return res.status(403).json({ message: 'Cliente não identificado' })
+        }
+        
         // Verificar se documento pertence ao cliente
-        const docs = await ClienteRepository.getDocumentosByClienteId(userId)
+        const docs = await ClienteRepository.getDocumentosByClienteId(idNegocio)
         const docBelongsToClient = docs.some(d => d.id === documentoId)
         if (!docBelongsToClient) {
           return res.status(403).json({ message: 'Sem permissão para deletar documento de outro cliente' })
@@ -345,15 +421,14 @@ class ClienteDocumentController {
 
   // PATCH /cliente/documento/:documentoId/status
   async updateDocumentoStatus(req: any, res: any) {
-    console.log('============= DEBUG STATUS UPDATE =============');
-    console.log('Documento ID:', req.params.documentoId);
-    console.log('Body recebido:', req.body);
+    const { documentoId } = req.params
+    const { status, motivoRejeicao } = req.body
+    const { id: userId, role } = req.user
+
+    console.log('========== [ClienteDocumentController][updateDocumentoStatus] START ==========')
+    console.log('Input:', { documentoId, status, motivoRejeicao, userId, role })
 
     try {
-      const { documentoId } = req.params
-      const { status, motivoRejeicao } = req.body
-      const { id: userId, role } = req.user
-
       if (!documentoId) {
         return res.status(400).json({ message: 'documentoId é obrigatório' })
       }
@@ -389,28 +464,23 @@ class ClienteDocumentController {
 
       const { solicitado_pelo_juridico, prazo } = req.body;
 
-      console.log('Enviando para o repositorio...', {
-        documentoId, status, solicitado_pelo_juridico, analisadoPor: userId
-      });
-
       // Usar o userId do usuário autenticado em vez de req.body
       const documento = await ClienteRepository.updateDocumentoStatus(
         documentoId,
         status,
         motivoRejeicao,
-        userId,  // ✅ Agora é o usuário autenticado, não um UUID fake
+        userId,
         apostilado,
         traduzido,
         solicitado_pelo_juridico
       )
 
-      console.log('Documento atualizado no repositorio com sucesso.');
+      console.log('[ClienteDocumentController][updateDocumentoStatus] Repo updated document:', documento.id)
 
       // Criar notificação se o status exigir ação do cliente ou se foi solicitado pelo jurídico
       try {
         const canNotify = status === 'REJECTED' || status === 'WAITING_APOSTILLE' || status === 'WAITING_TRANSLATION' || solicitado_pelo_juridico;
-        console.log('Pode notificar?', canNotify, { status, solicitado_pelo_juridico });
-
+        
         if (canNotify) {
           let titulo = '';
           let mensagem = '';
@@ -431,35 +501,34 @@ class ClienteDocumentController {
           }
 
           if (titulo && mensagem) {
+            console.log(`[ClienteDocumentController][updateDocumentoStatus] Creating notification: ${titulo}`)
             await NotificationService.createNotification({
               clienteId: documento.cliente_id,
-              criadorId: userId,  // ✅ Usar userId autenticado
+              criadorId: userId,
               titulo,
               mensagem,
               tipo,
               prazo: Number(prazo) || 15
             });
-            console.log(`Notificacao "${titulo}" enviada com sucesso para o cliente ${documento.cliente_id} (Prazo: ${prazo || 15} dias)`);
+            console.log(`[ClienteDocumentController][updateDocumentoStatus] Notification sent to client ${documento.cliente_id}`)
           }
         }
       } catch (notifyError) {
-        console.error('Erro ao enviar notificacao de status:', notifyError);
+        console.error('[ClienteDocumentController][updateDocumentoStatus] Notification error:', notifyError);
       }
 
-      console.log('Finalizando resposta de sucesso.');
-      return res.status(200).json({
+      const response = {
         message: 'Status do documento atualizado com sucesso',
         data: documento
-      })
+      }
+
+      console.log('[ClienteDocumentController][updateDocumentoStatus] SUCCESS:', response)
+      return res.status(200).json(response)
     } catch (error: any) {
-      console.error('ERRO NO updateDocumentoStatus:', error)
+      console.error('[ClienteDocumentController][updateDocumentoStatus] ERROR:', error)
       return res.status(500).json({
         message: `Erro ao atualizar status do documento: ${error.message}`,
-        error: error.message,
-        debug_info: {
-          documentoId: req.params.documentoId,
-          status: req.body.status
-        }
+        error: error.message
       })
     } finally {
       console.log('===============================================');
@@ -469,16 +538,22 @@ class ClienteDocumentController {
   // GET /cliente/:clienteId/processos
   async getProcessos(req: any, res: any) {
     try {
-      const { clienteId } = req.params
+      let { clienteId } = req.params
       const { id: userId, role } = req.user
 
       if (!clienteId) {
         return res.status(400).json({ message: 'clienteId é obrigatório' })
       }
 
-      // Validar autorização
-      if (userId !== clienteId && role !== 'admin' && role !== 'juridico') {
-        return res.status(403).json({ message: 'Sem permissão para acessar processos de outro cliente' })
+      // Resolver o ID para clientes
+      if (role === 'cliente') {
+        const idNegocio = await this.resolveClienteRealId(userId);
+        if (!idNegocio || (idNegocio !== clienteId && userId !== clienteId)) {
+          return res.status(403).json({ message: 'Sem permissão para acessar processos de outro cliente' })
+        }
+        clienteId = idNegocio;
+      } else if (role !== 'admin' && role !== 'juridico') {
+        return res.status(403).json({ message: 'Sem permissão para acessar processos' })
       }
 
       const processos = await ClienteRepository.getProcessosByClienteId(clienteId)
