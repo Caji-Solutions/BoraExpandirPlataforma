@@ -43,17 +43,16 @@ export const AgendamentoConfirmacaoModal: React.FC<AgendamentoConfirmacaoModalPr
   payload,
   exchangeRate = 6.27
 }) => {
-  const [step, setStep] = useState<'method' | 'pix' | 'boleto' | 'wise'>('method')
+  const [step, setStep] = useState<'method' | 'pix' | 'cartao' | 'wise'>('method')
   const [isLoading, setIsLoading] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [copiedPix, setCopiedPix] = useState(false)
   const [agendamentoCriado, setAgendamentoCriado] = useState<any>(null)
   const [avisoFormPreenchido, setAvisoFormPreenchido] = useState(false)
-  const [metodoConfirmado, setMetodoConfirmado] = useState<'pix' | 'boleto' | null>(null)
-  const [boletoEntrada, setBoletoEntrada] = useState('')
-  const [boletoParcela, setBoletoParcela] = useState('')
-  const [boletoQtdParcelas, setBoletoQtdParcelas] = useState('1')
+  const [metodoConfirmado, setMetodoConfirmado] = useState<'pix' | 'cartao' | null>(null)
+  const [cartaoTipo, setCartaoTipo] = useState<'debito' | 'credito' | ''>('')
+  const [cartaoParcelas, setCartaoParcelas] = useState('1')
 
   if (!isOpen) return null
 
@@ -94,22 +93,22 @@ Assim que o pagamento for confirmado, enviaremos o formulário de consultoria pa
 Obrigado! 🚀
 — Equipe Bora Expandir`
 
-  const buildMensagemBoleto = () => `Olá ${payload.nome}! 😊
+  const buildMensagemCartao = () => `Olá ${payload.nome}! 😊
 
-Seu agendamento de *${payload.produto_nome}* foi criado com pagamento via *BOLETO*.
+Seu agendamento de *${payload.produto_nome}* está quase confirmado!
 
 📅 Data: ${data}
 🕐 Horário: ${hora}
-💳 Entrada: R$ ${Number(parseMoney(boletoEntrada) || 0).toFixed(2)}
-🧾 Parcelas futuras: ${boletoQtdParcelas}x de R$ ${Number(parseMoney(boletoParcela) || 0).toFixed(2)}
+💰 Valor: ${valorEUR ? `${valorEUR} (${valorBRL})` : valorBRL}
 
-Envie o comprovante do pagamento da entrada para análise do financeiro.
-Após aprovação, o acesso do cliente será liberado normalmente.
+Para confirmar, realizaremos o pagamento via *CARTÃO ${cartaoTipo === 'debito' ? 'DÉBITO' : cartaoTipo === 'credito' ? `CRÉDITO (${cartaoParcelas}x)` : ''}*.
+
+Após o pagamento, envie o comprovante aqui no chat.
 
 Obrigado! 🚀
 — Equipe Bora Expandir`
 
-  const salvarAgendamento = async (metodo: 'pix' | 'boleto') => {
+  const salvarAgendamento = async (metodo: 'pix' | 'cartao') => {
     setIsLoading(true)
     setLocalError(null)
 
@@ -131,20 +130,14 @@ Obrigado! 🚀
         metodo_pagamento: metodo,
       }
 
-      if (metodo === 'boleto') {
-        const entrada = parseMoney(boletoEntrada)
-        const parcela = parseMoney(boletoParcela)
-        const qtd = Number(boletoQtdParcelas)
-
-        if (!entrada || !parcela || !qtd || qtd < 1 || qtd > 3) {
-          setLocalError('Preencha corretamente os campos do boleto (entrada, valor das parcelas e quantidade de 1 a 3).')
+      if (metodo === 'cartao') {
+        if (!cartaoTipo) {
+          setLocalError('Selecione o tipo do cartão (débito ou crédito).')
           setIsLoading(false)
           return
         }
-
-        requestPayload.boleto_valor_entrada = entrada
-        requestPayload.boleto_valor_parcela = parcela
-        requestPayload.boleto_quantidade_parcelas = qtd
+        requestPayload.cartao_tipo = cartaoTipo
+        requestPayload.cartao_parcelas = cartaoTipo === 'credito' ? cartaoParcelas : '1'
       }
 
       if (isEditing) delete requestPayload.id
@@ -186,19 +179,21 @@ Obrigado! 🚀
     await salvarAgendamento('pix')
   }
 
-  const handleSelectBoleto = () => {
-    setStep('boleto')
+  const handleSelectCartao = () => {
+    setStep('cartao')
+    setCartaoTipo('')
+    setCartaoParcelas('1')
     setLocalError(null)
     setAgendamentoCriado(null)
     setMetodoConfirmado(null)
   }
 
-  const handleConfirmarBoleto = async () => {
-    await salvarAgendamento('boleto')
+  const handleConfirmarCartao = async () => {
+    await salvarAgendamento('cartao')
   }
 
   const handleCopyMessage = async () => {
-    const mensagem = metodoConfirmado === 'boleto' ? buildMensagemBoleto() : buildMensagemPix()
+    const mensagem = metodoConfirmado === 'cartao' ? buildMensagemCartao() : buildMensagemPix()
     try {
       await navigator.clipboard.writeText(mensagem)
       setCopied(true)
@@ -233,7 +228,7 @@ Obrigado! 🚀
       <div className="w-full max-w-lg bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-800 overflow-hidden relative animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-gray-100 dark:border-neutral-800 flex items-center justify-between sticky top-0 bg-white dark:bg-neutral-900 z-10">
           <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-            {step === 'method' ? 'Método de Pagamento' : step === 'pix' ? 'Pagamento via PIX' : step === 'boleto' ? 'Pagamento via Boleto' : 'Wise'}
+            {step === 'method' ? 'Método de Pagamento' : step === 'pix' ? 'Pagamento via PIX' : step === 'cartao' ? 'Pagamento via Cartão' : 'Wise'}
           </h3>
           {step === 'method' && (
             <button
@@ -280,26 +275,26 @@ Obrigado! 🚀
                 </button>
 
                 <button
-                  onClick={handleSelectBoleto}
-                  className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 dark:border-neutral-800 hover:border-amber-500 dark:hover:border-amber-500 bg-gray-50 dark:bg-neutral-800/50 hover:bg-amber-50 dark:hover:bg-amber-500/5 transition-all group"
+                  onClick={handleSelectCartao}
+                  className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 dark:border-neutral-800 hover:border-blue-500 dark:hover:border-blue-500 bg-gray-50 dark:bg-neutral-800/50 hover:bg-blue-50 dark:hover:bg-blue-500/5 transition-all group"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 text-xl font-bold">
-                      B
+                    <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 text-xl font-bold">
+                      💳
                     </div>
                     <div className="text-left">
-                      <p className="font-bold text-gray-900 dark:text-white">Boleto</p>
-                      <p className="text-xs text-gray-500">Entrada + parcelas futuras (1 a 3)</p>
+                      <p className="font-bold text-gray-900 dark:text-white">Cartão</p>
+                      <p className="text-xs text-gray-500">Débito ou crédito com comprovante</p>
                     </div>
                   </div>
                 </button>
 
                 <button
                   onClick={() => setStep('wise')}
-                  className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 dark:border-neutral-800 hover:border-blue-500 dark:hover:border-blue-500 bg-gray-50 dark:bg-neutral-800/50 hover:bg-blue-50 dark:hover:bg-blue-500/5 transition-all group"
+                  className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 dark:border-neutral-800 hover:border-purple-500 dark:hover:border-purple-500 bg-gray-50 dark:bg-neutral-800/50 hover:bg-purple-50 dark:hover:bg-purple-500/5 transition-all group"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 text-xl font-bold">
+                    <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 text-xl font-bold">
                       W
                     </div>
                     <div className="text-left">
@@ -312,7 +307,7 @@ Obrigado! 🚀
             </div>
           )}
 
-          {(step === 'pix' || (step === 'boleto' && agendamentoCriado)) && (
+          {(step === 'pix' || (step === 'cartao' && agendamentoCriado)) && (
             <div className="space-y-5">
               {isLoading && (
                 <div className="flex flex-col items-center justify-center py-10 gap-3">
@@ -350,9 +345,9 @@ Obrigado! 🚀
                     </div>
                   )}
 
-                  {metodoConfirmado === 'boleto' && (
-                    <div className="bg-amber-50 dark:bg-amber-500/10 rounded-xl p-4 border border-amber-200 dark:border-amber-500/20 text-sm text-amber-800 dark:text-amber-300">
-                      Entrada: R$ {Number(parseMoney(boletoEntrada) || 0).toFixed(2)} | Parcelas: {boletoQtdParcelas}x de R$ {Number(parseMoney(boletoParcela) || 0).toFixed(2)}
+                  {metodoConfirmado === 'cartao' && (
+                    <div className="bg-blue-50 dark:bg-blue-500/10 rounded-xl p-4 border border-blue-200 dark:border-blue-500/20 text-sm text-blue-800 dark:text-blue-300">
+                      💳 Cartão {cartaoTipo === 'debito' ? 'Débito' : cartaoTipo === 'credito' ? `Crédito em ${cartaoParcelas}x` : ''} — comprovante obrigatório.
                     </div>
                   )}
 
@@ -372,7 +367,7 @@ Obrigado! 🚀
                       Ver pré-visualização da mensagem
                     </summary>
                     <div className="mt-2 p-3 bg-gray-50 dark:bg-neutral-800/50 rounded-lg border text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap font-mono max-h-48 overflow-y-auto">
-                      {metodoConfirmado === 'boleto' ? buildMensagemBoleto() : buildMensagemPix()}
+                      {metodoConfirmado === 'cartao' ? buildMensagemCartao() : buildMensagemPix()}
                     </div>
                   </details>
 
@@ -388,43 +383,64 @@ Obrigado! 🚀
             </div>
           )}
 
-          {step === 'boleto' && !agendamentoCriado && (
+          {step === 'cartao' && !agendamentoCriado && (
             <div className="space-y-4">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Preencha os dados do boleto para criar o agendamento.
+                Selecione o tipo do cartão para confirmar o agendamento.
               </p>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor da Entrada</label>
-                <input
-                  type="text"
-                  value={boletoEntrada}
-                  onChange={(e) => setBoletoEntrada(e.target.value)}
-                  placeholder="Ex.: 500,00"
-                  className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm"
-                />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo do Cartão *</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setCartaoTipo('debito'); setCartaoParcelas('1') }}
+                    className={`rounded-xl border-2 p-3 text-left transition-all ${
+                      cartaoTipo === 'debito'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/15'
+                        : 'border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800'
+                    }`}
+                  >
+                    <p className="font-bold text-sm text-gray-900 dark:text-white">💳 Débito</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Pagamento à vista no cartão.</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCartaoTipo('credito')}
+                    className={`rounded-xl border-2 p-3 text-left transition-all ${
+                      cartaoTipo === 'credito'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/15'
+                        : 'border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800'
+                    }`}
+                  >
+                    <p className="font-bold text-sm text-gray-900 dark:text-white">💳 Crédito</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Pagamento parcelado no crédito.</p>
+                  </button>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor das Parcelas</label>
-                <input
-                  type="text"
-                  value={boletoParcela}
-                  onChange={(e) => setBoletoParcela(e.target.value)}
-                  placeholder="Ex.: 300,00"
-                  className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quantidade de Parcelas</label>
-                <select
-                  value={boletoQtdParcelas}
-                  onChange={(e) => setBoletoQtdParcelas(e.target.value)}
-                  className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm"
-                >
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                </select>
-              </div>
+
+              {cartaoTipo === 'credito' && (
+                <div className="max-w-[200px]">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Número de Parcelas *</label>
+                  <select
+                    value={cartaoParcelas}
+                    onChange={(e) => setCartaoParcelas(e.target.value)}
+                    className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm"
+                  >
+                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => (
+                      <option key={n} value={String(n)}>{n}x</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {cartaoTipo && (
+                <div className="text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                  {cartaoTipo === 'debito'
+                    ? 'Cartão DÉBITO: o comprovante da transação deverá ser enviado para validação.'
+                    : `Cartão CRÉDITO em ${cartaoParcelas}x: o comprovante da transação deverá ser enviado para validação.`}
+                </div>
+              )}
 
               <div className="pt-2 flex gap-3">
                 <button
@@ -434,12 +450,12 @@ Obrigado! 🚀
                   Voltar
                 </button>
                 <button
-                  onClick={handleConfirmarBoleto}
-                  disabled={isLoading}
-                  className="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold disabled:opacity-60 flex items-center justify-center gap-2"
+                  onClick={handleConfirmarCartao}
+                  disabled={isLoading || !cartaoTipo}
+                  className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold disabled:opacity-60 flex items-center justify-center gap-2"
                 >
                   {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Confirmar Boleto
+                  Confirmar Cartão
                 </button>
               </div>
             </div>

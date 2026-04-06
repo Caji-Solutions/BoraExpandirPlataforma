@@ -812,73 +812,81 @@ class JuridicoController {
     // POST /juridico/assessoria - Criar assessoria jurídica
     async createAssessoria(req: any, res: any) {
         try {
-            const { clienteId, respostas, observacoes, servicoId } = req.body
-            
+            const { clienteId, respostas, observacoes, servicoId, subservicoId } = req.body
+
             // TODO: Pegar do middleware de auth
             const responsavelId = req.userId
 
             if (!clienteId || !respostas) {
-                return res.status(400).json({ 
-                    message: 'clienteId e respostas são obrigatórios' 
+                return res.status(400).json({
+                    message: 'clienteId e respostas são obrigatórios'
                 })
             }
 
             // 1. Criar a assessoria
+            // servicoId = ID do serviço principal (catalogo_servicos) — respeita a FK
+            // subservicoId = ID do subserviço selecionado (subservicos) — usado para requisitos
             const assessoria = await JuridicoRepository.createAssessoria({
                 clienteId,
                 responsavelId,
                 respostas,
-                servicoId,
+                servicoId: servicoId || null,
                 observacoes
             })
 
             // 2. Sincronizar com a tabela processos
-            try {
-                // Tenta descobrir o nome do serviço e requisitos se houver servicoId
-                let tipoServico = 'Assessoria Jurídica'
-                let documentosRequisitados: any[] = []
+            let tipoServico = 'Assessoria Jurídica'
+            let servicoRequisitos: any[] = []
+            let documentosRequisitados: any[] = []
 
-                if (servicoId) {
+            try {
+                // Buscar requisitos pelo subserviço selecionado, se houver
+                const idParaBusca = subservicoId || respostas?.subservico_id
+                if (idParaBusca) {
+                    const { data: subservicoData } = await supabase
+                        .from('subservicos')
+                        .select('*, requisitos:servico_requisitos(*)')
+                        .eq('id', idParaBusca)
+                        .single()
+
+                    if (subservicoData) {
+                        if (subservicoData.nome) tipoServico = subservicoData.nome
+                        servicoRequisitos = subservicoData.requisitos || []
+                    }
+                }
+
+                // Fallback: buscar requisitos do serviço principal
+                if (servicoRequisitos.length === 0 && servicoId) {
                     const servicoData = await AdmRepository.getServiceById(servicoId)
                     if (servicoData) {
                         if (servicoData.nome) tipoServico = servicoData.nome
-                        
-                        // Mapear requisitos para o estado inicial de documentos no processo
-                        if (servicoData.requisitos && Array.isArray(servicoData.requisitos)) {
-                            documentosRequisitados = servicoData.requisitos.map((r: any) => ({
-                                id: BigInt(Math.floor(Math.random() * 1000000)).toString(), // ID temporário ou UUID
-                                nome: r.nome,
-                                etapa: r.etapa,
-                                obrigatorio: r.obrigatorio,
-                                status: 'pendente',
-                                enviado: false
-                            }))
-                        }
+                        servicoRequisitos = servicoData.requisitos || []
                     }
                 }
+
+                documentosRequisitados = servicoRequisitos.map((r: any) => ({
+                    nome: r.nome,
+                    etapa: r.etapa,
+                    obrigatorio: r.obrigatorio,
+                    status: 'pendente',
+                    enviado: false
+                }))
 
                 // Verifica se já existe um processo para este cliente
                 const processoExistente = await JuridicoRepository.getProcessoByClienteId(clienteId)
 
                 if (processoExistente) {
-                    // Atualiza processo existente
                     const updateParams: any = {
                         tipoServico,
                         assessoriaId: assessoria.id,
                         servicoId: servicoId || null,
                         responsavelId: responsavelId
                     }
-
-                    // Se o processo ainda não tem documentos ou se queremos "resetar/adicionar" os novos
-                    // Aqui decidimos manter os que já existem e adicionar novos se necessário, ou apenas subscrever
-                    // Para simplificar agora vindo da assessoria (que redefine o serviço), vamos atualizar os documentos
                     if (documentosRequisitados.length > 0) {
                         updateParams.documentos = documentosRequisitados
                     }
-
                     await JuridicoRepository.updateProcess(processoExistente.id, updateParams)
                 } else {
-                    // Cria novo processo
                     await JuridicoRepository.createProcess({
                         clienteId,
                         tipoServico,
@@ -892,10 +900,9 @@ class JuridicoController {
                 }
             } catch (procError) {
                 console.error('Erro ao sincronizar processo com assessoria:', procError)
-                // Não falha a requisição da assessoria se o processo falhar
             }
 
-            // 3. Atualizar stage do cliente para 'assessoria_andamento' (se não estiver em stage posterior)
+            // 3. Atualizar stage do cliente para 'assessoria_andamento'
             try {
                 const { data: clienteAtual } = await supabase
                     .from('clientes')
@@ -907,20 +914,62 @@ class JuridicoController {
                 if (!stagesAdiante.includes(clienteAtual?.stage || '')) {
                     const { error: updateStageError } = await supabase
                         .from('clientes')
-                        .update({
-                            stage: 'assessoria_andamento',
-                            status: 'assessoria_andamento',
-                            atualizado_em: new Date().toISOString()
-                        })
+                        .update({ stage: 'assessoria_andamento', atualizado_em: new Date().toISOString() })
                         .eq('id', clienteId)
 
                     if (updateStageError) {
-                        console.error('Erro ao atualizar stage do cliente para assessoria_andamento:', updateStageError)
+                        console.error('Erro ao atualizar stage do cliente:', updateStageError)
                     }
                 }
             } catch (stageError) {
                 console.error('Erro ao atualizar stage do cliente:', stageError)
-                // Não falha a requisição da assessoria se a atualização de stage falhar
+            }
+
+            // 4. Merge DNA: salvar data_chegada e tipo_agendamento no perfil_unificado
+            try {
+                const dataChegada = respostas?.data_chegada
+                const tipoAgendamento = respostas?.tipo_agendamento
+
+                if (dataChegada || tipoAgendamento) {
+                    const dnaPayload: Record<string, any> = {}
+                    if (dataChegada) dnaPayload.previsao_chegada_data = dataChegada
+                    if (tipoAgendamento) dnaPayload.previsao_chegada_tipo = tipoAgendamento // 'data_prevista' | 'data_confirmada'
+
+                    await DNAService.mergeDNA(clienteId, dnaPayload, 'HIGH')
+                }
+
+                // Atualizar previsao_chegada na tabela clientes
+                if (dataChegada) {
+                    await supabase
+                        .from('clientes')
+                        .update({ previsao_chegada: dataChegada, atualizado_em: new Date().toISOString() })
+                        .eq('id', clienteId)
+                }
+            } catch (dnaError) {
+                console.error('Erro ao fazer merge DNA / atualizar previsao_chegada:', dnaError)
+            }
+
+            // 5. Criar requerimento com documentos pendentes para o cliente
+            try {
+                if (servicoRequisitos.length > 0) {
+                    const processoAtual = await JuridicoRepository.getProcessoByClienteId(clienteId)
+
+                    const documentosAcoplados = servicoRequisitos.map((r: any) => ({
+                        type: r.nome,
+                        memberId: clienteId,
+                    }))
+
+                    await JuridicoRepository.solicitarRequerimento({
+                        clienteId,
+                        tipo: `Documentação — ${tipoServico}`,
+                        processoId: processoAtual?.id || undefined,
+                        criadorId: responsavelId,
+                        notificar: true,
+                        documentosAcoplados,
+                    })
+                }
+            } catch (reqError) {
+                console.error('Erro ao criar requerimento com documentos pendentes:', reqError)
             }
 
             return res.status(201).json({
@@ -928,10 +977,9 @@ class JuridicoController {
                 data: assessoria
             })
         } catch (error: any) {
-            console.error('Erro ao criar assessoria juridica no controller:', error)
+            console.error('Erro ao criar assessoria juridica no controller:', error.message)
             return res.status(500).json({
-                message: 'Erro ao criar assessoria jurídica',
-                error: error.message
+                message: error.message || 'Erro ao criar assessoria jurídica',
             })
         }
     }
@@ -1201,7 +1249,7 @@ class JuridicoController {
                 // Atualizar stage do cliente — a timeline e controlada por clientes.stage
                 const { error: updateClienteError } = await supabase
                     .from('clientes')
-                    .update({ stage: 'assessoria_andamento', status: 'assessoria_andamento' })
+                    .update({ stage: 'assessoria_andamento' })
                     .eq('id', agendamento.cliente_id);
 
                 if (updateClienteError) {

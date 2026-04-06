@@ -31,7 +31,7 @@ export function ProcessAction({
     onActionClick
 }: ProcessActionProps) {
     const navigate = useNavigate();
-    const { activeProfile, profile, setImpersonatedProfile } = useAuth();
+    const { activeProfile } = useAuth();
 
     const ALL_BUTTONS = [
         {
@@ -118,21 +118,6 @@ export function ProcessAction({
 
     const handleAction = (actionId: string) => {
         console.log(`[ProcessAction] handleAction: ${actionId}`);
-        const btn = ALL_BUTTONS.find(b => b.id === actionId);
-        
-        // Regra de Impersonation: Se for admin clicando em função jurídica e houver um responsável
-        if (profile?.role === 'super_admin' && btn?.isJuridico && responsavel) {
-            // Se já não estivermos visualizando como esse responsável
-            if (activeProfile?.id !== responsavel.id) {
-                setImpersonatedProfile({
-                    id: responsavel.id,
-                    full_name: responsavel.nome,
-                    email: 'juridico@sistema.com',
-                    role: 'juridico'
-                });
-            }
-        }
-
         if (onActionClick) {
             onActionClick(actionId, { clienteId, processoId });
         }

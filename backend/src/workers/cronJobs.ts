@@ -42,9 +42,15 @@ export const startCronJobs = () => {
                     // 1. Log detalhado
                     console.log(`[CRON] Avaliando ID: ${agendamento.id} | Status: ${agendamento.status} | DataHora: ${agendamentoDateTime.toISOString()} | Pagamento: ${agendamento.pagamento_status} | Formulario(cliente_is_user): ${agendamento.cliente_is_user}`);
 
-                    // 2. Se o formulário já foi enviado (cliente_is_user === true), NUNCA cancela por esse CRON.
-                    if (agendamento.cliente_is_user === true) {
-                        console.log(`[CRON] Poupando agendamento ${agendamento.id}: Formulario ja foi enviado ao cliente.`);
+                    // 2. Se já existe formulário preenchido em formularios_cliente, NUNCA cancela.
+                    const { data: formularioExistente } = await supabase
+                        .from('formularios_cliente')
+                        .select('id')
+                        .eq('agendamento_id', agendamento.id)
+                        .maybeSingle();
+
+                    if (formularioExistente) {
+                        console.log(`[CRON] Poupando agendamento ${agendamento.id}: Formulario ja foi preenchido pelo cliente.`);
                         continue;
                     }
 
@@ -141,6 +147,7 @@ export const startCronJobs = () => {
                                 html
                             });
 
+                            // Só incrementa o contador APÓS o email ser enviado com sucesso
                             await supabase
                                 .from('agendamentos')
                                 .update({ email_reminders_count: reminderCount + 1 })
@@ -148,7 +155,7 @@ export const startCronJobs = () => {
 
                             console.log(`[CRON] Lembrete ${reminderCount + 1}/3 enviado para ${clientEmail} (agendamento ${agendamento.id}).`);
                         } catch (emailErr) {
-                            console.error(`[CRON] Erro ao enviar lembrete para agendamento ${agendamento.id}:`, emailErr);
+                            console.error(`[CRON] Erro ao enviar lembrete para agendamento ${agendamento.id}. Contador NÃO incrementado:`, emailErr);
                         }
 
                         continue;

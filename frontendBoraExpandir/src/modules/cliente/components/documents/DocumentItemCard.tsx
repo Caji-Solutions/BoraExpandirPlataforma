@@ -74,7 +74,7 @@ export function DocumentItemCard({
                                 <FileText className={cn('h-4 w-4', isRejected ? 'text-red-500' : 'text-gray-400')} />
                             </div>
                             <span className="font-bold text-sm text-gray-900 dark:text-white truncate">
-                                {item._isRequested ? `Pendente: ${item.name}` : item.name}
+                                {item.name}
                             </span>
                         </div>
 
@@ -82,11 +82,7 @@ export function DocumentItemCard({
                         {item.required && stageId === 'pending' && (
                             <Badge variant="secondary" className="text-[10px] h-5">Obrigatório</Badge>
                         )}
-                        {item._isRequested && (
-                            <Badge className="text-[10px] h-5 bg-amber-500 hover:bg-amber-600 text-white">
-                                ⚠️ Solicitado
-                            </Badge>
-                        )}
+
                         {doc && stageId !== 'pending' && (
                             <div className="flex items-center gap-1.5 ml-2">
                                 <Badge

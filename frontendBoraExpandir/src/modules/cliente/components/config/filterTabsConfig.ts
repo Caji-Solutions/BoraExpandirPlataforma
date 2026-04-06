@@ -109,8 +109,8 @@ export const filterTabs: FilterTab[] = [
     },
     {
         id: 'requirements',
-        label: 'Requerimentos Solicitados',
-        description: 'Documentos solicitados pelo governo espanhol',
+        label: 'Solicitações Complementares',
+        description: 'Documentos extras e solicitações da equipe jurídica',
         icon: Folder,
         color: 'slate',
         activeColor: 'bg-slate-500',

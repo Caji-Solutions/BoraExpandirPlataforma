@@ -1219,22 +1219,25 @@ class JuridicoRepository {
         servicoId?: string
         observacoes?: string
     }): Promise<any> {
+        const payload = {
+            cliente_id: params.clienteId,
+            responsavel_id: params.responsavelId || null,
+            servico_id: params.servicoId || null,
+            respostas: params.respostas,
+            observacoes: params.observacoes || null,
+            criado_em: new Date().toISOString()
+        }
+        console.log('[createAssessoria] INSERT payload:', JSON.stringify({ ...payload, respostas: '[omitted]' }))
+
         const { data, error } = await supabase
             .from('assessorias_juridico')
-            .insert([{
-                cliente_id: params.clienteId,
-                responsavel_id: params.responsavelId,
-                servico_id: params.servicoId || null,
-                respostas: params.respostas,
-                observacoes: params.observacoes || null,
-                criado_em: new Date().toISOString()
-            }])
+            .insert([payload])
             .select()
             .single()
 
         if (error) {
-            console.error('Erro ao criar assessoria juridica no repositorio:', error)
-            throw error
+            console.error('[createAssessoria] Supabase error:', JSON.stringify({ message: error.message, details: error.details, hint: error.hint, code: error.code }))
+            throw new Error(`[${error.code}] ${error.message}${error.details ? ' — ' + error.details : ''}`)
         }
 
         return data

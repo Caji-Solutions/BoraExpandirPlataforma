@@ -35,7 +35,8 @@
       "Bash(cd /c/Users/Bruno Porto/Desktop/BoraExpandirPlataforma/backend)",
       "Bash(cd /c/Users/Bruno Porto/Desktop/BoraExpandirPlataforma/frontendBoraExpandir)",
       "Bash(find . -path */routes/* -name *.ts -type f)",
-      "Bash(find 'C:/Users/Bruno Porto/Desktop/BoraExpandirPlataforma/frontendBoraExpandir' -name *.test.* -o -name *.spec.*)"
+      "Bash(find 'C:/Users/Bruno Porto/Desktop/BoraExpandirPlataforma/frontendBoraExpandir' -name *.test.* -o -name *.spec.*)",
+      "Bash(node -e \":*)"
     ]
   },
   "hooks": {

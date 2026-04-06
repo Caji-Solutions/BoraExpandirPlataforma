@@ -35,9 +35,9 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
         return <Navigate to="/login" replace />
     }
 
-    // Se for Super Admin REAL (não impersonado), ele tem acesso total
-    // Se estiver impersonando, ele deve seguir as regras do perfil impersonado
-    if (profile?.role === 'super_admin' && activeProfile.role === 'super_admin') {
+    // Se for Super Admin REAL, ele tem acesso total a qualquer rota,
+    // independente de qual perfil está sendo impersonado no momento.
+    if (profile?.role === 'super_admin') {
         return <>{children}</>
     }
 

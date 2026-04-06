@@ -870,11 +870,29 @@ class FinanceiroController {
                 }
             }
 
-            // Atualizar stage do cliente para aguardando_assessoria se o contrato é de serviço fixo (assessoria)
+            // Atualizar stage do cliente para aguardando_assessoria quando contrato e aprovado
             if (contrato.cliente_id) {
                 try {
                     const servicoTipo = (contrato as any).servico?.tipo
-                    if (servicoTipo === 'fixo') {
+
+                    // Fallback: busca direto pelo servico_id se o join nao trouxe o tipo
+                    let tipoResolvido = servicoTipo
+                    if (!tipoResolvido && contrato.servico_id) {
+                        const { data: servicoBanco } = await supabase
+                            .from('catalogo_servicos')
+                            .select('tipo')
+                            .eq('id', contrato.servico_id)
+                            .maybeSingle()
+                        tipoResolvido = servicoBanco?.tipo
+                        console.log(`[FinanceiroController] Tipo resolvido via fallback: ${tipoResolvido}`)
+                    }
+
+                    // Contratos de servico sao sempre assessorias.
+                    // Mover se tipo fixo OU se nao houver servico_id (contrato legado)
+                    const deveAtualizar = tipoResolvido === 'fixo' || !tipoResolvido
+                    console.log(`[FinanceiroController] deveAtualizar=${deveAtualizar}, tipoResolvido=${tipoResolvido}, servico_id=${contrato.servico_id}`)
+
+                    if (deveAtualizar) {
                         const { data: clienteStage } = await supabase
                             .from('clientes')
                             .select('stage')
@@ -887,9 +905,9 @@ class FinanceiroController {
                                 .from('clientes')
                                 .update({ stage: 'aguardando_assessoria', status: 'aguardando_assessoria', atualizado_em: new Date().toISOString() })
                                 .eq('id', contrato.cliente_id)
-                            console.log(`[FinanceiroController] Cliente ${contrato.cliente_id} movido para aguardando_assessoria (contrato fixo aprovado)`)
+                            console.log(`[FinanceiroController] Cliente ${contrato.cliente_id} movido para aguardando_assessoria (contrato aprovado, tipo=${tipoResolvido || 'sem_servico'})`)
 
-                            // Atualiza também o processo ativo
+                            // Atualiza tambem o processo ativo
                             const { data: processoAtivo } = await supabase
                                 .from('processos')
                                 .select('id')
@@ -908,6 +926,8 @@ class FinanceiroController {
                                     .eq('id', processoAtivo.id)
                                 console.log(`[FinanceiroController] Processo ${processoAtivo.id} atualizado para aguardando_assessoria`)
                             }
+                        } else {
+                            console.log(`[FinanceiroController] Cliente ${contrato.cliente_id} ja esta em stage adiante (${clienteStage?.stage}), sem retroacao.`)
                         }
                     }
                 } catch (stageErr) {

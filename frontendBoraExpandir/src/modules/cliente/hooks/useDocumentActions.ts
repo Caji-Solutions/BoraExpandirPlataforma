@@ -203,7 +203,7 @@ export function useDocumentActions({
             .filter(d => {
                 const status = d.status?.toLowerCase();
                 // Inclui se o status for explicitamente 'pending'
-                if (status === 'pending' && !d.requerimento_id) return true;
+                if (status === 'pending') return true;
                 
                 // OU se foi solicitado pelo jurídico e está aguardando ação de fluxo
                 const foiSolicitado = d.solicitado_pelo_juridico === true || 
@@ -221,7 +221,7 @@ export function useDocumentActions({
                 return {
                     type: doc.type,
                     name: reqDoc ? reqDoc.name : doc.name,
-                    description: reqDoc?.description || 'Documento solicitado pela equipe jurídica.',
+                    description: reqDoc?.description || 'Por favor, envie o documento solicitado para as próximas etapas.',
                     required: reqDoc?.required || false,
                     _document: doc,
                     _isRequested: true,

@@ -326,6 +326,7 @@ export async function createAssessoria(payload: {
   observacoes?: string;
   responsavelId?: string;
   servicoId?: string;
+  subservicoId?: string;
 }): Promise<any> {
   return apiClient.post(`/juridico/assessoria`, payload);
 }

@@ -26,6 +26,7 @@ import { Badge } from '@/modules/shared/components/ui/badge';
 import { CalendarPicker } from "@/components/ui/CalendarPicker";
 import { parseBackendDate, formatHoraOnly, getBrtDateKey, getBrtHhMm } from "../utils/dateUtils";
 import { PedidoReagendamentoModal } from "../modules/juridico/components/PedidoReagendamentoModal";
+import { AssessoriaFormModal } from "../modules/juridico/components/AssessoriaFormModal";
 
 type TabType = 'consultorias' | 'assessorias';
 
@@ -70,6 +71,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
   const [isC2SelectionOpen, setIsC2SelectionOpen] = useState(false);
   const [c2SearchQuery, setC2SearchQuery] = useState('');
   const [isFormularioModalOpen, setIsFormularioModalOpen] = useState(false);
+  const [isAssessoriaFormModalOpen, setIsAssessoriaFormModalOpen] = useState(false);
   const [dnaData, setDnaData] = useState<Record<string, any> | null>(null);
   const [isLoadingDna, setIsLoadingDna] = useState(false);
 
@@ -358,8 +360,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
 
   const isIniciarConsultoriaDisabled = !selectedItem
     || selectedItem.pagamento_status !== 'aprovado'
-    || isMarkingEmAndamento
-    || hasStartedConsultoria;
+    || isMarkingEmAndamento;
 
   const isRealizadaDisabled = !selectedItem
     || isMarkingRealizada
@@ -645,90 +646,60 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                         <button
                           onClick={async () => {
                             if (!selectedItem) return;
+                            const clienteId = selectedItem.cliente_id || selectedItem.id;
+                            setIsLoadingDna(true);
                             try {
-                              setIsMarkingEmAndamento(true);
-                              await juridicoService.marcarConsultoriaEmAndamento(selectedItem.id);
-                              setHasStartedConsultoria(true);
-                              setSelectedItem((prev: any) => prev ? { ...prev, status: 'em_consultoria' } : prev);
-                              const targetId = selectedItem.cliente_id || selectedItem.id;
-                              navigate(`/juridico/dna?clienteId=${targetId}&tab=formularios&refresh=${Date.now()}`);
+                              if (!hasStartedConsultoria) {
+                                setIsMarkingEmAndamento(true);
+                                await juridicoService.marcarConsultoriaEmAndamento(selectedItem.id);
+                                setHasStartedConsultoria(true);
+                                setSelectedItem((prev: any) => prev ? { ...prev, status: 'em_consultoria' } : prev);
+                              }
+                              const data = await juridicoService.getClienteDNA(clienteId);
+                              setDnaData(data);
+                              setIsFormularioModalOpen(true);
                             } catch (err: any) {
-                              console.warn('Erro ao marcar em andamento:', err);
+                              console.warn('Erro ao iniciar consultoria:', err);
+                              toast.error('Erro ao iniciar consultoria.');
                             } finally {
                               setIsMarkingEmAndamento(false);
+                              setIsLoadingDna(false);
                             }
                           }}
-                          disabled={isIniciarConsultoriaDisabled}
+                          disabled={isIniciarConsultoriaDisabled || isLoadingDna}
                           className={`w-full py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex justify-center items-center gap-2 ${
-                            !isIniciarConsultoriaDisabled
+                            !(isIniciarConsultoriaDisabled || isLoadingDna)
                               ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
                               : 'bg-gray-100 dark:bg-neutral-800 text-gray-400 cursor-not-allowed'
                           }`}
                         >
                           <Briefcase className="h-3.5 w-3.5" />
-                          {isMarkingEmAndamento ? 'Iniciando...' : hasStartedConsultoria ? 'Em Consultoria' : 'Iniciar Consultoria'}
+                          {isMarkingEmAndamento || isLoadingDna ? 'Iniciando...' : hasStartedConsultoria ? 'Abrir Formulário' : 'Iniciar Consultoria'}
                         </button>
                       </div>
                     )}
 
-                    {activeTab === 'consultorias' && (
-                      <div className={`rounded-xl border transition-all ${checkingSecurity ? 'bg-gray-50 dark:bg-neutral-900 border-gray-200 dark:border-neutral-800 animate-pulse' :
-                        hasFormulario ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/30' : 'bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/30'
-                        }`}>
-                        <div className="flex items-center gap-3 p-3">
-                          <div className={`p-1.5 rounded-lg text-white ${checkingSecurity ? 'bg-gray-400' : hasFormulario ? 'bg-blue-500' : 'bg-rose-500'}`}>
-                            <FileText className="h-3.5 w-3.5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-gray-900 dark:text-white">Coleta de Informacoes</p>
-                            <p className="text-[10px] font-medium text-gray-500 dark:text-neutral-400">
-                              {checkingSecurity ? 'Verificando...' : hasFormulario ? 'Formulario preenchido' : 'Dados pendentes'}
-                            </p>
-                          </div>
-                          <button
-                            onClick={async () => {
-                              const clienteId = selectedItem?.cliente_id;
-                              if (!clienteId) return;
-                              setIsLoadingDna(true);
-                              try {
-                                const data = await juridicoService.getClienteDNA(clienteId);
-                                setDnaData(data);
-                                setIsFormularioModalOpen(true);
-                              } catch (err) {
-                                console.error('Erro ao buscar DNA:', err);
-                                toast.error('Erro ao carregar dados do formulario.');
-                              } finally {
-                                setIsLoadingDna(false);
-                              }
-                            }}
-                            disabled={!hasFormulario || isLoadingDna}
-                            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors shrink-0"
-                          >
-                            <FileText className="h-3 w-3" />
-                            {isLoadingDna ? 'Carregando...' : 'Exibir Formulário'}
-                          </button>
-                        </div>
-                      </div>
-                    )}
+
                     
                     {activeTab === 'assessorias' && selectedItem.status !== 'realizado' && (
                       <div className="rounded-xl border border-blue-200 dark:border-blue-800/30 bg-blue-50 dark:bg-blue-950/20">
                         <button
                           onClick={async () => {
                             if (!selectedItem) return;
-                            const targetId = selectedItem.cliente_id || selectedItem.id;
-                            const pId = selectedItem.produto_id || selectedItem.servico_id || '';
                             try {
                               setIsMarkingEmAndamento(true);
                               await juridicoService.marcarAssessoriaEmAndamento(selectedItem.id);
-                              navigate(`/juridico/assessoria?clienteId=${targetId}&produtoId=${pId}&agendamentoId=${selectedItem.id}`);
+                              setSelectedItem((prev: any) => prev ? { ...prev, status: 'em_andamento' } : prev);
+                              setIsAssessoriaFormModalOpen(true);
                             } catch (err: any) {
-                              console.warn('Erro ao marcar assessoria em andamento:', err);
+                              console.warn('Erro ao iniciar atendimento:', err);
+                              toast.error('Erro ao iniciar atendimento.');
                             } finally {
                               setIsMarkingEmAndamento(false);
                             }
                           }}
-                          className="w-full py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                          disabled={isMarkingEmAndamento}
+                          className="w-full py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                           <Briefcase className="h-3.5 w-3.5" />
                           {isMarkingEmAndamento ? 'Iniciando...' : 'Iniciar Atendimento'}
@@ -838,33 +809,6 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                   </div>
                 )}
 
-                {activeTab === 'assessorias' && (
-                  <>
-
-
-                    <button
-                      onClick={async () => {
-                        if (!selectedItem) return;
-                        try {
-                          setIsMarkingRealizada(true);
-                          await juridicoService.marcarConsultoriaRealizada(selectedItem.id);
-                          toast.success('Assessoria marcada como realizada.');
-                          setSelectedItem(null);
-                          fetchData();
-                        } catch (err: any) {
-                          toast.error('Erro ao marcar assessoria: ' + (err.response?.data?.message || err.message));
-                        } finally {
-                          setIsMarkingRealizada(false);
-                        }
-                      }}
-                      disabled={isMarkingRealizada || selectedItem.status === 'realizado'}
-                      className="flex-1 px-4 py-3 font-bold text-xs bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      <CheckSquare className="h-3.5 w-3.5" />
-                      {isMarkingRealizada ? 'Salvando...' : 'Realizada'}
-                    </button>
-                  </>
-                )}
 
                 <button
                   onClick={() => setIsReagendamentoOpen(true)}
@@ -1184,6 +1128,21 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
           onSucesso={() => {
             setIsReagendamentoOpen(false);
             setSelectedItem(null);
+            fetchData();
+          }}
+        />
+      )}
+
+      {isAssessoriaFormModalOpen && selectedItem && (
+        <AssessoriaFormModal
+          clienteId={selectedItem.cliente_id || selectedItem.id}
+          clienteNome={selectedItem.clientes?.nome || selectedItem.nome || 'Cliente'}
+          agendamentoId={selectedItem.id}
+          produtoId={selectedItem.produto_id}
+          onClose={() => setIsAssessoriaFormModalOpen(false)}
+          onSuccess={() => {
+            setIsAssessoriaFormModalOpen(false);
+            toast.success('Assessoria salva com sucesso!');
             fetchData();
           }}
         />

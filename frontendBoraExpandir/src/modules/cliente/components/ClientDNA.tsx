@@ -168,7 +168,7 @@ export function ClientDNAPage() {
                         telefone: item.whatsapp || '',
                         tipoAssessoria,
                         contratoAtivo: true, // Padronizado para true para evitar quebras, mas não é mais usado na listagem
-                        categoria: lastProcess?.status || item.stage || (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status === 'cliente' ? 'aguardando_consultoria' : (item.status || 'formularios'))),
+                        categoria: item.stage || lastProcess?.status || (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status === 'cliente' ? 'aguardando_consultoria' : (item.status || 'formularios'))),
                         previsaoChegada: item.previsao_chegada || '',
                         priority: 'medium',
                         notes: [],

@@ -61,7 +61,7 @@ export function DNAClientDetailView({
     const [areaFilter, setAreaFilter] = useState<'todos' | 'juridico' | 'comercial' | 'administrativo'>(initialArea || 'todos')
     const [activeTab, setActiveTab] = useState<'timeline' | 'formularios' | 'contrato_comprovantes' | 'notas'>(initialTab || 'timeline')
     const [agendamentos, setAgendamentos] = useState<any[]>([])
-    const [loadingAgendamentos, setLoadingAgendamentos] = useState(false)
+    const [loadingAgendamentos, setLoadingAgendamentos] = useState(true)
     const [contratosServicos, setContratosServicos] = useState<any[]>([])
     const [loadingContratos, setLoadingContratos] = useState(false)
     const [leadNotesData, setLeadNotesData] = useState<any[]>([])
@@ -558,8 +558,8 @@ export function DNAClientDetailView({
                                             const isEmConsultoria = stage.id === 'em_consultoria'
                                             const isCancelado = stage.id === 'cancelado'
 
-                                            // Verificar Consultorias Puladas
-                                            const skippedConsultoria = currentStageIndex >= 3 && !agendamentos.some(a => a.status === 'realizado')
+                                            // Verificar Consultorias Puladas (só após agendamentos carregarem)
+                                            const skippedConsultoria = !loadingAgendamentos && currentStageIndex >= 3 && !agendamentos.some(a => a.status === 'realizado')
                                             const isSkippedNode = skippedConsultoria && (index === 0 || index === 1 || index === 2)
 
                                             const stageNotes = notes.filter(n => {

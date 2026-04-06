@@ -203,7 +203,7 @@ export function RequirementsCard({
                         </div>
                         <div className="text-left">
                             <h4 className="text-sm font-black text-gray-900 dark:text-gray-100 uppercase tracking-tight">
-                                Requerimentos Jurídicos
+                                Solicitações da Assessoria
                             </h4>
                             <div className="flex items-center gap-2 mt-0.5">
                                 <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
@@ -235,7 +235,7 @@ export function RequirementsCard({
                         <div className="py-10 text-center bg-muted/20 rounded-2xl border border-dashed border-border mx-2">
                             <ClipboardList className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-30" />
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest leading-relaxed px-10">
-                                Nenhum requerimento especial<br />localizado para este membro.
+                                Nenhuma solicitação complementar<br />localizada para este membro.
                             </p>
                         </div>
                     ) : (
