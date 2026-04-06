@@ -6,7 +6,7 @@ import {
   Lock, FileStack, Building2, Plane, Search
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import juridicoService from '@/modules/juridico/services/juridicoService'
+import juridicoService, { getDependentes } from '@/modules/juridico/services/juridicoService'
 import { getContratosServicos } from '@/modules/comercial/services/comercialService'
 import { getCatalogServices } from '@/modules/adm/services/catalogService'
 
@@ -90,25 +90,44 @@ export function AssessoriaFormModal({
         // Dados do contrato (read-only)
         const contratoAtivo = contratos?.find((c: any) => !c.is_draft) || contratos?.[0] || null
         if (contratoAtivo?.draft_dados) {
-          const titular = contratoAtivo.draft_dados.nome || clienteNome
-          setTitularContrato(titular)
+          setTitularContrato(contratoAtivo.draft_dados.nome || clienteNome)
+        }
 
-          const deps = contratoAtivo.draft_dados.dependentes || []
-          const depsMapped = deps.map((d: any) => ({
-            nome: d.nome || '',
-            grau: d.grau || d.parentesco || '',
+        // Buscar dependentes: tabela dependentes (fonte primária) + draft_dados (fallback)
+        let dependentesApi: { nome: string; grau: string }[] = []
+        try {
+          const apiDeps = await getDependentes(clienteId)
+          dependentesApi = (apiDeps || []).map((d: any) => ({
+            nome: d.nome_completo || d.nome || '',
+            grau: d.parentesco || '',
           }))
-          setContratoDependentes(depsMapped)
+        } catch (depErr) {
+          console.error('[AssessoriaFormModal] Erro ao buscar dependentes da API:', depErr)
+        }
 
-          // Pré-preencher pedido_para com base nos dependentes do contrato
+        const dependentesDraft: { nome: string; grau: string }[] = contratoAtivo?.draft_dados?.dependentes
+          ? contratoAtivo.draft_dados.dependentes.map((d: any) => ({
+              nome: d.nome || '',
+              grau: d.grau || d.parentesco || '',
+            }))
+          : []
+
+        const mergeMap = new Map<string, { nome: string; grau: string }>()
+        for (const dep of [...dependentesDraft, ...dependentesApi]) {
+          if (dep.nome) mergeMap.set(dep.nome.trim().toLowerCase(), dep)
+        }
+        const depsMapped = Array.from(mergeMap.values())
+        setContratoDependentes(depsMapped)
+
+        // Pré-preencher pedido_para com base nos dependentes do contrato
+        if (contratoAtivo?.draft_dados) {
           const pedidoPara = depsMapped.length > 0 ? 'titular_dependentes' : 'titular_somente'
           const detalhe = depsMapped.length > 0
             ? depsMapped.map((d: any) => d.nome).filter(Boolean).join(', ')
             : ''
-
           setFormData(prev => ({
             ...prev,
-            titular_nome: titular,
+            titular_nome: contratoAtivo.draft_dados.nome || clienteNome,
             pedido_para: pedidoPara,
             pedido_para_detalhe: detalhe,
           }))

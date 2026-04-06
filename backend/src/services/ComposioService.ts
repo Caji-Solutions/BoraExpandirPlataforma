@@ -1,4 +1,5 @@
 import { Composio } from '@composio/core';
+import { supabase } from '../config/SupabaseClient';
 
 interface CalendarEventData {
   summary: string;
@@ -258,7 +259,7 @@ class ComposioService {
       });
       
       const connectionRequest = await session.authorize('googlecalendar', {
-        callbackUrl: `${process.env.BACKEND_URL || 'http://localhost:4000'}/api/calendar/callback`,
+        callbackUrl: `${process.env.BACKEND_URL || 'http://localhost:4000'}/api/calendar/callback?userId=${encodeURIComponent(userId)}`,
       });
 
       return connectionRequest.redirectUrl || '';
@@ -302,27 +303,30 @@ class ComposioService {
   }
 
   /**
-   * Obtém detalhes da conexão do Google Calendar do usuário
+   * Obtém detalhes da conexão do Google Calendar do usuário a partir do banco de dados local
    * @param userId - ID do usuário
    */
   async getConnectionDetails(userId: string): Promise<any> {
     try {
-      const session = await this.composio.create(userId, {
-        toolkits: ['googlecalendar'],
-      });
-      const toolkits = await session.toolkits();
-      const googleCalendar = toolkits.items.find(
-        (toolkit) => toolkit.slug === 'googlecalendar'
-      );
-      
-      if (googleCalendar?.connection?.isActive) {
-        return {
-          isConnected: true,
-          connectionId: (googleCalendar.connection as any).connectedAccountId || (googleCalendar.connection as any).id,
-          account: googleCalendar.connection
-        };
+      const { data, error } = await supabase
+        .from('google_calendar_connections')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error || !data) {
+        return { isConnected: false };
       }
-      return { isConnected: false };
+
+      return {
+        isConnected: true,
+        connectionId: data.connected_account_id,
+        account: {
+          connectedAccountId: data.connected_account_id,
+          email: data.email,
+          isActive: true,
+        },
+      };
     } catch (error) {
       console.error('❌ Erro ao buscar detalhes da conexao:', error);
       return { isConnected: false };
@@ -330,22 +334,33 @@ class ComposioService {
   }
 
   /**
-   * Desconecta/remover a conta do Google Calendar para o usuário
+   * Desconecta/remove a conta do Google Calendar para o usuário
    * @param userId - ID do usuário
    */
   async disconnectCalendar(userId: string): Promise<boolean> {
     try {
       console.log('🔌 Desconectando o Google Calendar para userId:', userId);
-      const details = await this.getConnectionDetails(userId);
-      
-      if (details.isConnected && details.connectionId) {
-        await this.composio.connectedAccounts.delete(details.connectionId as string);
-        console.log('✅ Conexao removida com sucesso!');
-        return true;
+
+      const { data, error } = await supabase
+        .from('google_calendar_connections')
+        .select('connected_account_id')
+        .eq('user_id', userId)
+        .single();
+
+      if (error || !data) {
+        console.log('⚠️ Nenhuma conexao ativa encontrada para remover.');
+        return false;
       }
-      
-      console.log('⚠️ Nenhuma conexao ativa encontrada para remover.');
-      return false;
+
+      await this.composio.connectedAccounts.delete(data.connected_account_id as string);
+
+      await supabase
+        .from('google_calendar_connections')
+        .delete()
+        .eq('user_id', userId);
+
+      console.log('✅ Conexao removida com sucesso!');
+      return true;
     } catch (error) {
       console.error('❌ Erro ao desconectar Google Calendar:', error);
       return false;

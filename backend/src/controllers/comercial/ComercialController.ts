@@ -7,6 +7,7 @@ import EmailService from '../../services/EmailService';
 import NotificationService from '../../services/NotificationService';
 import { normalizeCpf, normalizePhone } from '../../utils/normalizers';
 import DNAService from '../../services/DNAService';
+import ClienteRepository from '../../repositories/ClienteRepository';
 import { toUtcFromBrt, toBrtFromUtc } from '../../utils/dateUtils';
 import {
     clampQuantidadeParcelas,
@@ -978,6 +979,28 @@ class ComercialController {
 
             const contrato = await ContratoServicoRepository.createContrato(contratoPayload)
 
+            // Salvar dependentes na tabela dependentes, se houver no draft_dados
+            if (Array.isArray(draftDadosPrefill.dependentes) && draftDadosPrefill.dependentes.length > 0) {
+                for (const dep of draftDadosPrefill.dependentes) {
+                    try {
+                        await ClienteRepository.createDependent({
+                            clienteId: cliente_id,
+                            nomeCompleto: dep.nome || '',
+                            parentesco: dep.grau || dep.parentesco || '',
+                            documento: dep.documento || dep.cpf,
+                            dataNascimento: dep.data_nascimento,
+                            rg: dep.rg,
+                            passaporte: dep.passaporte,
+                            nacionalidade: dep.nacionalidade,
+                            email: dep.email,
+                            telefone: dep.telefone
+                        })
+                    } catch (depErr) {
+                        console.error('[ComercialController] Erro ao salvar dependente na tabela:', depErr)
+                    }
+                }
+            }
+
             // NOTA: O stage do cliente NAO é alterado aqui na criação do contrato.
             // A mudança para 'aguardando_assessoria' ocorre apenas quando o pagamento
             // é aprovado em FinanceiroController.aprovarComprovanteContrato.
@@ -1007,7 +1030,8 @@ class ComercialController {
                     : isDraftRaw === 'false' ? false
                         : undefined
 
-            const contratos = await ContratoServicoRepository.getContratos({ clienteId, isDraft, usuarioId: userId })
+            // Quando clienteId é fornecido (contexto de consulta por cliente), não filtra por usuário
+            const contratos = await ContratoServicoRepository.getContratos({ clienteId, isDraft, usuarioId: clienteId ? undefined : userId })
             return res.status(200).json({ data: contratos })
         } catch (error: any) {
             console.error('[ComercialController] Erro ao listar contratos:', error)
@@ -1335,6 +1359,38 @@ class ComercialController {
             const updatedData = await ContratoServicoRepository.updateContrato(id, payloadUpdate)
 
             if (contrato.cliente_id) {
+                // Sincronizar dependentes na tabela dependentes
+                const depsArray = mergedDraft.dependentes
+                    ? (typeof mergedDraft.dependentes === 'string'
+                        ? JSON.parse(mergedDraft.dependentes)
+                        : mergedDraft.dependentes)
+                    : []
+                if (Array.isArray(depsArray)) {
+                    try {
+                        await supabase.from('dependentes').delete().eq('cliente_id', contrato.cliente_id)
+                    } catch (delErr) {
+                        console.error('[ComercialController] Erro ao remover dependentes antigos:', delErr)
+                    }
+                    for (const dep of depsArray) {
+                        try {
+                            await ClienteRepository.createDependent({
+                                clienteId: contrato.cliente_id,
+                                nomeCompleto: dep.nome || '',
+                                parentesco: dep.grau || dep.parentesco || '',
+                                documento: dep.documento || dep.cpf,
+                                dataNascimento: dep.data_nascimento,
+                                rg: dep.rg,
+                                passaporte: dep.passaporte,
+                                nacionalidade: dep.nacionalidade,
+                                email: dep.email,
+                                telefone: dep.telefone
+                            })
+                        } catch (depErr) {
+                            console.error('[ComercialController] Erro ao salvar dependente na tabela:', depErr)
+                        }
+                    }
+                }
+
                 await DNAService.mergeDNA(contrato.cliente_id, mergedDraft, 'MEDIUM')
 
                 // Salvar CPF, Email e Estado Civil na tabela clientes
@@ -1631,6 +1687,13 @@ class ComercialController {
 
             if (contrato.contrato_gerado_url) {
                 return res.status(400).json({ message: 'Nao e possivel apagar um contrato ja enviado para assinatura' })
+            }
+
+            // Remover dependentes associados ao cliente antes de apagar o contrato
+            try {
+                await supabase.from('dependentes').delete().eq('cliente_id', contrato.cliente_id)
+            } catch (depErr) {
+                console.error('[ComercialController] Erro ao remover dependentes ao apagar contrato:', depErr)
             }
 
             await ContratoServicoRepository.deleteContrato(id)

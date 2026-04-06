@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import composioService from '../../services/ComposioService';
+import { supabase } from '../../config/SupabaseClient';
 
 class CalendarController {
   /**
@@ -284,11 +285,32 @@ class CalendarController {
    */
   async handleCallback(req: Request, res: Response) {
     try {
-      const { status, connected_account_id } = req.query;
+      const { status, connected_account_id, userId } = req.query;
 
-      console.log('📥 Callback OAuth recebido:', { status, connected_account_id });
+      console.log('📥 Callback OAuth recebido:', { status, connected_account_id, userId });
 
       if (status === 'success' && connected_account_id) {
+        if (userId) {
+          const { error: dbError } = await supabase
+            .from('google_calendar_connections')
+            .upsert(
+              {
+                user_id: userId as string,
+                connected_account_id: connected_account_id as string,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: 'user_id' }
+            );
+
+          if (dbError) {
+            console.error('❌ Erro ao salvar conexao no banco:', dbError);
+          } else {
+            console.log('✅ Conexao salva no banco para userId:', userId);
+          }
+        } else {
+          console.log('⚠️ userId ausente no callback — conexao nao persistida no banco.');
+        }
+
         // Retorna uma página HTML simples de sucesso
         return res.send(`
           <!DOCTYPE html>

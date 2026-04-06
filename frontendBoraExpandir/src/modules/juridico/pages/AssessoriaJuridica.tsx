@@ -19,6 +19,7 @@ import {
 import { useAuth } from "../../../contexts/AuthContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import juridicoService, { ClienteComResponsavel } from "../services/juridicoService";
+import { getDependentes } from "../services/juridicoService";
 import { getContratosServicos } from "../../comercial/services/comercialService";
 
 interface CRMFormData {
@@ -100,16 +101,32 @@ export function AssessoriaJuridica() {
           const contratoAtivo = contratos?.find((c: any) => !c.is_draft) || contratos?.[0] || null;
           setContrato(contratoAtivo);
 
-          // Extrair dependentes do draft_dados do contrato
-          if (contratoAtivo?.draft_dados?.dependentes) {
-            const deps = contratoAtivo.draft_dados.dependentes.map((d: any) => ({
-              nome: d.nome || '',
-              grau: d.grau || d.parentesco || ''
+          // Buscar dependentes da tabela dependentes via API
+          let dependentesApi: { nome: string; grau: string }[] = [];
+          try {
+            const apiDeps = await getDependentes(selectedCliente.id);
+            dependentesApi = (apiDeps || []).map((d: any) => ({
+              nome: d.nome_completo || d.nome || '',
+              grau: d.parentesco || ''
             }));
-            setContratoDependentes(deps);
-          } else {
-            setContratoDependentes([]);
+          } catch (depErr) {
+            console.error('[AssessoriaJuridica] Erro ao buscar dependentes da API:', depErr);
           }
+
+          // Extrair dependentes do draft_dados do contrato
+          const dependentesDraft: { nome: string; grau: string }[] = contratoAtivo?.draft_dados?.dependentes
+            ? contratoAtivo.draft_dados.dependentes.map((d: any) => ({
+                nome: d.nome || '',
+                grau: d.grau || d.parentesco || ''
+              }))
+            : [];
+
+          // Mesclar, removendo duplicatas pelo nome
+          const mergeMap = new Map<string, { nome: string; grau: string }>();
+          for (const dep of [...dependentesDraft, ...dependentesApi]) {
+            if (dep.nome) mergeMap.set(dep.nome.trim().toLowerCase(), dep);
+          }
+          setContratoDependentes(Array.from(mergeMap.values()));
 
           if (assessoria) {
             // Mapear respostas de volta para o CRM form
