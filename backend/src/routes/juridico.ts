@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import JuridicoController from '../controllers/juridico/JuridicoController'
+import AssessoriaDiretaController from '../controllers/assessoriaDireta/AssessoriaDiretaController'
 import { authMiddleware } from '../middlewares/auth'
 import upload from '../middlewares/upload'
 
@@ -82,6 +83,15 @@ juridico.post('/cliente/:clienteId/finalizar-assessoria', JuridicoController.fin
 
 
 
+
+// =============================================
+// ROTAS DE ASSESSORIA DIRETA (nao agendavel)
+// =============================================
+
+juridico.get('/assessoria-direta', AssessoriaDiretaController.getJuridico.bind(AssessoriaDiretaController))
+juridico.get('/assessoria-direta/:id', AssessoriaDiretaController.getDetail.bind(AssessoriaDiretaController))
+juridico.post('/assessoria-direta/:id/iniciar', AssessoriaDiretaController.iniciar.bind(AssessoriaDiretaController))
+juridico.post('/assessoria-direta/:id/finalizar', AssessoriaDiretaController.finalizar.bind(AssessoriaDiretaController))
 
 // =============================================
 // ROTAS DE SOLICITAÇÕES

@@ -124,6 +124,7 @@ export default function ServiceCatalog() {
     tipoPreco: "por_contrato" as TipoPreco,
     contratoTemplateId: null,
     possuiSubservicos: false,
+    naoAgendavel: false,
     showInCommercial: true,
     showToClient: true,
     documents: [],
@@ -179,6 +180,7 @@ export default function ServiceCatalog() {
       tipoPreco: "por_contrato",
       contratoTemplateId: null,
       possuiSubservicos: false,
+      naoAgendavel: false,
       showInCommercial: true,
       showToClient: true,
       documents: [],
@@ -208,6 +210,7 @@ export default function ServiceCatalog() {
       tipoPreco: service.tipoPreco ?? "por_contrato",
       contratoTemplateId: service.contratoTemplateId ?? null,
       possuiSubservicos: service.possuiSubservicos ?? false,
+      naoAgendavel: service.naoAgendavel ?? false,
       showInCommercial: service.showInCommercial,
       showToClient: service.showToClient,
       documents: service.documents,
@@ -623,6 +626,22 @@ export default function ServiceCatalog() {
                 <Switch
                   checked={formData.isAgendavel}
                   onCheckedChange={(val) => setFormData({ ...formData, isAgendavel: val })}
+                />
+              </div>
+              )}
+
+              {/* Toggle: Não Agendável? — apenas para Assessoria */}
+              {categoria === "assessoria" && (
+              <div className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-xl md:col-span-2">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-bold">Não Agendável?</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Se ativo, o serviço não requer agendamento e aparece em "Assessoria Direta"
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.naoAgendavel}
+                  onCheckedChange={(val) => setFormData({ ...formData, naoAgendavel: val })}
                 />
               </div>
               )}

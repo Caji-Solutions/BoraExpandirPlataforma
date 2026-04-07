@@ -29,7 +29,8 @@ export class AdmRepository {
     const {
       name, value, duration, showInCommercial, showToClient,
       documents, subservices,
-      isAgendavel, tipoPreco, contratoTemplateId, possuiSubservicos
+      isAgendavel, tipoPreco, contratoTemplateId, possuiSubservicos,
+      naoAgendavel
     } = data;
 
     const tipoDerivado = this.derivarTipo({ contratoTemplateId, isAgendavel });
@@ -49,6 +50,7 @@ export class AdmRepository {
         possui_subservicos: possuiSubservicos ?? false,
         tipo_preco: tipoPreco ?? 'por_contrato',
         is_agendavel: isAgendavel ?? false,
+        nao_agendavel: naoAgendavel ?? false,
       }])
       .select()
       .single();
@@ -125,7 +127,8 @@ export class AdmRepository {
   async updateCatalogService(id: string, data: any) {
     const {
       name, value, duration, showInCommercial, documents, subservices,
-      isAgendavel, tipoPreco, contratoTemplateId, possuiSubservicos
+      isAgendavel, tipoPreco, contratoTemplateId, possuiSubservicos,
+      naoAgendavel
     } = data;
 
     const tipoDerivado = this.derivarTipo({ contratoTemplateId, isAgendavel });
@@ -143,6 +146,7 @@ export class AdmRepository {
       possui_subservicos: possuiSubservicos ?? false,
       tipo_preco: tipoPreco ?? 'por_contrato',
       is_agendavel: isAgendavel ?? false,
+      nao_agendavel: naoAgendavel ?? false,
       atualizado_em: new Date().toISOString(),
     };
 

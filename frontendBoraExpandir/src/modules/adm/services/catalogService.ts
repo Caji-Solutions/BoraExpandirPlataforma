@@ -26,10 +26,11 @@ export interface Service {
   value: string;
   duration: string;
   type: ServiceType;
-  isAgendavel: boolean;           // NEW
-  tipoPreco: TipoPreco;           // NEW
-  contratoTemplateId: string | null; // NEW
-  possuiSubservicos: boolean;     // NEW
+  isAgendavel: boolean;
+  tipoPreco: TipoPreco;
+  contratoTemplateId: string | null;
+  possuiSubservicos: boolean;
+  naoAgendavel: boolean;
   showInCommercial: boolean;
   showToClient: boolean;
   documents: DocumentRequirement[];
