@@ -102,6 +102,8 @@ interface ProcessAnalysisProps {
   membroId?: string;
   processoId?: string;
   documents: JuridicoDocument[];
+  isProcessFullyApproved?: boolean;
+  onSendProtocol?: () => void;
   onBack: () => void;
   onUpdateDocument: (docId: string, updates: Partial<JuridicoDocument & { prazo?: number }>, skipFetch?: boolean) => Promise<void>;
 }
@@ -119,6 +121,8 @@ export function ProcessAnalysis({
   membroId,
   processoId,
   documents: initialDocs,
+  isProcessFullyApproved,
+  onSendProtocol,
   onBack,
   onUpdateDocument
 }: ProcessAnalysisProps) {
@@ -152,6 +156,7 @@ export function ProcessAnalysis({
   // Requirement modal
   const [isReqModalOpen, setIsReqModalOpen] = useState(false);
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
 
   const selectedDoc = useMemo(() => initialDocs.find(d => d.id === selectedId), [initialDocs, selectedId]);
   const selectedForm = useMemo(() => formularios.find(f => f.id === selectedId), [formularios, selectedId]);
@@ -442,14 +447,23 @@ export function ProcessAnalysis({
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tighter truncate leading-none">
                 {clientName}
               </h1>
               <p className="text-[10px] font-bold text-gray-400 tracking-tight truncate mt-0.5">
-                {memberName}
+                VISUALIZANDO DOCUMENTOS DE: <span className="text-blue-500 uppercase">{memberName}</span>
               </p>
             </div>
+            {isProcessFullyApproved && onSendProtocol && (
+               <Button 
+                   onClick={onSendProtocol}
+                   className="ml-auto bg-green-600 hover:bg-green-700 text-white shadow-sm hover:shadow-green-200 transition-all font-bold text-xs h-9 px-4 rounded-xl shrink-0"
+               >
+                   <Send className="w-3.5 h-3.5 mr-1.5" />
+                   Enviar para Protocolar
+               </Button>
+            )}
           </div>
 
           {/* Row 2: Visual Pipeline */}
@@ -866,12 +880,16 @@ export function ProcessAnalysis({
                   {/* Document Preview */}
                   <div className="flex-1 p-6 overflow-hidden flex items-center justify-center bg-gray-100 dark:bg-gray-950">
                     {selectedDoc.url ? (
-                      <div className="w-full h-full max-w-5xl bg-white dark:bg-gray-800 shadow-2xl rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
-                        <iframe
-                          src={(selectedDoc.currentStage === 'translation_check' && selectedDoc.traducaoUrl) ? selectedDoc.traducaoUrl : selectedDoc.url}
-                          className="w-full h-full border-none"
-                          title={selectedDoc.name}
-                        />
+                      <div className="w-full h-full max-w-lg max-h-[300px] bg-white dark:bg-gray-800 shadow-xl rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center text-gray-500 p-8 text-center hover:bg-gray-50 dark:hover:bg-gray-900 cursor-pointer transition-colors" onClick={() => setPreviewModalOpen(true)}>
+                        <div className="h-16 w-16 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-4">
+                          <Eye className="h-8 w-8 text-blue-500" />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Visualizar Documento</h3>
+                        <p className="text-sm max-w-xs mb-4">Clique aqui para abrir o visualizador de documentos em tamanho ampliado.</p>
+                        <Button variant="outline" className="gap-2 shrink-0 border-gray-300">
+                           <FileText className="h-4 w-4" />
+                           Abrir Visualizador
+                        </Button>
                       </div>
                     ) : (
                       <div className="w-full h-full max-w-4xl bg-white dark:bg-gray-800 shadow-xl rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center text-gray-400 p-12 text-center">
@@ -916,7 +934,7 @@ export function ProcessAnalysis({
                           >
                             <Stamp className="w-5 h-5 mr-2" />
                             {isApostilleWaiting 
-                              ? 'Apostilamento já solicitado'
+                              ? (selectedDoc.status.toLowerCase() === 'analyzing_apostille' ? 'Apostilamento em Análise' : 'Apostilamento já solicitado')
                               : 'Solicitar Apostilamento'
                             }
                           </Button>
@@ -935,7 +953,7 @@ export function ProcessAnalysis({
                           >
                             <Languages className="w-5 h-5 mr-2" />
                             {isTranslationWaiting 
-                              ? 'Tradução já solicitada'
+                              ? (selectedDoc.status.toLowerCase() === 'analyzing_translation' ? 'Tradução em Análise' : 'Tradução já solicitada')
                               : 'Solicitar Tradução'
                             }
                           </Button>
@@ -946,11 +964,9 @@ export function ProcessAnalysis({
                           onClick={() => handleAction('next')}
                           disabled={
                             isLocked ||
-                            (selectedDoc.currentStage === 'apostille_check' && (isApostilleWaiting || selectedDoc.status === 'executing_apostille')) ||
-                            (selectedDoc.currentStage === 'translation_check' && 
-                              (isTranslationWaiting && !selectedDoc.traducaoUrl) || 
-                              selectedDoc.status === 'executing_translation'
-                            )
+                            (selectedDoc.currentStage === 'apostille_check' && selectedDoc.status.toLowerCase() !== 'analyzing_apostille') ||
+                            (selectedDoc.currentStage === 'translation_check' && selectedDoc.status.toLowerCase() !== 'analyzing_translation') ||
+                            selectedDoc.status.toLowerCase() === 'rejected'
                           }
                         >
                           <CheckCircle className="w-5 h-5 mr-2" />
@@ -1026,12 +1042,16 @@ export function ProcessAnalysis({
                         <p className="text-sm max-w-xs">O cliente ainda não enviou este formulário preenchido.</p>
                       </div>
                     ) : selectedForm.response ? (
-                      <div className="w-full h-full max-w-5xl bg-white dark:bg-gray-800 shadow-2xl rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
-                        <iframe
-                          src={selectedForm.response.downloadUrl}
-                          className="w-full h-full border-none"
-                          title={selectedForm.name}
-                        />
+                      <div className="w-full h-full max-w-lg max-h-[300px] bg-white dark:bg-gray-800 shadow-xl rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center text-gray-500 p-8 text-center hover:bg-gray-50 dark:hover:bg-gray-900 cursor-pointer transition-colors" onClick={() => setPreviewModalOpen(true)}>
+                        <div className="h-16 w-16 rounded-full bg-slate-50 dark:bg-slate-900/20 flex items-center justify-center mb-4">
+                          <ClipboardList className="h-8 w-8 text-slate-500" />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Visualizar Formulário</h3>
+                        <p className="text-sm max-w-xs mb-4">Clique aqui para abrir a resposta do cliente em tamanho ampliado.</p>
+                        <Button variant="outline" className="gap-2 shrink-0 border-gray-300">
+                           <Eye className="h-4 w-4" />
+                           Abrir Visualizador
+                        </Button>
                       </div>
                     ) : (
                       <div className="w-full h-full max-w-4xl bg-white dark:bg-gray-800 shadow-xl rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center text-gray-400 p-12 text-center">
@@ -1231,6 +1251,29 @@ export function ProcessAnalysis({
               Confirmar e Notificar
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
+        <DialogContent className="max-w-7xl w-[95vw] h-[95vh] p-0 overflow-hidden bg-gray-100 dark:bg-gray-950 flex flex-col [&>button:last-child]:hidden border-none shadow-2xl">
+          <DialogHeader className="p-4 bg-white dark:bg-gray-900 border-b flex flex-row items-center justify-between shrink-0 space-y-0">
+            <div className="flex flex-col gap-0.5">
+              <DialogTitle className="text-xl ml-2">{selectedDoc?.name || selectedForm?.name || 'Visualizador de Documentos'}</DialogTitle>
+              <DialogDescription className="ml-2">Visualização em tela livre.</DialogDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setPreviewModalOpen(false)}>
+              Fechar Visualização
+            </Button>
+          </DialogHeader>
+          <div className="flex-1 w-full h-full overflow-hidden bg-white dark:bg-gray-900 relative">
+            {previewModalOpen && (
+              <iframe
+                src={selectedItemType === 'formulario' && selectedForm?.response ? selectedForm.response.downloadUrl : (selectedDoc?.currentStage === 'translation_check' && selectedDoc?.traducaoUrl) ? selectedDoc?.traducaoUrl : selectedDoc?.url}
+                className="w-full h-full border-none absolute inset-0"
+                title={selectedDoc?.name || selectedForm?.name || 'Documento'}
+              />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 

@@ -70,6 +70,9 @@ export function DocumentUploadFlow({
 
         const response = await fetch(`${API_BASE_URL}/cliente/uploadDoc`, {
             method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+            },
             body: formData
         })
 

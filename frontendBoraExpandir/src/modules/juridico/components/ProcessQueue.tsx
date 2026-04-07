@@ -209,6 +209,10 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
             await juridicoService.enviarParaProtocolacao(protocolacaoProcessId, supervisorId);
             // Remove from local list
             setProcesses(prev => prev.filter(p => p.id !== protocolacaoProcessId));
+            if (selectedFolder?.id === protocolacaoProcessId) {
+                setSelectedFolder(null);
+                setSelectedMember(null);
+            }
             setProtocolacaoModalOpen(false);
             setProtocolacaoProcessId(null);
         } catch (error) {
@@ -410,47 +414,65 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
     if (selectedMember && selectedFolder) {
         const memberDocs = getFilteredDocsForMember(selectedMember.id || selectedFolder.clientId);
 
+        const isProcessFullyApproved = selectedFolderDocs.length > 0 && selectedFolderDocs.every(d => {
+            const isApproved = d.status?.toUpperCase() === 'APPROVED';
+            return isApproved && d.apostilado && d.traduzido;
+        });
+
         return (
-            <ProcessAnalysis
-                clientName={selectedFolder.clientName}
-                memberName={selectedMember.name}
-                clienteId={selectedFolder.clientId}
-                membroId={selectedMember.id !== selectedFolder.clientId ? selectedMember.id : undefined}
-                processoId={selectedFolder.id}
-                documents={memberDocs}
-                onBack={() => setSelectedMember(null)}
-                onUpdateDocument={async (id, updates) => {
-                    if (!activeProfile?.id) return;
-                    const newStatus = updates.status?.toUpperCase();
-                    
-                    try {
-                        // Se skipBackend for true, não fazemos a chamada novamente
-                        if (!(updates as any).skipBackend) {
-                            await juridicoService.updateDocumentStatus(
-                                id,
-                                newStatus || '',
-                                updates.rejectionReason,
-                                updates.solicitado_pelo_juridico,
-                                (updates as any).prazo,
-                                activeProfile.id
+            <>
+                <ProcessAnalysis
+                    clientName={selectedFolder.clientName}
+                    memberName={selectedMember.name}
+                    clienteId={selectedFolder.clientId}
+                    membroId={selectedMember.id !== selectedFolder.clientId ? selectedMember.id : undefined}
+                    processoId={selectedFolder.id}
+                    documents={memberDocs}
+                    isProcessFullyApproved={isProcessFullyApproved}
+                    onSendProtocol={() => {
+                        setProtocolacaoProcessId(selectedFolder.id);
+                        setProtocolacaoModalOpen(true);
+                    }}
+                    onBack={() => setSelectedMember(null)}
+                    onUpdateDocument={async (id, updates) => {
+                        if (!activeProfile?.id) return;
+                        const newStatus = updates.status?.toUpperCase();
+                        
+                        try {
+                            // Se skipBackend for true, não fazemos a chamada novamente
+                            if (!(updates as any).skipBackend) {
+                                await juridicoService.updateDocumentStatus(
+                                    id,
+                                    newStatus || '',
+                                    updates.rejectionReason,
+                                    updates.solicitado_pelo_juridico,
+                                    (updates as any).prazo,
+                                    activeProfile.id
+                                );
+                            }
+
+                            // Update local list
+                            const updatedRaw = selectedFolderDocs.map(d => 
+                                d.id === id ? { 
+                                    ...d, 
+                                    ...updates,
+                                    status: (newStatus?.toLowerCase() as any) || d.status 
+                                } : d
                             );
+                            setSelectedFolderDocs(updatedRaw);
+
+                        } catch (e) {
+                            console.error("Failed to update status", e);
                         }
-
-                        // Update local list
-                        const updatedRaw = selectedFolderDocs.map(d => 
-                            d.id === id ? { 
-                                ...d, 
-                                ...updates,
-                                status: (newStatus?.toLowerCase() as any) || d.status 
-                            } : d
-                        );
-                        setSelectedFolderDocs(updatedRaw);
-
-                    } catch (e) {
-                        console.error("Failed to update status", e);
-                    }
-                }}
-            />
+                    }}
+                />
+                <ModalSelecionarSupervisor
+                    open={protocolacaoModalOpen}
+                    onOpenChange={setProtocolacaoModalOpen}
+                    onConfirm={handleEnviarProtocolacao}
+                    loading={protocolacaoLoading}
+                />
+            </>
         )
     }
 
@@ -530,6 +552,13 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                         hideTrigger={true}
                     />
                 </div>
+                
+                <ModalSelecionarSupervisor
+                    open={protocolacaoModalOpen}
+                    onOpenChange={setProtocolacaoModalOpen}
+                    onConfirm={handleEnviarProtocolacao}
+                    loading={protocolacaoLoading}
+                />
             </div>
         )
     }
