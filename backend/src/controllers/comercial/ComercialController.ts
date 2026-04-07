@@ -998,13 +998,12 @@ class ComercialController {
                             clienteId: cliente_id,
                             nomeCompleto: dep.nome || '',
                             parentesco: dep.grau || dep.parentesco || '',
-                            documento: dep.documento || dep.cpf,
-                            dataNascimento: dep.data_nascimento,
-                            rg: dep.rg,
-                            passaporte: dep.passaporte,
-                            nacionalidade: dep.nacionalidade,
-                            email: dep.email,
-                            telefone: dep.telefone
+                            documento: dep.documento || dep.cpf || undefined,
+                            rg: dep.rg || undefined,
+                            passaporte: dep.passaporte || undefined,
+                            nacionalidade: dep.nacionalidade || undefined,
+                            email: dep.email || undefined,
+                            telefone: dep.telefone || undefined
                         })
                     } catch (depErr) {
                         console.error('[ComercialController] Erro ao salvar dependente na tabela:', depErr)
@@ -1388,13 +1387,12 @@ class ComercialController {
                                 clienteId: contrato.cliente_id,
                                 nomeCompleto: dep.nome || '',
                                 parentesco: dep.grau || dep.parentesco || '',
-                                documento: dep.documento || dep.cpf,
-                                dataNascimento: dep.data_nascimento,
-                                rg: dep.rg,
-                                passaporte: dep.passaporte,
-                                nacionalidade: dep.nacionalidade,
-                                email: dep.email,
-                                telefone: dep.telefone
+                                documento: dep.documento || dep.cpf || undefined,
+                                rg: dep.rg || undefined,
+                                passaporte: dep.passaporte || undefined,
+                                nacionalidade: dep.nacionalidade || undefined,
+                                email: dep.email || undefined,
+                                telefone: dep.telefone || undefined
                             })
                         } catch (depErr) {
                             console.error('[ComercialController] Erro ao salvar dependente na tabela:', depErr)

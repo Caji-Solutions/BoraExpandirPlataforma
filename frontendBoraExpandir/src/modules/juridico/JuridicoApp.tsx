@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { Home, FolderOpen, FileSearch, CheckSquare, Settings, Dna, Clock, FileCheck } from "lucide-react";
+import { Home, FolderOpen, FileSearch, CheckSquare, Settings, Dna, Clock, FileCheck, FileText } from "lucide-react";
 import { Sidebar } from "@/components/ui/Sidebar";
 import type { SidebarGroup } from "@/components/ui/Sidebar";
 import { Dashboard } from "./pages/Dashboard";
@@ -13,6 +13,8 @@ import { ProcessoProtocoladoDetalhes } from "./pages/ProcessoProtocoladoDetalhes
 import { MeusAgendamentos } from "../../components/MeusAgendamentos";
 import { ClientDNAPage } from "@/components/ui/ClientDNA";
 import juridicoService, { Processo } from "./services/juridicoService";
+import { AssessoriaDiretaJuridicoPage } from "./pages/AssessoriaDiretaJuridicoPage";
+import { AssessoriaDiretaDetail } from "./pages/AssessoriaDiretaDetail";
 
 import { ProcessTable, ProcessData } from "./components/ProcessTable";
 import { useAuth } from "../../contexts/AuthContext";
@@ -108,6 +110,7 @@ const Index = () => {
         { label: "Meus Processos", to: "/juridico/processos", icon: FolderOpen },
         { label: "Fila de Análise", to: "/juridico/analise", icon: FileSearch },
         ...(isSupervisor ? [{ label: "Processos Protocolados", to: "/juridico/protocolados", icon: FileCheck }] : []),
+        { label: "Assessoria Direta", to: "/juridico/assessoria-direta", icon: FileText },
         { label: "Tarefas", to: "/juridico/tarefas", icon: CheckSquare },
         { label: "Agendamentos", to: "/juridico/meus-agendamentos", icon: Clock },
       ],
@@ -132,6 +135,8 @@ const Index = () => {
             <Route path="tarefas" element={<Tarefas />} />
             <Route path="dna" element={<ClientDNAPage />} />
             <Route path="assessoria" element={<AssessoriaJuridica />} />
+            <Route path="assessoria-direta" element={<AssessoriaDiretaJuridicoPage />} />
+            <Route path="assessoria-direta/:id" element={<AssessoriaDiretaDetail />} />
             <Route path="protocolados" element={<ProcessosProtocolados />} />
             <Route path="protocolado/:id" element={<ProcessoProtocoladoDetalhes />} />
             <Route path="meus-agendamentos" element={<MeusAgendamentos userId={activeProfile?.id} />} />

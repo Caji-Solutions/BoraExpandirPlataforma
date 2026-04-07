@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import ComercialController from '../controllers/comercial/ComercialController'
 import ComissaoController from '../controllers/comercial/ComissaoController'
+import AssessoriaDiretaController from '../controllers/assessoriaDireta/AssessoriaDiretaController'
 import { authMiddleware } from '../middlewares/auth'
 import upload from '../middlewares/upload'
 
@@ -44,6 +45,9 @@ comercial.post('/contratos/:id/multa/comprovante', authMiddleware, upload.single
 
 // Contagem de consultorias realizadas por cliente (para desconto)
 comercial.get('/consultorias-count/:clienteId', ComercialController.getConsultoriasCount.bind(ComercialController))
+
+// Assessoria Direta (servicos nao agendaveis)
+comercial.get('/assessoria-direta', authMiddleware, AssessoriaDiretaController.getComercial.bind(AssessoriaDiretaController))
 
 // Pos-Consultoria (clientes delegados ao vendedor C2)
 comercial.get('/pos-consultoria', authMiddleware, ComercialController.getPosConsultoria.bind(ComercialController))

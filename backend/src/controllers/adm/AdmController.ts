@@ -16,6 +16,7 @@ export class AdmController {
         tipoPreco: s.tipo_preco ?? 'por_contrato',
         contratoTemplateId: s.contrato_template_id ?? null,
         possuiSubservicos: s.possui_subservicos ?? false,
+        naoAgendavel: s.nao_agendavel ?? false,
         showInCommercial: s.exibir_comercial,
         showToClient: s.exibir_cliente,
         documents: (s.requisitos || [])

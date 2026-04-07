@@ -136,7 +136,7 @@ class ClienteRepository {
     async createDependent(params: {
         clienteId: string
         nomeCompleto: string
-        parentesco: string
+        parentesco?: string
         documento?: string // CPF
         dataNascimento?: string
         rg?: string
@@ -146,23 +146,42 @@ class ClienteRepository {
         telefone?: string
         isAncestralDireto?: boolean
     }) {
+        // Valores aceitos pelo enum parentesco_tipo no banco
+        const PARENTESCO_ENUM = [
+            'conjuge', 'filho', 'filha', 'pai', 'mae',
+            'irmao', 'irma', 'avo', 'avo_f', 'neto', 'neta',
+            'sobrinho', 'sobrinha', 'tio', 'tia', 'primo', 'prima',
+            'enteado', 'enteada', 'sogro', 'sogra', 'genro', 'nora',
+            'cunhado', 'cunhada', 'outro'
+        ]
+        const rawParentesco = (params.parentesco || '').trim()
+        const normalized = rawParentesco
+            .toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/\(a\)$/, 'a')
+        const parentescoEnum = PARENTESCO_ENUM.includes(normalized) ? normalized : null
+
+        const record: Record<string, any> = {
+            cliente_id: params.clienteId,
+            nome_completo: params.nomeCompleto,
+            cpf: params.documento,
+            data_nascimento: params.dataNascimento,
+            rg: params.rg,
+            passaporte: params.passaporte,
+            nacionalidade: params.nacionalidade,
+            email: params.email,
+            telefone: params.telefone,
+            is_ancestral_direto: params.isAncestralDireto || false,
+            status: 'ativo',
+            criado_em: new Date().toISOString()
+        }
+        if (parentescoEnum) {
+            record.parentesco = parentescoEnum
+        }
+
         const { data, error } = await supabase
             .from('dependentes')
-            .insert([{
-                cliente_id: params.clienteId,
-                nome_completo: params.nomeCompleto,
-                parentesco: params.parentesco,
-                cpf: params.documento,
-                data_nascimento: params.dataNascimento,
-                rg: params.rg,
-                passaporte: params.passaporte,
-                nacionalidade: params.nacionalidade,
-                email: params.email,
-                telefone: params.telefone,
-                is_ancestral_direto: params.isAncestralDireto || false,
-                status: 'ativo',
-                criado_em: new Date().toISOString()
-            }])
+            .insert([record])
             .select()
             .single()
 

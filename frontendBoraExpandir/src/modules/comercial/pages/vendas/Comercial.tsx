@@ -20,6 +20,7 @@ import SelecaoLeadCliente from '../cadastro/SelecaoLeadCliente'
 import ContratosFixosPage from '../contratos/ContratosFixosPage'
 import ContratoServicoDetailPage from '../contratos/ContratoServicoDetailPage'
 import PosConsultoria from '../PosConsultoria'
+import AssessoriaDiretaPage from '../AssessoriaDiretaPage'
 import FormularioAssessoriaPage from '../FormularioAssessoriaPage'
 import ProximosAgendamentosCard from '../../components/ProximosAgendamentosCard'
 import CadastroRapidoLeadCard from '../../components/CadastroRapidoLeadCard'
@@ -953,6 +954,7 @@ export default function Comercial() {
     ...(!isSupervisor ? [
       { label: 'Servicos', to: '/comercial/servicos', icon: FileText },
       { label: 'Meus Agendamentos', to: '/comercial/meus-agendamentos', icon: Calendar },
+      { label: 'Assessoria Direta', to: '/comercial/assessoria-direta', icon: ClipboardCheck },
     ] : []),
     { label: 'Minhas Comissoes', to: '/comercial/comissoes', icon: DollarSign },
     ...(!isC1 && !isSupervisor ? [
@@ -1088,6 +1090,7 @@ export default function Comercial() {
           {isSupervisor && (
             <Route path="/supervisor" element={<SupervisorComercialPage />} />
           )}
+          <Route path="/assessoria-direta" element={<AssessoriaDiretaPage />} />
           {isC2 && (
             <Route path="/pos-consultoria" element={<PosConsultoria />} />
           )}
