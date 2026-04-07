@@ -273,12 +273,9 @@ export async function getRequerimentosByProcesso(processoId: string): Promise<an
  * Busca requerimentos de um cliente específico
  */
 export async function getRequerimentosByCliente(clienteId: string, membroId?: string): Promise<any[]> {
-  const endpoint = membroId
-    ? `/juridico/requerimentos/cliente/${clienteId}/${membroId}`
-    : `/juridico/requerimentos/cliente/${clienteId}`;
-
+  const endpoint = `/cliente/${clienteId}/requerimentos`;
   const result: any = await apiClient.get(endpoint);
-  return result.data || [];
+  return result.data || result || [];
 }
 
 /**

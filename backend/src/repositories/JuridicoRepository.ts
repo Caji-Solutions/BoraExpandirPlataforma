@@ -1332,6 +1332,16 @@ class JuridicoRepository {
 
     // Listar processos protocolados
     async getProcessosProtocolados(): Promise<any[]> {
+        // Primeiro buscar quem são os supervisores
+        const { data: supervisores } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('role', 'juridico')
+            .eq('is_supervisor', true);
+            
+        const supIds = (supervisores || []).map(s => s.id);
+        if (supIds.length === 0) return [];
+
         const { data: processos, error } = await supabase
             .from('processos')
             .select(`
@@ -1346,7 +1356,7 @@ class JuridicoRepository {
                 ),
                 documentos (*)
             `)
-            .eq('status', 'PROTOCOLADO')
+            .in('responsavel_id', supIds)
             .order('atualizado_em', { ascending: false })
 
         if (error) {
@@ -1432,7 +1442,7 @@ class JuridicoRepository {
         const { data, error } = await supabase
             .from('processos')
             .update({
-                status: 'PROTOCOLADO',
+                status: 'assessoria_finalizada', // status DB compatível; o identificador agora é o responsável (supervisor)
                 responsavel_id: supervisorId,
                 atualizado_em: new Date().toISOString()
             })

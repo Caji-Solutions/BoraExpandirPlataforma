@@ -1632,9 +1632,16 @@ class JuridicoController {
             })
         } catch (error: any) {
             console.error('Erro ao enviar processo para protocolacao:', error)
+            
+            // Logar detalhes adicionais do supabase se existirem
+            if (error.details) console.error('Details:', error.details)
+            if (error.hint) console.error('Hint:', error.hint)
+            if (error.code) console.error('Code:', error.code)
+            
             return res.status(500).json({
-                message: 'Erro ao enviar processo para protocolacao',
-                error: error.message
+                message: error.message || 'Erro ao enviar processo para protocolacao',
+                error: error.message,
+                details: error.details
             })
         }
     }

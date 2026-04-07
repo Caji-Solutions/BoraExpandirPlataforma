@@ -69,7 +69,7 @@ class ClienteDocumentController {
         clienteId = idNegocio;
       } else {
         // Para admin/juridico, validar role
-        const rolesAutorizados = ['admin', 'juridico', 'super_admin']
+        const rolesAutorizados = ['admin', 'juridico', 'super_admin', 'comercial', 'administrativo']
         if (!rolesAutorizados.includes(role)) {
           return res.status(403).json({ message: 'Sem permissão para acessar documentos' })
         }
@@ -140,7 +140,7 @@ class ClienteDocumentController {
           return res.status(403).json({ message: 'Sem permissão para acessar documentos requeridos de outro cliente' })
         }
         clienteId = idNegocio;
-      } else if (role !== 'admin' && role !== 'juridico') {
+      } else if (!['admin', 'juridico', 'super_admin', 'comercial', 'administrativo'].includes(role)) {
         return res.status(403).json({ message: 'Sem permissão para acessar documentos requeridos' })
       }
 
@@ -247,11 +247,17 @@ class ClienteDocumentController {
         return res.status(400).json({ message: 'documentType é obrigatório para novos documentos' })
       }
 
+      // Sanitizar o documentType para usar nos arquivos e pastas (evitar erro com acentos ou espaços)
+      const safeDocType = (documentType || 'doc')
+        .trim()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove acentos
+        .replace(/\s+/g, '_'); // Troca espaços por "_"
+
       // Gerar nome único para o arquivo
       const timestamp = Date.now()
       let memberId = req.body.memberId
       const fileExtension = file.originalname.split('.').pop()
-      const fileName = `${documentType || 'doc'}_${timestamp}.${fileExtension}`
+      const fileName = `${safeDocType}_${timestamp}.${fileExtension}`
 
       // Se for cliente logado, garantir que estamos usando o clienteId correto dele
       let clienteIdFinal = clienteId;
@@ -278,7 +284,7 @@ class ClienteDocumentController {
 
       const targetId = memberId || clienteId || 'desconhecido'
       filePath += `${targetId}`
-      filePath += `/${documentType || 'upgrade'}/${fileName}`
+      filePath += `/${safeDocType || 'upgrade'}/${fileName}`
 
       console.log('FilePath gerado:', filePath)
 
@@ -552,7 +558,7 @@ class ClienteDocumentController {
           return res.status(403).json({ message: 'Sem permissão para acessar processos de outro cliente' })
         }
         clienteId = idNegocio;
-      } else if (role !== 'admin' && role !== 'juridico') {
+      } else if (!['admin', 'juridico', 'super_admin', 'comercial', 'administrativo'].includes(role)) {
         return res.status(403).json({ message: 'Sem permissão para acessar processos' })
       }
 
