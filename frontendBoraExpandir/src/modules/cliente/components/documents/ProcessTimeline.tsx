@@ -50,52 +50,50 @@ const stepLabels = {
   analyzing: 'Em Análise',
 }
 
-// Mapear stage para etapa visual (0-6) de acordo com a ordem do banco
-function mapStageToStep(stage?: string): number {
-  switch (stage) {
-    case 'formularios':
+// Mapear status do processo para etapa visual (0-3) de acordo com os novos status
+function mapStatusToStep(status?: string): number {
+  switch (status) {
+    case 'assessoria_iniciada':
       return 0
-    case 'aguardando_consultoria':
+    case 'analise_documentos':
       return 1
-    case 'em_consultoria':
+    case 'processo_protocolado':
       return 2
-    case 'clientes_c2':
+    case 'processo_finalizado':
       return 3
-    case 'aguardando_assessoria':
-      return 4
-    case 'assessoria_andamento':
-      return 5
-    case 'assessoria_finalizada':
-      return 6
-    case 'cancelado':
-      return -1
     default:
       return 0
   }
 }
 
-// Função para calcular a etapa atual baseada no stage
-function calcularEtapaAtual(clientStage?: string): number {
-  if (clientStage) {
-    return mapStageToStep(clientStage)
+// Função para calcular a etapa atual priorizando o status do processo
+function calcularEtapaAtual(process?: Process | null, clientStage?: string): number {
+  if (process && process.status) {
+    return mapStatusToStep(process.status)
   }
-  return 0
+  
+  // Fallback para mapeamento antigo ou clientStage se necessário
+  switch (clientStage) {
+    case 'assessoria_iniciada': return 0
+    case 'analise_documentos': return 1
+    case 'processo_protocolado': return 2
+    case 'processo_finalizado': return 3
+    case 'assessoria_finalizada': return 3
+    default: return 0
+  }
 }
 
 export function ProcessTimeline({ process, requerimentos = [], familyMembers = [], agendamentos = [], documents = [], clientStage }: ProcessTimelineProps) {
-  // 7 fases mapeadas 1:1 com o banco de dados
+  // 4 novas fases solicitadas
   const defaultSteps: ProcessStep[] = [
-    { id: 0, name: "Análise Inicial", description: "Estamos analisando as informações enviadas nos seus formulários.", status: 'pending' as const },
-    { id: 1, name: "Consultoria Agendada", description: "Seu horário de consultoria está reservado. Prepare seus documentos base.", status: 'pending' as const },
-    { id: 2, name: "Em Consultoria", description: "Análise técnica do seu caso em andamento durante a consultoria.", status: 'pending' as const },
-    { id: 3, name: "Proposta de Assessoria", description: "Consultoria realizada! Conferindo detalhes para o início do contrato.", status: 'pending' as const },
-    { id: 4, name: "Assessoria Contratada", description: "Contrato firmado! O time jurídico está preparando o início da execução.", status: 'pending' as const },
-    { id: 5, name: "Assessoria em Andamento", description: "Fase de coleta, apostilamento e traduções de documentos.", status: 'pending' as const },
-    { id: 6, name: "Processo Finalizado", description: "Seu processo foi concluído e protocolado com sucesso.", status: 'pending' as const }
+    { id: 0, name: "Assessoria Iniciada", description: "O time jurídico deu início oficial ao seu processo de cidadania.", status: 'pending' as const },
+    { id: 1, name: "Análise de Documentos", description: "Fase de conferência, apostilamentos e traduções necessárias.", status: 'pending' as const },
+    { id: 2, name: "Processo Protocolado", description: "Seu processo foi formalmente enviado aos órgãos competentes na Europa.", status: 'pending' as const },
+    { id: 3, name: "Processo Finalizado", description: "Tutto pronto! Processo concluído com êxito.", status: 'pending' as const }
   ];
 
-  // Calcular a etapa atual dinamicamente usando o stage do cliente
-  const calculatedCurrentStep = calcularEtapaAtual(clientStage)
+  // Calcular a etapa atual prioritariamente pelo status do objeto process
+  const calculatedCurrentStep = calcularEtapaAtual(process, clientStage)
 
   // Determinar o status de cada etapa baseado na etapa atual
   const enrichedSteps = defaultSteps.map(step => {
@@ -332,42 +330,10 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
                         <p className="text-sm text-gray-700 dark:text-gray-400 leading-relaxed">{step.description}</p>
                       )}
 
-                      {/* Informativo: Assessoria ainda não agendada */}
-                      {step.id === 3 && isActive && assessoriasAgendadas.length === 0 && (
-                        <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-xl">
-                          <div className="flex items-start space-x-3">
-                            <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
-                            <div className="flex-1">
-                              <p className="text-sm font-bold text-amber-700 dark:text-amber-400">
-                                Agende sua Assessoria Jurídica
-                              </p>
-                              <p className="text-sm text-amber-600 dark:text-amber-300 mt-1">
-                                Você contratou o processo. Agora agende sua sessão de assessoria jurídica para avaliar sua documentação.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
 
-                      {/* Informativo: Assessoria agendada mas não realizada */}
-                      {step.id === 3 && isActive && assessoriasAgendadas.length > 0 && !assessoriaRealizada && (
-                        <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-xl">
-                          <div className="flex items-start space-x-3">
-                            <Clock className="h-5 w-5 text-blue-600 mt-0.5" />
-                            <div className="flex-1">
-                              <p className="text-sm font-bold text-blue-700 dark:text-blue-400">
-                                Assessoria Agendada
-                              </p>
-                              <p className="text-sm text-blue-600 dark:text-blue-300 mt-1">
-                                Sua sessão de assessoria jurídica está agendada. Compareça na data marcada para prosseguir com a documentação.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
 
-                      {/* Progresso de Documentos */}
-                      {step.id === 5 && isActive && assessoriaRealizada && temDocumentos && (
+                      {/* Progresso de Documentos - Agora na etapa de Análise de Documentos (ID 1) */}
+                      {step.id === 1 && isActive && temDocumentos && (
                         <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-xl">
                           <div className="flex items-start space-x-3">
                             <CheckCheck className="h-5 w-5 text-blue-600 mt-0.5" />
@@ -508,10 +474,10 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
                   ? (consultoriaRealizada
                       ? 'Consultoria concluída! Contrrate agora o processo jurídico completo para prosseguir com a assessoria e documentação.'
                       : 'Você tem uma consultoria agendada. Aguarde e complete a sessão de consultoria.')
-                  : currentProcess.currentStep === 2
-                    ? 'Você contratou o processo jurídico. Próximo: agende sua sessão de assessoria jurídica.'
-                    : currentProcess.currentStep === 3
-                    ? 'Sua assessoria jurídica está agendada. Compareça para prosseguir com a documentação.'
+                  : currentProcess.currentStep === 0
+                    ? 'O time jurídico está preparando os primeiros passos. Em breve iniciaremos a análise documental.'
+                    : currentProcess.currentStep === 1
+                    ? 'Estamos na fase de análise e preparação da sua documentação (apostilamentos e traduções).'
                     : currentProcess.currentStep < totalSteps
                     ? `Prossiga com a etapa "${currentProcess.steps[currentProcess.currentStep]?.name}".`
                     : 'Seu processo foi concluído com sucesso!'

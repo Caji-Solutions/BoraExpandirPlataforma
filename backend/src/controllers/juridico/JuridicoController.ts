@@ -922,7 +922,7 @@ class JuridicoController {
                     .eq('id', clienteId)
                     .single()
 
-                const stagesAdiante = ['assessoria_finalizada']
+                const stagesAdiante = ['processo_finalizado']
                 if (!stagesAdiante.includes(clienteAtual?.stage || '')) {
                     const { error: updateStageError } = await supabase
                         .from('clientes')
@@ -1353,7 +1353,7 @@ class JuridicoController {
                 }
 
                 if (processo) {
-                    const processoUpdateData: any = { status: 'clientes_c2' };
+                    const processoUpdateData: any = { status: 'assessoria_iniciada' };
                     if (!processo.tipo_servico) {
                         processoUpdateData.tipo_servico = tipoServico;
                     }
@@ -1432,7 +1432,7 @@ class JuridicoController {
                 // Atualizar stage do cliente para assessoria_finalizada
                 const { error: updateClienteError } = await supabase
                     .from('clientes')
-                    .update({ stage: 'assessoria_finalizada', status: 'assessoria_finalizada' })
+                    .update({ stage: 'processo_finalizado', status: 'processo_finalizado' })
                     .eq('id', agendamento.cliente_id);
 
                 if (updateClienteError) {
@@ -1684,8 +1684,8 @@ class JuridicoController {
             const { error: updateClienteError } = await supabase
                 .from('clientes')
                 .update({ 
-                    stage: 'assessoria_finalizada', 
-                    status: 'assessoria_finalizada',
+                    stage: 'processo_finalizado', 
+                    status: 'processo_finalizado',
                     atualizado_em: new Date().toISOString()
                 })
                 .eq('id', clienteId);

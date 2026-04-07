@@ -489,6 +489,13 @@ export async function getProcessoProtocoladoDetails(processoId: string): Promise
 }
 
 /**
+ * Finaliza um processo protocolado
+ */
+export async function finalizarProcesso(processoId: string): Promise<any> {
+  return apiClient.put(`/juridico/processo/${processoId}/atualizar-protocolo`, { status: 'processo_finalizado' });
+}
+
+/**
  * Envia processo para protocolação
  */
 export async function enviarParaProtocolacao(processoId: string, supervisorId: string): Promise<any> {
@@ -567,4 +574,5 @@ export default {
     getProcessosProtocolados,
     getProcessoProtocoladoDetails,
     enviarParaProtocolacao,
+    finalizarProcesso,
 };

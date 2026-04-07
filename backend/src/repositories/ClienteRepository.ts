@@ -742,9 +742,13 @@ class ClienteRepository {
         const BUCKET = 'profile-photos'
         const documentType = 'profile_photo'
 
-        // 1. Upload file to Supabase Storage
-        // Path structure: clienteId/profile_timestamp.ext to avoid cache issues or just profile.ext
-        const filePath = `${params.clienteId}/avatar`
+        // Path structure: clienteId/profile_timestamp.ext to avoid cache issues
+        const timestamp = Date.now()
+        const fileExt = params.contentType.split('/')[1] || 'jpg'
+        const filePath = `${params.clienteId}/avatar_${timestamp}.${fileExt}`
+        
+        // Optional: Remove old avatars if we wanted to keeps storage clean
+        // (but for simplicity/safety we just upload with unique name)
 
         const { data: storageData, error: storageError } = await supabase.storage
             .from(BUCKET)

@@ -99,6 +99,7 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
+                    client_id,
                     nome,
                     email,
                     whatsapp,
@@ -159,6 +160,7 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
+                    client_id,
                     nome,
                     email,
                     whatsapp,
@@ -186,6 +188,7 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
+                    client_id,
                     nome,
                     email,
                     whatsapp,
@@ -214,6 +217,7 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
+                    client_id,
                     nome,
                     email,
                     whatsapp,
@@ -285,6 +289,7 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
+                    client_id,
                     nome,
                     email,
                     whatsapp,
@@ -1150,7 +1155,7 @@ class JuridicoRepository {
             .insert([{
                 cliente_id: params.clienteId,
                 tipo_servico: params.tipoServico,
-                status: params.status || 'in_progress',
+                status: params.status || 'assessoria_iniciada',
                 etapa_atual: params.etapaAtual || 1,
                 responsavel_id: params.responsavelId || null,
                 assessoria_id: params.assessoriaId || null,
@@ -1348,6 +1353,7 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
+                    client_id,
                     nome,
                     email,
                     whatsapp,
@@ -1405,6 +1411,7 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
+                    client_id,
                     nome,
                     email,
                     whatsapp,
@@ -1442,7 +1449,7 @@ class JuridicoRepository {
         const { data, error } = await supabase
             .from('processos')
             .update({
-                status: 'assessoria_finalizada', // status DB compatível; o identificador agora é o responsável (supervisor)
+                status: 'processo_protocolado', // Alterado conforme novos status do enum
                 responsavel_id: supervisorId,
                 atualizado_em: new Date().toISOString()
             })

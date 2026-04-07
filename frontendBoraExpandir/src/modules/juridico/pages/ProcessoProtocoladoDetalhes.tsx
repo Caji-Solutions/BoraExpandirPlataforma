@@ -1,8 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, FileCheck, FileText, ExternalLink, User, Dna, MapPin, Calendar, Briefcase, Download, Folder, Building2 } from 'lucide-react';
+import { ChevronLeft, FileCheck, FileText, ExternalLink, User, Dna, MapPin, Calendar, Briefcase, Download, Folder, Building2, CheckCircle2, AlertTriangle, FileArchive, Loader2 } from 'lucide-react';
 import { Button } from '@/modules/shared/components/ui/button';
 import { Badge } from '@/modules/shared/components/ui/badge';
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle, 
+  AlertDialogTrigger 
+} from '@/modules/shared/components/ui/alert-dialog';
+import { toast } from 'sonner';
+import JSZip from 'jszip';
 import juridicoService from '../services/juridicoService';
 
 export function ProcessoProtocoladoDetalhes() {
@@ -12,6 +25,8 @@ export function ProcessoProtocoladoDetalhes() {
   const [dependentes, setDependentes] = useState<any[]>([]);
   const [clienteDna, setClienteDna] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isFinishing, setIsFinishing] = useState(false);
+  const [isZipping, setIsZipping] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -45,6 +60,90 @@ export function ProcessoProtocoladoDetalhes() {
     };
     fetch();
   }, [id]);
+
+  const handleFinalizar = async () => {
+    if (!processo?.id) return;
+    
+    setIsFinishing(true);
+    try {
+      await juridicoService.finalizarProcesso(processo.id);
+      toast.success('Processo finalizado com sucesso!', {
+        description: 'O status do processo foi atualizado para finalizado.',
+        icon: <CheckCircle2 className="h-5 w-5 text-green-500" />
+      });
+      setProcesso({ ...processo, status: 'processo_finalizado' });
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao finalizar processo', {
+        description: 'Não foi possível atualizar o status. Tente novamente.'
+      });
+    } finally {
+      setIsFinishing(false);
+    }
+  };
+
+  const handleDownloadZip = async (targetMemberName?: string, memberDocs?: any[]) => {
+    if (isZipping) return;
+    setIsZipping(true);
+    
+    const toastId = toast.loading('Gerando pacote ZIP...', {
+      description: 'Isso pode levar alguns segundos dependendo da quantidade de arquivos.'
+    });
+
+    try {
+      const zip = new JSZip();
+      
+      // Se memberDocs for passado, baixamos apenas daquele membro
+      // Caso contrário, baixamos de todos (Dossiê Completo)
+      const dataToDownload = targetMemberName && memberDocs 
+        ? [{ name: targetMemberName, docs: memberDocs }]
+        : members.map(m => ({
+            name: m.name,
+            docs: docs.filter((doc: any) => (doc.dependente_id || processo.cliente_id) === m.id)
+          })).filter(m => m.docs.length > 0);
+
+      if (dataToDownload.length === 0) {
+        toast.dismiss(toastId);
+        toast.error('Nenhum documento encontrado para baixar.');
+        setIsZipping(false);
+        return;
+      }
+
+      for (const member of dataToDownload) {
+        const folder = zip.folder(member.name);
+        for (const doc of member.docs) {
+          if (!doc.public_url) continue;
+          
+          try {
+            const response = await fetch(doc.public_url);
+            const blob = await response.blob();
+            // Limpar nome do arquivo
+            const fileName = doc.nome_original || `${doc.tipo || 'documento'}.pdf`;
+            folder?.file(fileName, blob);
+          } catch (e) {
+            console.error(`Erro ao baixar arquivo ${doc.id}:`, e);
+          }
+        }
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = window.URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Dossie_${processo.clientes?.nome || 'Processo'}_${new Date().getTime()}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Download concluído!', { id: toastId, description: 'O arquivo ZIP foi gerado com sucesso.' });
+    } catch (error) {
+      console.error('Erro ao gerar ZIP:', error);
+      toast.error('Ocorreu um erro ao gerar o arquivo ZIP.', { id: toastId });
+    } finally {
+      setIsZipping(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -87,18 +186,11 @@ export function ProcessoProtocoladoDetalhes() {
         ...m,
         docs: docs.filter((doc: any) => (doc.dependente_id || processo.cliente_id) === m.id)
      }
-  }).filter(m => m.docs.length > 0 || m.isTitular);
+  });
 
   const localProtocolo = clienteDna?.cidade_protocolo || 'Não informado';
   const previsaoChegada = cliente?.previsao_chegada ? new Date(cliente.previsao_chegada).toLocaleDateString() : 'Sem previsão';
   const dataProtocolado = processo.atualizado_em ? new Date(processo.atualizado_em).toLocaleDateString() : 'N/A';
-
-  const downloadAllFromMember = (memberDocs: any[]) => {
-    // Abrir links numa nova guia para facilitar download (forma básica sem ZIP)
-    memberDocs.forEach(d => {
-       if (d.public_url) window.open(d.public_url, '_blank');
-    });
-  };
 
   return (
     <div className="p-8">
@@ -120,26 +212,46 @@ export function ProcessoProtocoladoDetalhes() {
                 <h1 className="text-3xl font-black tracking-tight text-foreground">
                   {cliente?.nome || 'Cliente'}
                 </h1>
-                <Badge variant="outline" className="text-xs font-bold border-green-300 text-green-700 bg-green-50 px-3 py-1 uppercase tracking-widest shadow-sm">
-                  Protocolado em {dataProtocolado}
+                <Badge variant="outline" className={`text-xs font-bold px-3 py-1 uppercase tracking-widest shadow-sm ${
+                  processo.status === 'processo_finalizado' 
+                    ? 'border-blue-300 text-blue-700 bg-blue-50' 
+                    : 'border-green-300 text-green-700 bg-green-50'
+                }`}>
+                  {processo.status === 'processo_finalizado' ? 'Finalizado' : `Protocolado em ${dataProtocolado}`}
                 </Badge>
               </div>
               <p className="text-muted-foreground text-sm flex items-center gap-2 mt-1">
                 Serviço Base: {processo.tipo_servico || 'Serviço Principal'}
                 <span className="w-1 h-1 rounded-full bg-gray-400" />
-                ID: {processo.cliente_id}
+                ID: {processo.clientes?.client_id || processo.cliente_id}
               </p>
             </div>
           </div>
           
-          <Button
-            variant="outline"
-            className="shrink-0 gap-2 font-bold"
-            onClick={() => navigate(`/juridico/dna?clienteId=${processo.cliente_id}`)}
-          >
-            <Dna className="h-4 w-4 text-primary" />
-            Acessar DNA Completo
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              disabled={isZipping}
+              className="shrink-0 gap-2 font-bold bg-white shadow-sm border-gray-200"
+              onClick={() => handleDownloadZip()}
+            >
+              {isZipping ? (
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              ) : (
+                <FileArchive className="h-4 w-4 text-primary" />
+              )}
+              {isZipping ? 'Compactando...' : 'Dossiê Completo (ZIP)'}
+            </Button>
+
+            <Button
+              variant="outline"
+              className="shrink-0 gap-2 font-bold"
+              onClick={() => navigate(`/juridico/dna?clienteId=${processo.cliente_id}`)}
+            >
+              <Dna className="h-4 w-4 text-primary" />
+              Acessar DNA Completo
+            </Button>
+          </div>
         </div>
 
         {/* Info Cards Row 1 - Summary */}
@@ -177,9 +289,46 @@ export function ProcessoProtocoladoDetalhes() {
 
         {/* Documents Dossiê Area */}
         <div className="space-y-6 mt-8">
-          <h2 className="text-xl font-bold tracking-tight text-foreground ml-2">Dossiê do Processo</h2>
+          <div className="flex items-center justify-between px-2">
+            <h2 className="text-xl font-bold tracking-tight text-foreground">Dossiê do Processo</h2>
+            
+            {processo.status !== 'processo_finalizado' && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="default" 
+                    disabled={isFinishing}
+                    className="bg-green-600 hover:bg-green-700 text-white font-bold gap-2 shadow-lg hover:shadow-xl transition-all"
+                  >
+                    <FileCheck className="h-4 w-4" />
+                    Finalizar Processo
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="rounded-3xl border-2">
+                  <AlertDialogHeader>
+                    <div className="flex items-center gap-2 text-amber-600 mb-2">
+                      <AlertTriangle className="h-5 w-5" />
+                      <AlertDialogTitle>Finalizar Processo?</AlertDialogTitle>
+                    </div>
+                    <AlertDialogDescription>
+                      Esta ação marcará o processo de <strong>{cliente?.nome}</strong> como concluído com êxito. O cliente será notificado da finalização.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="rounded-xl border-2 font-bold">Cancelar</AlertDialogCancel>
+                    <AlertDialogAction 
+                      className="bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold"
+                      onClick={handleFinalizar}
+                    >
+                      Sim, Finalizar Processo
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
           
-          {groupedDocs.map((member, idx) => (
+          {groupedDocs.filter(m => m.docs.length > 0 || m.isTitular).map((member, idx) => (
              <div key={idx} className="bg-white dark:bg-gray-800 border rounded-3xl overflow-hidden shadow-sm">
                <div className="bg-muted/40 px-6 py-4 border-b flex flex-wrap gap-4 items-center justify-between">
                  <div className="flex items-center gap-4">
@@ -199,10 +348,15 @@ export function ProcessoProtocoladoDetalhes() {
                  {member.docs.length > 0 && (
                    <Button 
                      variant="outline" 
+                     disabled={isZipping}
                      className="shrink-0 gap-2 shadow-sm font-bold active:scale-[0.98]"
-                     onClick={() => downloadAllFromMember(member.docs)}
+                     onClick={() => handleDownloadZip(member.name, member.docs)}
                    >
-                     <Download className="h-4 w-4 text-blue-500" />
+                     {isZipping ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                     ) : (
+                        <Download className="h-4 w-4 text-blue-500" />
+                     )}
                      Baixar Pasta ({member.docs.length})
                    </Button>
                  )}
@@ -222,7 +376,7 @@ export function ProcessoProtocoladoDetalhes() {
                                </p>
                                <div className="flex items-center gap-2 mt-1">
                                  {doc.apostilado && <span className="text-[9px] font-bold text-green-600 bg-green-100 dark:bg-green-900/30 px-1.5 py-0.5 rounded uppercase tracking-wider">Apostilado</span>}
-                                 {doc.traduzido && <span className="text-[9px] font-bold text-blue-600 bg-blue-100 dark:bg-blue-900/30 px-1.5 py-0.5 rounded uppercase tracking-wider">Traduzido</span>}
+                                 {doc.traduzido && <span className="text-[9px] font-bold text-blue-600 bg-blue-100 dark:bg-green-900/30 px-1.5 py-0.5 rounded uppercase tracking-wider">Traduzido</span>}
                                </div>
                                <p className="text-[10px] text-muted-foreground truncate mt-1.5">
                                  {doc.nome_original || 'Sem nome original'}

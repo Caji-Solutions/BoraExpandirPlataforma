@@ -36,3 +36,21 @@ export function formatFileSize(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
+export async function downloadFile(url: string, fileName: string) {
+  try {
+    const response = await fetch(url)
+    const blob = await response.blob()
+    const downloadUrl = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = downloadUrl
+    a.download = fileName || 'documento'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(downloadUrl)
+  } catch (error) {
+    console.error('Erro ao baixar arquivo:', error)
+    // Fallback caso falhe (CORS ou outro motivo)
+    window.open(url, '_blank')
+  }
+}
