@@ -69,6 +69,30 @@ class ApostilamentoController {
     }
   }
 
+  async uploadApostilado(req: Request, res: Response) {
+    try {
+      const { id } = req.params
+      const file = (req as any).file
+
+      if (!file) {
+        return res.status(400).json({ error: 'Nenhum arquivo enviado' })
+      }
+
+      const result = await ApostilamentoRepository.uploadApostilado({
+        apostilamentoId: id,
+        filePath: `apostilados/${id}/${file.originalname}`,
+        fileBuffer: file.buffer,
+        contentType: file.mimetype,
+        nomeOriginal: file.originalname
+      })
+
+      return res.status(200).json({ message: 'Documento apostilado enviado com sucesso', data: result })
+    } catch (error: any) {
+      console.error('[ApostilamentoController.uploadApostilado] Error:', error)
+      return res.status(500).json({ error: 'Erro ao enviar documento apostilado', details: error.message })
+    }
+  }
+
   async submitComprovante(req: Request, res: Response) {
     try {
       const { id } = req.params // orcamentoId (primary)

@@ -23,4 +23,7 @@ router.get('/', ApostilamentoController.getAll);
 // POST /apostilamentos/:id/submit-comprovante - Enviar comprovante
 router.post('/:id/submit-comprovante', upload.single('comprovante'), ApostilamentoController.submitComprovante);
 
+// POST /apostilamentos/:id/upload-apostilado - Upload documento apostilado
+router.post('/:id/upload-apostilado', upload.single('documento'), ApostilamentoController.uploadApostilado);
+
 export default router;

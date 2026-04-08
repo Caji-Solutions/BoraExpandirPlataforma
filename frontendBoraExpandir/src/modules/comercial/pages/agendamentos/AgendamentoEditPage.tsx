@@ -7,6 +7,7 @@ import { CalendarPicker } from '@/components/ui/CalendarPicker'
 import { catalogService, Service } from '../../../adm/services/catalogService'
 import comercialService from '../../services/comercialService'
 import juridicoService from '../../../juridico/services/juridicoService'
+import { configService } from '../../../../services/configService'
 import { parseBackendDate, formatDataHora } from '../../../../utils/dateUtils'
 
 const HORARIOS_DISPONIVEIS = [
@@ -58,6 +59,9 @@ export function AgendamentoEditPage() {
     const [uploadingComprovante, setUploadingComprovante] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
+    // PIX key state
+    const [pixChave, setPixChave] = useState<string | null>(null)
+
     // Cancel states
     const [showCancelConfirm, setShowCancelConfirm] = useState(false)
     const [cancelling, setCancelling] = useState(false)
@@ -84,12 +88,14 @@ export function AgendamentoEditPage() {
         async function fetchData() {
             try {
                 setLoading(true)
-                const [prods, usuariosData] = await Promise.all([
+                const [prods, usuariosData, pixChaveData] = await Promise.all([
                     catalogService.getCatalogServices(),
-                    juridicoService.getFuncionariosJuridico().catch(() => [])
+                    juridicoService.getFuncionariosJuridico().catch(() => []),
+                    configService.get('pix_chave').catch(() => null)
                 ])
                 setProdutos(prods)
                 setUsuariosSistema(Array.isArray(usuariosData) ? usuariosData : [])
+                if (pixChaveData) setPixChave(pixChaveData)
 
 
                 const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/comercial/agendamento/${id}`)
@@ -587,6 +593,44 @@ export function AgendamentoEditPage() {
                         <FileText className="w-5 h-5 text-emerald-600" />
                         Comprovante de Pagamento
                     </h2>
+
+                    {/* ═══ DADOS PIX (visível quando sem comprovante e pagamento não aprovado) ═══ */}
+                    {pixChave && !agendamento.comprovante_url && agendamento.pagamento_status !== 'aprovado' && (() => {
+                        const valorFormatado = agendamento.valor ? `R$ ${Number(agendamento.valor).toFixed(2).replace('.', ',')}` : null
+                        const mensagemPix = `💰 Pagamento via PIX\n\nOlá, ${agendamento.nome || 'cliente'}! Para confirmar seu agendamento, realize o pagamento via PIX:\n\nChave PIX: ${pixChave}${valorFormatado ? `\nValor: ${valorFormatado}` : ''}\n\nApós o pagamento, envie o comprovante aqui.`
+
+                        return (
+                            <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 border border-emerald-200 dark:border-emerald-800/30 mb-4">
+                                <p className="text-sm text-emerald-800 dark:text-emerald-300 font-medium mb-3">
+                                    💰 Dados para Pagamento PIX
+                                </p>
+                                <p className="text-sm text-emerald-700 dark:text-emerald-400 mb-3">
+                                    <strong>Chave PIX:</strong> {pixChave}
+                                </p>
+                                <div className="space-y-3">
+                                    <p className="text-sm text-emerald-800 dark:text-emerald-300 font-medium">
+                                        📋 Mensagem pronta para enviar ao cliente:
+                                    </p>
+                                    <textarea
+                                        readOnly
+                                        value={mensagemPix}
+                                        rows={5}
+                                        className="w-full text-xs bg-white dark:bg-neutral-800 border border-emerald-200 dark:border-emerald-700 rounded-lg px-3 py-2 text-gray-700 dark:text-gray-200 resize-none"
+                                        onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(mensagemPix)
+                                            toast.success('Mensagem copiada!')
+                                        }}
+                                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+                                    >
+                                        <Copy className="w-3.5 h-3.5" /> Copiar Mensagem
+                                    </button>
+                                </div>
+                            </div>
+                        )
+                    })()}
 
                     <div className="bg-gray-50 dark:bg-neutral-800/50 rounded-xl p-5 border border-gray-200 dark:border-neutral-700">
                         {agendamento.pagamento_status === 'aprovado' ? (

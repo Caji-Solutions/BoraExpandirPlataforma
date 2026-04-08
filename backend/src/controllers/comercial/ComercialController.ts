@@ -1881,6 +1881,9 @@ class ComercialController {
                 return code === '42703' || (msg.includes('column') && msg.includes(column.toLowerCase()));
             };
 
+            // vendedor_id nao existe como coluna em agendamentos.
+            // O vinculo C2 e feito via processos.responsavel_id e perfil_unificado (DNA).
+            // Tentamos vendedor_id para compatibilidade futura; se a coluna nao existir, seguimos sem fallback.
             let agendamentosDoVendedor: any[] = [];
             const queryVendedorId = await supabase
                 .from('agendamentos')
@@ -1890,18 +1893,9 @@ class ComercialController {
                 .order('data_hora', { ascending: false });
 
             if (queryVendedorId.error && isMissingColumnError(queryVendedorId.error, 'vendedor_id')) {
-                const queryUsuarioId = await supabase
-                    .from('agendamentos')
-                    .select(selectAgendamentoBase)
-                    .eq('usuario_id', userId)
-                    .eq('status', 'realizado')
-                    .order('data_hora', { ascending: false });
-
-                if (queryUsuarioId.error) {
-                    console.warn('[ComercialController] Falha ao buscar agendamentos por usuario_id (nao critico):', queryUsuarioId.error);
-                } else {
-                    agendamentosDoVendedor = queryUsuarioId.data || [];
-                }
+                // Coluna vendedor_id nao existe — nao usar fallback para usuario_id
+                // pois usuario_id tem semantica diferente (quem criou o agendamento, nao o vendedor C2)
+                console.log('[ComercialController] Coluna vendedor_id nao existe em agendamentos, pulando esta fonte de dados');
             } else if (queryVendedorId.error) {
                 console.warn('[ComercialController] Falha ao buscar agendamentos por vendedor_id (nao critico):', queryVendedorId.error);
             } else {

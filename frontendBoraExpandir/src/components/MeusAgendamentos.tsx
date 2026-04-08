@@ -89,15 +89,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
     const timeValue = item.data_hora || item.criado_em;
     if (!timeValue) return acc;
     const dateKey = getLocalDateString(timeValue);
-
-    // Count occupied slots for this day
-    const dayItems = (activeTab === 'consultorias' ? consultorias : assessorias).filter(i => {
-      const iTime = i.data_hora || i.criado_em;
-      return iTime && getLocalDateString(iTime) === dateKey;
-    });
-
-    // Total slots is HORARIOS_DISPONIVEIS.length (10)
-    acc[dateKey] = dayItems.length / HORARIOS_DISPONIVEIS.length;
+    acc[dateKey] = 1;
     return acc;
   }, {});
 
@@ -408,6 +400,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
               selectedDate={dataSelecionada}
               disabledDates={[]}
               occupancyData={occupancyData}
+              occupancyColor={activeTab === 'assessorias' ? 'emerald' : 'blue'}
             />
           </div>
         </div>
