@@ -102,7 +102,13 @@ export function ClienteApp() {
   const fetchRequerimentos = async (clientId: string = client.id) => {
     try {
       const result = await apiClient.get<{ data: any[] }>(`/cliente/${clientId}/requerimentos`)
-      setRequerimentos(result.data || [])
+      const mappedRequerimentos = (result.data || []).map((req: any) => ({
+        ...req,
+        created_at: req.criado_em || req.created_at,
+        updated_at: req.atualizado_em || req.updated_at,
+        documentos: req.documentos || []
+      }))
+      setRequerimentos(mappedRequerimentos)
     } catch (error) {
       console.error('Erro ao buscar requerimentos:', error)
     }

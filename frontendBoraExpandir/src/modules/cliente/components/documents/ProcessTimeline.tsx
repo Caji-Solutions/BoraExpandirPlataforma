@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/modules/shared/components/ui/card'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import { Progress } from '@/modules/shared/components/ui/progress'
-import { CheckCircle, Clock, AlertCircle, FileText, CheckCheck } from 'lucide-react'
+import { CheckCircle, Clock, AlertCircle, FileText, CheckCheck, GitBranch } from 'lucide-react'
 import { Process, ProcessStep, Document } from '../../types'
 import { cn, formatDate } from '../../lib/utils'
 
@@ -154,103 +154,49 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
   const totalSteps = currentProcess.steps?.length || 0
   const progressPercentage = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0
 
+  if (!process) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 space-y-8 animate-in fade-in duration-500">
+        <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="h-20 w-20 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <GitBranch className="h-10 w-10 text-blue-500" />
+          </div>
+          <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter mb-4">
+            Processo não iniciado
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto leading-relaxed px-6 font-medium">
+            Seu processo oficial de cidadania ainda não foi iniciado no sistema. 
+            O acompanhamento detalhado estará disponível apenas após o inicio da sua assessoria jurídica.
+          </p>
+          
+          {!consultoriaRealizada ? (
+            <div className="mt-8 p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl max-w-sm mx-auto flex items-center gap-4 text-left">
+              <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full">
+                <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-widest">Próxima Etapa</p>
+                <p className="text-sm text-amber-700 dark:text-amber-400">Realizar consultoria jurídica inicial</p>
+              </div>
+            </div>
+          ) : (
+             <div className="mt-8 p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-2xl max-w-sm mx-auto flex items-center gap-4 text-left">
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
+                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-green-800 dark:text-green-300 uppercase tracking-widest">Aguardando Início</p>
+                <p className="text-sm text-green-700 dark:text-green-400">Sua assessoria foi concluída. Aguarde o início formal do processo.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-4 space-y-8">
-      {!process && consultoriaRealizada && (
-        <Card className="bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800 shadow-sm animate-in fade-in slide-in-from-top duration-500">
-          <CardContent className="p-6">
-            <div className="flex items-start space-x-4">
-              <div className="p-2 bg-green-100 dark:bg-green-900/40 rounded-full">
-                <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-green-800 dark:text-green-300">
-                  Consultoria Realizada! 🎉
-                </h3>
-                <p className="text-green-700 dark:text-green-400 mt-1">
-                  Sua consultoria jurídica foi concluída com sucesso. Agora você pode contratar o processo jurídico completo para prosseguir com a assessoria jurídica, documentação e protocolo.
-                </p>
-                <div className="mt-4 p-3 bg-white dark:bg-neutral-800 rounded-lg border border-green-100 dark:border-green-900/30">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2 text-sm font-medium text-green-600 dark:text-green-400">
-                      <CheckCheck className="w-4 h-4" />
-                      <span>Próximo passo: contratar o processo jurídico completo</span>
-                    </div>
-                    <a href="/cliente/agendamento" className="text-xs px-3 py-1 bg-green-600 text-white rounded-full hover:bg-green-700 transition">
-                      Contratar Agora
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {!process && !consultoriaRealizada && consultoriaEmAndamento && (
-        <Card className="bg-indigo-50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800 shadow-sm animate-in fade-in slide-in-from-top duration-500">
-          <CardContent className="p-6">
-            <div className="flex items-start space-x-4">
-              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/40 rounded-full">
-                <Clock className="w-6 h-6 text-indigo-600 dark:text-indigo-400 animate-pulse" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-indigo-800 dark:text-indigo-300">
-                  Em Consultoria
-                </h3>
-                <p className="text-indigo-700 dark:text-indigo-400 mt-1">
-                  Sua consultoria jurídica está em andamento. O advogado está analisando seu caso.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {!process && !consultoriaRealizada && !consultoriaEmAndamento && consultoriasAgendadas.length > 0 && (
-        <Card className="bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 shadow-sm animate-in fade-in slide-in-from-top duration-500">
-          <CardContent className="p-6">
-            <div className="flex items-start space-x-4">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-full">
-                <Clock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-blue-800 dark:text-blue-300">
-                  Consultoria Agendada
-                </h3>
-                <p className="text-blue-700 dark:text-blue-400 mt-1">
-                  Você tem uma consultoria jurídica agendada. Compareça na data e hora marcadas para avaliar seu caso.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <FileText className="h-5 w-5" />
-            <span>Andamento do Processo</span>
-          </CardTitle>
-          <CardDescription>
-            {currentProcess.serviceType} • {process ? `Iniciado em ${formatDate(currentProcess.createdAt)}` : 'Aguardando formalização'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Progresso Geral
-              </span>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {completedSteps} de {totalSteps} etapas concluídas
-              </span>
-            </div>
-            <Progress value={progressPercentage} className="h-2" />
-          </div>
-        </CardContent>
-      </Card>
 
       <div className="space-y-8">
         {currentProcess.steps.map((step, index) => {

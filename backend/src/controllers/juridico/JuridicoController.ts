@@ -691,7 +691,15 @@ class JuridicoController {
             const criadorId = req.userId
 
             console.log('========== [JuridicoController][solicitarRequerimento] START ==========')
-            console.log('Input:', { clienteId, tipo, processoId, observacoes, docsCount: documentosAcoplados?.length, filesCount: files?.length, criadorId })
+            console.log('Input:', { 
+                clienteId, 
+                tipo, 
+                processoId, 
+                prazo: req.body.prazo,
+                docsCount: documentosAcoplados?.length, 
+                filesCount: files?.length, 
+                criadorId 
+            })
 
             if (!clienteId || !tipo) {
                 return res.status(400).json({ 
