@@ -26,6 +26,7 @@ interface AgendamentoConfirmacaoModalProps {
 }
 
 const PIX_CNPJ = '55.218.947/0001-65'
+const WISE_TAG = 'https://wise.com/pay/me/fernandaj101'
 
 const parseMoney = (value: string): number | null => {
   const normalized = value.trim().replace(/\./g, '').replace(',', '.')
@@ -48,9 +49,10 @@ export const AgendamentoConfirmacaoModal: React.FC<AgendamentoConfirmacaoModalPr
   const [localError, setLocalError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [copiedPix, setCopiedPix] = useState(false)
+  const [copiedWise, setCopiedWise] = useState(false)
   const [agendamentoCriado, setAgendamentoCriado] = useState<any>(null)
   const [avisoFormPreenchido, setAvisoFormPreenchido] = useState(false)
-  const [metodoConfirmado, setMetodoConfirmado] = useState<'pix' | 'cartao' | null>(null)
+  const [metodoConfirmado, setMetodoConfirmado] = useState<'pix' | 'cartao' | 'wise' | null>(null)
   const [cartaoTipo, setCartaoTipo] = useState<'debito' | 'credito' | ''>('')
   const [cartaoParcelas, setCartaoParcelas] = useState('1')
 
@@ -108,7 +110,26 @@ Após o pagamento, envie o comprovante aqui no chat.
 Obrigado! 🚀
 — Equipe Bora Expandir`
 
-  const salvarAgendamento = async (metodo: 'pix' | 'cartao') => {
+  const buildMensagemWise = () => `Olá ${payload.nome}! 😊
+
+Seu agendamento de *${payload.produto_nome}* está quase confirmado!
+
+📅 Data: ${data}
+🕐 Horário: ${hora}
+💰 Valor: ${valorEUR ? `${valorEUR} (${valorBRL})` : valorBRL}
+
+Para confirmar, realize o pagamento via *Wise* (transferência internacional):
+
+🔗 Link de pagamento: ${WISE_TAG}
+
+Após o pagamento, envie o comprovante aqui no chat.
+
+Assim que o pagamento for confirmado, enviaremos o formulário de consultoria para você preencher! 📋
+
+Obrigado! 🚀
+— Equipe Bora Expandir`
+
+  const salvarAgendamento = async (metodo: 'pix' | 'cartao' | 'wise') => {
     setIsLoading(true)
     setLocalError(null)
 
@@ -188,12 +209,21 @@ Obrigado! 🚀
     setMetodoConfirmado(null)
   }
 
+  const handleSelectWise = async () => {
+    setStep('wise')
+    await salvarAgendamento('wise')
+  }
+
   const handleConfirmarCartao = async () => {
     await salvarAgendamento('cartao')
   }
 
   const handleCopyMessage = async () => {
-    const mensagem = metodoConfirmado === 'cartao' ? buildMensagemCartao() : buildMensagemPix()
+    const mensagem = metodoConfirmado === 'cartao'
+      ? buildMensagemCartao()
+      : metodoConfirmado === 'wise'
+        ? buildMensagemWise()
+        : buildMensagemPix()
     try {
       await navigator.clipboard.writeText(mensagem)
       setCopied(true)
@@ -221,6 +251,17 @@ Obrigado! 🚀
     }
   }
 
+  const handleCopyWise = async () => {
+    try {
+      await navigator.clipboard.writeText(WISE_TAG)
+      setCopiedWise(true)
+      setTimeout(() => setCopiedWise(false), 3000)
+    } catch {
+      setCopiedWise(true)
+      setTimeout(() => setCopiedWise(false), 3000)
+    }
+  }
+
   const handleFinalizar = () => onNavigateToAgendamentos()
 
   return (
@@ -228,7 +269,7 @@ Obrigado! 🚀
       <div className="w-full max-w-lg bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-800 overflow-hidden relative animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-gray-100 dark:border-neutral-800 flex items-center justify-between sticky top-0 bg-white dark:bg-neutral-900 z-10">
           <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-            {step === 'method' ? 'Método de Pagamento' : step === 'pix' ? 'Pagamento via PIX' : step === 'cartao' ? 'Pagamento via Cartão' : 'Wise'}
+            {step === 'method' ? 'Método de Pagamento' : step === 'pix' ? 'Pagamento via PIX' : step === 'cartao' ? 'Pagamento via Cartão' : 'Pagamento via Wise'}
           </h3>
           {step === 'method' && (
             <button
@@ -290,7 +331,7 @@ Obrigado! 🚀
                 </button>
 
                 <button
-                  onClick={() => setStep('wise')}
+                  onClick={handleSelectWise}
                   className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 dark:border-neutral-800 hover:border-purple-500 dark:hover:border-purple-500 bg-gray-50 dark:bg-neutral-800/50 hover:bg-purple-50 dark:hover:bg-purple-500/5 transition-all group"
                 >
                   <div className="flex items-center gap-4">
@@ -307,7 +348,7 @@ Obrigado! 🚀
             </div>
           )}
 
-          {(step === 'pix' || (step === 'cartao' && agendamentoCriado)) && (
+          {(step === 'pix' || step === 'wise' || (step === 'cartao' && agendamentoCriado)) && (
             <div className="space-y-5">
               {isLoading && (
                 <div className="flex flex-col items-center justify-center py-10 gap-3">
@@ -351,6 +392,28 @@ Obrigado! 🚀
                     </div>
                   )}
 
+                  {metodoConfirmado === 'wise' && (
+                    <div className="bg-gray-50 dark:bg-neutral-800/50 rounded-xl p-4 border border-gray-100 dark:border-neutral-800">
+                      <p className="text-xs font-bold text-purple-600 uppercase tracking-wider mb-2">Wisetag (Transferência Internacional)</p>
+                      <div className="flex items-center gap-3">
+                        <a
+                          href={WISE_TAG}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-lg font-bold text-purple-600 dark:text-purple-400 underline hover:text-purple-700 dark:hover:text-purple-300 flex-1 truncate transition-colors"
+                        >
+                          wise.com/pay/me/fernandaj101
+                        </a>
+                        <button
+                          onClick={handleCopyWise}
+                          className="px-3 py-2 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-sm font-bold hover:bg-purple-200 transition-colors flex items-center gap-1"
+                        >
+                          {copiedWise ? <><Check className="h-4 w-4" /> Copiado!</> : <><Copy className="h-4 w-4" /> Copiar</>}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <button
                     onClick={handleCopyMessage}
                     className="w-full p-4 rounded-xl border-2 border-dashed border-gray-300 dark:border-neutral-700 hover:border-emerald-400 dark:hover:border-emerald-600 bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-300 transition-all flex items-center justify-center gap-2 font-semibold"
@@ -367,7 +430,7 @@ Obrigado! 🚀
                       Ver pré-visualização da mensagem
                     </summary>
                     <div className="mt-2 p-3 bg-gray-50 dark:bg-neutral-800/50 rounded-lg border text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap font-mono max-h-48 overflow-y-auto">
-                      {metodoConfirmado === 'cartao' ? buildMensagemCartao() : buildMensagemPix()}
+                      {metodoConfirmado === 'cartao' ? buildMensagemCartao() : metodoConfirmado === 'wise' ? buildMensagemWise() : buildMensagemPix()}
                     </div>
                   </details>
 
@@ -461,20 +524,6 @@ Obrigado! 🚀
             </div>
           )}
 
-          {step === 'wise' && (
-            <div className="space-y-5">
-              <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 p-3 rounded-lg text-sm border border-blue-100 dark:border-blue-500/20">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>A integração com Wise será implementada em breve.</span>
-              </div>
-              <button
-                onClick={() => { setStep('method'); setLocalError(null) }}
-                className="w-full py-3 rounded-xl border-2 border-gray-200 dark:border-neutral-700 text-gray-600 dark:text-gray-400 font-bold hover:bg-gray-50 dark:hover:bg-neutral-800 transition-all text-sm"
-              >
-                Voltar
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

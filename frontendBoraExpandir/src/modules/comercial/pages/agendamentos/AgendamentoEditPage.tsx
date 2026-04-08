@@ -594,9 +594,56 @@ export function AgendamentoEditPage() {
                         Comprovante de Pagamento
                     </h2>
 
-                    {/* ═══ DADOS PIX (visível quando sem comprovante e pagamento não aprovado) ═══ */}
-                    {pixChave && !agendamento.comprovante_url && agendamento.pagamento_status !== 'aprovado' && (() => {
+                    {/* ═══ DADOS DE PAGAMENTO (PIX ou Wise, visível quando sem comprovante e pagamento não aprovado) ═══ */}
+                    {!agendamento.comprovante_url && agendamento.pagamento_status !== 'aprovado' && (() => {
+                        const metodo = agendamento.metodo_pagamento
+                        if (metodo === 'cartao') return null
+
+                        const isWise = metodo === 'wise'
+                        const wiseTag = 'https://wise.com/pay/me/fernandaj101'
                         const valorFormatado = agendamento.valor ? `R$ ${Number(agendamento.valor).toFixed(2).replace('.', ',')}` : null
+
+                        if (isWise) {
+                            const mensagemWise = `💰 Pagamento via Wise (Transferência Internacional)\n\nOlá, ${agendamento.nome || 'cliente'}! Para confirmar seu agendamento, realize o pagamento via Wise:\n\n🔗 Link de pagamento: ${wiseTag}${valorFormatado ? `\nValor: ${valorFormatado}` : ''}\n\nApós o pagamento, envie o comprovante aqui.`
+
+                            return (
+                                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800/30 mb-4">
+                                    <p className="text-sm text-purple-800 dark:text-purple-300 font-medium mb-3">
+                                        💰 Dados para Pagamento via Wise
+                                    </p>
+                                    <p className="text-sm text-purple-700 dark:text-purple-400 mb-3">
+                                        <strong>Wisetag:</strong>{' '}
+                                        <a href={wiseTag} target="_blank" rel="noopener noreferrer" className="underline hover:text-purple-900 dark:hover:text-purple-300 transition-colors">
+                                            wise.com/pay/me/fernandaj101
+                                        </a>
+                                    </p>
+                                    <div className="space-y-3">
+                                        <p className="text-sm text-purple-800 dark:text-purple-300 font-medium">
+                                            📋 Mensagem pronta para enviar ao cliente:
+                                        </p>
+                                        <textarea
+                                            readOnly
+                                            value={mensagemWise}
+                                            rows={5}
+                                            className="w-full text-xs bg-white dark:bg-neutral-800 border border-purple-200 dark:border-purple-700 rounded-lg px-3 py-2 text-gray-700 dark:text-gray-200 resize-none"
+                                            onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(mensagemWise)
+                                                toast.success('Mensagem copiada!')
+                                            }}
+                                            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+                                        >
+                                            <Copy className="w-3.5 h-3.5" /> Copiar Mensagem
+                                        </button>
+                                    </div>
+                                </div>
+                            )
+                        }
+
+                        if (!pixChave) return null
+
                         const mensagemPix = `💰 Pagamento via PIX\n\nOlá, ${agendamento.nome || 'cliente'}! Para confirmar seu agendamento, realize o pagamento via PIX:\n\nChave PIX: ${pixChave}${valorFormatado ? `\nValor: ${valorFormatado}` : ''}\n\nApós o pagamento, envie o comprovante aqui.`
 
                         return (

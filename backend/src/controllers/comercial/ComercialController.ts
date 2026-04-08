@@ -46,7 +46,7 @@ class ComercialController {
         const metodo = normalizeMetodoPagamento(input.metodo_pagamento || input.forma_pagamento)
         if (metodo !== 'boleto') {
             return {
-                metodo_pagamento: 'pix',
+                metodo_pagamento: metodo,
                 boleto_ativo: false,
                 boleto_valor_entrada: null,
                 boleto_valor_parcela: null,
