@@ -113,7 +113,7 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen, children,
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [localSidebarOpen, setLocalSidebarOpen] = useState(false)
-  const { impersonatedProfile, setImpersonatedProfile, profile, activeProfile } = useAuth()
+  const { logout, impersonatedProfile, setImpersonatedProfile, profile, activeProfile } = useAuth()
   
   const finalAvatarUrl = avatarUrl || activeProfile?.avatar_url;
 
@@ -126,12 +126,7 @@ export function Sidebar({ groups, sidebarOpen = false, setSidebarOpen, children,
   const impersonatedClientName = typeof window !== 'undefined' ? localStorage.getItem('impersonatedClientName') : null
 
   const handleLogout = () => {
-    try {
-      localStorage.removeItem('auth_token')
-      localStorage.removeItem('authToken')
-      localStorage.removeItem('userName')
-    } catch { }
-    window.location.href = '/login'
+    logout()
   }
 
   // Se tiver children, renderizar com a nova estrutura

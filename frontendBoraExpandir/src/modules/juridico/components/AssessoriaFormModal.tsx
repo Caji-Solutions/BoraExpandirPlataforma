@@ -14,6 +14,7 @@ interface CRMFormData {
   titular_nome: string
   pedido_para: 'titular_somente' | 'titular_dependentes' | ''
   pedido_para_detalhe: string
+  membro_id?: string
   local_solicitacao: 'consulado' | 'espanha' | ''
   consulado_cidade: string
   cidade_protocolo: string
@@ -67,7 +68,7 @@ export function AssessoriaFormModal({
   const [selectedSubserviceId, setSelectedSubserviceId] = useState('')
   const [subserviceSearchTerm, setSubserviceSearchTerm] = useState('')
   const [requiresSubservice, setRequiresSubservice] = useState(false)
-  const [contratoDependentes, setContratoDependentes] = useState<{ nome: string; grau: string }[]>([])
+  const [contratoDependentes, setContratoDependentes] = useState<{ id?: string; nome: string; grau: string }[]>([])
   const [titularContrato, setTitularContrato] = useState('')
   const [documentosPreview, setDocumentosPreview] = useState<{ id: string; nome: string; obrigatorio?: boolean }[]>([])
   const [servicoNome, setServicoNome] = useState('')
@@ -94,10 +95,11 @@ export function AssessoriaFormModal({
         }
 
         // Buscar dependentes: tabela dependentes (fonte primária) + draft_dados (fallback)
-        let dependentesApi: { nome: string; grau: string }[] = []
+        let dependentesApi: { id?: string; nome: string; grau: string }[] = []
         try {
           const apiDeps = await getDependentes(clienteId)
           dependentesApi = (apiDeps || []).map((d: any) => ({
+            id: d.id,
             nome: d.nome_completo || d.nome || '',
             grau: d.parentesco || '',
           }))
@@ -123,14 +125,21 @@ export function AssessoriaFormModal({
           parsedDependents = []
         }
 
-        const dependentesDraft: { nome: string; grau: string }[] = parsedDependents.map((d: any) => ({
+        const dependentesDraft: { id?: string; nome: string; grau: string }[] = parsedDependents.map((d: any) => ({
+          id: d.id,
           nome: d.nome || '',
           grau: d.grau || d.parentesco || '',
         }))
 
-        const mergeMap = new Map<string, { nome: string; grau: string }>()
+        const mergeMap = new Map<string, { id?: string; nome: string; grau: string }>()
         for (const dep of [...dependentesDraft, ...dependentesApi]) {
-          if (dep.nome) mergeMap.set(dep.nome.trim().toLowerCase(), dep)
+          if (dep.nome) {
+            const key = dep.nome.trim().toLowerCase()
+            const existing = mergeMap.get(key)
+            if (!existing || (!existing.id && dep.id)) {
+              mergeMap.set(key, dep)
+            }
+          }
         }
         const depsMapped = Array.from(mergeMap.values())
         setContratoDependentes(depsMapped)
@@ -265,8 +274,9 @@ export function AssessoriaFormModal({
         },
         observacoes: '',
         responsavelId: activeProfile.id,
-        servicoId: produtoId || undefined, // FK aponta para catalogo_servicos (serviço principal)
+        servicoId: produtoId || undefined,
         subservicoId: selectedSubserviceId || undefined,
+        membroId: formData.membro_id || undefined
       })
       setShowSuccess(true)
       setTimeout(() => onSuccess(), 1200)
@@ -523,6 +533,51 @@ export function AssessoriaFormModal({
                           <span style={{ fontWeight: 600, color: '#1e293b', flex: 1 }}>{dep.nome}</span>
                           <span style={{ fontSize: 11, color: '#92400e', background: '#fef3c7', padding: '1px 7px', borderRadius: 99 }}>{dep.grau}</span>
                         </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* SELEÇÃO DO MEMBRO ESPECÍFICO (NOVO) */}
+                {(formData.pedido_para === 'titular_dependentes' || contratoDependentes.length > 0) && (
+                  <div style={{ marginTop: 16 }}>
+                    <FieldLabel>Associar este processo a:</FieldLabel>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <button
+                        type="button"
+                        onClick={() => handleFormChange('membro_id', null)}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+                          cursor: 'pointer', textAlign: 'left',
+                          border: !formData.membro_id ? '2px solid #f59e0b' : '1.5px solid #e2e8f0',
+                          background: !formData.membro_id ? '#fffbeb' : '#fff',
+                          color: !formData.membro_id ? '#92400e' : '#334155',
+                        }}
+                      >
+                        <span>Titular: {clienteNome}</span>
+                        {!formData.membro_id && <CheckCircle2 size={16} color="#d97706" />}
+                      </button>
+
+                      {contratoDependentes.map((dep, idx) => (
+                        <button
+                          key={dep.id || idx}
+                          type="button"
+                          onClick={() => dep.id && handleFormChange('membro_id', dep.id)}
+                          disabled={!dep.id}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+                            cursor: dep.id ? 'pointer' : 'not-allowed', textAlign: 'left',
+                            border: formData.membro_id === dep.id ? '2px solid #f59e0b' : '1.5px solid #e2e8f0',
+                            background: formData.membro_id === dep.id ? '#fffbeb' : '#fff',
+                            color: formData.membro_id === dep.id ? '#92400e' : '#334155',
+                            opacity: dep.id ? 1 : 0.6,
+                          }}
+                        >
+                          <span>Dependente: {dep.nome}</span>
+                          {formData.membro_id === dep.id && <CheckCircle2 size={16} color="#d97706" />}
+                        </button>
                       ))}
                     </div>
                   </div>

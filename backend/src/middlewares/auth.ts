@@ -4,15 +4,17 @@ import { supabase } from '../config/SupabaseClient'
 export const authMiddleware = async (req: any, res: Response, next: NextFunction) => {
     try {
         const authHeader = req.headers.authorization
+        const authHeaderValue = authHeader ? (authHeader.substring(0, 30) + '...') : 'null'
         console.log('[authMiddleware] =====================================================')
-        console.log('[authMiddleware] Iniciando autenticação...')
-        console.log('[authMiddleware] Método:', req.method)
-        console.log('[authMiddleware] URL:', req.url)
-        console.log('[authMiddleware] Authorization header presente:', !!authHeader)
+        console.log(`[authMiddleware] 🟦 Request: ${req.method} ${req.originalUrl || req.url}`)
+        console.log(`[authMiddleware] 🔑 Header: ${authHeaderValue}`)
 
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             console.log('[authMiddleware] ❌ Token não fornecido ou formato inválido')
-            return res.status(401).json({ error: 'Token não fornecido' })
+            return res.status(401).json({ 
+                error: 'Token não fornecido',
+                receivedHeader: authHeaderValue 
+            })
         }
 
         const token = authHeader.split(' ')[1]

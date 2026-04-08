@@ -1,5 +1,6 @@
 import JuridicoRepository from '../../repositories/JuridicoRepository'
 import AdmRepository from '../../repositories/AdmRepository'
+import ClienteRepository from '../../repositories/ClienteRepository'
 import { supabase } from '../../config/SupabaseClient'
 import NotificationService from '../../services/NotificationService'
 import ComercialRepository from '../../repositories/ComercialRepository'
@@ -832,15 +833,71 @@ class JuridicoController {
     // POST /juridico/assessoria - Criar assessoria jurídica
     async createAssessoria(req: any, res: any) {
         try {
-            const { clienteId, respostas, observacoes, servicoId, subservicoId } = req.body
+            const { clienteId, membroId, respostas, observacoes, servicoId, subservicoId } = req.body
+            console.log('[JuridicoController] 🎬 Iniciando createAssessoria')
+            console.log('[JuridicoController] 📥 Dados recebidos:', JSON.stringify({
+                clienteId,
+                membroId,
+                vendedorId: req.userId,
+                servicoId,
+                subservicoId,
+                pedidoPara: respostas?.pedido_para
+            }, null, 2))
 
             // TODO: Pegar do middleware de auth
             const responsavelId = req.userId
 
             if (!clienteId || !respostas) {
+                console.error('[JuridicoController] ❌ Falha: clienteId ou respostas ausentes')
                 return res.status(400).json({
                     message: 'clienteId e respostas são obrigatórios'
                 })
+            }
+
+            // 0. Sincronizar dependentes do contrato (Garantir que todos existem na tabela dependentes)
+            console.log(`[JuridicoController] 🔄 Sincronizando dependentes para o cliente ${clienteId}`)
+            try {
+                const { data: contrato } = await supabase
+                    .from('contratos_servicos')
+                    .select('draft_dados')
+                    .eq('cliente_id', clienteId)
+                    .order('criado_em', { ascending: false })
+                    .limit(1)
+                    .maybeSingle()
+
+                if (contrato?.draft_dados?.dependentes) {
+                    const depsArray = typeof contrato.draft_dados.dependentes === 'string'
+                        ? JSON.parse(contrato.draft_dados.dependentes)
+                        : contrato.draft_dados.dependentes
+
+                    if (Array.isArray(depsArray) && depsArray.length > 0) {
+                        console.log(`[JuridicoController] Encontrados ${depsArray.length} dependentes no draft do contrato. Verificando existência...`)
+                        for (const dep of depsArray) {
+                            // Verificar se já existe
+                            const { data: existing } = await supabase
+                                .from('dependentes')
+                                .select('id')
+                                .eq('cliente_id', clienteId)
+                                .ilike('nome_completo', dep.nome?.trim())
+                                .maybeSingle()
+
+                            if (!existing) {
+                                console.log(`[JuridicoController] ✨ Criando dependente ausente: ${dep.nome}`)
+                                await ClienteRepository.createDependent({
+                                    clienteId,
+                                    nomeCompleto: dep.nome || '',
+                                    parentesco: dep.grau || dep.parentesco || '',
+                                    email: dep.email,
+                                    telefone: dep.telefone
+                                })
+                            } else {
+                                console.log(`[JuridicoController] ✅ Dependente já existe: ${dep.nome} (ID: ${existing.id})`)
+                            }
+                        }
+                    }
+                }
+            } catch (syncErr) {
+                console.error('[JuridicoController] ⚠️ Erro durante a sincronização prévia de dependentes:', syncErr)
             }
 
             // 1. Criar a assessoria
@@ -894,10 +951,12 @@ class JuridicoController {
 
                 // Verifica se já existe um processo para este cliente
                 const processoExistente = await JuridicoRepository.getProcessoByClienteId(clienteId)
+                let processoId = processoExistente?.id
 
                 if (processoExistente) {
                     const updateParams: any = {
                         tipoServico,
+                        status: 'assessoria_iniciada',
                         assessoriaId: assessoria.id,
                         servicoId: servicoId || null,
                         responsavelId: responsavelId
@@ -907,16 +966,54 @@ class JuridicoController {
                     }
                     await JuridicoRepository.updateProcess(processoExistente.id, updateParams)
                 } else {
-                    await JuridicoRepository.createProcess({
+                    const novoProcesso = await JuridicoRepository.createProcess({
                         clienteId,
                         tipoServico,
-                        status: 'formularios',
+                        status: 'assessoria_iniciada',
                         etapaAtual: 1,
                         responsavelId: responsavelId,
                         assessoriaId: assessoria.id,
                         servicoId: servicoId || null,
                         documentos: documentosRequisitados
                     })
+                    processoId = novoProcesso?.id
+                }
+
+                // 2.1 Associar dependente(s) ao processo se for o caso
+                const finalMembroId = membroId || respostas?.membro_id
+                console.log('[JuridicoController] Debug vinculação:', { processoId, finalMembroId, pedidoPara: respostas?.pedido_para, clienteId })
+                
+                if (processoId && finalMembroId) {
+                    console.log(`[JuridicoController] Associando dependente ${finalMembroId} ao processo ${processoId}`)
+                    const { data: updateData, error: depUpdateError } = await supabase
+                        .from('dependentes')
+                        .update({ processo_id: processoId })
+                        .eq('id', finalMembroId)
+                        .select()
+
+                    console.log('[JuridicoController] Resultado update individual:', { data: updateData, error: depUpdateError })
+
+                    if (depUpdateError) {
+                        console.error('Erro ao associar dependente ao processo:', depUpdateError)
+                    }
+                } else if (processoId && respostas?.pedido_para === 'titular_dependentes') {
+                    console.log(`[JuridicoController] 👥 Associando todos os dependentes do cliente ${clienteId} ao processo ${processoId}`)
+                    const { data: updateData, error: depUpdateError } = await supabase
+                        .from('dependentes')
+                        .update({ processo_id: processoId })
+                        .eq('cliente_id', clienteId)
+                        .select('id, nome_completo, processo_id')
+                        .select()
+
+                    console.log('[JuridicoController] 📊 Resultado update coletivo:', { 
+                        count: updateData?.length || 0,
+                        membros: updateData?.map(d => d.nome_completo),
+                        error: depUpdateError 
+                    })
+
+                    if (depUpdateError) {
+                        console.error('Erro ao associar dependentes ao processo:', depUpdateError)
+                    }
                 }
             } catch (procError) {
                 console.error('Erro ao sincronizar processo com assessoria:', procError)
@@ -969,28 +1066,14 @@ class JuridicoController {
                 console.error('Erro ao fazer merge DNA / atualizar previsao_chegada:', dnaError)
             }
 
-            // 5. Criar requerimento com documentos pendentes para o cliente
-            try {
-                if (servicoRequisitos.length > 0) {
-                    const processoAtual = await JuridicoRepository.getProcessoByClienteId(clienteId)
-
-                    const documentosAcoplados = servicoRequisitos.map((r: any) => ({
-                        type: r.nome,
-                        memberId: clienteId,
-                    }))
-
-                    await JuridicoRepository.solicitarRequerimento({
-                        clienteId,
-                        tipo: `Documentação — ${tipoServico}`,
-                        processoId: processoAtual?.id || undefined,
-                        criadorId: responsavelId,
-                        notificar: true,
-                        documentosAcoplados,
-                    })
+            // 5. Requerimento removido para centralizar no Processo como solicitado
+                /* 
+                try {
+                ...
+                } catch (reqError) {
+                    console.error('Erro ao criar requerimento com documentos pendentes:', reqError)
                 }
-            } catch (reqError) {
-                console.error('Erro ao criar requerimento com documentos pendentes:', reqError)
-            }
+                */
 
             return res.status(201).json({
                 message: 'Assessoria jurídica criada com sucesso e processo sincronizado',

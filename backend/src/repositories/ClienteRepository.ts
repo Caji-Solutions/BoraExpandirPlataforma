@@ -145,6 +145,7 @@ class ClienteRepository {
         email?: string
         telefone?: string
         isAncestralDireto?: boolean
+        processoId?: string
     }) {
         const rawParentesco = (params.parentesco || '').trim()
 
@@ -160,6 +161,7 @@ class ClienteRepository {
             telefone: params.telefone,
             is_ancestral_direto: params.isAncestralDireto || false,
             status: 'ativo',
+            processo_id: params.processoId || null,
             criado_em: new Date().toISOString()
         }
         if (rawParentesco) {

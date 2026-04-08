@@ -1155,6 +1155,7 @@ class JuridicoRepository {
         assessoriaId?: string
         servicoId?: string
         documentos?: any[]
+        observacoes?: string
     }): Promise<any> {
         const { data, error } = await supabase
             .from('processos')
@@ -1167,6 +1168,7 @@ class JuridicoRepository {
                 assessoria_id: params.assessoriaId || null,
                 servico_id: params.servicoId || null,
                 documentos: params.documentos || [],
+                observacoes: params.observacoes || null,
                 criado_em: new Date().toISOString(),
                 atualizado_em: new Date().toISOString()
             }])
@@ -1190,6 +1192,7 @@ class JuridicoRepository {
         assessoriaId?: string
         servicoId?: string
         documentos?: any[]
+        observacoes?: string
     }): Promise<any> {
         const updateData: any = {
             atualizado_em: new Date().toISOString(),
@@ -1203,6 +1206,7 @@ class JuridicoRepository {
         if (params.assessoriaId !== undefined) updateData.assessoria_id = params.assessoriaId
         if (params.servicoId !== undefined) updateData.servico_id = params.servicoId
         if (params.documentos !== undefined) updateData.documentos = params.documentos
+        if (params.observacoes !== undefined) updateData.observacoes = params.observacoes
 
         const { data, error } = await supabase
             .from('processos')

@@ -156,49 +156,106 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
 
   if (!process) {
     return (
-      <div className="max-w-4xl mx-auto px-4 space-y-8 animate-in fade-in duration-500">
-        <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-700 shadow-sm">
-          <div className="h-20 w-20 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <GitBranch className="h-10 w-10 text-blue-500" />
-          </div>
-          <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter mb-4">
-            Processo não iniciado
-          </h2>
-          <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto leading-relaxed px-6 font-medium">
-            Seu processo oficial de cidadania ainda não foi iniciado no sistema. 
-            O acompanhamento detalhado estará disponível apenas após o inicio da sua assessoria jurídica.
-          </p>
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+        <div className="max-w-4xl mx-auto px-4 py-12 space-y-12 animate-in fade-in duration-500">
           
-          {!consultoriaRealizada ? (
-            <div className="mt-8 p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl max-w-sm mx-auto flex items-center gap-4 text-left">
-              <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full">
-                <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-widest">Próxima Etapa</p>
-                <p className="text-sm text-amber-700 dark:text-amber-400">Realizar consultoria jurídica inicial</p>
-              </div>
+          {/* Page Header (Empty State) */}
+          <div className="mb-12 text-left">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-1 w-8 bg-blue-600 rounded-full" />
+              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Acompanhamento</span>
             </div>
-          ) : (
-             <div className="mt-8 p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-2xl max-w-sm mx-auto flex items-center gap-4 text-left">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
-                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-green-800 dark:text-green-300 uppercase tracking-widest">Aguardando Início</p>
-                <p className="text-sm text-green-700 dark:text-green-400">Sua assessoria foi concluída. Aguarde o início formal do processo.</p>
-              </div>
+            <h1 className="text-4xl md:text-5xl font-light text-gray-900 dark:text-white tracking-tight">
+              Meu <span className="font-bold text-blue-600">Processo</span>
+            </h1>
+          </div>
+
+          <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300">
+            <div className="h-20 w-20 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <GitBranch className="h-10 w-10 text-blue-500" />
             </div>
-          )}
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter mb-4">
+              Processo não iniciado
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto leading-relaxed px-6 font-medium">
+              Seu processo oficial de cidadania ainda não foi iniciado no sistema. 
+              O acompanhamento detalhado estará disponível apenas após o inicio da sua assessoria jurídica.
+            </p>
+            
+            {!consultoriaRealizada ? (
+              <div className="mt-8 p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl max-w-sm mx-auto flex items-center gap-4 text-left shadow-sm">
+                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full">
+                  <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-widest">Próxima Etapa</p>
+                  <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">Realizar consultoria jurídica inicial</p>
+                </div>
+              </div>
+            ) : (
+               <div className="mt-8 p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-2xl max-w-sm mx-auto flex items-center gap-4 text-left shadow-sm">
+                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
+                  <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-green-800 dark:text-green-300 uppercase tracking-widest">Aguardando Início</p>
+                  <p className="text-sm text-green-700 dark:text-green-400 font-medium">Sua assessoria foi concluída. Aguarde o início formal do processo.</p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 space-y-8">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+      <div className="max-w-4xl mx-auto px-4 py-12 space-y-12">
+        
+        {/* Page Header */}
+        <div className="mb-12">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-1 w-8 bg-blue-600 rounded-full" />
+                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Acompanhamento</span>
+              </div>
+              <h1 className="text-4xl md:text-5xl font-light text-gray-900 dark:text-white tracking-tight">
+                Meu <span className="font-bold text-blue-600">Processo</span>
+              </h1>
+              <p className="text-lg text-gray-500 dark:text-gray-400 mt-3 font-light max-w-lg">
+                Siga cada etapa oficial da sua jornada para a cidadania europeia em tempo real.
+              </p>
+              <div className="flex flex-wrap items-center gap-3 mt-4">
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-none px-3 py-1 rounded-lg">
+                  {currentProcess.serviceType}
+                </Badge>
+                {currentProcess.id !== 'not-started' && (
+                  <span className="text-sm text-gray-400 font-mono">#{currentProcess.id.substring(0, 8)}</span>
+                )}
+              </div>
+            </div>
 
-      <div className="space-y-8">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm min-w-[240px]">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Progresso Geral</span>
+                <span className="text-xl font-bold text-blue-600">{Math.round(progressPercentage)}%</span>
+              </div>
+              <div className="w-full h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
+                <div 
+                  className="h-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500 transition-all duration-1000 ease-out"
+                  style={{ width: `${progressPercentage}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 text-right uppercase tracking-wider font-semibold">
+                {completedSteps} de {totalSteps} etapas concluídas
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-8">
         {currentProcess.steps.map((step, index) => {
           const StepIcon = stepIcons[step.status] || Clock
           const isLast = index === currentProcess.steps.length - 1
@@ -434,5 +491,6 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
         </CardContent>
       </Card>
     </div>
-  )
+  </div>
+)
 }

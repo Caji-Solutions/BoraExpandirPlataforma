@@ -320,6 +320,7 @@ export async function createProcess(payload: {
 export async function createAssessoria(payload: {
   clienteId: string;
   respostas: any;
+  membroId?: string;
   observacoes?: string;
   responsavelId?: string;
   servicoId?: string;
