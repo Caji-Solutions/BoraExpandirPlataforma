@@ -114,12 +114,28 @@ export function AssessoriaJuridica() {
           }
 
           // Extrair dependentes do draft_dados do contrato
-          const dependentesDraft: { nome: string; grau: string }[] = contratoAtivo?.draft_dados?.dependentes
-            ? contratoAtivo.draft_dados.dependentes.map((d: any) => ({
-                nome: d.nome || '',
-                grau: d.grau || d.parentesco || ''
-              }))
-            : [];
+          const rawDependents = contratoAtivo?.draft_dados?.dependentes;
+          let parsedDependents: any[] = [];
+
+          if (rawDependents === undefined || rawDependents === null) {
+            parsedDependents = [];
+          } else if (typeof rawDependents === 'string') {
+            try {
+              parsedDependents = JSON.parse(rawDependents);
+            } catch (e) {
+              console.error('[AssessoriaJuridica] Failed to parse dependentes JSON:', e);
+              parsedDependents = [];
+            }
+          } else if (Array.isArray(rawDependents)) {
+            parsedDependents = rawDependents;
+          } else {
+            parsedDependents = [];
+          }
+
+          const dependentesDraft: { nome: string; grau: string }[] = parsedDependents.map((d: any) => ({
+            nome: d.nome || '',
+            grau: d.grau || d.parentesco || ''
+          }));
 
           // Mesclar, removendo duplicatas pelo nome
           const mergeMap = new Map<string, { nome: string; grau: string }>();
