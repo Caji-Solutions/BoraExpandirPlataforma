@@ -146,20 +146,7 @@ class ClienteRepository {
         telefone?: string
         isAncestralDireto?: boolean
     }) {
-        // Valores aceitos pelo enum parentesco_tipo no banco
-        const PARENTESCO_ENUM = [
-            'conjuge', 'filho', 'filha', 'pai', 'mae',
-            'irmao', 'irma', 'avo', 'avo_f', 'neto', 'neta',
-            'sobrinho', 'sobrinha', 'tio', 'tia', 'primo', 'prima',
-            'enteado', 'enteada', 'sogro', 'sogra', 'genro', 'nora',
-            'cunhado', 'cunhada', 'outro'
-        ]
         const rawParentesco = (params.parentesco || '').trim()
-        const normalized = rawParentesco
-            .toLowerCase()
-            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-            .replace(/\(a\)$/, 'a')
-        const parentescoEnum = PARENTESCO_ENUM.includes(normalized) ? normalized : null
 
         const record: Record<string, any> = {
             cliente_id: params.clienteId,
@@ -175,8 +162,8 @@ class ClienteRepository {
             status: 'ativo',
             criado_em: new Date().toISOString()
         }
-        if (parentescoEnum) {
-            record.parentesco = parentescoEnum
+        if (rawParentesco) {
+            record.parentesco = rawParentesco
         }
 
         const { data, error } = await supabase

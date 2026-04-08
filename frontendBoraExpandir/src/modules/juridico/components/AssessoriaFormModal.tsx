@@ -105,12 +105,28 @@ export function AssessoriaFormModal({
           console.error('[AssessoriaFormModal] Erro ao buscar dependentes da API:', depErr)
         }
 
-        const dependentesDraft: { nome: string; grau: string }[] = contratoAtivo?.draft_dados?.dependentes
-          ? contratoAtivo.draft_dados.dependentes.map((d: any) => ({
-              nome: d.nome || '',
-              grau: d.grau || d.parentesco || '',
-            }))
-          : []
+        const rawDependents = contratoAtivo?.draft_dados?.dependentes
+        let parsedDependents: any[] = []
+
+        if (rawDependents === undefined || rawDependents === null) {
+          parsedDependents = []
+        } else if (typeof rawDependents === 'string') {
+          try {
+            parsedDependents = JSON.parse(rawDependents)
+          } catch (e) {
+            console.error('[AssessoriaFormModal] Failed to parse dependentes JSON:', e)
+            parsedDependents = []
+          }
+        } else if (Array.isArray(rawDependents)) {
+          parsedDependents = rawDependents
+        } else {
+          parsedDependents = []
+        }
+
+        const dependentesDraft: { nome: string; grau: string }[] = parsedDependents.map((d: any) => ({
+          nome: d.nome || '',
+          grau: d.grau || d.parentesco || '',
+        }))
 
         const mergeMap = new Map<string, { nome: string; grau: string }>()
         for (const dep of [...dependentesDraft, ...dependentesApi]) {
