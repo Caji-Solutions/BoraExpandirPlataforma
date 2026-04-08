@@ -156,6 +156,67 @@ class ApostilamentoRepository {
     return orcamentos
   }
 
+  async uploadApostilado(dados: {
+    apostilamentoId: string
+    filePath: string
+    fileBuffer: Buffer
+    contentType: string
+    nomeOriginal: string
+  }) {
+    console.log(`[ApostilamentoRepository.uploadApostilado] Starting for apostilamento: ${dados.apostilamentoId}`)
+
+    // 1. Upload file to Supabase Storage
+    const { error: uploadError } = await supabase
+      .storage
+      .from('documentos')
+      .upload(dados.filePath, dados.fileBuffer, {
+        contentType: dados.contentType,
+        upsert: true
+      })
+
+    if (uploadError) {
+      console.error('Error uploading apostiled document:', uploadError)
+      throw uploadError
+    }
+
+    // 2. Get public URL
+    const { data: urlData } = supabase
+      .storage
+      .from('documentos')
+      .getPublicUrl(dados.filePath)
+
+    const publicUrl = urlData?.publicUrl || ''
+    console.log(`[ApostilamentoRepository.uploadApostilado] Public URL: ${publicUrl}`)
+
+    // 3. Update apostilamento record with the new URL and set status to 'concluido'
+    const { data, error } = await supabase
+      .from('apostilamentos')
+      .update({
+        documento_apostilado_url: publicUrl,
+        status: 'concluido',
+        atualizado_em: new Date().toISOString(),
+        concluido_em: new Date().toISOString()
+      })
+      .eq('id', dados.apostilamentoId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating apostilamento:', error)
+      throw error
+    }
+
+    // 4. Update document status in documentos table to show in Juridico analysis
+    if (data?.documento_id) {
+      await supabase
+        .from('documentos')
+        .update({ status: DocumentStatus.ANALYZING_APOSTILLE })
+        .eq('id', data.documento_id)
+    }
+
+    return data
+  }
+
   async updateStatus(id: string, params: {
     status: string;
     documentoApostiladoUrl?: string;

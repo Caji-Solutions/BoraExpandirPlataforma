@@ -18,6 +18,7 @@ interface ApostilleQuoteModalProps {
 }
 
 const PIX_CNPJ = '55.218.947/0001-65'
+const WISE_TAG = 'https://wise.com/pay/me/fernandaj101'
 const VALOR_UNITARIO_APOSTILA = 180
 
 export function ApostilleQuoteModal({
@@ -34,9 +35,11 @@ export function ApostilleQuoteModal({
   const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [step, setStep] = useState<'selection' | 'pix' | 'success'>('selection')
+  const [step, setStep] = useState<'selection' | 'method' | 'pix' | 'success'>('selection')
   const [error, setError] = useState<string | null>(null)
   const [copiedPix, setCopiedPix] = useState(false)
+  const [copiedWise, setCopiedWise] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'wise'>('pix')
   const [comprovanteFile, setComprovanteFile] = useState<File | null>(null)
   const [orcamentoIds, setOrcamentoIds] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -118,6 +121,17 @@ export function ApostilleQuoteModal({
     }
   }
 
+  const handleCopyWise = async () => {
+    try {
+      await navigator.clipboard.writeText(WISE_TAG)
+      setCopiedWise(true)
+      setTimeout(() => setCopiedWise(false), 3000)
+    } catch {
+      setCopiedWise(true)
+      setTimeout(() => setCopiedWise(false), 3000)
+    }
+  }
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -140,8 +154,8 @@ export function ApostilleQuoteModal({
       setError(null)
       
       if (step === 'selection') {
-        console.log('[ApostilleQuoteModal.handleAction] Avancando para o passo PIX');
-        setStep('pix');
+        console.log('[ApostilleQuoteModal.handleAction] Avancando para selecao de metodo');
+        setStep('method');
       } else if (step === 'pix') {
         if (!comprovanteFile) {
           console.warn('[ApostilleQuoteModal.handleAction] Tentativa de confirmar sem comprovante');
@@ -210,8 +224,9 @@ export function ApostilleQuoteModal({
             </div>
             <div>
               <h3 className="font-bold text-gray-900 dark:text-white">
-                {step === 'selection' ? 'Solicitar Apostila' : 
-                 step === 'pix' ? 'Pagamento via PIX' : 
+                {step === 'selection' ? 'Solicitar Apostila' :
+                 step === 'method' ? 'Método de Pagamento' :
+                 step === 'pix' ? (paymentMethod === 'wise' ? 'Pagamento via Wise' : 'Pagamento via PIX') :
                  'Concluído'}
               </h3>
               <p className="text-xs text-gray-500 truncate max-w-[200px] font-medium">{documentoNome}</p>
@@ -310,6 +325,36 @@ export function ApostilleQuoteModal({
                 </>
               )}
 
+              {step === 'method' && (
+                <div className="space-y-4">
+                  <div className="bg-amber-50 dark:bg-amber-900/10 rounded-xl p-5 border border-amber-100 dark:border-amber-900/20 text-center">
+                    <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">Total a Pagar</p>
+                    <p className="text-3xl font-black text-gray-900 dark:text-white">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorTotal)}
+                    </p>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Selecione como deseja realizar o pagamento:</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => { setPaymentMethod('pix'); setStep('pix') }}
+                      className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-100 dark:border-neutral-800 hover:border-emerald-500 dark:hover:border-emerald-500 bg-gray-50 dark:bg-neutral-800/50 hover:bg-emerald-50 dark:hover:bg-emerald-500/5 transition-all"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 text-lg font-bold">P</div>
+                      <span className="font-bold text-sm text-gray-900 dark:text-white">PIX</span>
+                      <span className="text-[10px] text-gray-500">Chave CNPJ</span>
+                    </button>
+                    <button
+                      onClick={() => { setPaymentMethod('wise'); setStep('pix') }}
+                      className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-100 dark:border-neutral-800 hover:border-purple-500 dark:hover:border-purple-500 bg-gray-50 dark:bg-neutral-800/50 hover:bg-purple-50 dark:hover:bg-purple-500/5 transition-all"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 text-lg font-bold">W</div>
+                      <span className="font-bold text-sm text-gray-900 dark:text-white">Wise</span>
+                      <span className="text-[10px] text-gray-500">Transferência internacional</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {step === 'pix' && (
                 <>
                   <div className="bg-amber-50 dark:bg-amber-900/10 rounded-xl p-5 border border-amber-100 dark:border-amber-900/20 text-center">
@@ -319,19 +364,42 @@ export function ApostilleQuoteModal({
                     </p>
                   </div>
 
-                  <div className="bg-gray-50 dark:bg-neutral-800 rounded-xl p-5 border border-gray-100 dark:border-neutral-800">
-                    <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-2">Chave PIX (CNPJ)</p>
-                    <div className="flex items-center gap-3">
-                      <code className="text-xl font-bold text-gray-900 dark:text-white tracking-wider flex-1">{PIX_CNPJ}</code>
-                      <button
-                        onClick={handleCopyPix}
-                        className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 hover:bg-amber-200 transition-colors"
-                        title="Copiar Chave PIX"
-                      >
-                        {copiedPix ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
-                      </button>
+                  {paymentMethod === 'pix' ? (
+                    <div className="bg-gray-50 dark:bg-neutral-800 rounded-xl p-5 border border-gray-100 dark:border-neutral-800">
+                      <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-2">Chave PIX (CNPJ)</p>
+                      <div className="flex items-center gap-3">
+                        <code className="text-xl font-bold text-gray-900 dark:text-white tracking-wider flex-1">{PIX_CNPJ}</code>
+                        <button
+                          onClick={handleCopyPix}
+                          className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 transition-colors"
+                          title="Copiar Chave PIX"
+                        >
+                          {copiedPix ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="bg-gray-50 dark:bg-neutral-800 rounded-xl p-5 border border-gray-100 dark:border-neutral-800">
+                      <p className="text-xs font-bold text-purple-600 uppercase tracking-wider mb-2">Wisetag (Transferência Internacional)</p>
+                      <div className="flex items-center gap-3">
+                        <a
+                          href={WISE_TAG}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-lg font-bold text-purple-600 dark:text-purple-400 underline hover:text-purple-700 dark:hover:text-purple-300 flex-1 truncate transition-colors"
+                        >
+                          wise.com/pay/me/fernandaj101
+                        </a>
+                        <button
+                          onClick={handleCopyWise}
+                          className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 hover:bg-purple-200 transition-colors"
+                          title="Copiar link Wise"
+                        >
+                          {copiedWise ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-3">
                     <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Anexar Comprovante</label>
@@ -384,7 +452,8 @@ export function ApostilleQuoteModal({
                 </>
               )}
 
-              <Button 
+              {step !== 'method' && (
+              <Button
                 onClick={handleAction}
                 disabled={isProcessing || selectedDocIds.size === 0}
                 className={cn(
@@ -409,6 +478,7 @@ export function ApostilleQuoteModal({
                   </>
                 )}
               </Button>
+              )}
             </div>
           )}
         </div>

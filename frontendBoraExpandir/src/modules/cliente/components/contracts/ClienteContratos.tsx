@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, FileCheck, FileText, Loader2, XCircle } from 'lucide-react'
+import { AlertTriangle, Check, Copy, FileCheck, FileText, Loader2, XCircle } from 'lucide-react'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import { useToast, ToastContainer } from '@/components/ui/Toast'
 import { clienteService } from '../../services/clienteService'
 import type { ContratoServico } from '../../../../types/comercial'
+
+const PIX_CNPJ = '55.218.947/0001-65'
+const WISE_TAG = 'https://wise.com/pay/me/fernandaj101'
 
 interface ClienteContratosProps {
   clienteId: string
@@ -27,6 +30,8 @@ export default function ClienteContratos({ clienteId }: ClienteContratosProps) {
   const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [contratos, setContratos] = useState<ContratoServico[]>([])
+  const [metodoPagamento, setMetodoPagamento] = useState<Record<string, 'pix' | 'wise'>>({})
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
   const fetchContratos = async () => {
     if (!clienteId) return
@@ -89,6 +94,14 @@ export default function ClienteContratos({ clienteId }: ClienteContratosProps) {
     } catch (err: any) {
       toast.error(err.message || 'Erro ao enviar comprovante')
     }
+  }
+
+  const handleCopyKey = async (contratoId: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value)
+    } catch { /* fallback silencioso */ }
+    setCopiedKey(contratoId)
+    setTimeout(() => setCopiedKey(null), 3000)
   }
 
   if (loading) {
@@ -200,14 +213,78 @@ export default function ClienteContratos({ clienteId }: ClienteContratosProps) {
                   </div>
                 )}
                 {(contrato.pagamento_status === 'pendente' || contrato.pagamento_status === 'recusado') && contrato.assinatura_status === 'aprovado' && !isLead && (
-                  <input
-                    type="file"
-                    accept="application/pdf,image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) handleUploadComprovante(contrato.id, file)
-                    }}
-                  />
+                  <div className="space-y-3">
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Como deseja pagar?</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setMetodoPagamento(prev => ({ ...prev, [contrato.id]: 'pix' }))}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm font-bold transition-all ${
+                          (metodoPagamento[contrato.id] || 'pix') === 'pix'
+                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/15 text-emerald-700 dark:text-emerald-400'
+                            : 'border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-600 dark:text-gray-400'
+                        }`}
+                      >
+                        <span className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 text-xs font-bold">P</span>
+                        PIX
+                      </button>
+                      <button
+                        onClick={() => setMetodoPagamento(prev => ({ ...prev, [contrato.id]: 'wise' }))}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm font-bold transition-all ${
+                          metodoPagamento[contrato.id] === 'wise'
+                            ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/15 text-purple-700 dark:text-purple-400'
+                            : 'border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-600 dark:text-gray-400'
+                        }`}
+                      >
+                        <span className="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 text-xs font-bold">W</span>
+                        Wise
+                      </button>
+                    </div>
+
+                    {(metodoPagamento[contrato.id] || 'pix') === 'pix' ? (
+                      <div className="bg-gray-50 dark:bg-neutral-800/50 rounded-xl p-4 border border-gray-100 dark:border-neutral-800">
+                        <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-2">Chave PIX (CNPJ)</p>
+                        <div className="flex items-center gap-3">
+                          <code className="text-lg font-bold text-gray-900 dark:text-white tracking-wider flex-1">{PIX_CNPJ}</code>
+                          <button
+                            onClick={() => handleCopyKey(contrato.id, PIX_CNPJ)}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-200 transition-colors flex items-center gap-1"
+                          >
+                            {copiedKey === contrato.id ? <><Check className="h-3 w-3" /> Copiado!</> : <><Copy className="h-3 w-3" /> Copiar</>}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 dark:bg-neutral-800/50 rounded-xl p-4 border border-gray-100 dark:border-neutral-800">
+                        <p className="text-xs font-bold text-purple-600 uppercase tracking-wider mb-2">Wisetag (Transferência Internacional)</p>
+                        <div className="flex items-center gap-3">
+                          <a
+                            href={WISE_TAG}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-lg font-bold text-purple-600 dark:text-purple-400 underline hover:text-purple-700 dark:hover:text-purple-300 flex-1 truncate transition-colors"
+                          >
+                            wise.com/pay/me/fernandaj101
+                          </a>
+                          <button
+                            onClick={() => handleCopyKey(contrato.id, WISE_TAG)}
+                            className="px-3 py-1.5 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-bold hover:bg-purple-200 transition-colors flex items-center gap-1"
+                          >
+                            {copiedKey === contrato.id ? <><Check className="h-3 w-3" /> Copiado!</> : <><Copy className="h-3 w-3" /> Copiar</>}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <input
+                      type="file"
+                      accept="application/pdf,image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleUploadComprovante(contrato.id, file)
+                      }}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 dark:file:bg-emerald-900/30 dark:file:text-emerald-400"
+                    />
+                  </div>
                 )}
                 {contrato.pagamento_status === 'em_analise' && (
                   <p className="text-xs text-gray-500">Comprovante em analise pelo financeiro.</p>

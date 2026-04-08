@@ -26,6 +26,7 @@ const API_BASE_URL = import.meta.env.VITE_BACKEND_URL
 interface Comprovante {
     id: string
     tipo?: 'agendamento' | 'contrato' | 'parcela'
+    metodo_pagamento?: string
     ids_grupo?: string[]
     nome: string
     email: string
@@ -443,6 +444,16 @@ export function ComprovantesPage() {
                                             {c.tipo === 'contrato' && (
                                                 <span className="text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 px-2 py-0.5 rounded-full font-bold uppercase mt-1">
                                                     Contrato (Fixo)
+                                                </span>
+                                            )}
+                                            {c.metodo_pagamento === 'wise' && (
+                                                <span className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 px-2 py-0.5 rounded-full font-bold uppercase mt-1">
+                                                    Wise
+                                                </span>
+                                            )}
+                                            {c.metodo_pagamento === 'cartao' && (
+                                                <span className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full font-bold uppercase mt-1">
+                                                    Cartão
                                                 </span>
                                             )}
                                         </div>

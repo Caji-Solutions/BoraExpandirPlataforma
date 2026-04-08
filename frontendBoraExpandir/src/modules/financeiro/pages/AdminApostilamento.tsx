@@ -20,6 +20,7 @@ import { Input } from '@/modules/shared/components/ui/input'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import { cn, formatDateSimple } from '../../cliente/lib/utils'
 import { apostilamentoService, Apostilamento } from '../services/apostilamentoService'
+import { apiClient } from '@/modules/shared/services/api'
 
 type ViewState = 'folders' | 'members' | 'analysis'
 
@@ -133,15 +134,19 @@ export function AdminApostilamento() {
 
         try {
             setIsUploading(prev => ({ ...prev, [id]: true }))
-            
-            // Simulate network delay for "WOW" effect
-            await new Promise(resolve => setTimeout(resolve, 1500))
 
-            // In a real app, upload file to storage first
-            await handleUpdateStatus(id, 'concluido', '')
-            
+            const formData = new FormData()
+            formData.append('documento', file)
+
+            await apiClient.post(`/apostilamentos/${id}/upload-apostilado`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            })
+
+            fetchData()
+
         } catch (error) {
             console.error(error)
+            alert('Erro ao fazer upload do documento apostilado')
         } finally {
             setIsUploading(prev => ({ ...prev, [id]: false }))
         }

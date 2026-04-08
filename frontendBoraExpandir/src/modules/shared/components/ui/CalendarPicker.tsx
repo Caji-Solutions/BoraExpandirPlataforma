@@ -9,17 +9,21 @@ interface CalendarPickerProps {
   disablePastDates?: boolean
   disableWeekends?: boolean
   minDate?: Date
+  occupancyData?: Record<string, number>
+  occupancyColor?: 'blue' | 'emerald'
 }
 
 const dayNames = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"]
 
-export function CalendarPicker({ 
-  onDateSelect, 
+export function CalendarPicker({
+  onDateSelect,
   selectedDate,
   disabledDates = [],
   disablePastDates,
   disableWeekends,
-  minDate
+  minDate,
+  occupancyData,
+  occupancyColor = 'blue'
 }: CalendarPickerProps) {
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); const [currentMonth, setCurrentMonth] = useState(new Date(tomorrow.getFullYear(), tomorrow.getMonth(), 1))
 
@@ -112,6 +116,15 @@ export function CalendarPicker({
     )
   }
 
+  const hasOccupancy = (day: number) => {
+    if (!occupancyData) return false
+    const y = currentMonth.getFullYear()
+    const m = String(currentMonth.getMonth() + 1).padStart(2, '0')
+    const d = String(day).padStart(2, '0')
+    const key = `${y}-${m}-${d}`
+    return (occupancyData[key] || 0) > 0
+  }
+
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
       {/* Header com navegação */}
@@ -162,6 +175,11 @@ export function CalendarPicker({
           const selected = isDateSelected(day)
           const today = isToday(day)
           const isWknd = isWeekend(day)
+          const occupied = hasOccupancy(day)
+
+          const dotColor = occupancyColor === 'emerald'
+            ? 'bg-emerald-500'
+            : 'bg-blue-500'
 
           return (
             <button
@@ -169,12 +187,12 @@ export function CalendarPicker({
               onClick={() => !disabled && handleDayClick(day)}
               disabled={disabled}
               className={`
-                aspect-square rounded-lg text-sm font-medium transition-all duration-200
+                relative aspect-square rounded-lg text-sm font-medium transition-all duration-200 flex flex-col items-center justify-center
                 ${
                   disabled && isWknd && disableWeekends
                   ? 'bg-gray-300 dark:bg-neutral-700 text-gray-500 opacity-40 cursor-not-allowed pointer-events-none'
-                  : disabled 
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed pointer-events-none' 
+                  : disabled
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed pointer-events-none'
                   : selected
                   ? 'bg-emerald-600 text-white shadow-md hover:bg-emerald-700 cursor-pointer'
                   : today
@@ -183,7 +201,10 @@ export function CalendarPicker({
                 }
               `}
             >
-              {day}
+              <span>{day}</span>
+              {occupied && !disabled && (
+                <span className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${selected ? 'bg-white' : dotColor}`} />
+              )}
             </button>
           )
         })}

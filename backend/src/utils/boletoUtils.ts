@@ -1,4 +1,4 @@
-export type MetodoPagamento = 'pix' | 'boleto'
+export type MetodoPagamento = 'pix' | 'boleto' | 'wise'
 
 function pad2(value: number): string {
     return String(value).padStart(2, '0')
@@ -26,7 +26,10 @@ function getLastDayOfMonth(year: number, monthIndex: number): number {
 }
 
 export function normalizeMetodoPagamento(value: any): MetodoPagamento {
-    return String(value || '').toLowerCase() === 'boleto' ? 'boleto' : 'pix'
+    const normalized = String(value || '').toLowerCase()
+    if (normalized === 'boleto') return 'boleto'
+    if (normalized === 'wise') return 'wise'
+    return 'pix'
 }
 
 export function clampQuantidadeParcelas(value: any): number {
