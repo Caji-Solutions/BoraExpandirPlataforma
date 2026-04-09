@@ -102,7 +102,13 @@ export function ClienteApp() {
   const fetchRequerimentos = async (clientId: string = client.id) => {
     try {
       const result = await apiClient.get<{ data: any[] }>(`/cliente/${clientId}/requerimentos`)
-      setRequerimentos(result.data || [])
+      const mappedRequerimentos = (result.data || []).map((req: any) => ({
+        ...req,
+        created_at: req.criado_em || req.created_at,
+        updated_at: req.atualizado_em || req.updated_at,
+        documentos: req.documentos || []
+      }))
+      setRequerimentos(mappedRequerimentos)
     } catch (error) {
       console.error('Erro ao buscar requerimentos:', error)
     }
@@ -232,31 +238,24 @@ export function ClienteApp() {
           if (processosData.data && processosData.data.length > 0) {
             const apiProcesso = processosData.data[0]
             const phases = [
-              { id: 0, name: "Análise Inicial" },
-              { id: 1, name: "Consultoria" },
-              { id: 2, name: "Análise Técnica" },
-              { id: 3, name: "Proposta" },
-              { id: 4, name: "Assessoria Contratada" },
-              { id: 5, name: "Em Andamento" },
-              { id: 6, name: "Finalizado" }
+              { id: 0, name: "Assessoria Iniciada" },
+              { id: 1, name: "Análise de Documentos" },
+              { id: 2, name: "Processo Protocolado" },
+              { id: 3, name: "Processo Finalizado" }
             ];
 
-            // Mapear stage para etapa visual (0-6)
-            const mapStageToStep = (stage?: string): number => {
-              switch (stage) {
-                case 'formularios': return 0
-                case 'aguardando_consultoria': return 1
-                case 'em_consultoria': return 2
-                case 'clientes_c2': return 3
-                case 'aguardando_assessoria': return 4
-                case 'assessoria_andamento': return 5
-                case 'assessoria_finalizada': return 6
-                case 'cancelado': return -1
+            // Mapear status do processo para etapa visual (0-3) de acordo com os novos status
+            const mapStatusToStep = (status?: string): number => {
+              switch (status) {
+                case 'assessoria_iniciada': return 0
+                case 'analise_documentos': return 1
+                case 'processo_protocolado': return 2
+                case 'processo_finalizado': return 3
                 default: return 0
               }
             }
 
-            const currentStepId = mapStageToStep(currentClient?.stage);
+            const currentStepId = mapStatusToStep(apiProcesso.status);
 
             const mappedSteps: ProcessStep[] = phases.map(phase => {
               let status: 'pending' | 'in_progress' | 'completed' | 'waiting' = 'pending';
@@ -268,11 +267,12 @@ export function ClienteApp() {
             const mappedProcesso: Process = {
               id: apiProcesso.id,
               clientId: finalActiveId,
-              serviceType: apiProcesso.tipo_servico,
+              serviceType: apiProcesso.tipo_servico || 'Cidadania Italiana',
               currentStep: currentStepId,
+              status: apiProcesso.status,
               steps: mappedSteps,
-              createdAt: new Date(apiProcesso.created_at),
-              updatedAt: new Date(apiProcesso.updated_at)
+              createdAt: new Date(apiProcesso.criado_em || apiProcesso.created_at || Date.now()),
+              updatedAt: new Date(apiProcesso.atualizado_em || apiProcesso.updated_at || Date.now())
             }
             setProcesso(mappedProcesso)
           }

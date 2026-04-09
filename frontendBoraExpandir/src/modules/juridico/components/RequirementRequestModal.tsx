@@ -71,6 +71,7 @@ export function RequirementRequestModal({
     initialTitle = ''
 }: RequirementRequestModalProps) {
     const [identificador, setIdentificador] = useState(initialTitle);
+    const [prazo, setPrazo] = useState(15);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [files, setFiles] = useState<File[]>([]);
 
@@ -140,6 +141,8 @@ export function RequirementRequestModal({
                 formData.append('files', file);
             });
 
+            formData.append('prazo', prazo.toString());
+
             // 1. Create Requirement Entity and handle everything in backend
             await requestRequirement(formData);
 
@@ -149,6 +152,7 @@ export function RequirementRequestModal({
 
             // Reset form
             setIdentificador('');
+            setPrazo(15);
             setFiles([]);
             setDocumentsToRequest([]);
         } catch (error) {
@@ -276,6 +280,33 @@ export function RequirementRequestModal({
                                             })}
                                         </div>
                                     )}
+                                </div>
+                            </div>
+
+                            {/* Identification and Deadline */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-4">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                        Identificador (Opcional)
+                                    </Label>
+                                    <Input
+                                        placeholder="Ex: Pasta de Nascimento..."
+                                        value={identificador}
+                                        onChange={(e) => setIdentificador(e.target.value)}
+                                        className="h-10 rounded-xl bg-muted/20 border-border/50 text-xs font-bold"
+                                    />
+                                </div>
+                                <div className="space-y-4">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                        Prazo (em dias)
+                                    </Label>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        value={prazo}
+                                        onChange={(e) => setPrazo(parseInt(e.target.value) || 0)}
+                                        className="h-10 rounded-xl bg-muted/20 border-border/50 text-xs font-bold"
+                                    />
                                 </div>
                             </div>
 

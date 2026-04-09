@@ -174,7 +174,7 @@ export function useDocumentActions({
                 const reqDoc = requiredDocuments.find(r => r.type === doc.type)
                 return {
                     type: doc.type,
-                    name: reqDoc ? reqDoc.name : (doc.fileName || doc.type),
+                    name: reqDoc ? reqDoc.name : (doc.name || (doc as any).nome_original || doc.fileName || doc.type),
                     description: reqDoc?.description,
                     _document: doc,
                     required: !!reqDoc,
@@ -221,7 +221,7 @@ export function useDocumentActions({
                 const reqDoc = requiredDocuments.find(r => r.type === doc.type)
                 return {
                     type: doc.type,
-                    name: reqDoc ? reqDoc.name : doc.name,
+                    name: reqDoc ? reqDoc.name : (doc.name || (doc as any).nome_original || doc.type),
                     description: reqDoc?.description || 'Por favor, envie o documento solicitado para as próximas etapas.',
                     required: reqDoc?.required || false,
                     _document: doc,

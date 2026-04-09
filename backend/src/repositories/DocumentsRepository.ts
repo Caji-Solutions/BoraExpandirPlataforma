@@ -34,6 +34,7 @@ class DocumentsRepository {
     }
   }
 
+  /* 
   async setUserBucketRootPath(usuarioId: string, filePath: string) {
     const usuario = await prisma.usuario.update({
       where: { id: usuarioId },
@@ -41,6 +42,7 @@ class DocumentsRepository {
     })
     return usuario
   }
+  */
 }
 
 export const documentsRepository = new DocumentsRepository()

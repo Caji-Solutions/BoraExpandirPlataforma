@@ -88,11 +88,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 })
             } else {
                 // Token inválido
-                localStorage.removeItem('auth_token')
+                localStorage.clear()
+                sessionStorage.clear()
                 setState({ user: null, profile: null, token: null, loading: false, error: null })
             }
         } catch {
-            localStorage.removeItem('auth_token')
+            localStorage.clear()
+            sessionStorage.clear()
             setState({ user: null, profile: null, token: null, loading: false, error: null })
         }
     }, [])
@@ -137,9 +139,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const logout = () => {
-        localStorage.removeItem('auth_token')
+        localStorage.clear()
+        sessionStorage.clear()
         setImpersonatedProfile(null)
-        sessionStorage.removeItem('impersonated_profile')
         setState({ user: null, profile: null, token: null, loading: false, error: null })
         window.location.href = '/login'
     }

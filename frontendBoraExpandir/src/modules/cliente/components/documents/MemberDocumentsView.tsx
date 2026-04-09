@@ -3,11 +3,13 @@ import {
     ArrowLeft,
     FileText,
     Folder,
+    Download,
+    CheckCircle,
 } from 'lucide-react'
 import { Button } from '@/modules/shared/components/ui/button'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import { Document as ClientDocument, RequiredDocument } from '../../types'
-import { cn } from '../../lib/utils'
+import { cn, downloadFile } from '../../lib/utils'
 import { FormsDeclarationsCard } from '../forms/FormsDeclarationsCard'
 import { RequirementsCard } from '../forms/RequirementsCard'
 import { filterTabs } from '../config/filterTabsConfig'
@@ -117,14 +119,55 @@ export function MemberDocumentsView({
             case 'analyzing':
             case 'rejected':
             case 'apostille':
-            case 'translation':
+            case 'translation': {
+                const docs = actions.getDocumentsForStage(activeTab)
+                return docs.length > 0 
+                  ? (
+                    <div className="space-y-4">
+                      {renderDocList(docs, activeTab)}
+                    </div>
+                  )
+                  : renderEmptyState(
+                    'Nenhum documento nesta etapa',
+                    'Aguardando andamento do processo jurídico.'
+                  )
+            }
             case 'completed': {
                 const docs = actions.getDocumentsForStage(activeTab)
                 return docs.length > 0
-                    ? renderDocList(docs, activeTab)
+                    ? (
+                        <div className="space-y-4">
+                            <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 p-4 rounded-xl flex items-center justify-between flex-wrap gap-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                                        <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-green-800 dark:text-green-300 uppercase tracking-tighter">Documentos Aprovados</h4>
+                                        <p className="text-xs text-green-600 dark:text-green-500">Seus arquivos estão prontos para uso.</p>
+                                    </div>
+                                </div>
+                                <Button 
+                                    size="sm" 
+                                    className="bg-green-600 hover:bg-green-700 text-white gap-2 font-black tracking-widest text-[10px] h-10 px-6 rounded-xl shadow-lg shadow-green-500/20"
+                                    onClick={() => {
+                                        docs.forEach((item: any) => {
+                                            if (item._document?.fileUrl) {
+                                                downloadFile(item._document.fileUrl, item._document.name)
+                                            }
+                                        })
+                                    }}
+                                >
+                                    <Download className="h-4 w-4" />
+                                    BAIXAR TODOS
+                                </Button>
+                            </div>
+                            {renderDocList(docs, activeTab)}
+                        </div>
+                    )
                     : renderEmptyState(
-                        `Nenhum documento ${activeTab === 'analyzing' ? 'em análise' : activeTab === 'rejected' ? 'rejeitado' : activeTab === 'apostille' ? 'para apostilar' : activeTab === 'translation' ? 'para traduzir' : 'aprovado'}`,
-                        'Os documentos aparecerão aqui conforme avançam no processo.'
+                        'Processo em andamento...',
+                        'Os documentos aparecerão aqui depois de serem verificados, apostilados e traduzidos.'
                     )
             }
 

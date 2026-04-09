@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { User, Mail, Phone, Fingerprint, Save, Loader2, Edit2, X, Camera } from 'lucide-react'
 import { Client, Document } from '../../modules/cliente/types'
+import { apiClient } from '@/modules/shared/services/api'
 
 interface ConfigProps {
   onClose?: () => void
@@ -84,13 +85,28 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
   }
 
   const handleSave = async () => {
+    if (!client) return
     setIsSaving(true)
-    // Simulate API call for data update (not implemented in backend yet for basic data)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setIsSaving(false)
-    setSaveSuccess(true)
-    setIsEditing(false)
-    setTimeout(() => setSaveSuccess(false), 3000)
+    try {
+      // Use the existing register endpoint which handles upsert
+      await apiClient.post('/cliente/register', {
+        id: client.id,
+        nome: client.name,
+        email: formData.email,
+        whatsapp: formData.phone,
+        status: client.status || 'cliente'
+      })
+      
+      setSaveSuccess(true)
+      setIsEditing(false)
+      if (onRefresh) await onRefresh()
+      setTimeout(() => setSaveSuccess(false), 3000)
+    } catch (error) {
+      console.error('Erro ao salvar dados:', error)
+      alert('Erro ao salvar alterações')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handlePhotoClick = () => {
@@ -108,24 +124,7 @@ export function Config({ onClose, client, documents = [], onRefresh }: ConfigPro
       formData.append('file', file)
       formData.append('clienteId', client.id)
 
-      // Get token from localStorage (stored as 'auth_token')
-      const token = localStorage.getItem('auth_token')
-      if (!token) {
-        throw new Error('Token de autenticação não encontrado')
-      }
-
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
-      const response = await fetch(`${API_BASE_URL}/cliente/profile-photo`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Erro ao enviar foto')
-      }
+      await apiClient.post('/cliente/profile-photo', formData)
 
       // Refresh data
       if (onRefresh) {

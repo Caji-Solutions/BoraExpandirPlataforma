@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/modules/shared/components/ui/card'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import { Progress } from '@/modules/shared/components/ui/progress'
-import { CheckCircle, Clock, AlertCircle, FileText, CheckCheck } from 'lucide-react'
+import { CheckCircle, Clock, AlertCircle, FileText, CheckCheck, GitBranch } from 'lucide-react'
 import { Process, ProcessStep, Document } from '../../types'
 import { cn, formatDate } from '../../lib/utils'
 
@@ -50,52 +50,50 @@ const stepLabels = {
   analyzing: 'Em Análise',
 }
 
-// Mapear stage para etapa visual (0-6) de acordo com a ordem do banco
-function mapStageToStep(stage?: string): number {
-  switch (stage) {
-    case 'formularios':
+// Mapear status do processo para etapa visual (0-3) de acordo com os novos status
+function mapStatusToStep(status?: string): number {
+  switch (status) {
+    case 'assessoria_iniciada':
       return 0
-    case 'aguardando_consultoria':
+    case 'analise_documentos':
       return 1
-    case 'em_consultoria':
+    case 'processo_protocolado':
       return 2
-    case 'clientes_c2':
+    case 'processo_finalizado':
       return 3
-    case 'aguardando_assessoria':
-      return 4
-    case 'assessoria_andamento':
-      return 5
-    case 'assessoria_finalizada':
-      return 6
-    case 'cancelado':
-      return -1
     default:
       return 0
   }
 }
 
-// Função para calcular a etapa atual baseada no stage
-function calcularEtapaAtual(clientStage?: string): number {
-  if (clientStage) {
-    return mapStageToStep(clientStage)
+// Função para calcular a etapa atual priorizando o status do processo
+function calcularEtapaAtual(process?: Process | null, clientStage?: string): number {
+  if (process && process.status) {
+    return mapStatusToStep(process.status)
   }
-  return 0
+  
+  // Fallback para mapeamento antigo ou clientStage se necessário
+  switch (clientStage) {
+    case 'assessoria_iniciada': return 0
+    case 'analise_documentos': return 1
+    case 'processo_protocolado': return 2
+    case 'processo_finalizado': return 3
+    case 'assessoria_finalizada': return 3
+    default: return 0
+  }
 }
 
 export function ProcessTimeline({ process, requerimentos = [], familyMembers = [], agendamentos = [], documents = [], clientStage }: ProcessTimelineProps) {
-  // 7 fases mapeadas 1:1 com o banco de dados
+  // 4 novas fases solicitadas
   const defaultSteps: ProcessStep[] = [
-    { id: 0, name: "Análise Inicial", description: "Estamos analisando as informações enviadas nos seus formulários.", status: 'pending' as const },
-    { id: 1, name: "Consultoria Agendada", description: "Seu horário de consultoria está reservado. Prepare seus documentos base.", status: 'pending' as const },
-    { id: 2, name: "Em Consultoria", description: "Análise técnica do seu caso em andamento durante a consultoria.", status: 'pending' as const },
-    { id: 3, name: "Proposta de Assessoria", description: "Consultoria realizada! Conferindo detalhes para o início do contrato.", status: 'pending' as const },
-    { id: 4, name: "Assessoria Contratada", description: "Contrato firmado! O time jurídico está preparando o início da execução.", status: 'pending' as const },
-    { id: 5, name: "Assessoria em Andamento", description: "Fase de coleta, apostilamento e traduções de documentos.", status: 'pending' as const },
-    { id: 6, name: "Processo Finalizado", description: "Seu processo foi concluído e protocolado com sucesso.", status: 'pending' as const }
+    { id: 0, name: "Assessoria Iniciada", description: "O time jurídico deu início oficial ao seu processo de cidadania.", status: 'pending' as const },
+    { id: 1, name: "Análise de Documentos", description: "Fase de conferência, apostilamentos e traduções necessárias.", status: 'pending' as const },
+    { id: 2, name: "Processo Protocolado", description: "Seu processo foi formalmente enviado aos órgãos competentes na Europa.", status: 'pending' as const },
+    { id: 3, name: "Processo Finalizado", description: "Tutto pronto! Processo concluído com êxito.", status: 'pending' as const }
   ];
 
-  // Calcular a etapa atual dinamicamente usando o stage do cliente
-  const calculatedCurrentStep = calcularEtapaAtual(clientStage)
+  // Calcular a etapa atual prioritariamente pelo status do objeto process
+  const calculatedCurrentStep = calcularEtapaAtual(process, clientStage)
 
   // Determinar o status de cada etapa baseado na etapa atual
   const enrichedSteps = defaultSteps.map(step => {
@@ -156,105 +154,108 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
   const totalSteps = currentProcess.steps?.length || 0
   const progressPercentage = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0
 
-  return (
-    <div className="max-w-4xl mx-auto px-4 space-y-8">
-      {!process && consultoriaRealizada && (
-        <Card className="bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800 shadow-sm animate-in fade-in slide-in-from-top duration-500">
-          <CardContent className="p-6">
-            <div className="flex items-start space-x-4">
-              <div className="p-2 bg-green-100 dark:bg-green-900/40 rounded-full">
-                <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-green-800 dark:text-green-300">
-                  Consultoria Realizada! 🎉
-                </h3>
-                <p className="text-green-700 dark:text-green-400 mt-1">
-                  Sua consultoria jurídica foi concluída com sucesso. Agora você pode contratar o processo jurídico completo para prosseguir com a assessoria jurídica, documentação e protocolo.
-                </p>
-                <div className="mt-4 p-3 bg-white dark:bg-neutral-800 rounded-lg border border-green-100 dark:border-green-900/30">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2 text-sm font-medium text-green-600 dark:text-green-400">
-                      <CheckCheck className="w-4 h-4" />
-                      <span>Próximo passo: contratar o processo jurídico completo</span>
-                    </div>
-                    <a href="/cliente/agendamento" className="text-xs px-3 py-1 bg-green-600 text-white rounded-full hover:bg-green-700 transition">
-                      Contratar Agora
-                    </a>
-                  </div>
+  if (!process) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+        <div className="max-w-4xl mx-auto px-4 py-12 space-y-12 animate-in fade-in duration-500">
+          
+          {/* Page Header (Empty State) */}
+          <div className="mb-12 text-left">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-1 w-8 bg-blue-600 rounded-full" />
+              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Acompanhamento</span>
+            </div>
+            <h1 className="text-4xl md:text-5xl font-light text-gray-900 dark:text-white tracking-tight">
+              Meu <span className="font-bold text-blue-600">Processo</span>
+            </h1>
+          </div>
+
+          <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300">
+            <div className="h-20 w-20 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <GitBranch className="h-10 w-10 text-blue-500" />
+            </div>
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter mb-4">
+              Processo não iniciado
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto leading-relaxed px-6 font-medium">
+              Seu processo oficial de cidadania ainda não foi iniciado no sistema. 
+              O acompanhamento detalhado estará disponível apenas após o inicio da sua assessoria jurídica.
+            </p>
+            
+            {!consultoriaRealizada ? (
+              <div className="mt-8 p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl max-w-sm mx-auto flex items-center gap-4 text-left shadow-sm">
+                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full">
+                  <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-widest">Próxima Etapa</p>
+                  <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">Realizar consultoria jurídica inicial</p>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {!process && !consultoriaRealizada && consultoriaEmAndamento && (
-        <Card className="bg-indigo-50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800 shadow-sm animate-in fade-in slide-in-from-top duration-500">
-          <CardContent className="p-6">
-            <div className="flex items-start space-x-4">
-              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/40 rounded-full">
-                <Clock className="w-6 h-6 text-indigo-600 dark:text-indigo-400 animate-pulse" />
+            ) : (
+               <div className="mt-8 p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-2xl max-w-sm mx-auto flex items-center gap-4 text-left shadow-sm">
+                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
+                  <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-green-800 dark:text-green-300 uppercase tracking-widest">Aguardando Início</p>
+                  <p className="text-sm text-green-700 dark:text-green-400 font-medium">Sua assessoria foi concluída. Aguarde o início formal do processo.</p>
+                </div>
               </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-indigo-800 dark:text-indigo-300">
-                  Em Consultoria
-                </h3>
-                <p className="text-indigo-700 dark:text-indigo-400 mt-1">
-                  Sua consultoria jurídica está em andamento. O advogado está analisando seu caso.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {!process && !consultoriaRealizada && !consultoriaEmAndamento && consultoriasAgendadas.length > 0 && (
-        <Card className="bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800 shadow-sm animate-in fade-in slide-in-from-top duration-500">
-          <CardContent className="p-6">
-            <div className="flex items-start space-x-4">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-full">
-                <Clock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-blue-800 dark:text-blue-300">
-                  Consultoria Agendada
-                </h3>
-                <p className="text-blue-700 dark:text-blue-400 mt-1">
-                  Você tem uma consultoria jurídica agendada. Compareça na data e hora marcadas para avaliar seu caso.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <FileText className="h-5 w-5" />
-            <span>Andamento do Processo</span>
-          </CardTitle>
-          <CardDescription>
-            {currentProcess.serviceType} • {process ? `Iniciado em ${formatDate(currentProcess.createdAt)}` : 'Aguardando formalização'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Progresso Geral
-              </span>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {completedSteps} de {totalSteps} etapas concluídas
-              </span>
-            </div>
-            <Progress value={progressPercentage} className="h-2" />
+            )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+    )
+  }
 
-      <div className="space-y-8">
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+      <div className="max-w-4xl mx-auto px-4 py-12 space-y-12">
+        
+        {/* Page Header */}
+        <div className="mb-12">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-1 w-8 bg-blue-600 rounded-full" />
+                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Acompanhamento</span>
+              </div>
+              <h1 className="text-4xl md:text-5xl font-light text-gray-900 dark:text-white tracking-tight">
+                Meu <span className="font-bold text-blue-600">Processo</span>
+              </h1>
+              <p className="text-lg text-gray-500 dark:text-gray-400 mt-3 font-light max-w-lg">
+                Siga cada etapa oficial da sua jornada para a cidadania europeia em tempo real.
+              </p>
+              <div className="flex flex-wrap items-center gap-3 mt-4">
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-none px-3 py-1 rounded-lg">
+                  {currentProcess.serviceType}
+                </Badge>
+                {currentProcess.id !== 'not-started' && (
+                  <span className="text-sm text-gray-400 font-mono">#{currentProcess.id.substring(0, 8)}</span>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm min-w-[240px]">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Progresso Geral</span>
+                <span className="text-xl font-bold text-blue-600">{Math.round(progressPercentage)}%</span>
+              </div>
+              <div className="w-full h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
+                <div 
+                  className="h-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500 transition-all duration-1000 ease-out"
+                  style={{ width: `${progressPercentage}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 text-right uppercase tracking-wider font-semibold">
+                {completedSteps} de {totalSteps} etapas concluídas
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-8">
         {currentProcess.steps.map((step, index) => {
           const StepIcon = stepIcons[step.status] || Clock
           const isLast = index === currentProcess.steps.length - 1
@@ -332,42 +333,10 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
                         <p className="text-sm text-gray-700 dark:text-gray-400 leading-relaxed">{step.description}</p>
                       )}
 
-                      {/* Informativo: Assessoria ainda não agendada */}
-                      {step.id === 3 && isActive && assessoriasAgendadas.length === 0 && (
-                        <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-xl">
-                          <div className="flex items-start space-x-3">
-                            <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
-                            <div className="flex-1">
-                              <p className="text-sm font-bold text-amber-700 dark:text-amber-400">
-                                Agende sua Assessoria Jurídica
-                              </p>
-                              <p className="text-sm text-amber-600 dark:text-amber-300 mt-1">
-                                Você contratou o processo. Agora agende sua sessão de assessoria jurídica para avaliar sua documentação.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
 
-                      {/* Informativo: Assessoria agendada mas não realizada */}
-                      {step.id === 3 && isActive && assessoriasAgendadas.length > 0 && !assessoriaRealizada && (
-                        <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-xl">
-                          <div className="flex items-start space-x-3">
-                            <Clock className="h-5 w-5 text-blue-600 mt-0.5" />
-                            <div className="flex-1">
-                              <p className="text-sm font-bold text-blue-700 dark:text-blue-400">
-                                Assessoria Agendada
-                              </p>
-                              <p className="text-sm text-blue-600 dark:text-blue-300 mt-1">
-                                Sua sessão de assessoria jurídica está agendada. Compareça na data marcada para prosseguir com a documentação.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
 
-                      {/* Progresso de Documentos */}
-                      {step.id === 5 && isActive && assessoriaRealizada && temDocumentos && (
+                      {/* Progresso de Documentos - Agora na etapa de Análise de Documentos (ID 1) */}
+                      {step.id === 1 && isActive && temDocumentos && (
                         <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-xl">
                           <div className="flex items-start space-x-3">
                             <CheckCheck className="h-5 w-5 text-blue-600 mt-0.5" />
@@ -508,10 +477,10 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
                   ? (consultoriaRealizada
                       ? 'Consultoria concluída! Contrrate agora o processo jurídico completo para prosseguir com a assessoria e documentação.'
                       : 'Você tem uma consultoria agendada. Aguarde e complete a sessão de consultoria.')
-                  : currentProcess.currentStep === 2
-                    ? 'Você contratou o processo jurídico. Próximo: agende sua sessão de assessoria jurídica.'
-                    : currentProcess.currentStep === 3
-                    ? 'Sua assessoria jurídica está agendada. Compareça para prosseguir com a documentação.'
+                  : currentProcess.currentStep === 0
+                    ? 'O time jurídico está preparando os primeiros passos. Em breve iniciaremos a análise documental.'
+                    : currentProcess.currentStep === 1
+                    ? 'Estamos na fase de análise e preparação da sua documentação (apostilamentos e traduções).'
                     : currentProcess.currentStep < totalSteps
                     ? `Prossiga com a etapa "${currentProcess.steps[currentProcess.currentStep]?.name}".`
                     : 'Seu processo foi concluído com sucesso!'
@@ -522,5 +491,6 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
         </CardContent>
       </Card>
     </div>
-  )
+  </div>
+)
 }

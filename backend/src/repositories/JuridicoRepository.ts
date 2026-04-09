@@ -99,6 +99,7 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
+                    client_id,
                     nome,
                     email,
                     whatsapp,
@@ -159,6 +160,7 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
+                    client_id,
                     nome,
                     email,
                     whatsapp,
@@ -186,6 +188,7 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
+                    client_id,
                     nome,
                     email,
                     whatsapp,
@@ -214,6 +217,7 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
+                    client_id,
                     nome,
                     email,
                     whatsapp,
@@ -285,6 +289,7 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
+                    client_id,
                     nome,
                     email,
                     whatsapp,
@@ -999,8 +1004,11 @@ class JuridicoRepository {
 
     // Solicitar um requerimento
     async solicitarRequerimento(params: SolicitarRequerimentoParams): Promise<any> {
-        console.log('========== SOLICITAR REQUERIMENTO REPO DEBUG ==========')
-        console.log('Params:', params)
+        console.log('[JuridicoRepository][solicitarRequerimento] Criando requerimento...', { 
+            clienteId: params.clienteId, 
+            tipo: params.tipo, 
+            prazo: params.prazo 
+        })
 
         const { data, error } = await supabase
             .from('requerimentos')
@@ -1018,22 +1026,25 @@ class JuridicoRepository {
             .single()
 
         if (error) {
-            console.error('Erro ao solicitar requerimento no repositorio:', error)
+            console.error('[JuridicoRepository][solicitarRequerimento] Erro no Supabase:', error)
             throw error
         }
 
-        console.log('Requerimento solicitado com sucesso:', data.id)
+        console.log('[JuridicoRepository][solicitarRequerimento] Requerimento criado:', data.id)
 
         // Criar notificação para o novo requerimento
         if (params.notificar !== false) {
+            const prazoFinal = params.prazo !== undefined ? params.prazo : 15;
+            console.log('[JuridicoRepository][solicitarRequerimento] Criando notificação com prazo:', prazoFinal)
+            
             await NotificationService.createNotification({
                 clienteId: params.clienteId,
                 criadorId: params.criadorId,
                 titulo: `Novo Requerimento: ${params.tipo}`,
                 mensagem: `Um novo requerimento foi iniciado para você: ${params.tipo}. Fique atento às atualizações.`,
                 tipo: 'success',
-                prazo: params.prazo || 15 // Normalmente requerimentos tem prazos maiores
-            }).catch(e => console.error('Erro ao notificar requerimento:', e))
+                prazo: prazoFinal
+            }).catch(e => console.error('[JuridicoRepository][solicitarRequerimento] Erro ao notificar requerimento:', e))
         }
 
         const requirementId = data.id
@@ -1122,7 +1133,7 @@ class JuridicoRepository {
     async getAllRequerimentos(): Promise<any[]> {
         const { data, error } = await supabase
             .from('requerimentos')
-            .select('*')
+            .select('*, documentos (*)')
             .order('criado_em', { ascending: false })
 
         if (error) {
@@ -1144,18 +1155,20 @@ class JuridicoRepository {
         assessoriaId?: string
         servicoId?: string
         documentos?: any[]
+        observacoes?: string
     }): Promise<any> {
         const { data, error } = await supabase
             .from('processos')
             .insert([{
                 cliente_id: params.clienteId,
                 tipo_servico: params.tipoServico,
-                status: params.status || 'in_progress',
+                status: params.status || 'assessoria_iniciada',
                 etapa_atual: params.etapaAtual || 1,
                 responsavel_id: params.responsavelId || null,
                 assessoria_id: params.assessoriaId || null,
                 servico_id: params.servicoId || null,
                 documentos: params.documentos || [],
+                observacoes: params.observacoes || null,
                 criado_em: new Date().toISOString(),
                 atualizado_em: new Date().toISOString()
             }])
@@ -1179,6 +1192,7 @@ class JuridicoRepository {
         assessoriaId?: string
         servicoId?: string
         documentos?: any[]
+        observacoes?: string
     }): Promise<any> {
         const updateData: any = {
             atualizado_em: new Date().toISOString(),
@@ -1192,6 +1206,7 @@ class JuridicoRepository {
         if (params.assessoriaId !== undefined) updateData.assessoria_id = params.assessoriaId
         if (params.servicoId !== undefined) updateData.servico_id = params.servicoId
         if (params.documentos !== undefined) updateData.documentos = params.documentos
+        if (params.observacoes !== undefined) updateData.observacoes = params.observacoes
 
         const { data, error } = await supabase
             .from('processos')
@@ -1348,6 +1363,7 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
+                    client_id,
                     nome,
                     email,
                     whatsapp,
@@ -1405,6 +1421,7 @@ class JuridicoRepository {
                 *,
                 clientes:clientes!cliente_id (
                     id,
+                    client_id,
                     nome,
                     email,
                     whatsapp,
@@ -1442,7 +1459,7 @@ class JuridicoRepository {
         const { data, error } = await supabase
             .from('processos')
             .update({
-                status: 'assessoria_finalizada', // status DB compatível; o identificador agora é o responsável (supervisor)
+                status: 'processo_protocolado', // Alterado conforme novos status do enum
                 responsavel_id: supervisorId,
                 atualizado_em: new Date().toISOString()
             })

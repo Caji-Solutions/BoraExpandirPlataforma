@@ -93,6 +93,7 @@ export interface Process {
   clientId: string;
   serviceType: string;
   currentStep: number;
+  status?: string;
   steps: ProcessStep[];
   createdAt: Date;
   updatedAt: Date;

@@ -280,7 +280,6 @@ class ClienteController {
       const { clienteId } = req.params;
       if (!clienteId) return res.status(400).json({ message: 'clienteId é obrigatório' });
 
-      const supabase = (await import('../../config/SupabaseClient')).supabase;
       const { data: cliente, error } = await supabase
         .from('clientes')
         .select('perfil_unificado, id, status')
@@ -292,12 +291,12 @@ class ClienteController {
         return res.status(500).json({ message: 'Erro ao buscar DNA', error: error.message });
       }
 
-      let responseData = {};
+      let responseData: any = {};
       if (cliente && cliente.perfil_unificado) {
-        responseData = cliente.perfil_unificado.data || {};
+        responseData = (cliente.perfil_unificado as any).data || {};
       }
       
-      // Sincroniza em read-time com a tabela root clientes
+      // Sincroniza em real-time com a tabela root clientes
       if (cliente) {
         responseData = {
             ...responseData,
@@ -328,14 +327,14 @@ class ClienteController {
       // 2. Se não encontrar, pode ser que o clienteId seja o ID do Profile (Auth UID)
       // mas na tabela clientes o ID seja diferente. Vamos tentar buscar pelo profile associado.
       if (!cliente) {
-        const { data: profile } = await (await import('../../config/SupabaseClient')).supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('email')
           .eq('id', clienteId)
           .maybeSingle();
 
         if (profile && profile.email) {
-          const { data: clientePorEmail } = await (await import('../../config/SupabaseClient')).supabase
+          const { data: clientePorEmail } = await supabase
             .from('clientes')
             .select('*')
             .eq('email', profile.email)
@@ -376,8 +375,6 @@ class ClienteController {
       if (!userId) {
         return res.status(400).json({ message: 'userId é obrigatório' })
       }
-
-      const supabase = (await import('../../config/SupabaseClient')).supabase
 
       // 1. Buscar o email do profile pelo Auth UID
       const { data: profile } = await supabase
@@ -558,8 +555,9 @@ class ClienteController {
 
 
       return res.status(200).json(updatedData)
-    } catch (error) {
-      throw error
+    } catch (error: any) {
+      console.error('Erro ao atualizar status por Wpp:', error)
+      return res.status(500).json({ message: 'Erro ao atualizar status', error: error.message })
     }
   }
 
@@ -1705,8 +1703,6 @@ class ClienteController {
       if (!email) {
         return res.status(400).json({ message: 'E-mail é obrigatório' });
       }
-
-      const { supabase } = await import('../../config/SupabaseClient');
 
       // 1. Buscar o ID na tabela profiles pelo email
       const { data: profile, error: profileError } = await supabase

@@ -57,13 +57,20 @@ export function RequirementsCard({
         const processRequirements = (data: any[]) => {
             let filtered = data
             if (membroId) {
-                filtered = data.filter((req: Requerimento) =>
-                    req.documentos?.some(doc => (doc.dependente_id || doc.cliente_id) === membroId) ||
-                    (req as any).membro_id === membroId
-                ).map((req: Requerimento) => ({
+                filtered = data.filter((req: Requerimento) => {
+                    const docs = req.documentos || [];
+                    const matchesMembro = docs.some((doc: any) => (doc.dependente_id || doc.cliente_id) === membroId) ||
+                                         (req as any).membro_id === membroId;
+                    
+                    // Se não tem documentos vinculados a ninguém, mostra no titular para não "sumir" o requerimento
+                    const isGeneralReq = docs.length === 0;
+                    const isTitular = membroId === clienteId;
+                    
+                    return matchesMembro || (isGeneralReq && isTitular);
+                }).map((req: Requerimento) => ({
                     ...req,
-                    documentos: req.documentos?.filter(doc => (doc.dependente_id || doc.cliente_id) === membroId)
-                }))
+                    documentos: (req.documentos || []).filter(doc => (doc.dependente_id || doc.cliente_id) === membroId)
+                }));
             }
             setRequirements(filtered)
 
@@ -261,7 +268,7 @@ export function RequirementsCard({
                                                     <div className="flex items-center gap-3 mt-1.5">
                                                         {getStatusBadge(req.status)}
                                                         <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-                                                            {formatDate(new Date(req.created_at))}
+                                                            {formatDate(new Date(req.created_at || (req as any).criado_em || Date.now()))}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -327,7 +334,7 @@ export function RequirementsCard({
                                     </div>
                                     <div className="bg-muted/10 p-2 flex justify-center border-t border-border/50">
                                         <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                                            Última atualização: {formatDate(new Date(req.updated_at))}
+                                            Última atualização: {formatDate(new Date(req.updated_at || (req as any).atualizado_em || req.created_at || (req as any).criado_em || Date.now()))}
                                         </span>
                                     </div>
                                 </div>

@@ -110,8 +110,14 @@ function AppRouter() {
             </ProtectedRoute>
           } />
 
-          {/* Rotas públicas (cliente e parceiro) */}
-          <Route path="/cliente/*" element={<ClienteApp />} />
+          {/* Rotas de cliente (Protegidas) */}
+          <Route path="/cliente/*" element={
+            <ProtectedRoute allowedRoles={['cliente', 'super_admin']}>
+              <ClienteApp />
+            </ProtectedRoute>
+          } />
+
+          {/* Rotas públicas (parceiros e links diretos) */}
           <Route path="/parceiro/cadastro" element={<CadastroParceiro />} />
           <Route path="/indicado/:partnerId" element={<TelaIndicadoWrapper />} />
           <Route path="/r/:partnerId" element={<TelaIndicadoWrapper />} />

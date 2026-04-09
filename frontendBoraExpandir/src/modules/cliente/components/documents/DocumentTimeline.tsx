@@ -1,8 +1,8 @@
-import { FileText, CheckCircle, AlertCircle, Clock, Upload, Loader2, Trash2, DollarSign } from 'lucide-react'
+import { FileText, CheckCircle, AlertCircle, Clock, Upload, Loader2, Trash2, DollarSign, Download } from 'lucide-react'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import { Button } from '@/modules/shared/components/ui/button'
 import { Document as ClientDocument } from '../../types'
-import { cn, formatDate, formatFileSize } from '../../lib/utils'
+import { cn, formatDate, formatFileSize, downloadFile } from '../../lib/utils'
 
 interface Stage {
   id: string
@@ -334,11 +334,24 @@ export function DocumentTimeline({
                                 </div>
                               )}
 
-                              {/* Completed stage - just show check */}
+                              {/* Completed stage - show check & download */}
                               {stage.id === 'completed' && (
-                                <div className="flex items-center gap-1 text-green-600 text-xs font-medium px-2 py-1 bg-green-50 rounded-full">
-                                  <CheckCircle className="h-4 w-4" />
-                                  <span>Verificado</span>
+                                <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-1 text-green-600 text-xs font-medium px-2 py-1 bg-green-50 rounded-full">
+                                    <CheckCircle className="h-4 w-4" />
+                                    <span>Verificado</span>
+                                  </div>
+                                  {doc?.fileUrl && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 text-xs border-green-200 hover:bg-green-50 text-green-700 gap-1.5"
+                                      onClick={() => downloadFile(doc.fileUrl!, doc.name)}
+                                    >
+                                      <Download className="h-3.5 w-3.5" />
+                                      BAIXAR
+                                    </Button>
+                                  )}
                                 </div>
                               )}
 

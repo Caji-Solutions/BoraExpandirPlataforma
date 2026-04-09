@@ -7,11 +7,12 @@ import {
     Trash2,
     Loader2,
     DollarSign,
+    Download,
 } from 'lucide-react'
 import { Button } from '@/modules/shared/components/ui/button'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import { Document as ClientDocument } from '../../types'
-import { cn, formatDate, formatFileSize } from '../../lib/utils'
+import { cn, formatDate, formatFileSize, downloadFile } from '../../lib/utils'
 
 interface DocumentItemCardProps {
     item: any
@@ -126,7 +127,7 @@ export function DocumentItemCard({
                     {/* File info */}
                     {doc && stageId !== 'pending' && (
                         <p className="text-xs text-gray-500 ml-9">
-                            {doc.fileName} • {formatDate(doc.uploadDate)}
+                            {(doc as any).nome_original || doc.fileName} • {formatDate(doc.uploadDate)}
                             {doc.fileSize && ` • ${formatFileSize(doc.fileSize)}`}
                         </p>
                     )}
@@ -320,11 +321,22 @@ export function DocumentItemCard({
                         </div>
                     )}
 
-                    {/* Completed → Check badge */}
-                    {stageId === 'completed' && (
-                        <div className="flex items-center gap-1 text-green-600 text-xs font-medium px-2 py-1 bg-green-50 rounded-full">
-                            <CheckCircle className="h-4 w-4" />
-                            <span>Verificado</span>
+                    {/* Completed → Check badge & Download button */}
+                    {stageId === 'completed' && doc && (
+                        <div className="flex items-center gap-2">
+                             <div className="flex items-center gap-1 text-green-600 text-xs font-medium px-2 py-1 bg-green-50 rounded-full">
+                                <CheckCircle className="h-4 w-4" />
+                                <span>Verificado</span>
+                            </div>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 text-xs border-green-200 hover:bg-green-50 text-green-700 gap-1.5"
+                                onClick={() => downloadFile(doc.fileUrl!, doc.name)}
+                            >
+                                <Download className="h-3.5 w-3.5" />
+                                DOWNLOAD
+                            </Button>
                         </div>
                     )}
 

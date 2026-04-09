@@ -88,7 +88,8 @@ class ApiClient {
         if (response.status === 401) {
           // Token expirado ou inválido
           if (typeof window !== 'undefined') {
-            localStorage.removeItem('auth_token');
+            localStorage.clear();
+            sessionStorage.clear();
             // Redirecionar para login se estamos em navegador
             if (window.location.pathname !== '/login') {
               window.location.href = '/login';

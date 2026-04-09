@@ -336,31 +336,46 @@ class ClienteDocumentController {
       }
 
       console.log('Documento processado no banco:', documentoRecord.id)
+      console.log('********** TABELA DE DOCUMENTOS ATUALIZADA: ', documentoRecord.id)
+
+      // BUG FIX: Garantir que o status muda na tabela PROCESSOS (e não na de clientes)
+      const processoIdParaUpdate = documentoRecord.processo_id || processoId;
+      if (processoIdParaUpdate) {
+        console.log('[uploadDoc] ATUALIZANDO TABELA PROCESSOS para analise_documentos | ID:', processoIdParaUpdate)
+        
+        const { data: upData, error: updateError } = await supabase
+          .from('processos')
+          .update({ 
+            status: 'analise_documentos',
+            etapa_atual: 1, // Corresponde a 'Análise de Documentos' no Fluxo
+            atualizado_em: new Date().toISOString()
+          })
+          .eq('id', processoIdParaUpdate)
+          .select();
+
+        if (updateError) {
+          console.error('[uploadDoc] ERRO ao atualizar tabela processos:', updateError)
+        } else {
+          console.log('[uploadDoc] SUCESSO ao atualizar tabela processos. Resultado:', upData)
+        }
+      } else {
+        console.warn('[uploadDoc] Nenhum processo_id vinculado ao documento para atualização de status.')
+      }
 
       // Notificar o jurídico responsável quando um novo documento é enviado
-      if (processoId && !documentoId) {
+      if (processoIdParaUpdate && !documentoId) {
         try {
-          const { supabase } = await import('../../config/SupabaseClient')
           const { data: processo } = await supabase
             .from('processos')
             .select('responsavel_id, cliente: clientes(nome, id)')
-            .eq('id', processoId)
+            .eq('id', processoIdParaUpdate)
             .maybeSingle()
 
           if (processo?.responsavel_id) {
-            console.log(`[uploadDoc] Jurídico ${processo.responsavel_id} não pode ser notificado via DB ainda (coluna usuario_id ausente).`)
-            /* 
-            await NotificationService.createNotification({
-              usuarioId: processo.responsavel_id,
-              titulo: 'Novo documento enviado',
-              mensagem: `O cliente ${(processo.cliente as any)?.nome || 'desconhecido'} enviou o documento "${documentType || documentoRecord.tipo}". Acesse a área de documentos para revisar.`,
-              tipo: 'info'
-            })
-            */
+            console.log(`[uploadDoc] Jurídico ${processo.responsavel_id} identificado para possível notficação.`)
           }
         } catch (notifyError) {
-          console.error('[uploadDoc] Erro ao notificar jurídico:', notifyError)
-          // Não falha o upload se a notificação falhar
+          console.error('[uploadDoc] Erro ao buscar dados para notificação:', notifyError)
         }
       }
 
