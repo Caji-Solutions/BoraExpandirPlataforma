@@ -211,10 +211,15 @@ class ApostilamentoRepository {
     }
 
     // 4. Update document status in documentos table to show in Juridico analysis
+    // Also update public_url and admin_upload_url so the system knows this is an admin-provided version
     if (data?.documento_id) {
       await supabase
         .from('documentos')
-        .update({ status: DocumentStatus.ANALYZING_APOSTILLE })
+        .update({ 
+          status: DocumentStatus.ANALYZING_APOSTILLE,
+          public_url: publicUrl,
+          admin_upload_url: publicUrl
+        })
         .eq('id', data.documento_id)
     }
 

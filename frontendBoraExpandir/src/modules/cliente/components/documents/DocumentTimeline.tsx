@@ -101,7 +101,17 @@ export function DocumentTimeline({
                   <div className="space-y-2">
                     {stageDocs.map((item: any, idx: number) => {
                       const doc = item._document
-                      const isRejected = doc?.status === 'rejected'
+                      
+                      const isDocumentPaid = (d: ClientDocument) => {
+                        if (!d.orcamentos || d.orcamentos.length === 0) return false;
+                        return d.orcamentos.some((o: any) => 
+                            ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status)
+                        );
+                      }
+
+                      const isRejectedForClient = doc?.status?.toLowerCase() === 'rejected' && !isDocumentPaid(doc)
+                      const isTrulyRejected = doc?.status?.toLowerCase() === 'rejected'
+                      
                       const inputId = `file-${memberId}-${item.type}`
                       const isUploading = uploadingType === item.type
                       const isDraggedOver = dragOver === item.type
@@ -111,7 +121,7 @@ export function DocumentTimeline({
                           key={item.type + idx}
                           className={cn(
                             "p-3 rounded-lg border bg-white dark:bg-gray-800 transition-all",
-                            isRejected ? 'border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-gray-700',
+                            isRejectedForClient ? 'border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-gray-700',
                             isDraggedOver && 'ring-2 ring-blue-400 border-blue-400'
                           )}
                           onDrop={(e) => onDrop(e, item.type)}
@@ -164,7 +174,7 @@ export function DocumentTimeline({
                               )}
 
                               {/* Rejection reason */}
-                              {isRejected && doc.rejectionReason && (
+                              {isRejectedForClient && doc.rejectionReason && (
                                 <div className="mt-2 ml-6 p-2 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-800">
                                   <div className="flex items-start gap-2">
                                     <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
@@ -364,7 +374,7 @@ export function DocumentTimeline({
                               )}
 
                               {/* Delete button for rejected docs */}
-                              {doc && doc.status === 'rejected' && (
+                              {doc && isRejectedForClient && (
                                 <Button
                                   size="sm"
                                   variant="ghost"

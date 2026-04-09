@@ -71,7 +71,11 @@ export function AdminApostilamento() {
         const allowedStatuses = ['pronto_para_apostilagem', 'executing_apostille', 'concluido', 'em_processamento'];
 
         apostilamentos
-            .filter(ap => allowedStatuses.includes(ap.status.toLowerCase()))
+            .filter(ap => {
+                const status = ap.status.toLowerCase();
+                const docStatus = ap.documentos?.status?.toLowerCase();
+                return allowedStatuses.includes(status) || docStatus === 'rejected';
+            })
             .forEach(ap => {
                 const doc = ap.documentos
                 if (!doc) return
@@ -304,12 +308,14 @@ export function AdminApostilamento() {
                                         <Badge 
                                             className={cn(
                                                 "rounded-lg px-3 py-1",
+                                                ap.documentos?.status?.toLowerCase() === 'rejected' ? "bg-red-100 text-red-700 border-red-200" :
                                                 ap.status === 'pronto_para_apostilagem' ? "bg-amber-100 text-amber-700 border-amber-200" :
                                                 ap.status === 'concluido' ? "bg-green-100 text-green-700 border-green-200" :
                                                 "bg-blue-100 text-blue-700 border-blue-200"
                                             )}
                                         >
-                                            {ap.status === 'pronto_para_apostilagem' ? "Pronto para Apostila" : 
+                                            {ap.documentos?.status?.toLowerCase() === 'rejected' ? "Rejeitado pelo Jurídico" :
+                                             ap.status === 'pronto_para_apostilagem' ? "Pronto para Apostila" : 
                                              ap.status === 'concluido' ? "Apostilado" : ap.status}
                                         </Badge>
                                     </div>
@@ -366,14 +372,38 @@ export function AdminApostilamento() {
                                             </Button>
                                         </div>
                                     ) : (
-                                        <Button 
-                                            variant="secondary"
-                                            className="w-full justify-start gap-3 h-12 rounded-xl"
-                                            onClick={() => window.open(ap.documento_apostilado_url, '_blank')}
-                                        >
-                                            <FileDown className="h-4 w-4 text-green-600" />
-                                            Ver Apostilado
-                                        </Button>
+                                        <div className="space-y-2">
+                                            <Button 
+                                                variant="secondary"
+                                                className="w-full justify-start gap-3 h-12 rounded-xl"
+                                                onClick={() => window.open(ap.documento_apostilado_url, '_blank')}
+                                            >
+                                                <FileDown className="h-4 w-4 text-green-600" />
+                                                Ver Apostilado
+                                            </Button>
+
+                                            <div className="relative">
+                                                <input 
+                                                    type="file" 
+                                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                                    onChange={(e) => handleFileUpload(e, ap.id)}
+                                                    disabled={isUploading[ap.id]}
+                                                />
+                                                <Button 
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={isUploading[ap.id]}
+                                                    className="w-full justify-start gap-3 h-10 rounded-xl border-dashed text-xs"
+                                                >
+                                                    {isUploading[ap.id] ? (
+                                                        <Loader2 className="h-3.3 w-3.3 animate-spin" />
+                                                    ) : (
+                                                        <Upload className="h-3 w-3" />
+                                                    )}
+                                                    Substituir Arquivo
+                                                </Button>
+                                            </div>
+                                        </div>
                                     )}
 
                                     {ap.status === 'pronto_para_apostilagem' && (

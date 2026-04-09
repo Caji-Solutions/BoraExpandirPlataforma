@@ -78,6 +78,8 @@ export interface Document {
   updatedAt?: Date;
   requerimento_id?: string;
   solicitado_pelo_juridico?: boolean;
+  admin_upload_url?: string | null;
+  orcamentos?: any[];
 }
 
 export interface ProcessStep {

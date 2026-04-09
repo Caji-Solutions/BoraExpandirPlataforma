@@ -55,6 +55,7 @@ interface DocumentoRecord {
     solicitado_pelo_juridico: boolean
     data_solicitacao_juridico: string | null
     admin_upload_url: string | null
+    orcamentos?: any[]
 }
 
 class ClienteRepository {
@@ -305,7 +306,7 @@ class ClienteRepository {
     async getDocumentosByClienteId(clienteId: string): Promise<DocumentoRecord[]> {
         const { data, error } = await supabase
             .from('documentos')
-            .select('*')
+            .select('*, orcamentos(*)')
             .eq('cliente_id', clienteId)
             .order('criado_em', { ascending: false })
 
@@ -321,7 +322,7 @@ class ClienteRepository {
     async getDocumentosByProcessoId(processoId: string): Promise<DocumentoRecord[]> {
         const { data, error } = await supabase
             .from('documentos')
-            .select('*')
+            .select('*, orcamentos(*)')
             .eq('processo_id', processoId)
             .order('criado_em', { ascending: false })
 
@@ -410,7 +411,7 @@ class ClienteRepository {
             .from('documentos')
             .update(updateData)
             .eq('id', documentoId)
-            .select()
+            .select('*, orcamentos(*)')
             .single()
 
         if (error) {
@@ -425,7 +426,7 @@ class ClienteRepository {
     async getDocumentoById(documentoId: string): Promise<DocumentoRecord | null> {
         const { data, error } = await supabase
             .from('documentos')
-            .select('*')
+            .select('*, orcamentos(*)')
             .eq('id', documentoId)
             .maybeSingle()
 

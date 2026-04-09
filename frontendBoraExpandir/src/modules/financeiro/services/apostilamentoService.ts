@@ -16,6 +16,7 @@ export interface Apostilamento {
     tipo: string;
     cliente_id: string;
     dependente_id?: string;
+    status: string;
     clientes?: {
         id: string;
         nome: string;
@@ -25,7 +26,7 @@ export interface Apostilamento {
 
 export const apostilamentoService = {
   async getAllApostilamentos(): Promise<Apostilamento[]> {
-    const result = await apiClient.get(`/apostilamentos`);
+    const result = await apiClient.get<any>(`/apostilamentos`);
     return result.data || [];
   },
 

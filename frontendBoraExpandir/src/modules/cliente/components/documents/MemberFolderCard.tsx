@@ -173,7 +173,34 @@ export function FamilyFolderCard({
   const getDocStage = (doc: ClientDocument) => {
     const status = doc.status?.toLowerCase();
 
-    if (status === 'rejected') return 'rejected';
+    const isDocumentPaid = (d: ClientDocument) => {
+      if (!d.orcamentos || d.orcamentos.length === 0) return false;
+      return d.orcamentos.some((o: any) => 
+          ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status)
+      );
+    }
+
+    if (status === 'rejected') {
+        const isDocumentPaid = (d: ClientDocument) => {
+          if (!d.orcamentos || d.orcamentos.length === 0) return false;
+          return d.orcamentos.some((o: any) => 
+              ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status)
+          );
+        }
+
+        // Se o serviço já foi pago, para o cliente ele continua em análise
+        // pois o financeiro/administrativo é quem deve cuidar do reenvio.
+        if (isDocumentPaid(doc)) {
+            const hasApostilleOrc = doc.orcamentos?.some(o => o.observacoes?.toLowerCase().includes('apostila'));
+            const hasTranslationOrc = doc.orcamentos?.some(o => o.observacoes?.toLowerCase().includes('tradução') || o.observacoes?.toLowerCase().includes('traducao'));
+            
+            if (hasApostilleOrc) return 'apostille';
+            if (hasTranslationOrc) return 'translation';
+            
+            return 'analyzing'
+        }
+        return 'rejected'
+    }
 
     // If it's waiting for quote approval, check if it's for apostille or translation
     const isWaitingQuote = status === 'waiting_quote_approval';
@@ -271,8 +298,28 @@ export function FamilyFolderCard({
       }
       // Aguardam Ação: Rejected or waiting for upload
       else if (statusLower === 'rejected') {
-        s.rejected++;
-        s.waitingAction++;
+        const isDocumentPaid = (d: ClientDocument) => {
+          if (!d.orcamentos || d.orcamentos.length === 0) return false;
+          return d.orcamentos.some((o: any) => 
+              ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status)
+          );
+        }
+
+        if (isDocumentPaid(doc)) {
+          const hasApostilleOrc = doc.orcamentos?.some(o => o.observacoes?.toLowerCase().includes('apostila'));
+          const hasTranslationOrc = doc.orcamentos?.some(o => o.observacoes?.toLowerCase().includes('tradução') || o.observacoes?.toLowerCase().includes('traducao'));
+
+          if (hasApostilleOrc) {
+            s.apostille++;
+          } else if (hasTranslationOrc) {
+            s.translation++;
+          } else {
+            s.analyzing++;
+          }
+        } else {
+          s.rejected++;
+          s.waitingAction++;
+        }
       }
       else if (statusLower === 'waiting_apostille' || statusLower === 'waiting_translation') {
         s.waitingAction++;

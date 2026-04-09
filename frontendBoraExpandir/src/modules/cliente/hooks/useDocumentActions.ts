@@ -98,8 +98,29 @@ export function useDocumentActions({
 
     // Determine the stage of a document
     const getDocStage = (doc: ClientDocument) => {
-        const status = doc.status?.toLowerCase() || ''
-        if (status === 'rejected') return 'rejected'
+        const status = doc.status?.toLowerCase()
+
+        const isDocumentPaid = (d: ClientDocument) => {
+            if (!d.orcamentos || d.orcamentos.length === 0) return false;
+            return d.orcamentos.some((o: any) => 
+                ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status)
+            );
+        }
+
+        if (status === 'rejected') {
+            // Se o serviço já foi pago, qualquer rejeição do jurídico deve ser tratada 
+            // internamente pelo administrativo/financeiro. Para o cliente, permanece em análise.
+            if (isDocumentPaid(doc)) {
+                const hasApostilleOrc = doc.orcamentos?.some(o => o.observacoes?.toLowerCase().includes('apostila'));
+                const hasTranslationOrc = doc.orcamentos?.some(o => o.observacoes?.toLowerCase().includes('tradução') || o.observacoes?.toLowerCase().includes('traducao'));
+                
+                if (hasApostilleOrc) return 'apostille';
+                if (hasTranslationOrc) return 'translation';
+                
+                return 'analyzing'
+            }
+            return 'rejected'
+        }
         const isWaitingQuote = status === 'waiting_quote_approval'
 
         // Apostille stage detection
@@ -163,7 +184,18 @@ export function useDocumentActions({
                                         (doc.solicitado_pelo_juridico as any) === 'true';
                     
                     const statusLower = doc.status?.toLowerCase() || '';
-                    const isWorkflowActive = statusLower.includes('waiting') || statusLower.startsWith('analyzing') || statusLower.startsWith('executing');
+                    
+                    const isPaid = (d: ClientDocument) => {
+                        if (!d.orcamentos || d.orcamentos.length === 0) return false;
+                        return d.orcamentos.some((o: any) => 
+                            ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status)
+                        );
+                    }
+                    
+                    const isWorkflowActive = statusLower.includes('waiting') || 
+                                             statusLower.startsWith('analyzing') || 
+                                             statusLower.startsWith('executing') ||
+                                             (statusLower === 'rejected' && isPaid(doc));
                     
                     return foiSolicitado || isWorkflowActive;
                 }

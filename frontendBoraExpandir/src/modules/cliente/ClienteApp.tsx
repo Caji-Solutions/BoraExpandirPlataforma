@@ -87,6 +87,8 @@ export function ClienteApp() {
           solicitado_pelo_juridico: doc.solicitado_pelo_juridico === true ||
             (doc.solicitado_pelo_juridico as any) === 1 ||
             (doc.solicitado_pelo_juridico as any) === 'true',
+          admin_upload_url: doc.admin_upload_url,
+          orcamentos: doc.orcamentos,
         }
       })
 
@@ -696,7 +698,15 @@ export function ClienteApp() {
             const linkedDoc = documents.find(doc => doc.type === title);
 
             if (linkedDoc) {
-              return linkedDoc.status === 'pending' || linkedDoc.status === 'rejected';
+              if (linkedDoc.status === 'pending') return true;
+              if (linkedDoc.status === 'rejected') {
+                const isPaid = linkedDoc.orcamentos?.some((o: any) => 
+                  ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status)
+                );
+                if (isPaid) return false;
+                return true;
+              }
+              return false;
             }
             return !isRead;
           })

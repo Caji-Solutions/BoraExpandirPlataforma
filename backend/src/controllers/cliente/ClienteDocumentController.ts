@@ -508,6 +508,18 @@ class ClienteDocumentController {
           let tipo: 'info' | 'success' | 'warning' | 'error' = 'info';
 
           if (status === 'REJECTED') {
+            const isDocumentPaid = documento.orcamentos?.some((o: any) => 
+               ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status)
+            );
+
+            if (isDocumentPaid) {
+              console.log('[ClienteDocumentController] Documento pago e rejeitado. Pulando notificação do cliente (responsabilidade administrativa).');
+              return res.status(200).json({
+                message: 'Status do documento atualizado com sucesso (encaminhado para correção interna)',
+                data: documento
+              });
+            }
+
             titulo = `Documento Rejeitado: ${documento.tipo}`;
             mensagem = `O documento "${documento.tipo}" foi rejeitado. Motivo: ${motivoRejeicao || 'Não especificado'}. Por favor, envie uma nova versão.`;
             tipo = 'error';
