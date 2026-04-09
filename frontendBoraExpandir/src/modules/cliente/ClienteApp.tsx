@@ -700,13 +700,28 @@ export function ClienteApp() {
             }
             return !isRead;
           })
-          .map(n => ({
-            id: n.id,
-            title: n.titulo || n.title || 'Solicitação',
-            description: n.mensagem || n.message || '',
-            deadline: new Date(new Date(n.criado_em || n.createdAt || Date.now()).getTime() + 7 * 24 * 60 * 60 * 1000),
-            priority: 'high'
-          }))}
+          .map(n => {
+            // Se for erro (rejeição) ou não tiver prazo definido no banco, não exibe contador
+            const hasExplicitDeadline = n.data_prazo && n.data_prazo !== null;
+            const isRejected = n.tipo === 'error' || n.type === 'error' || (n.titulo || n.title || '').toLowerCase().includes('rejeitado');
+            
+            let deadline: Date | undefined = undefined;
+            
+            if (hasExplicitDeadline) {
+              deadline = new Date(n.data_prazo!);
+            } else if (!isRejected) {
+              // Prazo padrão de 7 dias apenas para o que não for rejeição
+              deadline = new Date(new Date(n.criado_em || n.createdAt || Date.now()).getTime() + 7 * 24 * 60 * 60 * 1000);
+            }
+
+            return {
+              id: n.id,
+              title: n.titulo || n.title || 'Solicitação',
+              description: n.mensagem || n.message || '',
+              deadline,
+              priority: 'high'
+            }
+          })}
       />
     </div>
   )

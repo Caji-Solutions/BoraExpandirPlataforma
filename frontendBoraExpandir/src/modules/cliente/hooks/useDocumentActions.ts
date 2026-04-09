@@ -188,7 +188,7 @@ export function useDocumentActions({
     const pendingDocs = useMemo(() => {
         const uploadedTypes = new Set(
             memberDocs
-                .filter(d => d.status?.toLowerCase() !== 'pending' && d.status?.toLowerCase() !== 'rejected')
+                .filter(d => d.status?.toLowerCase() !== 'pending')
                 .map(d => d.type)
         )
 

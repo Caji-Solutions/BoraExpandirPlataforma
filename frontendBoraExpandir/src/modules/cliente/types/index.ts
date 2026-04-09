@@ -57,7 +57,7 @@ export interface PendingAction {
   id: string;
   title: string;
   description: string;
-  deadline: Date;
+  deadline?: Date;
   priority: 'high' | 'medium' | 'low';
 }
 
