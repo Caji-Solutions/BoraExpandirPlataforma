@@ -17,7 +17,8 @@ import {
   CheckCircle2,
   XOctagon,
   Plus,
-  Bell
+  Bell,
+  Upload
 } from 'lucide-react';
 import { Button } from '@/modules/shared/components/ui/button';
 import { Badge } from '@/modules/shared/components/ui/badge';
@@ -39,7 +40,8 @@ import {
   updateDocumentStatus,
   requestApostille,
   marcarAssessoriaFinalizadaPeloCliente,
-  getDocumentosCliente
+  getDocumentosCliente,
+  uploadAdminDocument
 } from '../services/juridicoService';
 import { ReviewActionButtons } from './ReviewActionButtons';
 import { RejectModal } from './RejectModal';
@@ -81,6 +83,7 @@ export interface JuridicoDocument {
   originalName?: string;
   type: string;
   url: string;
+  adminUploadUrl?: string;
   traducaoUrl?: string;
   status: 'pending' | 'analyzing' | 'rejected' | 'waiting_apostille' | 'executing_apostille' | 'analyzing_apostille' | 'waiting_translation' | 'executing_translation' | 'analyzing_translation' | 'approved';
   currentStage: AnalysisStage;
@@ -157,6 +160,11 @@ export function ProcessAnalysis({
   const [isReqModalOpen, setIsReqModalOpen] = useState(false);
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
+
+  // Admin upload modal
+  const [adminUploadModalOpen, setAdminUploadModalOpen] = useState(false);
+  const [adminUploadFile, setAdminUploadFile] = useState<File | null>(null);
+  const [isUploadingAdmin, setIsUploadingAdmin] = useState(false);
 
   const selectedDoc = useMemo(() => initialDocs.find(d => d.id === selectedId), [initialDocs, selectedId]);
   const selectedForm = useMemo(() => formularios.find(f => f.id === selectedId), [formularios, selectedId]);
@@ -427,10 +435,26 @@ export function ProcessAnalysis({
   const isApostilleWaiting = ['waiting_apostille', 'waiting_apostille_quote', 'aguardando_orcamento', 'waiting_quote', 'analyzing_apostille_payment', 'executing_apostille', 'aguardando_pagamento', 'pronto_para_apostilagem'].includes(selectedDoc?.status.toLowerCase() || '');
   const isTranslationWaiting = ['waiting_translation', 'waiting_translation_quote', 'aguardando_orcamento', 'waiting_quote', 'waiting_quote_approval', 'analyzing_translation_payment', 'executing_translation', 'analyzing_translation'].includes(selectedDoc?.status.toLowerCase() || '');
   
-  const isLocked = selectedDoc && 
+  const isLocked = selectedDoc &&
     !['analyzing', 'analyzing_apostille', 'analyzing_translation'].includes(selectedDoc.status.toLowerCase()) &&
     selectedDoc.status.toLowerCase() !== 'pending' &&
     selectedDoc.status.toLowerCase() !== 'rejected';
+
+  const handleAdminUpload = async () => {
+    if (!adminUploadFile || !selectedDoc) return;
+    setIsUploadingAdmin(true);
+    try {
+      const result = await uploadAdminDocument(selectedDoc.id, adminUploadFile);
+      await onUpdateDocument(selectedDoc.id, { adminUploadUrl: result.adminUploadUrl }, true);
+      toast.success('Arquivo administrativo enviado com sucesso');
+      setAdminUploadModalOpen(false);
+      setAdminUploadFile(null);
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao enviar arquivo administrativo');
+    } finally {
+      setIsUploadingAdmin(false);
+    }
+  };
 
   return (
     <>
@@ -821,10 +845,51 @@ export function ProcessAnalysis({
                         )}
                         <p className="text-sm text-gray-500 mt-1">Enviado em {selectedDoc.uploadDate}</p>
                       </div>
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <Download className="h-4 w-4" />
-                        Download Original
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {selectedDoc.url && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => window.open(selectedDoc.url, '_blank')}
+                          >
+                            <Download className="h-4 w-4" />
+                            Original
+                          </Button>
+                        )}
+                        {selectedDoc.adminUploadUrl && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => window.open(selectedDoc.adminUploadUrl, '_blank')}
+                          >
+                            <Download className="h-4 w-4" />
+                            Administrativo
+                          </Button>
+                        )}
+                        {selectedDoc.adminUploadUrl ? (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => setAdminUploadModalOpen(true)}
+                          >
+                            <Upload className="h-4 w-4" />
+                            Substituir Arquivo
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => setAdminUploadModalOpen(true)}
+                          >
+                            <Upload className="h-4 w-4" />
+                            Fazer Upload
+                          </Button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Enhanced Stage Stepper */}
@@ -1290,6 +1355,39 @@ export function ProcessAnalysis({
           }
         }}
       />
+
+      <Dialog open={adminUploadModalOpen} onOpenChange={(open) => {
+        setAdminUploadModalOpen(open);
+        if (!open) setAdminUploadFile(null);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedDoc?.adminUploadUrl ? 'Substituir Arquivo Administrativo' : 'Upload Administrativo'}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedDoc?.adminUploadUrl
+                ? 'O arquivo atual do setor administrativo sera substituido. O arquivo original do cliente permanece intocado.'
+                : 'Envie a versao administrativa do documento. O arquivo original do cliente permanece intocado.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Input
+              type="file"
+              onChange={(e) => setAdminUploadFile(e.target.files?.[0] || null)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAdminUploadModalOpen(false)} disabled={isUploadingAdmin}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAdminUpload} disabled={!adminUploadFile || isUploadingAdmin}>
+              {isUploadingAdmin && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {selectedDoc?.adminUploadUrl ? 'Substituir' : 'Enviar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

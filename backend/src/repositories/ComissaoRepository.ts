@@ -11,11 +11,22 @@ class ComissaoRepository {
     return code === '42703' || message.includes(column) || details.includes(column) || hint.includes(column)
   }
 
-  async getVendasMes(usuarioId: string, mes: number, ano: number) {
-    const inicioMes = new Date(Date.UTC(ano, mes - 1, 1)).toISOString()
-    const fimMes = new Date(Date.UTC(ano, mes, 1)).toISOString()
-    const janelaPagamento = `and(pagamento_verificado_em.gte.${inicioMes},pagamento_verificado_em.lt.${fimMes})`
-    const janelaAgendamento = `and(pagamento_verificado_em.is.null,data_hora.gte.${inicioMes},data_hora.lt.${fimMes})`
+  // Janela movel de 30 dias a partir de agora.
+  // Ignora mes/ano para que vendas aprovadas nos ultimos 30 dias sempre sejam contadas,
+  // independente de cruzar a virada de mes.
+  private getRollingWindow() {
+    const fim = new Date()
+    const inicio = new Date(fim)
+    inicio.setDate(fim.getDate() - 30)
+    return { inicio: inicio.toISOString(), fim: fim.toISOString() }
+  }
+
+  async getVendasMes(usuarioId: string, _mes: number, _ano: number) {
+    const { inicio, fim } = this.getRollingWindow()
+    const janelaPagamento = `and(pagamento_verificado_em.gte.${inicio},pagamento_verificado_em.lte.${fim})`
+    const janelaAgendamento = `and(pagamento_verificado_em.is.null,data_hora.gte.${inicio},data_hora.lte.${fim})`
+
+    console.error(`[ComissaoFix] getVendasMes - janela 30 dias: ${inicio} ate ${fim}`)
 
     // Buscar vendas por data real de aprovacao do pagamento.
     // Fallback legada: quando nao houver pagamento_verificado_em, usa data_hora.
@@ -38,8 +49,8 @@ class ComissaoRepository {
         .select('id, produto_id, produto_nome, pagamento_status, valor, data_hora')
         .eq('usuario_id', usuarioId)
         .in('pagamento_status', ['aprovado', 'confirmado'])
-        .gte('data_hora', inicioMes)
-        .lt('data_hora', fimMes)
+        .gte('data_hora', inicio)
+        .lte('data_hora', fim)
 
       agendamentos = fallback.data
       errAg = fallback.error
@@ -50,14 +61,16 @@ class ComissaoRepository {
       throw errAg
     }
 
+    console.error(`[ComissaoFix] getVendasMes - agendamentos encontrados: ${(agendamentos || []).length}`)
     return agendamentos || []
   }
 
-  async getContratosAssinados(usuarioId: string, mes: number, ano: number) {
-    const inicioMes = new Date(Date.UTC(ano, mes - 1, 1)).toISOString()
-    const fimMes = new Date(Date.UTC(ano, mes, 1)).toISOString()
-    const janelaPagamento = `and(pagamento_verificado_em.gte.${inicioMes},pagamento_verificado_em.lt.${fimMes})`
-    const janelaCriacaoLegado = `and(pagamento_verificado_em.is.null,criado_em.gte.${inicioMes},criado_em.lt.${fimMes})`
+  async getContratosAssinados(usuarioId: string, _mes: number, _ano: number) {
+    const { inicio, fim } = this.getRollingWindow()
+    const janelaPagamento = `and(pagamento_verificado_em.gte.${inicio},pagamento_verificado_em.lte.${fim})`
+    const janelaCriacaoLegado = `and(pagamento_verificado_em.is.null,criado_em.gte.${inicio},criado_em.lte.${fim})`
+
+    console.error(`[ComissaoFix] getContratosAssinados - janela 30 dias: ${inicio} ate ${fim}`)
 
     // Buscar contratos vendidos (assinatura e pagamento aprovados).
     // Data de referencia: pagamento_verificado_em; fallback para criado_em em registros legados.
@@ -67,9 +80,9 @@ class ComissaoRepository {
     const queryPrincipalContratos = await supabase
       .from('contratos_servicos')
       .select(`
-        id, cliente_id, servico_id, valor_total, assinatura_status, pagamento_status,
+        id, cliente_id, servico_id, servico_valor, assinatura_status, pagamento_status,
         status_contrato, membros_count, criado_em, pagamento_verificado_em,
-        servico:catalogo_servicos(id, nome, tipo)
+        servico:catalogo_servicos(id, nome, tipo, nao_agendavel)
       `)
       .eq('usuario_id', usuarioId)
       .eq('assinatura_status', 'aprovado')
@@ -85,17 +98,17 @@ class ComissaoRepository {
       const fallback = await supabase
         .from('contratos_servicos')
         .select(`
-          id, cliente_id, servico_id, valor_total, assinatura_status, pagamento_status,
+          id, cliente_id, servico_id, servico_valor, assinatura_status, pagamento_status,
           status_contrato, membros_count, criado_em,
-          servico:catalogo_servicos(id, nome, tipo)
+          servico:catalogo_servicos(id, nome, tipo, nao_agendavel)
         `)
         .eq('usuario_id', usuarioId)
         .eq('assinatura_status', 'aprovado')
         .in('pagamento_status', ['aprovado', 'confirmado'])
         .neq('status_contrato', 'INVALIDO')
         .neq('status_contrato', 'CANCELADO')
-        .gte('criado_em', inicioMes)
-        .lt('criado_em', fimMes)
+        .gte('criado_em', inicio)
+        .lte('criado_em', fim)
 
       contratos = fallback.data
       error = fallback.error
@@ -106,6 +119,7 @@ class ComissaoRepository {
       throw error
     }
 
+    console.error(`[ComissaoFix] getContratosAssinados - contratos encontrados: ${(contratos || []).length}`)
     return contratos || []
   }
 
@@ -123,13 +137,12 @@ class ComissaoRepository {
     return data || []
   }
 
-  async getVendasEquipe(subordinadoIds: string[], mes: number, ano: number) {
+  async getVendasEquipe(subordinadoIds: string[], _mes: number, _ano: number) {
     if (subordinadoIds.length === 0) return []
 
-    const inicioMes = new Date(Date.UTC(ano, mes - 1, 1)).toISOString()
-    const fimMes = new Date(Date.UTC(ano, mes, 1)).toISOString()
-    const janelaPagamento = `and(pagamento_verificado_em.gte.${inicioMes},pagamento_verificado_em.lt.${fimMes})`
-    const janelaAgendamento = `and(pagamento_verificado_em.is.null,data_hora.gte.${inicioMes},data_hora.lt.${fimMes})`
+    const { inicio, fim } = this.getRollingWindow()
+    const janelaPagamento = `and(pagamento_verificado_em.gte.${inicio},pagamento_verificado_em.lte.${fim})`
+    const janelaAgendamento = `and(pagamento_verificado_em.is.null,data_hora.gte.${inicio},data_hora.lte.${fim})`
 
     let data: any[] | null = null
     let error: any = null
@@ -150,8 +163,8 @@ class ComissaoRepository {
         .select('id, usuario_id, produto_nome, pagamento_status, valor, data_hora')
         .in('usuario_id', subordinadoIds)
         .in('pagamento_status', ['aprovado', 'confirmado'])
-        .gte('data_hora', inicioMes)
-        .lt('data_hora', fimMes)
+        .gte('data_hora', inicio)
+        .lte('data_hora', fim)
 
       data = fallback.data
       error = fallback.error

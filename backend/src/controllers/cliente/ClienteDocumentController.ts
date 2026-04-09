@@ -556,6 +556,70 @@ class ClienteDocumentController {
     }
   }
 
+  // POST /cliente/documento/:documentoId/upload-admin
+  async uploadAdminDocument(req: any, res: any) {
+    try {
+      const { documentoId } = req.params
+      const file = req.file
+      const { role } = req.user
+
+      if (!file) {
+        return res.status(400).json({ message: 'Nenhum arquivo enviado' })
+      }
+
+      if (!['admin', 'juridico', 'super_admin', 'administrativo'].includes(role)) {
+        return res.status(403).json({ message: 'Sem permissao para fazer upload administrativo' })
+      }
+
+      const existingDoc = await ClienteRepository.getDocumentoById(documentoId)
+
+      if (!existingDoc) {
+        return res.status(404).json({ message: 'Documento nao encontrado' })
+      }
+
+      const safeDocType = (existingDoc.tipo || 'doc')
+        .trim()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, '_')
+
+      const timestamp = Date.now()
+      const fileExtension = file.originalname.split('.').pop()
+      const fileName = `${safeDocType}_admin_${timestamp}.${fileExtension}`
+      const filePath = `admin_uploads/${documentoId}/${fileName}`
+
+      const uploadResult = await ClienteRepository.uploadDocument({
+        filePath,
+        fileBuffer: file.buffer,
+        contentType: file.mimetype
+      })
+
+      const updatedDoc = await ClienteRepository.updateDocumentoFile(documentoId, {
+        nomeOriginal: file.originalname,
+        nomeArquivo: fileName,
+        storagePath: filePath,
+        adminUploadUrl: uploadResult.publicUrl,
+        contentType: file.mimetype,
+        tamanho: file.size,
+        status: DocumentStatus.ANALYZING
+      })
+
+      return res.status(200).json({
+        message: 'Documento administrativo enviado com sucesso',
+        data: {
+          documentoId: updatedDoc.id,
+          adminUploadUrl: updatedDoc.admin_upload_url,
+          clientOriginalUrl: updatedDoc.public_url
+        }
+      })
+    } catch (error: any) {
+      console.error('[uploadAdminDocument] Error:', error)
+      return res.status(500).json({
+        message: 'Erro ao enviar documento administrativo',
+        details: error.message
+      })
+    }
+  }
+
   // GET /cliente/:clienteId/processos
   async getProcessos(req: any, res: any) {
     try {

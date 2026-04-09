@@ -399,6 +399,7 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
                     originalName: doc.nome_original,
                     type: doc.tipo,
                     url: doc.public_url || '',
+                    adminUploadUrl: doc.admin_upload_url || undefined,
                     traducaoUrl: doc.traducao_url || '',
                     status: status as any,
                     currentStage: stage,

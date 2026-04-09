@@ -44,17 +44,29 @@ class ComissaoService {
   }
 
   /**
-   * Calcula comissao C1: Consultoria + Diversos
+   * Calcula comissao C1: Consultoria + Diversos + Assessoria Direta (nao_agendavel)
    * Regra: Soma vendas. Se total_vendas atinge Meta X, valor_total = total_vendas * valor_meta_X
    * Adiciona calculo de faturamento: total_faturado * pct_meta_faturamento_X
+   * Inclui contratos de servicos nao agendaveis (Assessoria Direta) no total de vendas.
    */
   async calcularComissaoC1(userId: string, mes: number, ano: number) {
     const metas = await MetaComercialRepository.getByNivel('C1')
     const vendas = await ComissaoRepository.getVendasMes(userId, mes, ano)
+    const contratos = await ComissaoRepository.getContratosAssinados(userId, mes, ano)
     const taxa = await CambioService.getCotacaoAtual()
 
-    const totalVendas = vendas.length
-    const totalFaturadoEur = vendas.reduce((acc, v) => acc + (parseFloat(v.valor) || 0), 0)
+    // Contratos de servicos nao agendaveis (Assessoria Direta) contam como venda para C1
+    const contratosNaoAgendaveis = contratos.filter((c: any) => c.servico?.nao_agendavel === true)
+
+    console.error(`[ComissaoFix] calcularComissaoC1 - agendamentos: ${vendas.length}, contratos nao_agendaveis: ${contratosNaoAgendaveis.length}`)
+
+    const totalVendasAgendamentos = vendas.length
+    const totalVendasContratos = contratosNaoAgendaveis.length
+    const totalVendas = totalVendasAgendamentos + totalVendasContratos
+
+    const faturadoAgendamentos = vendas.reduce((acc, v) => acc + (parseFloat(v.valor) || 0), 0)
+    const faturadoContratos = contratosNaoAgendaveis.reduce((acc: number, c: any) => acc + (parseFloat(c.servico_valor) || 0), 0)
+    const totalFaturadoEur = faturadoAgendamentos + faturadoContratos
 
     // Comissao por vendas
     const metaVendas = this.findMetaAtingida(metas, totalVendas)
@@ -112,9 +124,10 @@ class ComissaoService {
     const contratos = await ComissaoRepository.getContratosAssinados(userId, mes, ano)
     const taxa = await CambioService.getCotacaoAtual()
 
-    // Filtrar contratos de servico fixo (assessoria de imigracao)
+    // Filtrar contratos de assessoria de imigracao (fixo/assessoria agendavel).
+    // Exclui nao_agendaveis pois ja foram contados no calculo base C1.
     const contratosAssessoria = contratos.filter(
-      (c: any) => c.servico?.tipo === 'fixo' || c.servico?.tipo === 'assessoria'
+      (c: any) => (c.servico?.tipo === 'fixo' || c.servico?.tipo === 'assessoria') && !c.servico?.nao_agendavel
     )
 
     const totalContratosAssessoria = contratosAssessoria.length
@@ -124,7 +137,7 @@ class ComissaoService {
     for (const contrato of contratosAssessoria) {
       const membrosData = await ComissaoRepository.getMembrosContrato(contrato.id)
       const membros = membrosData.membros_count || 1
-      const valorPorMembro = membrosData.valor_por_membro || (contrato.valor_total / membros)
+      const valorPorMembro = membrosData.valor_por_membro || (contrato.servico_valor / membros)
       totalMembrosValor += membros * valorPorMembro
     }
 

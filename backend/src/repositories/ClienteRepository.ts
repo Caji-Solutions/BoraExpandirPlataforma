@@ -54,6 +54,7 @@ interface DocumentoRecord {
     traduzido: boolean
     solicitado_pelo_juridico: boolean
     data_solicitacao_juridico: string | null
+    admin_upload_url: string | null
 }
 
 class ClienteRepository {
@@ -420,6 +421,22 @@ class ClienteRepository {
         return data as DocumentoRecord
     }
 
+    // Buscar documento por ID
+    async getDocumentoById(documentoId: string): Promise<DocumentoRecord | null> {
+        const { data, error } = await supabase
+            .from('documentos')
+            .select('*')
+            .eq('id', documentoId)
+            .maybeSingle()
+
+        if (error) {
+            console.error('Erro ao buscar documento por ID:', error)
+            throw error
+        }
+
+        return data as DocumentoRecord | null
+    }
+
     // Atualizar arquivo de um documento existente (substituição)
     async updateDocumentoFile(
         documentoId: string,
@@ -428,23 +445,33 @@ class ClienteRepository {
             nomeArquivo: string
             storagePath: string
             publicUrl?: string
+            adminUploadUrl?: string
             contentType?: string
             tamanho?: number
             status: DocumentStatus.ANALYZING | DocumentStatus.ANALYZING_APOSTILLE | DocumentStatus.ANALYZING_TRANSLATION
         }
     ): Promise<DocumentoRecord> {
+        const updateData: Record<string, any> = {
+            nome_original: params.nomeOriginal,
+            nome_arquivo: params.nomeArquivo,
+            storage_path: params.storagePath,
+            content_type: params.contentType || null,
+            tamanho: params.tamanho || null,
+            status: params.status,
+            atualizado_em: new Date().toISOString()
+        }
+
+        if (params.adminUploadUrl !== undefined) {
+            // Admin upload: preserve client original, update only admin field
+            updateData.admin_upload_url = params.adminUploadUrl
+        } else {
+            // Client upload: update public_url
+            updateData.public_url = params.publicUrl || null
+        }
+
         const { data, error } = await supabase
             .from('documentos')
-            .update({
-                nome_original: params.nomeOriginal,
-                nome_arquivo: params.nomeArquivo,
-                storage_path: params.storagePath,
-                public_url: params.publicUrl || null,
-                content_type: params.contentType || null,
-                tamanho: params.tamanho || null,
-                status: params.status,
-                atualizado_em: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('id', documentoId)
             .select()
             .single()

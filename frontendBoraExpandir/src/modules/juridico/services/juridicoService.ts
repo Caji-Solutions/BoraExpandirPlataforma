@@ -503,6 +503,23 @@ export async function enviarParaProtocolacao(processoId: string, supervisorId: s
   return apiClient.post(`/juridico/processo/${processoId}/enviar-protocolacao`, { supervisorId });
 }
 
+/**
+ * Envia arquivo administrativo de um documento (preserva o original do cliente)
+ */
+export async function uploadAdminDocument(
+  documentoId: string,
+  file: File
+): Promise<{ adminUploadUrl: string; clientOriginalUrl: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const result: any = await apiClient.post(
+    `/cliente/documento/${documentoId}/upload-admin`,
+    formData
+  );
+  return result.data;
+}
+
 export default {
     getProcessos,
     getProcessosByResponsavel,

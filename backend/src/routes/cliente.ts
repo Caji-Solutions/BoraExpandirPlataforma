@@ -48,6 +48,7 @@ cliente.delete('/processo/:processoId/formularios/:formularioId', ClienteFormula
 // Rotas de Documentos e Formulários (específicas)
 cliente.delete('/documento/:documentoId', ClienteDocumentController.deleteDocumento.bind(ClienteDocumentController))
 cliente.patch('/documento/:documentoId/status', ClienteDocumentController.updateDocumentoStatus.bind(ClienteDocumentController))
+cliente.post('/documento/:documentoId/upload-admin', upload.single('file'), ClienteDocumentController.uploadAdminDocument.bind(ClienteDocumentController))
 cliente.post('/formularios/:formularioId/response', upload.single('file'), ClienteFormulariosController.uploadFormularioResponse.bind(ClienteFormulariosController))
 
 // Rotas de Notificações (específicas)
