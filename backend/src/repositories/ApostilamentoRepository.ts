@@ -18,19 +18,23 @@ class ApostilamentoRepository {
 
     if (existingAp) {
       console.log(`[ApostilamentoRepository.create] Apostilamento ja existe para doc: ${params.documentoId}. Verificando orcamento...`);
+      
+      // Busca QUALQUER orçamento existente para este documento, não apenas 'disponivel'
+      // Isso evita cobrar novamente se o cliente já pagou ou enviou comprovante
       const { data: existingOrc } = await supabase
         .from('orcamentos')
         .select('*')
         .eq('documento_id', params.documentoId)
-        .eq('status', 'disponivel')
+        .order('criado_em', { ascending: false })
         .maybeSingle();
       
       if (existingOrc) {
-        console.log(`[ApostilamentoRepository.create] Retornando orcamento existente: ${existingOrc.id}`);
+        console.log(`[ApostilamentoRepository.create] Retornando orcamento existente: ${existingOrc.id} com status: ${existingOrc.status}`);
         return {
           ...existingAp,
           orcamentoId: existingOrc.id,
-          valorTotal: existingOrc.preco_atualizado
+          valorTotal: existingOrc.preco_atualizado,
+          orcamentoStatus: existingOrc.status
         };
       }
     }

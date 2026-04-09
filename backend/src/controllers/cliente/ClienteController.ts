@@ -857,7 +857,7 @@ class ClienteController {
               titulo,
               mensagem,
               tipo,
-              prazo: Number(prazo) || 15
+              prazo: prazo ? Number(prazo) : (status === 'REJECTED' ? undefined : 15)
             });
             console.log(`Notificacao "${titulo}" enviada com sucesso para o cliente ${documento.cliente_id} (Prazo: ${prazo || 15} dias)`);
           }

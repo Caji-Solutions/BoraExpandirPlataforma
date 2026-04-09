@@ -89,7 +89,7 @@ export function FolderCardHeader({
                 </Badge>
               )}
               {hasRejected && (
-                <Badge variant="destructive" className="text-[10px] px-2 py-0.5">
+                <Badge variant="destructive" className="text-[10px] px-2 py-0.5 animate-pulse">
                   Ação Necessária
                 </Badge>
               )}

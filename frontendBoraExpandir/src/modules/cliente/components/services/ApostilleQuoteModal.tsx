@@ -42,6 +42,7 @@ export function ApostilleQuoteModal({
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'wise'>('pix')
   const [comprovanteFile, setComprovanteFile] = useState<File | null>(null)
   const [orcamentoIds, setOrcamentoIds] = useState<string[]>([])
+  const [alreadyPaidDocs, setAlreadyPaidDocs] = useState<Set<string>>(new Set())
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -181,9 +182,24 @@ export function ApostilleQuoteModal({
           )
           
           if (result.data.orcamentoId) {
-            console.log(`[ApostilleQuoteModal.handleAction] Orcamento criado/recuperado: ${result.data.orcamentoId} para doc: ${docId}`);
-            collectedOrcamentoIds.push(result.data.orcamentoId);
+            console.log(`[ApostilleQuoteModal.handleAction] Orcamento criado/recuperado: ${result.data.orcamentoId} com status: ${result.data.orcamentoStatus} para doc: ${docId}`);
+            
+            // Se já está pago ou em verificação, registramos
+            if (['pendente_verificacao', 'aprovado', 'APPROVED'].includes(result.data.orcamentoStatus)) {
+              setAlreadyPaidDocs(prev => new Set(prev).add(docId))
+            } else {
+              collectedOrcamentoIds.push(result.data.orcamentoId);
+            }
           }
+        }
+
+        // Se TODOS os documentos selecionados já foram pagos anteriormente
+        if (collectedOrcamentoIds.length === 0 && selectedDocIds.size > 0) {
+          console.log('[ApostilleQuoteModal.handleAction] Todos os documentos já possuem pagamento registrado.');
+          setStep('success')
+          if (onPaymentSuccess) onPaymentSuccess()
+          setIsProcessing(false)
+          return
         }
 
         if (collectedOrcamentoIds.length === 0) {
@@ -249,7 +265,11 @@ export function ApostilleQuoteModal({
                 <Check className="h-8 w-8 text-emerald-600" />
               </div>
               <div className="space-y-2">
-                <h4 className="text-xl font-bold text-gray-900 dark:text-white">Solicitação enviada!</h4>
+                <h4 className="text-xl font-bold text-gray-900 dark:text-white">
+                    {alreadyPaidDocs.size === selectedDocIds.size 
+                      ? 'Pagamento Confirmado!' 
+                      : 'Solicitação Processada!'}
+                </h4>
                 <div className="p-3 bg-gray-50 dark:bg-neutral-800 rounded-xl border border-gray-100 dark:border-neutral-700 mx-auto w-full max-w-[320px]">
                     <p className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-1">Documento(s)</p>
                     <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
@@ -259,7 +279,9 @@ export function ApostilleQuoteModal({
                     </p>
                 </div>
                 <p className="text-sm text-gray-500 max-w-[300px] mx-auto">
-                    Seu comprovante foi enviado para análise. Em breve o processo de apostilamento será iniciado.
+                    {alreadyPaidDocs.size === selectedDocIds.size
+                      ? 'Identificamos que o pagamento para este(s) documento(s) já foi realizado. O processo de apostilamento continuará normalmente com a nova versão.'
+                      : 'Seu comprovante foi enviado para análise. Em breve o processo de apostilamento será iniciado.'}
                 </p>
               </div>
               <Button onClick={onClose} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 rounded-xl">

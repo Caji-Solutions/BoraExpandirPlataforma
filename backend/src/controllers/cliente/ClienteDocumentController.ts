@@ -529,7 +529,7 @@ class ClienteDocumentController {
               titulo,
               mensagem,
               tipo,
-              prazo: Number(prazo) || 15
+              prazo: prazo ? Number(prazo) : (status === 'REJECTED' ? undefined : 15)
             });
             console.log(`[ClienteDocumentController][updateDocumentoStatus] Notification sent to client ${documento.cliente_id}`)
           }

@@ -235,14 +235,12 @@ export function Dashboard({
       })
       .map(n => {
         const hasDeadline = !!(n.data_prazo || (n as any).deadline)
-        const createdAt = n.criado_em || n.createdAt || new Date()
-        const defaultDeadline = new Date(new Date(createdAt).getTime() + 7 * 24 * 60 * 60 * 1000)
-
+        
         return {
           id: n.id,
           title: n.titulo || n.title || 'Ação Necessária',
           description: n.mensagem || n.message || '',
-          deadline: hasDeadline ? new Date((n.data_prazo || (n as any).deadline) as string) : defaultDeadline,
+          deadline: hasDeadline ? new Date((n.data_prazo || (n as any).deadline) as string) : undefined,
           priority: (n.type === 'error' || n.type === 'warning' || hasDeadline) ? 'high' as const : 'medium' as const,
           type: n.type || 'info'
         }
@@ -642,7 +640,12 @@ export function Dashboard({
                       "p-4 rounded-xl border shadow-sm bg-white dark:bg-neutral-800",
                       isAgendamento ? "border-indigo-100 dark:border-indigo-900/30" : "border-red-100 dark:border-red-900/30"
                     )}>
-                      <CountdownTimer targetDate={action.deadline} variant={isAgendamento ? "blue" : "red"} />
+                      {action.deadline && <CountdownTimer targetDate={action.deadline} variant={isAgendamento ? "blue" : "red"} />}
+                      {!action.deadline && (
+                        <div className="flex items-center justify-center py-2 text-sm font-medium text-gray-500">
+                          Aguardando sua ação
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

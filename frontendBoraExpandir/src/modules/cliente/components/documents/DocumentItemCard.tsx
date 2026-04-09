@@ -57,7 +57,7 @@ export function DocumentItemCard({
         <div
             className={cn(
                 'p-4 rounded-xl border bg-white dark:bg-gray-800 transition-all shadow-sm hover:shadow-md',
-                isRejected ? 'border-red-200 dark:border-red-800' : 'border-gray-200 dark:border-gray-700',
+                isRejected ? 'border-red-500 bg-red-50/30 dark:border-red-800 dark:bg-red-900/5' : 'border-gray-200 dark:border-gray-700',
                 isDraggedOver && 'ring-2 ring-blue-400 border-blue-400'
             )}
             onDrop={(e) => onDrop(e, item.type)}
@@ -77,6 +77,11 @@ export function DocumentItemCard({
                             <span className="font-bold text-sm text-gray-900 dark:text-white truncate">
                                 {item.name}
                             </span>
+                            {isRejected && (
+                                <Badge variant="destructive" className="animate-pulse bg-red-600 font-black text-[10px] h-5 px-2">
+                                    REJEITADO
+                                </Badge>
+                            )}
                         </div>
 
                         {/* Badges */}

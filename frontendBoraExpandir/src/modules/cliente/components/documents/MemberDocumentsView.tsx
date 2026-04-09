@@ -275,6 +275,12 @@ export function MemberDocumentsView({
                                 >
                                     <TabIcon className={cn('h-4 w-4', isActive || isRequirementsAlert ? tabTextColor : 'text-gray-400')} />
                                     <span>{tab.label}</span>
+                                    {tab.id === 'rejected' && count > 0 && (
+                                        <span className="relative flex h-2 w-2">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                        </span>
+                                    )}
                                     {count > 0 && (
                                         <span className={cn(
                                             'px-1.5 py-0.5 rounded-full text-[10px] font-bold min-w-[20px] text-center',

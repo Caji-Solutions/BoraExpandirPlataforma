@@ -66,12 +66,20 @@ export function RequiredActionModal({ isOpen, onClose, actions }: RequiredAction
                                 <p className="text-gray-600 dark:text-gray-300 mb-3">
                                     {action.description}
                                 </p>
-                                <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-neutral-800 p-2 rounded-lg border border-gray-100 dark:border-neutral-700 inline-block mb-3">
-                                    <span className="font-medium mr-2">Prazo Limite:</span>
-                                    {formatDate(action.deadline)}
-                                </div>
+                                {action.deadline && (
+                                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-neutral-800 p-2 rounded-lg border border-gray-100 dark:border-neutral-700 inline-block mb-3">
+                                        <span className="font-medium mr-2">Prazo Limite:</span>
+                                        {formatDate(action.deadline)}
+                                    </div>
+                                )}
                                 <div className="bg-white dark:bg-neutral-800 p-3 rounded-lg border border-gray-100 dark:border-neutral-700">
-                                    <CountdownTimer targetDate={action.deadline} variant="yellow" />
+                                    {action.deadline ? (
+                                        <CountdownTimer targetDate={action.deadline} variant="red" />
+                                    ) : (
+                                        <div className="text-center py-2 text-sm text-gray-500 font-medium">
+                                            Aguardando sua ação imediata
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}
