@@ -454,9 +454,31 @@ class ClienteDocumentController {
         return res.status(400).json({ message: 'documentoId é obrigatório' })
       }
 
-      // Validar que apenas juridico/admin conseguem atualizar status
-      if (role !== 'juridico' && role !== 'admin') {
-        return res.status(403).json({ message: 'Apenas jurídico ou admin conseguem atualizar status' })
+      // Validar autorização: juridico/admin podem tudo, cliente apenas solicitar orçamento de seus próprios documentos
+      if (role === 'cliente') {
+        const idNegocio = await this.resolveClienteRealId(userId);
+        if (!idNegocio) {
+          return res.status(403).json({ message: 'Cliente não identificado' });
+        }
+
+        // Verificar se o documento pertence ao cliente
+        const { data: docOwner } = await supabase
+          .from('documentos')
+          .select('cliente_id')
+          .eq('id', documentoId)
+          .maybeSingle();
+
+        if (!docOwner || docOwner.cliente_id !== idNegocio) {
+          return res.status(403).json({ message: 'Sem permissão para atualizar este documento' });
+        }
+
+        // Restringir quais status o cliente pode setar
+        const allowedClientStatuses = ['WAITING_TRANSLATION_QUOTE', 'WAITING_APOSTILLE_QUOTE'];
+        if (!allowedClientStatuses.includes(status)) {
+          return res.status(403).json({ message: 'Apenas jurídico ou admin conseguem atualizar este status' });
+        }
+      } else if (role !== 'juridico' && role !== 'admin') {
+        return res.status(403).json({ message: 'Sem permissão para atualizar status' });
       }
 
       const validStatuses = [

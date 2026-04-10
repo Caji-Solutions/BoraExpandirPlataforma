@@ -17,7 +17,8 @@ export default function LoginPage() {
         setError('')
         setIsLoading(true)
 
-        const result = await login(email, password)
+        const normalizedEmail = email.trim().toLowerCase()
+        const result = await login(normalizedEmail, password)
 
         if (result.success) {
             // Buscar o profile e redirecionar conforme role
@@ -127,6 +128,23 @@ export default function LoginPage() {
                                 )}
                             </button>
                         </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-0.5rem' }}>
+                        <button
+                            type="button"
+                            onClick={() => navigate('/forgot-password')}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'rgba(255, 255, 255, 0.5)',
+                                fontSize: '0.8rem',
+                                cursor: 'pointer',
+                                padding: '4px',
+                            }}
+                        >
+                            Esqueci minha senha
+                        </button>
                     </div>
 
                     <button

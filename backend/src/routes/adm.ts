@@ -9,6 +9,7 @@ router.get('/catalog', AdmController.getCatalog);
 router.post('/catalog', AdmController.createService);
 router.patch('/catalog/:id', AdmController.updateService);
 router.delete('/catalog/:id', AdmController.deleteService);
+router.get('/tradutores', AdmController.getTranslators);
 
 // Rotas de Subservicos
 router.get('/subservices', AdmController.getSubservices);

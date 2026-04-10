@@ -438,6 +438,21 @@ export class AdmRepository {
     if (error) throw error;
     return data;
   }
+
+  async getTranslators() {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'tradutor')
+      .order('full_name', { ascending: true });
+
+    if (error) {
+      console.error('Erro ao buscar tradutores:', error);
+      throw error;
+    }
+
+    return data;
+  }
 }
 
 export default new AdmRepository();
