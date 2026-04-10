@@ -76,7 +76,8 @@ class ApostilamentoRepository {
         preco_atualizado: valorApostila,
         prazo_entrega: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 dias de prazo padrão?
         observacoes: 'Apostilamento (Valor Fixo)',
-        status: 'disponivel' // Fica disponível para o cliente pagar imediatamente
+        status: 'disponivel', // Fica disponível para o cliente pagar imediatamente
+        tipo: 'Apostilagem'
       }])
       .select()
       .single();

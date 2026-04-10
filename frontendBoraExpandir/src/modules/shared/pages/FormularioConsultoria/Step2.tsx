@@ -201,9 +201,10 @@ export function Step2({
         ].map(opcao => (
           <label key={opcao} className="flex items-start gap-3 cursor-pointer group">
             <input
-              type="checkbox"
-              checked={formData.pretende_autonomo.includes(opcao)}
-              onChange={() => handleCheckboxChange('pretende_autonomo', opcao)}
+              type="radio"
+              name="pretende_autonomo"
+              checked={formData.pretende_autonomo === opcao}
+              onChange={() => setFormData((prev: any) => ({ ...prev, pretende_autonomo: opcao }))}
               className="mt-0.5 w-4 h-4 accent-blue-500 flex-shrink-0"
             />
             <span className="text-gray-300 text-sm group-hover:text-white transition-colors">{opcao}</span>
