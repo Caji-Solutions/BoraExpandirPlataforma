@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   Users, 
   Edit, 
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import { configPlataforma } from '../../../../services/comissaoService'
+import { admService, Translator } from '../../services/admService'
 
 // Tipos
 interface Tradutor {
@@ -32,88 +33,6 @@ interface Tradutor {
   dataAdmissao: string
 }
 
-// Mock de tradutores
-const mockTradutores: Tradutor[] = [
-  {
-    id: '1',
-    nome: 'Ana Paula Silva',
-    email: 'ana.silva@boraexpandir.com',
-    telefone: '(11) 98765-4321',
-    especialidades: ['Jurídico', 'Técnico', 'Comercial'],
-    status: 'ativo',
-    comissaoVendaPropria: 12,
-    comissaoVendaBot: 8,
-    totalVendasMes: 25000,
-    totalComissoesMes: 2800,
-    dataAdmissao: '2023-03-15',
-  },
-  {
-    id: '2',
-    nome: 'Carlos Eduardo Mendes',
-    email: 'carlos.mendes@boraexpandir.com',
-    telefone: '(21) 99876-5432',
-    especialidades: ['Médico', 'Farmacêutico'],
-    status: 'ativo',
-    comissaoVendaPropria: 12,
-    comissaoVendaBot: 8,
-    totalVendasMes: 18500,
-    totalComissoesMes: 2100,
-    dataAdmissao: '2023-06-01',
-  },
-  {
-    id: '3',
-    nome: 'Fernanda Costa',
-    email: 'fernanda.costa@boraexpandir.com',
-    telefone: '(31) 97654-3210',
-    especialidades: ['Acadêmico', 'Literário'],
-    status: 'ferias',
-    comissaoVendaPropria: 15,
-    comissaoVendaBot: 10,
-    totalVendasMes: 0,
-    totalComissoesMes: 0,
-    dataAdmissao: '2022-11-20',
-  },
-  {
-    id: '4',
-    nome: 'Roberto Almeida',
-    email: 'roberto.almeida@boraexpandir.com',
-    telefone: '(41) 96543-2109',
-    especialidades: ['Jurídico', 'Financeiro', 'Contábil'],
-    status: 'ativo',
-    comissaoVendaPropria: 12,
-    comissaoVendaBot: 8,
-    totalVendasMes: 32000,
-    totalComissoesMes: 3600,
-    dataAdmissao: '2022-05-10',
-  },
-  {
-    id: '5',
-    nome: 'Julia Martins',
-    email: 'julia.martins@boraexpandir.com',
-    telefone: '(51) 95432-1098',
-    especialidades: ['Técnico', 'Científico'],
-    status: 'inativo',
-    comissaoVendaPropria: 10,
-    comissaoVendaBot: 6,
-    totalVendasMes: 0,
-    totalComissoesMes: 0,
-    dataAdmissao: '2024-01-08',
-  },
-  {
-    id: '6',
-    nome: 'Pedro Henrique Santos',
-    email: 'pedro.santos@boraexpandir.com',
-    telefone: '(61) 94321-0987',
-    especialidades: ['Comercial', 'Marketing'],
-    status: 'ativo',
-    comissaoVendaPropria: 12,
-    comissaoVendaBot: 8,
-    totalVendasMes: 15000,
-    totalComissoesMes: 1650,
-    dataAdmissao: '2023-09-01',
-  },
-]
-
 const statusConfig = {
   ativo: { variant: 'success' as const, label: 'Ativo' },
   inativo: { variant: 'destructive' as const, label: 'Inativo' },
@@ -121,7 +40,8 @@ const statusConfig = {
 }
 
 export default function GestaoTradutores() {
-  const [tradutores, setTradutores] = useState<Tradutor[]>(mockTradutores)
+  const [tradutores, setTradutores] = useState<Tradutor[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<Partial<Tradutor>>({})
@@ -130,6 +50,36 @@ export default function GestaoTradutores() {
   const [markupPercentual, setMarkupPercentual] = useState<number>(configPlataforma.markupPercentual)
   const [editingMarkup, setEditingMarkup] = useState(false)
   const [tempMarkup, setTempMarkup] = useState<number>(markupPercentual)
+
+  useEffect(() => {
+    loadTranslators()
+  }, [])
+
+  const loadTranslators = async () => {
+    try {
+      setLoading(true)
+      const data = await admService.getTranslators()
+      // Mapear dados do backend (profiles) para a interface do dashboard
+      const mapped = data.map(t => ({
+        id: t.id,
+        nome: t.full_name || 'Sem nome',
+        email: t.email,
+        telefone: t.telefone || 'N/A',
+        especialidades: [], // Backend não tem isso ainda
+        status: (t.status as any) || 'ativo',
+        comissaoVendaPropria: 12,
+        comissaoVendaBot: 8,
+        totalVendasMes: 0,
+        totalComissoesMes: 0,
+        dataAdmissao: (t as any).created_at || new Date().toISOString()
+      })) as Tradutor[]
+      setTradutores(mapped)
+    } catch (error) {
+      console.error('Erro ao carger tradutores:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Filtrar tradutores
   const filteredTradutores = tradutores.filter(t => 

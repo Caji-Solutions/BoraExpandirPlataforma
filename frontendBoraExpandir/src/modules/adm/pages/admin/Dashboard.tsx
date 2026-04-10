@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/modules/shared/components/ui/card';
-import { Users, FileText, TrendingUp, Activity, Calendar, ExternalLink, CheckCircle, LogOut, Loader2 } from "lucide-react";
+import { Users, FileText, TrendingUp, Activity, Calendar, ExternalLink, CheckCircle, LogOut, Loader2, DollarSign } from "lucide-react";
 import { useAuth } from "../../../../contexts/AuthContext";
+import { admService, DashboardStats } from "../../services/admService";
 
 export default function Dashboard() {
   const { activeProfile } = useAuth();
@@ -10,12 +11,27 @@ export default function Dashboard() {
   const [isCalendarConnected, setIsCalendarConnected] = useState(false);
   const [calendarEmail, setCalendarEmail] = useState("");
   const [isLoadingCalendar, setIsLoadingCalendar] = useState(true);
+  const [statsData, setStatsData] = useState<DashboardStats | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   useEffect(() => {
     if (activeProfile?.id) {
       checkCalendarConnection();
+      loadStats();
     }
   }, [activeProfile?.id, location.pathname]);
+
+  const loadStats = async () => {
+    try {
+      setIsLoadingStats(true);
+      const data = await admService.getDashboardStats();
+      setStatsData(data);
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas:', error);
+    } finally {
+      setIsLoadingStats(false);
+    }
+  };
 
   const checkCalendarConnection = async () => {
     try {
@@ -77,30 +93,30 @@ export default function Dashboard() {
   
   const stats = [
     {
-      title: "Usuários Ativos",
-      value: "24",
-      change: "+3 este mês",
+      title: "Novos Clientes",
+      value: statsData?.novos_clientes.atual.toString() || "0",
+      change: `+${statsData?.novos_clientes.atual || 0} este mês`,
       icon: Users,
       color: "text-role-sales",
     },
     {
-      title: "Processos em Andamento",
-      value: "142",
+      title: "Processos Ativos",
+      value: "142", // Ainda mockado até ter endpoint específico
       change: "+12 esta semana",
       icon: FileText,
       color: "text-status-info",
     },
     {
-      title: "Taxa de Sucesso",
-      value: "94.2%",
-      change: "+2.1% vs mês anterior",
-      icon: TrendingUp,
+      title: "Faturamento",
+      value: `R$ ${(statsData?.faturamento.atual || 0).toLocaleString('pt-BR')}`,
+      change: "Dados financeiros",
+      icon: DollarSign,
       color: "text-status-success",
     },
     {
-      title: "Atividade Hoje",
-      value: "38",
-      change: "ações registradas",
+      title: "Comissões a Pagar",
+      value: `R$ ${(statsData?.comissoes.aRealizar || 0).toLocaleString('pt-BR')}`,
+      change: "Pendentes",
       icon: Activity,
       color: "text-status-warning",
     },

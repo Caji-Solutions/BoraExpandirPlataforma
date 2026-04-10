@@ -20,6 +20,7 @@ import PaymentSuccess from './modules/shared/pages/PaymentSuccess'
 import PaymentCancel from './modules/shared/pages/PaymentCancel'
 import FormularioConsultoria from './modules/shared/pages/FormularioConsultoriaPage'
 import RedefinirSenha from './modules/shared/pages/RedefinirSenha'
+import ForgotPasswordPage from './modules/shared/pages/ForgotPasswordPage'
 
 import { useParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
@@ -126,6 +127,8 @@ function AppRouter() {
           <Route path="/formulario/consultoria/:agendamentoId" element={<FormularioConsultoria />} />
           <Route path="/formulario/consultoria" element={<FormularioConsultoria />} />
           <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<RedefinirSenha />} />
 
           {/* Rotas de Pagamento */}
           <Route path="/agendamento/sucesso" element={<PaymentSuccess />} />

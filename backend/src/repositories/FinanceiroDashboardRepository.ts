@@ -151,6 +151,51 @@ class FinanceiroDashboardRepository {
       meta_atingida: item.meta_atingida || 0
     }))
   }
+
+  async getComissoesList(mes?: number, ano?: number): Promise<any[]> {
+    let query = supabase
+      .from('comissoes')
+      .select(`
+        *,
+        usuario:profiles(id, full_name, email)
+      `)
+      .order('created_at', { ascending: false })
+
+    if (mes) query = query.eq('mes', mes)
+    if (ano) query = query.eq('ano', ano)
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('[FinanceiroDashboardRepository] Erro ao buscar lista de comissoes:', error)
+      throw error
+    }
+
+    return data || []
+  }
+
+  async getFluxoCaixa(meses = 6): Promise<any[]> {
+    const agora = new Date()
+    const resultados = []
+
+    for (let i = 0; i < meses; i++) {
+        const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1)
+        const mes = d.getMonth() + 1
+        const ano = d.getFullYear()
+        
+        const { atual: receita } = await this.getFaturamento(mes, ano)
+        const { paga: despesas } = await this.getComissoes(mes, ano)
+        
+        const mesNome = d.toLocaleString('pt-BR', { month: 'short' })
+        resultados.unshift({
+            month: mesNome.charAt(0).toUpperCase() + mesNome.slice(1).replace('.', ''),
+            receita,
+            despesas
+        })
+    }
+
+    return resultados
+  }
 }
 
 export default new FinanceiroDashboardRepository()

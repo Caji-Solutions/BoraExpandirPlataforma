@@ -15,12 +15,14 @@ export default function RedefinirSenha() {
     const navigate = useNavigate()
 
     useEffect(() => {
-        // Obter o token da hash da URL retornada pelo Supabase
+        // Obter o token da hash (Supabase Auth) ou da query (nosso backend)
         const hashParams = new URLSearchParams(window.location.hash.substring(1))
-        const token = hashParams.get('access_token')
-        const type = hashParams.get('type')
+        const queryParams = new URLSearchParams(window.location.search)
+        
+        const token = queryParams.get('token') || hashParams.get('access_token')
+        const type = queryParams.get('type') || hashParams.get('type') || 'recovery'
 
-        if (token && type === 'recovery') {
+        if (token) {
             setAccessToken(token)
             setVerifying(false)
         } else {

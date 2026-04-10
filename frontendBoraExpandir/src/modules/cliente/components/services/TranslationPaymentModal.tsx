@@ -76,8 +76,13 @@ export function TranslationQuoteModal({
       }
       
     } catch (err: any) {
-      console.error('Erro ao inicializar fluxo de traducao:', err)
-      setError('Não foi possível carregar os detalhes.')
+      // Se for 404, apenas ignoramos pois significa que não há orçamento ainda
+      if (err.status === 404 || err.response?.status === 404) {
+        console.log('[TranslationQuoteModal] Nenhum orçamento encontrado (404) - Fluxo normal para solicitação.');
+      } else {
+        console.error('Erro ao inicializar fluxo de traducao:', err)
+        setError('Não foi possível carregar os detalhes do serviço.')
+      }
     } finally {
       setIsLoading(false)
     }

@@ -4,6 +4,7 @@ import { authMiddleware } from '../middlewares/auth'
 import { loginSchema, registerSchema, validateInput } from '../utils/validators'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
+import EmailService from '../services/EmailService'
 
 const router = Router()
 
@@ -103,6 +104,58 @@ router.post('/login', async (req: Request, res: Response) => {
         })
     } catch (error: any) {
         console.error('Erro no login:', error)
+        return res.status(500).json({ error: 'Erro interno do servidor' })
+    }
+})
+
+// ============================================
+// POST /auth/forgot-password — Solicitar redefinição de senha
+// ============================================
+router.post('/forgot-password', async (req: Request, res: Response) => {
+    try {
+        const { email } = req.body
+
+        if (!email) {
+            return res.status(400).json({ error: 'Email é obrigatório' })
+        }
+
+        const normalizedEmail = email.trim().toLowerCase()
+
+        const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .eq('email', normalizedEmail)
+            .single()
+
+        if (error || !profile) {
+            // Por segurança, retornamos 200 mesmo se o email não existir para evitar enumeração de usuários
+            return res.json({ message: 'Se o email existir em nossa base, você receberá um link de recuperação' })
+        }
+
+        const token = crypto.randomUUID()
+        
+        const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ auth_token: token })
+            .eq('id', profile.id)
+
+        if (updateError) {
+            console.error('[Auth.forgotPassword] ❌ Erro ao salvar token de recuperação:', updateError)
+            return res.status(500).json({ error: 'Erro ao processar solicitação' })
+        }
+
+        const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')
+        const resetUrl = `${frontendUrl}/reset-password?token=${token}`
+
+        await EmailService.sendPasswordResetEmail({
+            to: profile.email,
+            name: profile.full_name,
+            resetUrl
+        })
+
+        return res.json({ message: 'Link de recuperação enviado com sucesso' })
+    } catch (error: any) {
+        console.error('Erro no forgot-password:', error)
         return res.status(500).json({ error: 'Erro interno do servidor' })
     }
 })

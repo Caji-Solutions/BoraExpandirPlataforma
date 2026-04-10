@@ -1366,6 +1366,39 @@ class FinanceiroController {
             return res.status(500).json({ message: 'Erro ao buscar titularidades', error: error.message })
         }
     }
+
+    /**
+     * GET /financeiro/comissoes
+     */
+    async getComissoes(req: any, res: any) {
+        try {
+            const { mes, ano } = req.query
+            const data = await FinanceiroDashboardRepository.getComissoesList(
+                mes ? Number(mes) : undefined,
+                ano ? Number(ano) : undefined
+            )
+            return res.status(200).json({ data })
+        } catch (error: any) {
+            console.error('[FinanceiroController] Erro ao buscar comissoes:', error)
+            return res.status(500).json({ message: 'Erro ao buscar comissoes', error: error.message })
+        }
+    }
+
+    /**
+     * GET /financeiro/dashboard/fluxo-caixa
+     */
+    async getFluxoCaixa(req: any, res: any) {
+        try {
+            const { meses } = req.query
+            const data = await FinanceiroDashboardRepository.getFluxoCaixa(
+                meses ? Number(meses) : 6
+            )
+            return res.status(200).json({ data })
+        } catch (error: any) {
+            console.error('[FinanceiroController] Erro ao buscar fluxo de caixa:', error)
+            return res.status(500).json({ message: 'Erro ao buscar fluxo de caixa', error: error.message })
+        }
+    }
 }
 
 export default new FinanceiroController()

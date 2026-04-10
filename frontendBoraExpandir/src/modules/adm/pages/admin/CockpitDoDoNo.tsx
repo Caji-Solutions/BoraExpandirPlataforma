@@ -1,17 +1,35 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card';
-import { TrendingUp, DollarSign, AlertTriangle } from "lucide-react";
+import { TrendingUp, DollarSign, AlertTriangle, Loader2 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-
-const chartData = [
-  { month: "Jun", receita: 120000, despesas: 45000 },
-  { month: "Jul", receita: 135000, despesas: 48000 },
-  { month: "Ago", receita: 142000, despesas: 52000 },
-  { month: "Set", receita: 158000, despesas: 55000 },
-  { month: "Out", receita: 175000, despesas: 58000 },
-  { month: "Nov", receita: 188000, despesas: 60000 },
-];
+import { admService, FluxoCaixaItem, DashboardStats } from "../../services/admService";
 
 export default function CockpitDoDoNo() {
+  const [chartData, setChartData] = useState<FluxoCaixaItem[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [fluxo, dashboardStats] = await Promise.all([
+        admService.getFluxoCaixa(6),
+        admService.getDashboardStats()
+      ]);
+      setChartData(fluxo);
+      setStats(dashboardStats);
+    } catch (error) {
+      console.error('Erro ao carregar dados do cockpit:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const lucroEst = stats ? (stats.faturamento.atual - stats.comissoes.aRealizar) : 0;
   return (
     <div className="space-y-6">
       <div>
@@ -31,7 +49,9 @@ export default function CockpitDoDoNo() {
             <TrendingUp className="h-4 w-4 text-status-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">R$ 85.000</div>
+            <div className="text-2xl font-bold text-foreground">
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : `R$ ${lucroEst.toLocaleString('pt-BR')}`}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
               Receita menos comissões e custos
             </p>
@@ -41,14 +61,16 @@ export default function CockpitDoDoNo() {
         <Card className="bg-card border-border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-card-foreground">
-              CAC (Custo Aquisição)
+              Contas a Receber
             </CardTitle>
             <DollarSign className="h-4 w-4 text-status-info" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">R$ 150,00</div>
+            <div className="text-2xl font-bold text-foreground">
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : `R$ ${stats?.contas_receber.toLocaleString('pt-BR')}`}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Por cliente novo
+              Faturas pendentes de clientes
             </p>
           </CardContent>
         </Card>

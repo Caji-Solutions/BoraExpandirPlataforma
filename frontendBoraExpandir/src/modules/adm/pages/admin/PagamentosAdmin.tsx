@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { 
   DollarSign, 
   Search, 
@@ -17,6 +17,7 @@ import {
   Eye
 } from 'lucide-react'
 import { Badge } from '@/modules/shared/components/ui/badge'
+import { financeiroService, Commission } from '../../services/financeiroService'
 
 // Tipos
 type TipoBeneficiario = 'funcionario' | 'parceiro' | 'tradutor'
@@ -35,106 +36,6 @@ interface ComissaoPendente {
   comprovante?: string
   dataPagamento?: string
 }
-
-// Mock de comissões pendentes
-const mockComissoes: ComissaoPendente[] = [
-  // Tradutores
-  {
-    id: 'COM-001',
-    beneficiarioId: 'T001',
-    beneficiarioNome: 'Ana Paula Silva',
-    beneficiarioTipo: 'tradutor',
-    descricao: 'Tradução - Certidão de Nascimento (Cliente: João Silva)',
-    valorComissao: 180.00,
-    percentual: 12,
-    dataVenda: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    status: 'pendente',
-  },
-  {
-    id: 'COM-002',
-    beneficiarioId: 'T001',
-    beneficiarioNome: 'Ana Paula Silva',
-    beneficiarioTipo: 'tradutor',
-    descricao: 'Tradução - Contrato Comercial (Cliente: Maria Santos)',
-    valorComissao: 360.00,
-    percentual: 8,
-    dataVenda: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    status: 'pendente',
-  },
-  {
-    id: 'COM-003',
-    beneficiarioId: 'T002',
-    beneficiarioNome: 'Carlos Eduardo Mendes',
-    beneficiarioTipo: 'tradutor',
-    descricao: 'Tradução - Laudo Médico (Cliente: Pedro Almeida)',
-    valorComissao: 264.00,
-    percentual: 12,
-    dataVenda: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    status: 'pendente',
-  },
-  // Funcionários
-  {
-    id: 'COM-004',
-    beneficiarioId: 'F001',
-    beneficiarioNome: 'Fernanda Borges',
-    beneficiarioTipo: 'funcionario',
-    descricao: 'Comissão - Venda Processo Visto D7 (Cliente: Roberto Costa)',
-    valorComissao: 450.00,
-    percentual: 15,
-    dataVenda: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-    status: 'pendente',
-  },
-  {
-    id: 'COM-005',
-    beneficiarioId: 'F002',
-    beneficiarioNome: 'Ricardo Lima',
-    beneficiarioTipo: 'funcionario',
-    descricao: 'Comissão - Venda Processo Cidadania (Cliente: Julia Martins)',
-    valorComissao: 680.00,
-    percentual: 12,
-    dataVenda: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
-    status: 'processando',
-  },
-  // Parceiros
-  {
-    id: 'COM-006',
-    beneficiarioId: 'P001',
-    beneficiarioNome: 'Escritório ABC Advocacia',
-    beneficiarioTipo: 'parceiro',
-    descricao: 'Indicação - Processo Familiar (Cliente: Marcos Pereira)',
-    valorComissao: 350.00,
-    percentual: 10,
-    dataVenda: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-    status: 'pendente',
-  },
-  {
-    id: 'COM-007',
-    beneficiarioId: 'P002',
-    beneficiarioNome: 'Consultoria XYZ',
-    beneficiarioTipo: 'parceiro',
-    descricao: 'Indicação - Visto Investidor (Cliente: Eduardo Santos)',
-    valorComissao: 1200.00,
-    percentual: 8,
-    dataVenda: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-    status: 'pago',
-    comprovante: 'COMP-2025-007',
-    dataPagamento: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  // Mais tradutores pagos
-  {
-    id: 'COM-008',
-    beneficiarioId: 'T003',
-    beneficiarioNome: 'Roberto Almeida',
-    beneficiarioTipo: 'tradutor',
-    descricao: 'Tradução - Procuração (Cliente: Luciana Rodrigues)',
-    valorComissao: 216.00,
-    percentual: 12,
-    dataVenda: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
-    status: 'pago',
-    comprovante: 'COMP-2025-008',
-    dataPagamento: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-]
 
 const tipoConfig: Record<TipoBeneficiario, { label: string; icon: typeof User; color: string }> = {
   funcionario: { 
@@ -161,10 +62,38 @@ const statusConfig: Record<StatusPagamento, { label: string; variant: 'default' 
 }
 
 export default function PagamentosAdmin() {
-  const [comissoes, setComissoes] = useState<ComissaoPendente[]>(mockComissoes)
+  const [comissoes, setComissoes] = useState<ComissaoPendente[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filtroTipo, setFiltroTipo] = useState<TipoBeneficiario | 'todos'>('todos')
   const [filtroStatus, setFiltroStatus] = useState<StatusPagamento | 'todos'>('todos')
+  
+  useEffect(() => {
+    loadCommissions()
+  }, [])
+
+  const loadCommissions = async () => {
+    try {
+      setLoading(true)
+      const data = await financeiroService.getCommissions()
+      const mapped = data.map(c => ({
+        id: c.id,
+        beneficiarioId: c.usuario_id,
+        beneficiarioNome: c.usuario?.full_name || 'Desconhecido',
+        beneficiarioTipo: 'tradutor' as TipoBeneficiario,
+        descricao: `Comissão ${c.mes}/${c.ano}`,
+        valorComissao: c.valor_comissao_brl,
+        percentual: 0,
+        dataVenda: c.created_at,
+        status: c.status === 'pago' ? 'pago' : 'pendente',
+      })) as ComissaoPendente[]
+      setComissoes(mapped)
+    } catch (error) {
+      console.error('Erro ao carregar comissoes:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
   
   // Estado do modal de pagamento
   const [modalPagamento, setModalPagamento] = useState<{
@@ -211,24 +140,27 @@ export default function PagamentosAdmin() {
     
     setProcessando(true)
     
-    // Simula upload e processamento
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    // Atualiza status da comissão
-    setComissoes(prev => prev.map(c => 
-      c.id === modalPagamento.comissao?.id
-        ? {
-            ...c,
-            status: 'pago' as StatusPagamento,
-            comprovante: `COMP-${new Date().getFullYear()}-${c.id}`,
-            dataPagamento: new Date().toISOString()
-          }
-        : c
-    ))
-    
-    setProcessando(false)
-    setModalPagamento({ isOpen: false, comissao: null })
-    setComprovante(null)
+    try {
+      await financeiroService.confirmCommissionPayment(modalPagamento.comissao.id)
+      
+      setComissoes(prev => prev.map(c => 
+        c.id === modalPagamento.comissao?.id
+          ? {
+              ...c,
+              status: 'pago' as StatusPagamento,
+              comprovante: `COMP-${new Date().getFullYear()}-${c.id}`,
+              dataPagamento: new Date().toISOString()
+            }
+          : c
+      ))
+      
+      setModalPagamento({ isOpen: false, comissao: null })
+      setComprovante(null)
+    } catch (error) {
+      console.error('Erro ao confirmar pagamento:', error)
+    } finally {
+      setProcessando(false)
+    }
   }
 
   // Handler de seleção de arquivo

@@ -96,28 +96,30 @@ export function useDocumentActions({
             .catch(() => setFormsCount(0))
     }, [processoId, member.id])
 
+    const isApostillePaid = (d: ClientDocument) => {
+        if (!d.orcamentos || d.orcamentos.length === 0) return false;
+        return d.orcamentos.some((o: any) => 
+            ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status) &&
+            o.observacoes?.toLowerCase().includes('apostila')
+        );
+    }
+
+    const isTranslationPaid = (d: ClientDocument) => {
+        if (!d.orcamentos || d.orcamentos.length === 0) return false;
+        return d.orcamentos.some((o: any) => 
+            ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status) &&
+            (o.observacoes?.toLowerCase().includes('tradução') || o.observacoes?.toLowerCase().includes('traducao'))
+        );
+    }
+
     // Determine the stage of a document
     const getDocStage = (doc: ClientDocument) => {
         const status = doc.status?.toLowerCase()
 
-        const isDocumentPaid = (d: ClientDocument) => {
-            if (!d.orcamentos || d.orcamentos.length === 0) return false;
-            return d.orcamentos.some((o: any) => 
-                ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status)
-            );
-        }
-
         if (status === 'rejected') {
-            // Se o serviço já foi pago, qualquer rejeição do jurídico deve ser tratada 
-            // internamente pelo administrativo/financeiro. Para o cliente, permanece em análise.
-            if (isDocumentPaid(doc)) {
-                const hasApostilleOrc = doc.orcamentos?.some(o => o.observacoes?.toLowerCase().includes('apostila'));
-                const hasTranslationOrc = doc.orcamentos?.some(o => o.observacoes?.toLowerCase().includes('tradução') || o.observacoes?.toLowerCase().includes('traducao'));
-                
-                if (hasApostilleOrc) return 'apostille';
-                if (hasTranslationOrc) return 'translation';
-                
-                return 'analyzing'
+            // Só não deve ir para rejeitado se o cliente pagou por AMBOS (Apostila e Tradução)
+            if (isApostillePaid(doc) && isTranslationPaid(doc)) {
+                return 'translation';
             }
             return 'rejected'
         }
@@ -195,7 +197,7 @@ export function useDocumentActions({
                     const isWorkflowActive = statusLower.includes('waiting') || 
                                              statusLower.startsWith('analyzing') || 
                                              statusLower.startsWith('executing') ||
-                                             (statusLower === 'rejected' && isPaid(doc));
+                                             (statusLower === 'rejected' && isApostillePaid(doc) && isTranslationPaid(doc));
                     
                     return foiSolicitado || isWorkflowActive;
                 }

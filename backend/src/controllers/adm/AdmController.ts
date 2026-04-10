@@ -134,6 +134,16 @@ export class AdmController {
       return res.status(500).json({ message: 'Erro ao excluir subservico' });
     }
   }
+
+  async getTranslators(req: Request, res: Response) {
+    try {
+      const translators = await AdmRepository.getTranslators();
+      return res.json({ data: translators });
+    } catch (error: any) {
+      console.error('Erro ao buscar tradutores:', error);
+      return res.status(500).json({ message: 'Erro ao buscar tradutores' });
+    }
+  }
 }
 
 export default new AdmController();

@@ -700,10 +700,16 @@ export function ClienteApp() {
             if (linkedDoc) {
               if (linkedDoc.status === 'pending') return true;
               if (linkedDoc.status === 'rejected') {
-                const isPaid = linkedDoc.orcamentos?.some((o: any) => 
-                  ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status)
+                const isApostillePaid = linkedDoc.orcamentos?.some((o: any) => 
+                  ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status) &&
+                  o.observacoes?.toLowerCase().includes('apostila')
                 );
-                if (isPaid) return false;
+                const isTranslationPaid = linkedDoc.orcamentos?.some((o: any) => 
+                  ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status) &&
+                  (o.observacoes?.toLowerCase().includes('tradução') || o.observacoes?.toLowerCase().includes('traducao'))
+                );
+
+                if (isApostillePaid && isTranslationPaid) return false;
                 return true;
               }
               return false;
