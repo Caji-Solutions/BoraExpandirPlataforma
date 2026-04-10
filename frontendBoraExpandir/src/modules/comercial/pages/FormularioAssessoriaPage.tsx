@@ -280,13 +280,12 @@ export default function FormularioAssessoriaPage() {
             ? 'cartao'
             : ''
     const boletoQtd = Math.max(1, Math.min(3, Number(source.boleto_quantidade_parcelas || '1')))
-    const cartaoParcQtd = Math.max(1, Math.min(12, Number(source.cartao_parcelas || '1')))
     const formaPagamentoContrato = metodoPagamento === 'boleto'
       ? `Pagamento via BOLETO: entrada de R$ ${source.boleto_valor_entrada || '0,00'} + ${boletoQtd} parcela(s) de R$ ${source.boleto_valor_parcela || '0,00'}, com cobrança mensal no mesmo dia da criação do serviço.`
       : metodoPagamento === 'pix'
         ? 'Pagamento via PIX (com envio de comprovante).'
         : metodoPagamento === 'cartao'
-          ? `Pagamento via CARTÃO ${source.cartao_tipo === 'debito' ? 'DÉBITO' : source.cartao_tipo === 'credito' ? `CRÉDITO (${cartaoParcQtd}x)` : ''} (com envio de comprovante).`
+          ? `Pagamento via CARTÃO ${source.cartao_tipo === 'debito' ? 'DÉBITO' : source.cartao_tipo === 'credito' ? 'CRÉDITO' : ''} (com envio de comprovante).`
           : ''
 
     const parseNumerico = (val: string) => parseFloat(val.trim().replace(/\./g, '').replace(/,/g, '.'))
@@ -1206,27 +1205,11 @@ export default function FormularioAssessoriaPage() {
                   </div>
                 </div>
 
-                {formData.cartao_tipo === 'credito' && (
-                  <div className="max-w-[200px]">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Número de Parcelas *</label>
-                    <select
-                      disabled={saving || isLockedByGeracaoErro}
-                      value={formData.cartao_parcelas}
-                      onChange={(e) => setFormData({ ...formData, cartao_parcelas: e.target.value })}
-                      className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm"
-                    >
-                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => (
-                        <option key={n} value={String(n)}>{n}x</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
                 <div className="text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                   {formData.cartao_tipo === 'debito'
                     ? 'Cartão DÉBITO: o comprovante da transação deverá ser enviado para validação.'
                     : formData.cartao_tipo === 'credito'
-                      ? `Cartão CRÉDITO em ${formData.cartao_parcelas}x: o comprovante da transação deverá ser enviado para validação.`
+                      ? 'Cartão CRÉDITO: o comprovante da transação deverá ser enviado para validação.'
                       : 'Selecione o tipo do cartão para continuar.'}
                 </div>
               </div>
@@ -1285,7 +1268,7 @@ export default function FormularioAssessoriaPage() {
                         : formData.metodo_pagamento === 'pix'
                           ? 'PIX'
                           : formData.metodo_pagamento === 'cartao'
-                            ? `Cartão ${formData.cartao_tipo === 'debito' ? 'Débito' : formData.cartao_tipo === 'credito' ? `Crédito ${formData.cartao_parcelas}x` : ''}`
+                            ? `Cartão ${formData.cartao_tipo === 'debito' ? 'Débito' : formData.cartao_tipo === 'credito' ? 'Crédito' : ''}`
                             : '-'}
                     </p>
                   </div>

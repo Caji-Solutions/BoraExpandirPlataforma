@@ -1040,8 +1040,9 @@ class ComercialController {
                     : isDraftRaw === 'false' ? false
                         : undefined
 
-            // Quando clienteId é fornecido (contexto de consulta por cliente), não filtra por usuário
-            const contratos = await ContratoServicoRepository.getContratos({ clienteId, isDraft, usuarioId: clienteId ? undefined : userId })
+            // Sempre filtrar pelo usuario autenticado, independente de clienteId.
+            // Nunca usar usuarioId de query params (previne enumeracao de contratos de outros usuarios).
+            const contratos = await ContratoServicoRepository.getContratos({ clienteId, isDraft, usuarioId: userId })
             return res.status(200).json({ data: contratos })
         } catch (error: any) {
             console.error('[ComercialController] Erro ao listar contratos:', error)

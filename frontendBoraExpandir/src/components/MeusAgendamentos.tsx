@@ -72,6 +72,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
   const [c2SearchQuery, setC2SearchQuery] = useState('');
   const [isFormularioModalOpen, setIsFormularioModalOpen] = useState(false);
   const [isAssessoriaFormModalOpen, setIsAssessoriaFormModalOpen] = useState(false);
+  const [submittedAssessoriaIds, setSubmittedAssessoriaIds] = useState<Set<string>>(new Set());
   const [dnaData, setDnaData] = useState<Record<string, any> | null>(null);
   const [isLoadingDna, setIsLoadingDna] = useState(false);
 
@@ -679,6 +680,11 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                         <button
                           onClick={async () => {
                             if (!selectedItem) return;
+                            const jaPreenchida = selectedItem.assessoria_juridica_preenchida || submittedAssessoriaIds.has(selectedItem.id);
+                            if (jaPreenchida) {
+                              setIsAssessoriaFormModalOpen(true);
+                              return;
+                            }
                             try {
                               setIsMarkingEmAndamento(true);
                               await juridicoService.marcarAssessoriaEmAndamento(selectedItem.id);
@@ -695,7 +701,11 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
                           className="w-full py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                           <Briefcase className="h-3.5 w-3.5" />
-                          {isMarkingEmAndamento ? 'Iniciando...' : 'Iniciar Atendimento'}
+                          {isMarkingEmAndamento
+                            ? 'Iniciando...'
+                            : (selectedItem.assessoria_juridica_preenchida || submittedAssessoriaIds.has(selectedItem.id))
+                              ? 'Editar Formulário'
+                              : 'Iniciar Atendimento'}
                         </button>
                       </div>
                     )}
@@ -1136,6 +1146,9 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
           onSuccess={() => {
             setIsAssessoriaFormModalOpen(false);
             toast.success('Assessoria salva com sucesso!');
+            if (selectedItem?.id) {
+              setSubmittedAssessoriaIds(prev => new Set([...prev, selectedItem.id]));
+            }
             fetchData();
           }}
         />

@@ -326,10 +326,28 @@ class JuridicoRepository {
             }
         }
 
+        // Verificar quais agendamentos já têm assessoria jurídica preenchida
+        const agendamentoIds = data.map((ag: any) => ag.id).filter(Boolean)
+        let assessoriaPreenchidaMap: Record<string, boolean> = {}
+
+        if (agendamentoIds.length > 0) {
+            const { data: assessoriasData } = await supabase
+                .from('assessorias_juridico')
+                .select('agendamento_id')
+                .in('agendamento_id', agendamentoIds)
+
+            if (assessoriasData) {
+                assessoriasData.forEach((a: any) => {
+                    if (a.agendamento_id) assessoriaPreenchidaMap[a.agendamento_id] = true
+                })
+            }
+        }
+
         return data.map((ag: any) => ({
             ...ag,
             catalogo_servicos: ag.produto_id ? catalogoMap[ag.produto_id] || null : null,
-            cliente_is_user: ag.formularios_cliente && ag.formularios_cliente.length > 0
+            cliente_is_user: ag.formularios_cliente && ag.formularios_cliente.length > 0,
+            assessoria_juridica_preenchida: !!assessoriaPreenchidaMap[ag.id]
         }))
     }
 
@@ -1233,8 +1251,9 @@ class JuridicoRepository {
         respostas: any
         servicoId?: string
         observacoes?: string
+        agendamentoId?: string | null
     }): Promise<any> {
-        const payload = {
+        const payload: Record<string, any> = {
             cliente_id: params.clienteId,
             responsavel_id: params.responsavelId || null,
             servico_id: params.servicoId || null,
@@ -1242,13 +1261,29 @@ class JuridicoRepository {
             observacoes: params.observacoes || null,
             criado_em: new Date().toISOString()
         }
+        if (params.agendamentoId) {
+            payload.agendamento_id = params.agendamentoId
+        }
         console.log('[createAssessoria] INSERT payload:', JSON.stringify({ ...payload, respostas: '[omitted]' }))
 
-        const { data, error } = await supabase
+        let { data, error } = await supabase
             .from('assessorias_juridico')
             .insert([payload])
             .select()
             .single()
+
+        // Se a coluna agendamento_id ainda não existe no banco, tenta sem ela
+        if (error && error.code === '42703' && params.agendamentoId) {
+            console.warn('[createAssessoria] Coluna agendamento_id não encontrada — inserindo sem ela. Execute a migração para habilitar rastreamento por agendamento.')
+            delete payload.agendamento_id
+            const retry = await supabase
+                .from('assessorias_juridico')
+                .insert([payload])
+                .select()
+                .single()
+            data = retry.data
+            error = retry.error
+        }
 
         if (error) {
             console.error('[createAssessoria] Supabase error:', JSON.stringify({ message: error.message, details: error.details, hint: error.hint, code: error.code }))

@@ -64,29 +64,15 @@ export function FinanceiroApp() {
 
   const sidebarGroups: SidebarGroup[] = [
     {
-      label: 'Geral',
+      label: 'Menu',
       items: [
         { label: 'Início', to: '/financeiro', icon: LayoutDashboard },
         { label: 'DNA do Cliente', to: '/financeiro/dna', icon: Dna },
-        { label: 'Clientes', to: '/financeiro/clientes', icon: Users },
-        { label: 'Titularidades', to: '/financeiro/titularidades', icon: ShieldCheck },
-        { label: 'Responsáveis', to: '/financeiro/responsaveis', icon: Users },
-        { label: 'Processos', to: '/financeiro/processos', icon: ClipboardList },
-        { label: 'Tarefas', to: '/financeiro/tarefas', icon: CheckSquare },
-        { label: 'Movimentos', to: '/financeiro/movimentos', icon: ArrowRightLeft },
         { label: 'Apostilagem', to: '/financeiro/apostilagem', icon: Stamp },
-      ],
-    },
-    {
-      label: 'Financeiro',
-      items: [
         { label: 'Visão Geral', to: '/financeiro/visao-geral', icon: PieChart },
-        { label: 'Contas a Receber', to: '/financeiro/contas-receber', icon: Wallet },
-        { label: 'Comissões', to: '/financeiro/comissoes', icon: HandCoins },
-        { label: 'Fechamento', to: '/financeiro/fechamento', icon: HandCoins },
-        { 
-          label: 'Comprovantes', 
-          to: '/financeiro/comprovantes', 
+        {
+          label: 'Comprovantes',
+          to: '/financeiro/comprovantes',
           icon: FileCheck,
           badge: pendentesCount > 0 ? (
             <span className="ml-auto inline-flex items-center justify-center bg-red-500 text-white rounded-full h-5 px-1.5 text-[10px] font-bold">
@@ -94,14 +80,8 @@ export function FinanceiroApp() {
             </span>
           ) : undefined
         },
-      ],
-    },
-    {
-      label: 'Sistema',
-      items: [
-        { label: 'Relatórios', to: '/financeiro/relatorios', icon: BarChart },
-        { label: 'Comparativos', to: '/financeiro/comparativos', icon: GitCompareArrows },
-        { label: 'Configurações', to: '/financeiro/configuracoes', icon: Settings },
+        { label: 'Comissões', to: '/financeiro/comissoes', icon: HandCoins },
+        { label: 'Contas a Receber', to: '/financeiro/contas-receber', icon: Wallet },
       ],
     },
   ]

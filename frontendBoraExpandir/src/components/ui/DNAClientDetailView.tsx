@@ -188,7 +188,13 @@ export function DNAClientDetailView({
                 try {
                     setLoadingContratos(true)
                     const data = await comercialService.getContratosServicos(client.true_id || client.id)
-                    setContratosServicos(data)
+                    // Exibir apenas contratos vendidos pelo usuario logado.
+                    // Contratos de assessoria vendidos por outro usuario (ex: C2 apos delegacao)
+                    // nao devem aparecer na interface do usuario atual.
+                    const meus = activeProfile?.id
+                        ? data.filter((c: any) => c.usuario_id === activeProfile.id)
+                        : data
+                    setContratosServicos(meus)
                 } catch (err) {
                     console.error('Erro ao buscar contratos:', err)
                 } finally {

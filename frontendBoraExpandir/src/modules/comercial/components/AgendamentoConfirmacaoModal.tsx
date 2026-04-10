@@ -103,7 +103,7 @@ Seu agendamento de *${payload.produto_nome}* está quase confirmado!
 🕐 Horário: ${hora}
 💰 Valor: ${valorEUR ? `${valorEUR} (${valorBRL})` : valorBRL}
 
-Para confirmar, realizaremos o pagamento via *CARTÃO ${cartaoTipo === 'debito' ? 'DÉBITO' : cartaoTipo === 'credito' ? `CRÉDITO (${cartaoParcelas}x)` : ''}*.
+Para confirmar, realizaremos o pagamento via *CARTÃO ${cartaoTipo === 'debito' ? 'DÉBITO' : cartaoTipo === 'credito' ? 'CRÉDITO' : ''}*.
 
 Após o pagamento, envie o comprovante aqui no chat.
 
@@ -158,7 +158,7 @@ Obrigado! 🚀
           return
         }
         requestPayload.cartao_tipo = cartaoTipo
-        requestPayload.cartao_parcelas = cartaoTipo === 'credito' ? cartaoParcelas : '1'
+        requestPayload.cartao_parcelas = '1'
       }
 
       if (isEditing) delete requestPayload.id
@@ -388,7 +388,7 @@ Obrigado! 🚀
 
                   {metodoConfirmado === 'cartao' && (
                     <div className="bg-blue-50 dark:bg-blue-500/10 rounded-xl p-4 border border-blue-200 dark:border-blue-500/20 text-sm text-blue-800 dark:text-blue-300">
-                      💳 Cartão {cartaoTipo === 'debito' ? 'Débito' : cartaoTipo === 'credito' ? `Crédito em ${cartaoParcelas}x` : ''} — comprovante obrigatório.
+                      💳 Cartão {cartaoTipo === 'debito' ? 'Débito' : cartaoTipo === 'credito' ? 'Crédito' : ''} — comprovante obrigatório.
                     </div>
                   )}
 
@@ -482,26 +482,11 @@ Obrigado! 🚀
                 </div>
               </div>
 
-              {cartaoTipo === 'credito' && (
-                <div className="max-w-[200px]">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Número de Parcelas *</label>
-                  <select
-                    value={cartaoParcelas}
-                    onChange={(e) => setCartaoParcelas(e.target.value)}
-                    className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-white dark:bg-neutral-800 text-sm"
-                  >
-                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => (
-                      <option key={n} value={String(n)}>{n}x</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
               {cartaoTipo && (
                 <div className="text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                   {cartaoTipo === 'debito'
                     ? 'Cartão DÉBITO: o comprovante da transação deverá ser enviado para validação.'
-                    : `Cartão CRÉDITO em ${cartaoParcelas}x: o comprovante da transação deverá ser enviado para validação.`}
+                    : 'Cartão CRÉDITO: o comprovante da transação deverá ser enviado para validação.'}
                 </div>
               )}
 
