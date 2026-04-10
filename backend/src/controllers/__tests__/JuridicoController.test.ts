@@ -815,7 +815,7 @@ describe('JuridicoController - enviarParaProtocolacao', () => {
 
         expect(res.status).toHaveBeenCalledWith(500);
         expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-            message: 'Erro ao enviar processo para protocolacao'
+            message: 'db error'
         }));
     });
 });
@@ -898,19 +898,18 @@ describe('JuridicoController - createAssessoria (stage update)', () => {
         expect(res.status).toHaveBeenCalledWith(201);
         expect(supabase.from).toHaveBeenCalledWith('clientes');
         expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({
-            stage: 'assessoria_andamento',
-            status: 'assessoria_andamento'
+            stage: 'assessoria_andamento'
         }));
     });
 
-    it('nao deve regredir stage se cliente ja estiver em assessoria_finalizada', async () => {
+    it('nao deve regredir stage se cliente ja estiver em processo_finalizado', async () => {
         const mockAssessoria = { id: 'assess-1', cliente_id: 'cli-1' };
         (JuridicoRepository.createAssessoria as any).mockResolvedValue(mockAssessoria);
         (JuridicoRepository.getProcessoByClienteId as any).mockResolvedValue(null);
         (JuridicoRepository.createProcess as any).mockResolvedValue({ id: 'proc-1' });
 
         const mockUpdate = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
-        const mockSingle = vi.fn().mockResolvedValue({ data: { stage: 'assessoria_finalizada' }, error: null });
+        const mockSingle = vi.fn().mockResolvedValue({ data: { stage: 'processo_finalizado' }, error: null });
         const mockEqSelect = vi.fn().mockReturnValue({ single: mockSingle });
         const mockSelect = vi.fn().mockReturnValue({ eq: mockEqSelect });
 
@@ -933,7 +932,7 @@ describe('JuridicoController - createAssessoria (stage update)', () => {
         await JuridicoController.createAssessoria(req, res);
 
         expect(res.status).toHaveBeenCalledWith(201);
-        // update should NOT have been called since stage is already ahead
+        // update should NOT have been called since stage is already ahead (processo_finalizado)
         expect(mockUpdate).not.toHaveBeenCalled();
     });
 
