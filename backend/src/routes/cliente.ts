@@ -6,6 +6,7 @@ import ClienteFormulariosController from '../controllers/cliente/ClienteFormular
 import ClienteNotificationController from '../controllers/cliente/ClienteNotificationController'
 import ClienteContratosController from '../controllers/cliente/ClienteContratosController'
 import ClienteRequerimentosController from '../controllers/cliente/ClienteRequerimentosController'
+import ClientePagamentoController from '../controllers/cliente/ClientePagamentoController'
 import ClienteController from '../controllers/cliente/ClienteController'
 import ParceiroTermoController from '../controllers/cliente/ParceiroTermoController'
 import upload from '../middlewares/upload'
@@ -74,6 +75,8 @@ cliente.get('/:clienteId/formulario-responses', ClienteFormulariosController.get
 cliente.get('/:clienteId/notificacoes', ClienteNotificationController.getNotificacoes.bind(ClienteNotificationController))
 cliente.post('/:clienteId/notificacoes/read-all', ClienteNotificationController.markAllNotificacoesAsRead.bind(ClienteNotificationController))
 cliente.get('/:clienteId/requerimentos', ClienteRequerimentosController.getRequerimentosByCliente.bind(ClienteRequerimentosController))
+cliente.get('/:clienteId/pagamentos', ClientePagamentoController.getPagamentos.bind(ClientePagamentoController))
+cliente.post('/pagamentos/:id/comprovante', upload.single('file'), ClientePagamentoController.uploadComprovante.bind(ClientePagamentoController))
 
 export default cliente
 

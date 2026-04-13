@@ -180,3 +180,18 @@ export interface TranslationOrcamento {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface Payment {
+  id: string;
+  tipo?: 'parcela' | 'agendamento' | 'contrato' | 'orcamento';
+  categoria?: string;
+  descricao: string;
+  valor: number;
+  dataVencimento: string;
+  dataPagamento?: string;
+  status: 'pago' | 'pendente' | 'atrasado' | 'cancelado' | 'em_analise' | 'recusado' | 'aprovado' | 'APPROVED';
+  numeroParcela?: number;
+  totalParcelas?: number;
+  comprovanteUrl?: string;
+  notaRecusa?: string;
+}

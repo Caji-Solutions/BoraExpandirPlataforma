@@ -7,13 +7,14 @@ import { ProcessTimeline } from './components/documents/ProcessTimeline'
 import { Notifications } from './components/dashboard/Notifications'
 import { DocumentModal } from './components/uploads/DocumentModal'
 import { Traducao } from './pages/services/Traducao'
+import MeusPagamentos from './pages/MeusPagamentos'
 import Parceiro from '../shared/components/parceiro/Parceiro'
 import { ClienteAgendamento } from './pages/scheduling/ClienteAgendamento'
 import { Client, Document, Notification, TranslatedDocument, Process, ProcessStep } from './types'
 import { Apostilamento } from './pages/services/Apostilamento'
 import { DocumentUploadFlow } from './components/uploads/DocumentUploadFlow'
 import ClienteContratos from './components/contracts/ClienteContratos'
-import { Home, FileText, GitBranch, Users, Settings } from 'lucide-react'
+import { Home, FileText, GitBranch, Users, Settings, CreditCard } from 'lucide-react'
 import { Config } from '../../components/ui/Config'
 import { RequiredActionModal } from './components/forms/RequiredActionModal'
 import { clienteService } from './services/clienteService'
@@ -495,6 +496,7 @@ export function ClienteApp() {
           { label: 'Dashboard', to: '/cliente', icon: Home },
           { label: 'Meu Processo', to: '/cliente/processo', icon: GitBranch, disabled: isPaymentLocked },
           { label: 'Documentos', to: '/cliente/upload', icon: FileText, disabled: isPaymentLocked },
+          { label: 'Meus Pagamentos', to: '/cliente/pagamentos', icon: CreditCard, disabled: isPaymentLocked },
           { label: 'Parceiro', to: '/cliente/parceiro', icon: Users, disabled: isPaymentLocked },
         ],
       },
@@ -635,6 +637,10 @@ export function ClienteApp() {
           <Route
             path="contratos"
             element={<ClienteContratos clienteId={client.id} />}
+          />
+          <Route
+            path="pagamentos"
+            element={<MeusPagamentos clienteId={client.id} />}
           />
           <Route
             path="apostilamento"

@@ -5,3 +5,4 @@ export { default as ClienteNotificationController } from './ClienteNotificationC
 export { default as ClienteRequerimentosController } from './ClienteRequerimentosController';
 export { default as ClienteContratosController } from './ClienteContratosController';
 export { default as ClienteController } from './ClienteController';
+export { default as ClientePagamentoController } from './ClientePagamentoController';

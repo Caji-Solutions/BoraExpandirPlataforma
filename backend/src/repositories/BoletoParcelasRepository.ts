@@ -255,6 +255,21 @@ class BoletoParcelasRepository {
 
         return data || []
     }
+
+    async getParcelasByCliente(clienteId: string): Promise<any[]> {
+        const { data, error } = await supabase
+            .from('parcelas_servicos')
+            .select('*')
+            .eq('cliente_id', clienteId)
+            .order('data_vencimento', { ascending: true })
+
+        if (error) {
+            console.error('[BoletoParcelasRepository] Erro ao buscar parcelas por cliente:', error)
+            throw error
+        }
+
+        return data || []
+    }
 }
 
 export default new BoletoParcelasRepository()
