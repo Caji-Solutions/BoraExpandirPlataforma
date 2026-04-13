@@ -58,9 +58,10 @@ export function Step3({
         ].map(opcao => (
           <label key={opcao} className="flex items-start gap-3 cursor-pointer group">
             <input
-              type="checkbox"
-              checked={formData.pretende_trabalhar_espanha.includes(opcao)}
-              onChange={() => handleCheckboxChange('pretende_trabalhar_espanha', opcao)}
+              type="radio"
+              name="pretende_trabalhar_espanha"
+              checked={formData.pretende_trabalhar_espanha === opcao}
+              onChange={() => setFormData((prev: any) => ({ ...prev, pretende_trabalhar_espanha: opcao }))}
               className="mt-0.5 w-4 h-4 accent-blue-500 flex-shrink-0"
             />
             <span className="text-gray-300 text-sm group-hover:text-white transition-colors">{opcao}</span>
@@ -81,9 +82,10 @@ export function Step3({
         ].map(opcao => (
           <label key={opcao} className="flex items-center gap-3 cursor-pointer group">
             <input
-              type="checkbox"
-              checked={formData.escolaridade.includes(opcao)}
-              onChange={() => handleCheckboxChange('escolaridade', opcao)}
+              type="radio"
+              name="escolaridade"
+              checked={formData.escolaridade === opcao}
+              onChange={() => setFormData((prev: any) => ({ ...prev, escolaridade: opcao }))}
               className="w-4 h-4 accent-blue-500"
             />
             <span className="text-gray-300 text-sm group-hover:text-white transition-colors">{opcao}</span>
@@ -104,9 +106,10 @@ export function Step3({
         ].map(opcao => (
           <label key={opcao} className="flex items-center gap-3 cursor-pointer group">
             <input
-              type="checkbox"
-              checked={formData.situacao_profissional.includes(opcao)}
-              onChange={() => handleCheckboxChange('situacao_profissional', opcao)}
+              type="radio"
+              name="situacao_profissional"
+              checked={formData.situacao_profissional === opcao}
+              onChange={() => setFormData((prev: any) => ({ ...prev, situacao_profissional: opcao }))}
               className="w-4 h-4 accent-blue-500"
             />
             <span className="text-gray-300 text-sm group-hover:text-white transition-colors">{opcao}</span>

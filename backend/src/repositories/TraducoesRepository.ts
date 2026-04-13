@@ -23,6 +23,8 @@ class TraducoesRepository {
     const dependenteIds = [...new Set(documentos.map(d => d.dependente_id).filter(id => id !== null))]
 
     // 3. Buscar dados dos clientes, orçamentos e dependentes em paralelo
+    // Busca TODOS os orçamentos (sem filtro de tipo) para identificar documentos
+    // que estão apenas no fluxo de apostilamento e devem ser excluídos da lista
     const [clientesRes, orcamentosRes, dependentesRes] = await Promise.all([
       supabase
         .from('clientes')
@@ -52,21 +54,31 @@ class TraducoesRepository {
     }
 
     const clientes = clientesRes.data || []
-    const orcamentos = orcamentosRes.data || []
+    const todosOrcamentos = orcamentosRes.data || []
     const dependentes = dependentesRes.data || []
 
-    // 4. Mesclar os dados
-    return documentos.map(doc => {
-      const orcamento = orcamentos.find(o => o.documento_id === doc.id)
-      const dependente = doc.dependente_id ? dependentes.find(dep => dep.id === doc.dependente_id) : null
+    // 4. Mesclar os dados, excluindo documentos que NÃO estão aguardando tradução
+    //    e só possuem orçamentos de Apostilagem
+    return documentos
+      .map(doc => {
+        const orcamentosDoDoc = todosOrcamentos.filter(o => o.documento_id === doc.id)
+        const traducaoOrcamento = orcamentosDoDoc.find(o => o.tipo === 'Traducao')
+        const temApenasApostilagem = orcamentosDoDoc.length > 0 && orcamentosDoDoc.every(o => o.tipo === 'Apostilagem')
 
-      return {
-        ...doc,
-        clientes: clientes.find(c => c.id === doc.cliente_id) || null,
-        orcamento: orcamento || null,
-        dependente: dependente || null
-      }
-    })
+        // Documento com WAITING_TRANSLATION_QUOTE sempre aparece — o tradutor precisa criar o orçamento
+        // Para outros status, excluir se só tem orçamentos de apostilagem
+        if (temApenasApostilagem && doc.status !== DocumentStatus.WAITING_TRANSLATION_QUOTE) return null
+
+        const dependente = doc.dependente_id ? dependentes.find(dep => dep.id === doc.dependente_id) : null
+
+        return {
+          ...doc,
+          clientes: clientes.find(c => c.id === doc.cliente_id) || null,
+          orcamento: traducaoOrcamento || null,
+          dependente: dependente || null
+        }
+      })
+      .filter(doc => doc !== null)
   }
 
   async saveOrcamento(dados: {
@@ -96,7 +108,8 @@ class TraducoesRepository {
         observacoes: dados.observacoes,
         porcentagem: markup,
         preco_atualizado: precoAtualizado,
-        status: 'disponivel' // Agora já entra liberado se o ADM configurou a regra
+        status: 'disponivel', // Agora já entra liberado se o ADM configurou a regra
+        tipo: 'Traducao'
       }])
       .select()
       .single()
@@ -120,6 +133,7 @@ class TraducoesRepository {
       .from('orcamentos')
       .select('*')
       .eq('documento_id', documentoId)
+      .eq('tipo', 'Traducao')
       .eq('status', 'disponivel') // Cliente só vê se estiver disponível
       .order('criado_em', { ascending: false })
       .limit(1)
@@ -177,7 +191,7 @@ class TraducoesRepository {
       .from('orcamentos')
       .update({ status: DocumentStatus.APPROVED })
       .in('id', ids)
-      .select('documento_id, observacoes')
+      .select('documento_id, observacoes, tipo')
 
     if (orcError) {
       console.error('Erro ao aprovar orcamentos:', orcError)
@@ -201,7 +215,7 @@ class TraducoesRepository {
     // 3. Atualizar status de cada documento baseado no fluxo
     for (const doc of docs) {
       const orcamento = orcamentos.find(o => o.documento_id === doc.id)
-      const isApostille = doc.status === 'ANALYZING_APOSTILLE_PAYMENT' || orcamento?.observacoes?.includes('Apostilamento')
+      const isApostille = doc.status === 'ANALYZING_APOSTILLE_PAYMENT' || orcamento?.tipo === 'Apostilagem'
       
       const targetStatus = isApostille ? DocumentStatus.EXECUTING_APOSTILLE : DocumentStatus.EXECUTING_TRANSLATION
 
@@ -245,7 +259,7 @@ class TraducoesRepository {
 
     const [clientesRes, orcamentosRes, dependentesRes] = await Promise.all([
       supabase.from('clientes').select('id, nome, email, whatsapp').in('id', clienteIds),
-      supabase.from('orcamentos').select('*').in('documento_id', documentoIds).order('criado_em', { ascending: false }),
+      supabase.from('orcamentos').select('*').eq('tipo', 'Traducao').in('documento_id', documentoIds).order('criado_em', { ascending: false }),
       supabase.from('dependentes').select('id, nome_completo, parentesco').in('id', dependenteIds)
     ])
 
@@ -286,7 +300,7 @@ class TraducoesRepository {
 
     const [clientesRes, orcamentosRes, dependentesRes] = await Promise.all([
       supabase.from('clientes').select('id, nome, email, whatsapp').in('id', clienteIds),
-      supabase.from('orcamentos').select('*').in('documento_id', documentoIds).order('criado_em', { ascending: false }),
+      supabase.from('orcamentos').select('*').eq('tipo', 'Traducao').in('documento_id', documentoIds).order('criado_em', { ascending: false }),
       supabase.from('dependentes').select('id, nome_completo, parentesco').in('id', dependenteIds)
     ])
 

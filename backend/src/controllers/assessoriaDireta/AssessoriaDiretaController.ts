@@ -290,19 +290,17 @@ class AssessoriaDiretaController {
                 }
             }
 
-            // Get assessoria data if exists
-            if (contrato.cliente_id) {
-                const { data: assessoria } = await supabase
-                    .from('assessorias')
-                    .select('*')
-                    .eq('cliente_id', contrato.cliente_id)
-                    .order('criado_em', { ascending: false })
-                    .limit(1)
-                    .maybeSingle()
+            // Get assessoria data if exists (from assessorias_juridico, linked by contrato id)
+            const { data: assessoria } = await supabase
+                .from('assessorias_juridico')
+                .select('id, criado_em, respostas, observacoes')
+                .eq('agendamento_id', id)
+                .order('criado_em', { ascending: false })
+                .limit(1)
+                .maybeSingle()
 
-                if (assessoria) {
-                    ;(contrato as any).assessoria = assessoria
-                }
+            if (assessoria) {
+                ;(contrato as any).assessoria = assessoria
             }
 
             return res.status(200).json({

@@ -195,7 +195,9 @@ export function AssessoriaDiretaDetail() {
                     ? 'Iniciando...'
                     : status === 'em_espera'
                       ? 'Iniciar Atendimento'
-                      : 'Abrir Formulário'}
+                      : hasAssessoria
+                        ? 'Editar Formulário'
+                        : 'Abrir Formulário'}
                 </button>
               )}
 

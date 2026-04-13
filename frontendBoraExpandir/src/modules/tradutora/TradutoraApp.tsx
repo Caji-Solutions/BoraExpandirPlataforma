@@ -63,12 +63,13 @@ export default function Tradutora() {
     traducaoStoragePath: item.traducao_storage_path,
     traducaoNomeOriginal: item.traducao_nome_original,
     rawStatus: item.status,
+    tipo: item.orcamento?.tipo,
   })
 
   const fetchOrcamentos = async () => {
     try {
       const data = await traducoesService.getOrcamentosPendentes()
-      setOrcamentos(data.map(mapDocToOrcamentoItem))
+      setOrcamentos(data.filter((item: any) => item.orcamento?.tipo !== 'Apostilagem').map(mapDocToOrcamentoItem))
     } catch (error) {
       console.error('Erro ao buscar orcamentos:', error)
     }

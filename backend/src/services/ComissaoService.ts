@@ -121,7 +121,8 @@ class ComissaoService {
 
     // Parte 2: Assessoria
     const metasC2 = await MetaComercialRepository.getByNivel('C2')
-    const contratos = await ComissaoRepository.getContratosAssinados(userId, mes, ano)
+    // checkDelegacao=true: exclui contratos de clientes delegados a outro usuario C2
+    const contratos = await ComissaoRepository.getContratosAssinados(userId, mes, ano, true)
     const taxa = await CambioService.getCotacaoAtual()
 
     // Filtrar contratos de assessoria de imigracao (fixo/assessoria agendavel).
@@ -137,7 +138,7 @@ class ComissaoService {
     for (const contrato of contratosAssessoria) {
       const membrosData = await ComissaoRepository.getMembrosContrato(contrato.id)
       const membros = membrosData.membros_count || 1
-      const valorPorMembro = membrosData.valor_por_membro || (contrato.servico_valor / membros)
+      const valorPorMembro = contrato.servico_valor / membros
       totalMembrosValor += membros * valorPorMembro
     }
 

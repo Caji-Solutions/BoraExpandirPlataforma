@@ -24,6 +24,8 @@ interface ContratoState {
   cpf: string
   email: string
   estadoCivil: string
+  nacionalidade: string
+  profissao: string
   consultoriaDescontoSistema: number
   consultoriaDescontoOverride: string
 }
@@ -78,6 +80,8 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
     cpf: '',
     email: '',
     estadoCivil: '',
+    nacionalidade: '',
+    profissao: '',
     consultoriaDescontoSistema: 0,
     consultoriaDescontoOverride: '',
   })
@@ -137,13 +141,17 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
       })
   }, [contrato.clienteId])
 
-  // Pre-fill email from selected client
+  // Pre-fill fields from selected client and DNA
   useEffect(() => {
     if (clienteSelecionado) {
+      const dnaData = clienteSelecionado.perfil_unificado?.data
       setContrato(prev => ({
         ...prev,
         email: prev.email || clienteSelecionado.email || '',
         cpf: prev.cpf || (clienteSelecionado.documento ? onlyDigits(clienteSelecionado.documento) : ''),
+        estadoCivil: prev.estadoCivil || dnaData?.estado_civil || '',
+        nacionalidade: prev.nacionalidade || dnaData?.nacionalidade || '',
+        profissao: prev.profissao || dnaData?.profissao || '',
       }))
     }
   }, [clienteSelecionado])
@@ -282,7 +290,7 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
   }
 
   const handleSelectCliente = (clienteId: string) => {
-    setContrato(prev => ({ ...prev, clienteId, email: '', cpf: '' }))
+    setContrato(prev => ({ ...prev, clienteId, email: '', cpf: '', estadoCivil: '', nacionalidade: '', profissao: '' }))
     setValidationErrors(prev => ({ ...prev, clienteId: '' }))
   }
 
@@ -524,6 +532,30 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Nacionalidade */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Nacionalidade</label>
+                    <input
+                      value={contrato.nacionalidade}
+                      onChange={(e) => setContrato(prev => ({ ...prev, nacionalidade: e.target.value }))}
+                      placeholder="Ex: Brasileira"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  {/* Profissão */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Profissão</label>
+                    <input
+                      value={contrato.profissao}
+                      onChange={(e) => setContrato(prev => ({ ...prev, profissao: e.target.value }))}
+                      placeholder="Ex: Engenheiro(a), Médico(a)"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Valor */}
                   <div>
@@ -659,6 +691,8 @@ export default function GeracaoContratoNovo({ onClose, onSave, clientes }: Gerac
                     <p><strong>Desconto Consultoria:</strong> {consultoriaDescontoExtenso}</p>
                     <p><strong>CPF:</strong> {maskCpfInput(contrato.cpf)}</p>
                     <p><strong>Estado Civil:</strong> {contrato.estadoCivil}</p>
+                    {contrato.nacionalidade && <p><strong>Nacionalidade:</strong> {contrato.nacionalidade}</p>}
+                    {contrato.profissao && <p><strong>Profissão:</strong> {contrato.profissao}</p>}
                   </div>
                 </div>
 

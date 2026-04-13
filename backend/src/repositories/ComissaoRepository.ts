@@ -65,7 +65,7 @@ class ComissaoRepository {
     return agendamentos || []
   }
 
-  async getContratosAssinados(usuarioId: string, _mes: number, _ano: number) {
+  async getContratosAssinados(usuarioId: string, _mes: number, _ano: number, checkDelegacao: boolean = false) {
     const { inicio, fim } = this.getRollingWindow()
     const janelaPagamento = `and(pagamento_verificado_em.gte.${inicio},pagamento_verificado_em.lte.${fim})`
     const janelaCriacaoLegado = `and(pagamento_verificado_em.is.null,criado_em.gte.${inicio},criado_em.lte.${fim})`
@@ -120,6 +120,39 @@ class ComissaoRepository {
     }
 
     console.error(`[ComissaoFix] getContratosAssinados - contratos encontrados: ${(contratos || []).length}`)
+
+    // Quando checkDelegacao=true, filtrar contratos de assessoria pelo status de delegacao do cliente.
+    // Regra: incluir apenas contratos onde o cliente NÃO foi delegado (vendedor_c2_id nulo)
+    // ou foi delegado exatamente para este usuario (vendedor_c2_id === usuarioId).
+    if (checkDelegacao && contratos && contratos.length > 0) {
+      const clienteIds = [...new Set(contratos.map((c: any) => c.cliente_id).filter(Boolean))] as string[]
+
+      if (clienteIds.length > 0) {
+        const { data: clientesData, error: clienteError } = await supabase
+          .from('clientes')
+          .select('id, perfil_unificado')
+          .in('id', clienteIds)
+
+        if (clienteError) {
+          console.error('[ComissaoRepository] Erro ao buscar perfil_unificado para delegacao:', clienteError)
+        } else {
+          const delegacaoMap = new Map<string, string | null>()
+          for (const cliente of (clientesData || [])) {
+            const vendedorC2Id = cliente.perfil_unificado?.data?.metadata?.vendedor_c2_id ?? null
+            delegacaoMap.set(cliente.id, vendedorC2Id)
+          }
+
+          const antes = contratos.length
+          contratos = contratos.filter((c: any) => {
+            const vendedorC2Id = delegacaoMap.get(c.cliente_id)
+            // Incluir se: sem delegacao (null) OU delegado a este usuario
+            return !vendedorC2Id || vendedorC2Id === usuarioId
+          })
+          console.error(`[ComissaoFix] getContratosAssinados - apos filtro delegacao: ${contratos.length} (removidos: ${antes - contratos.length})`)
+        }
+      }
+    }
+
     return contratos || []
   }
 
@@ -253,16 +286,16 @@ class ComissaoRepository {
   async getMembrosContrato(contratoId: string) {
     const { data, error } = await supabase
       .from('contratos_servicos')
-      .select('membros_count, valor_por_membro')
+      .select('membros_count')
       .eq('id', contratoId)
       .single()
 
     if (error) {
       console.error('[ComissaoRepository] Erro ao buscar membros do contrato:', error)
-      return { membros_count: 1, valor_por_membro: 0 }
+      return { membros_count: 1 }
     }
 
-    return data || { membros_count: 1, valor_por_membro: 0 }
+    return data || { membros_count: 1 }
   }
 
   async fecharComissoesMensais(mes: number, ano: number) {

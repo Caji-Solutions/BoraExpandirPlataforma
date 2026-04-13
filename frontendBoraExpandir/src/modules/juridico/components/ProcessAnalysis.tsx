@@ -433,7 +433,7 @@ export function ProcessAnalysis({
 
   const currentStageIndex = selectedDoc ? getStageIndex(selectedDoc.currentStage) : 0;
   const isApostilleWaiting = ['waiting_apostille', 'waiting_apostille_quote', 'aguardando_orcamento', 'waiting_quote', 'analyzing_apostille_payment', 'executing_apostille', 'aguardando_pagamento', 'pronto_para_apostilagem'].includes(selectedDoc?.status.toLowerCase() || '');
-  const isTranslationWaiting = ['waiting_translation', 'waiting_translation_quote', 'aguardando_orcamento', 'waiting_quote', 'waiting_quote_approval', 'analyzing_translation_payment', 'executing_translation', 'analyzing_translation'].includes(selectedDoc?.status.toLowerCase() || '');
+  const isTranslationWaiting = ['waiting_translation', 'waiting_translation_quote', 'aguardando_orcamento', 'waiting_quote', 'waiting_quote_approval', 'analyzing_translation_payment', 'executing_translation'].includes(selectedDoc?.status.toLowerCase() || '');
   
   const isLocked = selectedDoc &&
     !['analyzing', 'analyzing_apostille', 'analyzing_translation'].includes(selectedDoc.status.toLowerCase()) &&
@@ -1017,8 +1017,8 @@ export function ProcessAnalysis({
                             onClick={isTranslationWaiting ? undefined : () => handleAction('request_action')}
                           >
                             <Languages className="w-5 h-5 mr-2" />
-                            {isTranslationWaiting 
-                              ? (selectedDoc.status.toLowerCase() === 'analyzing_translation' ? 'Tradução em Análise' : 'Tradução já solicitada')
+                            {isTranslationWaiting
+                              ? (selectedDoc.status.toLowerCase() === 'waiting_translation' ? 'Tradução em Análise' : 'Tradução já solicitada')
                               : 'Solicitar Tradução'
                             }
                           </Button>

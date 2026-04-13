@@ -267,6 +267,7 @@ export function AssessoriaFormModal({
     try {
       await juridicoService.createAssessoria({
         clienteId,
+        agendamentoId,
         respostas: {
           ...formData,
           consultora_nome: activeProfile.full_name || '',

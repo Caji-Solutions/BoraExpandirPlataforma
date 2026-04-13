@@ -877,12 +877,12 @@ describe('FormularioController - getAgendamentoStatus', () => {
     });
 
     it('deve retornar 404 se agendamento nao existe', async () => {
-        req = { params: { agendamento_id: 'nao-existe' } };
+        req = { params: { agendamento_id: 'nao-existe' }, query: {} };
 
         (supabase.from as any).mockImplementation((table: string) => {
             if (table === 'agendamentos') {
-                const single = vi.fn().mockResolvedValue({ data: null, error: { message: 'not found' } });
-                const eq = vi.fn().mockReturnValue({ single });
+                const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: { message: 'not found' } });
+                const eq = vi.fn().mockReturnValue({ maybeSingle });
                 const select = vi.fn().mockReturnValue({ eq });
                 return { select };
             }
@@ -899,7 +899,7 @@ describe('FormularioController - getAgendamentoStatus', () => {
 
         (supabase.from as any).mockImplementation((table: string) => {
             if (table === 'agendamentos') {
-                const single = vi.fn().mockResolvedValue({
+                const maybeSingle = vi.fn().mockResolvedValue({
                     data: {
                         id: 'ag-001',
                         status: 'confirmado',
@@ -912,7 +912,7 @@ describe('FormularioController - getAgendamentoStatus', () => {
                     },
                     error: null
                 });
-                const eq = vi.fn().mockReturnValue({ single });
+                const eq = vi.fn().mockReturnValue({ maybeSingle });
                 const select = vi.fn().mockReturnValue({ eq });
                 return { select };
             }
@@ -951,14 +951,14 @@ describe('FormularioController - getAgendamentoStatus', () => {
 
         (supabase.from as any).mockImplementation((table: string) => {
             if (table === 'agendamentos') {
-                const single = vi.fn().mockResolvedValue({
+                const maybeSingle = vi.fn().mockResolvedValue({
                     data: {
                         id: 'ag-002', status: 'agendado', data_hora: FUTURE_DATE,
                         pagamento_status: 'pendente', pagamento_nota_recusa: null,
                         email: 'j@t.com', telefone: '123', cliente_id: null
                     }, error: null
                 });
-                const eq = vi.fn().mockReturnValue({ single });
+                const eq = vi.fn().mockReturnValue({ maybeSingle });
                 return { select: vi.fn().mockReturnValue({ eq }) };
             }
             if (table === 'formularios_cliente') {
@@ -982,14 +982,14 @@ describe('FormularioController - getAgendamentoStatus', () => {
 
         (supabase.from as any).mockImplementation((table: string) => {
             if (table === 'agendamentos') {
-                const single = vi.fn().mockResolvedValue({
+                const maybeSingle = vi.fn().mockResolvedValue({
                     data: {
                         id: 'ag-003', status: 'agendado', data_hora: SOON_DATE,
                         pagamento_status: 'pendente', pagamento_nota_recusa: null,
                         email: 'j@t.com', telefone: '123', cliente_id: null
                     }, error: null
                 });
-                return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single }) }) };
+                return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle }) }) };
             }
             if (table === 'formularios_cliente') {
                 return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
@@ -1008,7 +1008,7 @@ describe('FormularioController - getAgendamentoStatus', () => {
 
         (supabase.from as any).mockImplementation((table: string) => {
             if (table === 'agendamentos') {
-                const single = vi.fn().mockResolvedValue({
+                const maybeSingle = vi.fn().mockResolvedValue({
                     data: {
                         id: 'ag-004', status: 'cancelado', data_hora: FUTURE_DATE,
                         pagamento_status: 'pendente',
@@ -1016,7 +1016,7 @@ describe('FormularioController - getAgendamentoStatus', () => {
                         email: 'j@t.com', telefone: '123', cliente_id: null
                     }, error: null
                 });
-                return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single }) }) };
+                return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle }) }) };
             }
             if (table === 'formularios_cliente') {
                 return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };

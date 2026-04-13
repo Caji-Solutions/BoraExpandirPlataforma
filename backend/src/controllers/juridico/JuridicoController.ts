@@ -833,7 +833,7 @@ class JuridicoController {
     // POST /juridico/assessoria - Criar assessoria jurídica
     async createAssessoria(req: any, res: any) {
         try {
-            const { clienteId, membroId, respostas, observacoes, servicoId, subservicoId } = req.body
+            const { clienteId, membroId, respostas, observacoes, servicoId, subservicoId, agendamentoId } = req.body
             console.log('[JuridicoController] 🎬 Iniciando createAssessoria')
             console.log('[JuridicoController] 📥 Dados recebidos:', JSON.stringify({
                 clienteId,
@@ -908,7 +908,8 @@ class JuridicoController {
                 responsavelId,
                 respostas,
                 servicoId: servicoId || null,
-                observacoes
+                observacoes,
+                agendamentoId: agendamentoId || null
             })
 
             // 2. Sincronizar com a tabela processos

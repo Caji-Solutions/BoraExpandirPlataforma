@@ -552,12 +552,8 @@ describe('ComercialController - Contract Stage Progression', () => {
         (ContratoServicoRepository.getUltimoContratoComDados as any).mockResolvedValue(null);
         (ContratoServicoRepository.getContratoById as any).mockResolvedValue(mockPayload);
 
-        // Mock supabase para lidar com queries e updates
+        // Mock supabase para lidar com queries do cliente
         const { supabase: supabaseMock } = await import('../../config/SupabaseClient');
-        const mockClienteUpdateEq = vi.fn().mockResolvedValue({ error: null });
-        const mockClienteUpdate = vi.fn().mockReturnValue({ eq: mockClienteUpdateEq });
-        const mockProcessoUpdateEq = vi.fn().mockResolvedValue({ error: null });
-        const mockProcessoUpdate = vi.fn().mockReturnValue({ eq: mockProcessoUpdateEq });
 
         (supabaseMock.from as any).mockImplementation((table: string) => {
             if (table === 'clientes') {
@@ -565,30 +561,6 @@ describe('ComercialController - Contract Stage Progression', () => {
                     select: vi.fn().mockReturnValue({
                         eq: vi.fn().mockReturnValue({
                             single: vi.fn().mockResolvedValue({ data: { id: 'cliente-first', nome: 'Teste', email: 'a@b.com', whatsapp: '11999' }, error: null })
-                        })
-                    }),
-                    update: mockClienteUpdate
-                };
-            }
-            if (table === 'processos') {
-                return {
-                    select: vi.fn().mockReturnValue({
-                        eq: vi.fn().mockReturnValue({
-                            order: vi.fn().mockReturnValue({
-                                limit: vi.fn().mockReturnValue({
-                                    maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'proc-1' }, error: null })
-                                })
-                            })
-                        })
-                    }),
-                    update: mockProcessoUpdate
-                };
-            }
-            if (table === 'catalogo_servicos') {
-                return {
-                    select: vi.fn().mockReturnValue({
-                        eq: vi.fn().mockReturnValue({
-                            single: vi.fn().mockResolvedValue({ data: mockServico, error: null })
                         })
                     })
                 };
@@ -607,13 +579,19 @@ describe('ComercialController - Contract Stage Progression', () => {
                 servico_id: 'servico-1'
             });
 
+        // O stage do cliente NAO e alterado na criacao do contrato.
+        // A mudanca para aguardando_assessoria ocorre apenas quando o pagamento
+        // e aprovado em FinanceiroController.aprovarComprovanteContrato.
         expect(res.status).toBe(201);
-        expect(mockClienteUpdate).toHaveBeenCalledWith(expect.objectContaining({ stage: 'aguardando_assessoria', status: 'aguardando_assessoria' }));
-        expect(mockProcessoUpdate).toHaveBeenCalledWith(expect.objectContaining({
-            status: 'aguardando_assessoria',
-            tipo_servico: 'Assessoria',
-            servico_id: 'servico-1'
-        }));
+        expect(res.body.is_draft).toBe(true);
+        expect(ContratoServicoRepository.createContrato).toHaveBeenCalledWith(
+            expect.objectContaining({
+                cliente_id: 'cliente-first',
+                servico_id: 'servico-1',
+                is_draft: true,
+                etapa_fluxo: 1
+            })
+        );
     });
 });
 

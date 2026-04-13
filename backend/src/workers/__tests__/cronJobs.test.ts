@@ -40,31 +40,10 @@ async function loadAndRunCron() {
 
 const pastDate = new Date(Date.now() - 30 * 60 * 1000).toISOString(); // 30 min atras (dentro da janela de 1h)
 
-function buildSupabaseMock(agendamentos: any[]) {
+function buildSupabaseMock(agendamentos: any[], opts?: { formularioExiste?: boolean }) {
     let updateCalls: any[] = [];
+    const formularioData = opts?.formularioExiste ? { id: 'form-mock' } : null;
 
-    (supabase.from as any).mockImplementation((table: string) => {
-        if (table === 'agendamentos') {
-            return {
-                select: vi.fn().mockReturnThis(),
-                eq: vi.fn().mockReturnValue({
-                    // Primeira chamada de eq: filtragem por status
-                    // Retorna os agendamentos mockados
-                    then: undefined,
-                    // Precisamos que o resultado do select('*').eq('status','agendado') retorne os agendamentos
-                }),
-                // Para o select().eq() encadeado, precisamos de um mock que resolva
-                update: vi.fn().mockImplementation((data: any) => {
-                    updateCalls.push(data);
-                    return { eq: vi.fn().mockResolvedValue({ error: null }) };
-                })
-            };
-        }
-        return {};
-    });
-
-    // O supabase.from('agendamentos').select('*').eq('status','agendado') retorna { data: agendamentos }
-    // Precisamos de um mock mais preciso:
     (supabase.from as any).mockImplementation((table: string) => {
         if (table === 'agendamentos') {
             return {
@@ -73,6 +52,14 @@ function buildSupabaseMock(agendamentos: any[]) {
                 update: vi.fn().mockImplementation((data: any) => {
                     updateCalls.push(data);
                     return { eq: vi.fn().mockResolvedValue({ error: null }) };
+                })
+            };
+        }
+        if (table === 'formularios_cliente') {
+            return {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnValue({
+                    maybeSingle: vi.fn().mockResolvedValue({ data: formularioData, error: null })
                 })
             };
         }
@@ -116,7 +103,7 @@ describe('cronJobs - cancelamento automatico de agendamentos', () => {
             meet_link: null,
             pagamento_status: 'pendente',
             observacoes: null
-        }]);
+        }], { formularioExiste: true });
 
         await loadAndRunCron();
 

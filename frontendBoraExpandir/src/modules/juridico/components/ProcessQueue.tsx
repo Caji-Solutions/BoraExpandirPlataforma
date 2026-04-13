@@ -114,7 +114,7 @@ export function ProcessQueue({ onSelectProcess }: ProcessQueueProps) {
         return {
             id: p.id,
             clientName: p.clientes?.nome || 'Cliente Desconhecido',
-            clientId: p.clientes?.client_id || p.cliente_id,
+            clientId: p.clientes?.id || p.cliente_id,
             serviceType: p.tipo_servico || 'Serviço',
             currentStage: p.etapa_atual?.toString() || '1',
             totalStages: 4,

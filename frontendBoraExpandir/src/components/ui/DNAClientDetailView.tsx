@@ -187,8 +187,16 @@ export function DNAClientDetailView({
             const fetchContratos = async () => {
                 try {
                     setLoadingContratos(true)
-                    const data = await comercialService.getContratosServicos(client.true_id || client.id)
-                    setContratosServicos(data)
+                    const clienteId = client.true_id || client.id
+                    // Usar /cliente/contratos em vez de /comercial/contratos para nao filtrar por usuario_id
+                    // Isso garante que todos os usuarios autorizados vejam os contratos do cliente
+                    const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
+                    const token = localStorage.getItem('auth_token')
+                    const response = await fetch(`${baseUrl}/cliente/contratos?clienteId=${clienteId}`, {
+                        headers: token ? { Authorization: `Bearer ${token}` } : {}
+                    })
+                    const result = await response.json()
+                    setContratosServicos(result.data || [])
                 } catch (err) {
                     console.error('Erro ao buscar contratos:', err)
                 } finally {
@@ -559,7 +567,11 @@ export function DNAClientDetailView({
                                             const isCancelado = stage.id === 'cancelado'
 
                                             // Verificar Consultorias Puladas (só após agendamentos carregarem)
-                                            const skippedConsultoria = !loadingAgendamentos && currentStageIndex >= 3 && !agendamentos.some(a => a.status === 'realizado')
+                                            const hasConsultoriaRealizada = agendamentos.some((a: any) =>
+                                                a.status === 'realizado' &&
+                                                /consultoria/i.test(String(a.produto_nome || ''))
+                                            )
+                                            const skippedConsultoria = !loadingAgendamentos && currentStageIndex >= 3 && !hasConsultoriaRealizada
                                             const isSkippedNode = skippedConsultoria && (index === 0 || index === 1 || index === 2)
 
                                             const stageNotes = notes.filter(n => {

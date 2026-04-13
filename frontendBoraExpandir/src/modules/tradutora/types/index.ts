@@ -51,6 +51,7 @@ export interface OrcamentoItem {
   traducaoStoragePath?: string
   traducaoNomeOriginal?: string
   rawStatus?: string
+  tipo?: 'Traducao' | 'Apostilagem'
 }
 
 export interface OrcamentoFormData {

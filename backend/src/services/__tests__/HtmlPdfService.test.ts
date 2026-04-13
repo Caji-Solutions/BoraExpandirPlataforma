@@ -26,6 +26,17 @@ vi.mock('../../config/SupabaseClient', () => ({
     supabase: { from: vi.fn() }
 }));
 
+// Mock ContratosTemplateRepository para retornar um template HTML simples
+vi.mock('../../repositories/ContratosTemplateRepository', () => ({
+    default: {
+        findById: vi.fn().mockResolvedValue(null),
+        findAll: vi.fn().mockResolvedValue([{
+            id: 'tpl-1',
+            conteudo_html: '<p>Contrato para {{nome}}, nacionalidade {{nacionalidade}}, profissao {{profissao}}.</p>{{#if pendencias}}<ul>{{#each pendencias}}<li>{{this.nome}} - {{this.parentesco}}</li>{{/each}}</ul>{{/if}}'
+        }])
+    }
+}));
+
 // =============================================
 // Task 006 - HtmlPdfService com Handlebars + pendencias
 // =============================================
