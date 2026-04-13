@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Calendar, CheckCircle2, FileCheck, FileText, Loader2, Upload, XCircle, CreditCard, PenTool, Eye, Clock } from 'lucide-react'
 import comercialService from '../../services/comercialService'
+import { catalogService } from '@/modules/adm/services/catalogService'
 import type { ContratoServico } from '../../../types/comercial'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import { useToast, ToastContainer } from '@/components/ui/Toast'
@@ -49,6 +50,7 @@ export default function ContratoServicoDetailPage() {
   const [uploadingComprovante, setUploadingComprovante] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [agendamentoExistente, setAgendamentoExistente] = useState<any>(null)
+  const [servicoNaoAgendavel, setServicoNaoAgendavel] = useState(false)
 
   const fetchContrato = async () => {
     if (!id) return
@@ -60,6 +62,16 @@ export default function ContratoServicoDetailPage() {
         return
       }
       setContrato(data)
+      if (data?.servico_id) {
+        try {
+          const servicos = await catalogService.getCatalogServices()
+          const servico = servicos.find((s) => s.id === data.servico_id)
+          setServicoNaoAgendavel(servico?.naoAgendavel === true)
+        } catch {
+          setServicoNaoAgendavel(false)
+        }
+      }
+
       if (data?.cliente_id && data?.servico_id) {
         try {
           const agendamentos = await comercialService.getAgendamentosByCliente(data.cliente_id)
@@ -258,7 +270,12 @@ export default function ContratoServicoDetailPage() {
       {contrato.pagamento_status === 'aprovado' && (
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-200 dark:border-blue-800/30 rounded-2xl p-6">
           <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3">Proximos passos</h3>
-          {agendamentoExistente ? (
+          {servicoNaoAgendavel ? (
+            <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl px-4 py-3">
+              <FileText className="w-4 h-4 shrink-0 text-emerald-600" />
+              <span>Assessoria Direta - Sem agendamento necessario. A equipe juridica entrara em contato.</span>
+            </div>
+          ) : agendamentoExistente ? (
             <button
               onClick={() => navigate(`/comercial/agendamento/${agendamentoExistente.id}`)}
               className="px-6 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-all active:scale-95 shadow-lg shadow-emerald-600/20 flex items-center gap-2"

@@ -119,12 +119,13 @@ class ClienteRepository {
         return data || []
     }
 
-    // Buscar dependentes de um cliente
+    // Buscar dependentes de um cliente (apenas tipo = 'dependente')
     async getDependentesByClienteId(clienteId: string) {
         const { data, error } = await supabase
             .from('dependentes')
             .select('*')
             .eq('cliente_id', clienteId)
+            .eq('tipo', 'dependente')
             .order('nome_completo', { ascending: true })
 
         if (error) {
@@ -134,7 +135,7 @@ class ClienteRepository {
 
         return data || []
     }
-    // Criar dependente para um cliente
+    // Criar dependente ou titular adicional para um cliente
     async createDependent(params: {
         clienteId: string
         nomeCompleto: string
@@ -148,6 +149,7 @@ class ClienteRepository {
         telefone?: string
         isAncestralDireto?: boolean
         processoId?: string
+        tipo?: 'dependente' | 'titular_adicional'
     }) {
         const rawParentesco = (params.parentesco || '').trim()
 
@@ -164,6 +166,7 @@ class ClienteRepository {
             is_ancestral_direto: params.isAncestralDireto || false,
             status: 'ativo',
             processo_id: params.processoId || null,
+            tipo: params.tipo || 'dependente',
             criado_em: new Date().toISOString()
         }
         if (rawParentesco) {

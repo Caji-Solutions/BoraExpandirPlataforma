@@ -82,6 +82,7 @@ export function AssessoriaJuridica() {
   const [currentProcess, setCurrentProcess] = useState<any>(null);
   const [contrato, setContrato] = useState<any>(null);
   const [contratoDependentes, setContratoDependentes] = useState<{nome: string; grau: string}[]>([]);
+  const [contratoTitularesAdicionais, setContratoTitularesAdicionais] = useState<{nome: string; documento?: string}[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -143,6 +144,28 @@ export function AssessoriaJuridica() {
             if (dep.nome) mergeMap.set(dep.nome.trim().toLowerCase(), dep);
           }
           setContratoDependentes(Array.from(mergeMap.values()));
+
+          // Extrair titulares adicionais do draft_dados do contrato
+          const rawTitulares = contratoAtivo?.draft_dados?.titularesAdicionais;
+          let parsedTitulares: any[] = [];
+          if (rawTitulares === undefined || rawTitulares === null) {
+            parsedTitulares = [];
+          } else if (typeof rawTitulares === 'string') {
+            try {
+              parsedTitulares = JSON.parse(rawTitulares);
+            } catch (e) {
+              console.error('[AssessoriaJuridica] Failed to parse titularesAdicionais JSON:', e);
+              parsedTitulares = [];
+            }
+          } else if (Array.isArray(rawTitulares)) {
+            parsedTitulares = rawTitulares;
+          }
+          setContratoTitularesAdicionais(
+            parsedTitulares.map((t: any) => ({
+              nome: t.nome || t.nome_completo || '',
+              documento: t.documento || t.cpf || undefined
+            })).filter((t: any) => t.nome)
+          );
 
           if (assessoria) {
             // Mapear respostas de volta para o CRM form
@@ -562,6 +585,24 @@ export function AssessoriaJuridica() {
                         placeholder="Preenchido automaticamente"
                       />
                     </div>
+
+                    {contratoTitularesAdicionais.length > 0 && (
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Titulares Adicionais</label>
+                        <div className="border-2 border-blue-100 rounded-xl overflow-hidden">
+                          <div className="grid grid-cols-2 bg-blue-50 border-b border-blue-100">
+                            <div className="px-4 py-2 text-xs font-bold text-blue-700 uppercase tracking-wider">Nome</div>
+                            <div className="px-4 py-2 text-xs font-bold text-blue-700 uppercase tracking-wider">Documento</div>
+                          </div>
+                          {contratoTitularesAdicionais.map((t, idx) => (
+                            <div key={idx} className={`grid grid-cols-2 ${idx < contratoTitularesAdicionais.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                              <div className="px-4 py-3 text-sm text-gray-900">{t.nome}</div>
+                              <div className="px-4 py-3 text-sm text-gray-600">{t.documento || '—'}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-1.5">Dependente(s) (nome + vínculo)</label>

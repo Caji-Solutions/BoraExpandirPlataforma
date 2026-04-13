@@ -1323,21 +1323,44 @@ class ComercialController {
                 }
             }
 
+            // Normalizar titularesAdicionais: garantir que seja sempre um array no draft
+            if (mergedDraft.titularesAdicionais !== undefined && mergedDraft.titularesAdicionais !== null) {
+                if (typeof mergedDraft.titularesAdicionais === 'string') {
+                    try {
+                        const parsed = JSON.parse(mergedDraft.titularesAdicionais)
+                        mergedDraft.titularesAdicionais = Array.isArray(parsed) ? parsed : []
+                    } catch {
+                        mergedDraft.titularesAdicionais = []
+                    }
+                } else if (!Array.isArray(mergedDraft.titularesAdicionais)) {
+                    mergedDraft.titularesAdicionais = []
+                }
+            }
+
+            // Normalizar dependentes: garantir que seja sempre um array no draft
+            if (mergedDraft.dependentes !== undefined && mergedDraft.dependentes !== null) {
+                if (typeof mergedDraft.dependentes === 'string') {
+                    try {
+                        const parsed = JSON.parse(mergedDraft.dependentes)
+                        mergedDraft.dependentes = Array.isArray(parsed) ? parsed : []
+                    } catch {
+                        mergedDraft.dependentes = []
+                    }
+                } else if (!Array.isArray(mergedDraft.dependentes)) {
+                    mergedDraft.dependentes = []
+                }
+            }
+
             let membrosCount: number | undefined = undefined
             if (mergedDraft.dependentes || mergedDraft.titularesAdicionais) {
                 try {
                     const titularesCount = 1
-                    const adicionaisCount = mergedDraft.titularesAdicionais
-                        ? (typeof mergedDraft.titularesAdicionais === 'string'
-                            ? JSON.parse(mergedDraft.titularesAdicionais).length
-                            : mergedDraft.titularesAdicionais.length)
+                    const adicionaisCount = Array.isArray(mergedDraft.titularesAdicionais)
+                        ? mergedDraft.titularesAdicionais.length
                         : 0
-                    const deps = mergedDraft.dependentes
-                        ? (typeof mergedDraft.dependentes === 'string'
-                            ? JSON.parse(mergedDraft.dependentes)
-                            : mergedDraft.dependentes)
-                        : []
-                    const dependentesCount = Array.isArray(deps) ? deps.length : 0
+                    const dependentesCount = Array.isArray(mergedDraft.dependentes)
+                        ? mergedDraft.dependentes.length
+                        : 0
                     membrosCount = titularesCount + adicionaisCount + dependentesCount
                 } catch (e) {
                     console.error('[ComercialController] Erro ao calcular membros_count:', e)
@@ -1370,32 +1393,34 @@ class ComercialController {
             const updatedData = await ContratoServicoRepository.updateContrato(id, payloadUpdate)
 
             if (contrato.cliente_id) {
-                // Sincronizar dependentes na tabela dependentes
-                const depsArray = mergedDraft.dependentes
-                    ? (typeof mergedDraft.dependentes === 'string'
-                        ? JSON.parse(mergedDraft.dependentes)
-                        : mergedDraft.dependentes)
-                    : []
-                if (Array.isArray(depsArray)) {
+                // Sincronizar dependentes (tipo = 'dependente')
+                const depsArray = Array.isArray(mergedDraft.dependentes) ? mergedDraft.dependentes : []
+                {
                     // Buscar dependentes atuais para preservar o processo_id
                     let existingDeps: any[] = []
                     try {
-                        const { data } = await supabase.from('dependentes').select('nome_completo, processo_id').eq('cliente_id', contrato.cliente_id)
+                        const { data } = await supabase
+                            .from('dependentes')
+                            .select('nome_completo, processo_id')
+                            .eq('cliente_id', contrato.cliente_id)
+                            .eq('tipo', 'dependente')
                         existingDeps = data || []
                     } catch (e) {
                         console.error('[ComercialController] Erro ao buscar dependentes para preservação:', e)
                     }
 
                     try {
-                        await supabase.from('dependentes').delete().eq('cliente_id', contrato.cliente_id)
+                        await supabase
+                            .from('dependentes')
+                            .delete()
+                            .eq('cliente_id', contrato.cliente_id)
+                            .eq('tipo', 'dependente')
                     } catch (delErr) {
                         console.error('[ComercialController] Erro ao remover dependentes antigos:', delErr)
                     }
 
                     for (const dep of depsArray) {
-                        // Tentar encontrar o processo_id anterior
                         const oldDep = existingDeps.find(ed => ed.nome_completo?.trim().toLowerCase() === dep.nome?.trim().toLowerCase())
-                        
                         try {
                             await ClienteRepository.createDependent({
                                 clienteId: contrato.cliente_id!,
@@ -1407,10 +1432,58 @@ class ComercialController {
                                 nacionalidade: dep.nacionalidade || undefined,
                                 email: dep.email || undefined,
                                 telefone: dep.telefone || undefined,
-                                processoId: oldDep?.processo_id || undefined
+                                processoId: oldDep?.processo_id || undefined,
+                                tipo: 'dependente'
                             })
                         } catch (depErr) {
                             console.error('[ComercialController] Erro ao salvar dependente na tabela:', depErr)
+                        }
+                    }
+                }
+
+                // Sincronizar titulares adicionais (tipo = 'titular_adicional')
+                const titularesArray = Array.isArray(mergedDraft.titularesAdicionais) ? mergedDraft.titularesAdicionais : []
+                {
+                    // Buscar titulares atuais para preservar o processo_id
+                    let existingTitulares: any[] = []
+                    try {
+                        const { data } = await supabase
+                            .from('dependentes')
+                            .select('nome_completo, processo_id')
+                            .eq('cliente_id', contrato.cliente_id)
+                            .eq('tipo', 'titular_adicional')
+                        existingTitulares = data || []
+                    } catch (e) {
+                        console.error('[ComercialController] Erro ao buscar titulares adicionais para preservação:', e)
+                    }
+
+                    try {
+                        await supabase
+                            .from('dependentes')
+                            .delete()
+                            .eq('cliente_id', contrato.cliente_id)
+                            .eq('tipo', 'titular_adicional')
+                    } catch (delErr) {
+                        console.error('[ComercialController] Erro ao remover titulares adicionais antigos:', delErr)
+                    }
+
+                    for (const titular of titularesArray) {
+                        const oldTitular = existingTitulares.find(et => et.nome_completo?.trim().toLowerCase() === (titular.nome || '').trim().toLowerCase())
+                        try {
+                            await ClienteRepository.createDependent({
+                                clienteId: contrato.cliente_id!,
+                                nomeCompleto: titular.nome || titular.nome_completo || '',
+                                documento: titular.documento || titular.cpf || undefined,
+                                rg: titular.rg || undefined,
+                                passaporte: titular.passaporte || undefined,
+                                nacionalidade: titular.nacionalidade || undefined,
+                                email: titular.email || undefined,
+                                telefone: titular.telefone || undefined,
+                                processoId: oldTitular?.processo_id || undefined,
+                                tipo: 'titular_adicional'
+                            })
+                        } catch (titErr) {
+                            console.error('[ComercialController] Erro ao salvar titular adicional na tabela:', titErr)
                         }
                     }
                 }

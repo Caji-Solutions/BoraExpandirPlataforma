@@ -135,29 +135,49 @@ export function ClientDNAPage() {
                         ? agendamentosPagos.reduce((earliest: any, current: any) => new Date(earliest.data_hora) < new Date(current.data_hora) ? earliest : current)
                         : null
 
-                    const contratosValidosPagos = contratos.filter((c: any) => {
-                        const pagamentoAprovado = String(c?.pagamento_status || '').toLowerCase() === 'aprovado'
-                        const assinaturaAprovada = String(c?.assinatura_status || '').toLowerCase() === 'aprovado'
+                    // Contratos validos (nao cancelados/invalidos) - filtro relaxado para capturar nome do servico
+                    const contratosValidos = contratos.filter((c: any) => {
                         const statusContrato = String(c?.status_contrato || '').toUpperCase()
-                        const contratoValido = statusContrato !== 'INVALIDO' && statusContrato !== 'CANCELADO'
-                        return pagamentoAprovado && assinaturaAprovada && contratoValido
+                        return statusContrato !== 'INVALIDO' && statusContrato !== 'CANCELADO'
                     })
 
-                    const firstPaidContrato = contratosValidosPagos.length > 0
-                        ? contratosValidosPagos.reduce((earliest: any, current: any) => new Date(earliest.criado_em) < new Date(current.criado_em) ? earliest : current)
+                    const firstContrato = contratosValidos.length > 0
+                        ? contratosValidos.reduce((earliest: any, current: any) => new Date(earliest.criado_em) < new Date(current.criado_em) ? earliest : current)
                         : null
 
                     const servicoDoDna = String(item?.perfil_unificado?.data?.servico_inicial || '').trim()
-                    const servicoDoContrato = String(firstPaidContrato?.subservico_nome || firstPaidContrato?.servico_nome || '').trim()
+                    const servicoDoContrato = String(firstContrato?.subservico_nome || firstContrato?.servico_nome || '').trim()
                     const servicoDoProcesso = String(lastProcess?.tipo_servico || '').trim()
                     const servicoDoAgendamento = String(firstPaidAgendamento?.produto_nome || lastAgendamento?.produto_nome || '').trim()
                     const processoEhConsultoria = /consultoria/i.test(servicoDoProcesso)
                     const agendamentoEhAssessoria = /assessoria|fixo|contrato|arraigo/i.test(servicoDoAgendamento)
 
-                    let tipoAssessoria = servicoDoDna || servicoDoContrato || servicoDoProcesso || servicoDoAgendamento || 'Assessoria'
-                    if (!servicoDoDna && !servicoDoContrato && processoEhConsultoria && agendamentoEhAssessoria) {
+                    // Prioridade: DNA > Contrato > Agendamento(se assessoria) > Processo(se nao consultoria) > Agendamento > fallback
+                    let tipoAssessoria: string
+                    if (servicoDoDna) {
+                        tipoAssessoria = servicoDoDna
+                    } else if (servicoDoContrato) {
+                        tipoAssessoria = servicoDoContrato
+                    } else if (agendamentoEhAssessoria && servicoDoAgendamento) {
                         tipoAssessoria = servicoDoAgendamento
+                    } else if (servicoDoProcesso && !processoEhConsultoria) {
+                        tipoAssessoria = servicoDoProcesso
+                    } else if (servicoDoAgendamento) {
+                        tipoAssessoria = servicoDoAgendamento
+                    } else {
+                        tipoAssessoria = 'Assessoria'
                     }
+
+                    // Categoria: usar stage do banco; fallback inteligente baseado na presenca de contratos
+                    const categoriaFallback = (() => {
+                        if (item.stage) return item.stage
+                        if (lastProcess?.status) return lastProcess.status
+                        if (item.status === 'cadastrado') return 'assessoria_andamento'
+                        if (item.status === 'cliente' || item.status === 'aguardando_assessoria') {
+                            return contratosValidos.length > 0 ? 'aguardando_assessoria' : 'aguardando_consultoria'
+                        }
+                        return item.status || 'formularios'
+                    })()
 
                     return {
                         id: item.client_id || item.id,
@@ -168,7 +188,7 @@ export function ClientDNAPage() {
                         telefone: item.whatsapp || '',
                         tipoAssessoria,
                         contratoAtivo: true, // Padronizado para true para evitar quebras, mas não é mais usado na listagem
-                        categoria: item.stage || lastProcess?.status || (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status === 'cliente' ? 'aguardando_consultoria' : (item.status || 'formularios'))),
+                        categoria: categoriaFallback,
                         previsaoChegada: item.previsao_chegada || '',
                         priority: 'medium',
                         notes: [],

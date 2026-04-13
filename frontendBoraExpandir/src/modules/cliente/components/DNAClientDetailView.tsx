@@ -186,8 +186,11 @@ export function DNAClientDetailView({
             const fetchContratos = async () => {
                 try {
                     setLoadingContratos(true)
-                    const data = await comercialService.getContratosServicos(client.true_id || client.id)
-                    setContratosServicos(data)
+                    const clienteId = client.true_id || client.id
+                    // Usar /cliente/contratos em vez de /comercial/contratos para nao filtrar por usuario_id
+                    // Isso garante que todos os usuarios autorizados vejam os contratos do cliente
+                    const result = await apiClient.get<{ data: any[] }>(`/cliente/contratos?clienteId=${clienteId}`)
+                    setContratosServicos(result.data || [])
                 } catch (err) {
                     console.error('Erro ao buscar contratos:', err)
                 } finally {

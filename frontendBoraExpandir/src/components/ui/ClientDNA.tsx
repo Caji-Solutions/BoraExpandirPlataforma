@@ -140,6 +140,13 @@ export function ClientDNAPage() {
                         ? agendamentosPagos.reduce((earliest: any, current: any) => new Date(earliest.data_hora) < new Date(current.data_hora) ? earliest : current)
                         : null
 
+                    // Contratos válidos (indicador de fluxo assessoria direta)
+                    const contratos = item.contratos_servicos || []
+                    const contratosValidos = contratos.filter((c: any) => {
+                        const statusContrato = String(c?.status_contrato || '').toUpperCase()
+                        return statusContrato !== 'INVALIDO' && statusContrato !== 'CANCELADO'
+                    })
+
                     // Determina o servico a partir do agendamento realizado ou mais recente
                     const agendamentoRealizado = agendamentos.find((a: any) => a.status === 'realizado')
                     const melhorAgendamento = agendamentoRealizado || firstPaidAgendamento || lastAgendamento
@@ -151,19 +158,27 @@ export function ClientDNAPage() {
                             : (item.status === 'cadastrado' ? 'assessoria_andamento' : (item.status || 'aguardando_consultoria'))
 
                     if (['formularios', 'lead', 'novo', 'captado', 'cliente'].includes(computedCategoria)) {
-                        const temAgendamento = agendamentos.some((a: any) =>
-                            a.status === 'agendado' || a.status === 'confirmado' || a.status === 'pendente' || a.status === 'reagendado'
-                        )
-                        if (temAgendamento) {
-                            computedCategoria = 'aguardando_consultoria'
-                        }
-                        // Se tem agendamento realizado mas categoria ainda nao reflete, forcar pos consultoria
-                        if (agendamentoRealizado && ['formularios', 'lead', 'novo', 'captado', 'cliente'].includes(computedCategoria)) {
-                            computedCategoria = 'clientes_c2'
-                        }
-                        // Se status é 'cliente' e não houve remap acima, padrão é aguardando consultoria
-                        if (computedCategoria === 'cliente') {
-                            computedCategoria = 'aguardando_consultoria'
+                        const hasAssessoriaContracts = contratosValidos.length > 0
+
+                        if (hasAssessoriaContracts) {
+                            // Cliente tem contrato de assessoria → fluxo assessoria direta
+                            computedCategoria = 'aguardando_assessoria'
+                        } else {
+                            // Sem contratos — lógica baseada em agendamentos (fluxo consultoria)
+                            const temAgendamento = agendamentos.some((a: any) =>
+                                a.status === 'agendado' || a.status === 'confirmado' || a.status === 'pendente' || a.status === 'reagendado'
+                            )
+                            if (temAgendamento) {
+                                computedCategoria = 'aguardando_consultoria'
+                            }
+                            // Se tem agendamento realizado mas categoria ainda nao reflete, forcar pos consultoria
+                            if (agendamentoRealizado && ['formularios', 'lead', 'novo', 'captado', 'cliente'].includes(computedCategoria)) {
+                                computedCategoria = 'clientes_c2'
+                            }
+                            // Se status é 'cliente' e não houve remap acima, padrão é aguardando consultoria
+                            if (computedCategoria === 'cliente') {
+                                computedCategoria = 'aguardando_consultoria'
+                            }
                         }
                     }
 
