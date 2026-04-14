@@ -991,13 +991,16 @@ class ComercialController {
             const contrato = await ContratoServicoRepository.createContrato(contratoPayload)
 
             // Salvar dependentes na tabela dependentes, se houver no draft_dados
-            if (Array.isArray(draftDadosPrefill.dependentes) && draftDadosPrefill.dependentes.length > 0) {
-                for (const dep of draftDadosPrefill.dependentes) {
+            const depsParaSalvar = Array.isArray(draftDadosPrefill.dependentes)
+                ? draftDadosPrefill.dependentes.filter((dep: any) => (dep.nome || '').trim() !== '' && (dep.grau || dep.parentesco || '').trim() !== '')
+                : []
+            if (depsParaSalvar.length > 0) {
+                for (const dep of depsParaSalvar) {
                     try {
                         await ClienteRepository.createDependent({
                             clienteId: cliente_id,
                             nomeCompleto: dep.nome || '',
-                            parentesco: dep.grau || dep.parentesco || '',
+                            parentesco: (dep.grau || dep.parentesco || '').trim(),
                             documento: dep.documento || dep.cpf || undefined,
                             rg: dep.rg || undefined,
                             passaporte: dep.passaporte || undefined,
@@ -1394,7 +1397,9 @@ class ComercialController {
 
             if (contrato.cliente_id) {
                 // Sincronizar dependentes (tipo = 'dependente')
-                const depsArray = Array.isArray(mergedDraft.dependentes) ? mergedDraft.dependentes : []
+                // Filtrar apenas deps validos (nome + parentesco/grau preenchidos) antes de qualquer DELETE
+                const depsArray = (Array.isArray(mergedDraft.dependentes) ? mergedDraft.dependentes : [])
+                    .filter((dep: any) => (dep.nome || '').trim() !== '' && (dep.grau || dep.parentesco || '').trim() !== '')
                 {
                     // Buscar dependentes atuais para preservar o processo_id
                     let existingDeps: any[] = []
@@ -1409,34 +1414,43 @@ class ComercialController {
                         console.error('[ComercialController] Erro ao buscar dependentes para preservação:', e)
                     }
 
-                    try {
-                        await supabase
-                            .from('dependentes')
-                            .delete()
-                            .eq('cliente_id', contrato.cliente_id)
-                            .eq('tipo', 'dependente')
-                    } catch (delErr) {
-                        console.error('[ComercialController] Erro ao remover dependentes antigos:', delErr)
-                    }
-
-                    for (const dep of depsArray) {
-                        const oldDep = existingDeps.find(ed => ed.nome_completo?.trim().toLowerCase() === dep.nome?.trim().toLowerCase())
+                    // Só apaga se houver deps validos para reinserir ou se o draft nao tem nenhum dep
+                    const draftDepsRaw = Array.isArray(mergedDraft.dependentes) ? mergedDraft.dependentes : []
+                    const draftTemDepInvalido = draftDepsRaw.some((dep: any) =>
+                        (dep.nome || '').trim() !== '' && (dep.grau || dep.parentesco || '').trim() === ''
+                    )
+                    if (draftTemDepInvalido) {
+                        console.warn('[ComercialController] Draft contem dependente(s) sem parentesco/grau — DELETE ignorado para evitar perda de dados.')
+                    } else {
                         try {
-                            await ClienteRepository.createDependent({
-                                clienteId: contrato.cliente_id!,
-                                nomeCompleto: dep.nome || '',
-                                parentesco: dep.grau || dep.parentesco || '',
-                                documento: dep.documento || dep.cpf || undefined,
-                                rg: dep.rg || undefined,
-                                passaporte: dep.passaporte || undefined,
-                                nacionalidade: dep.nacionalidade || undefined,
-                                email: dep.email || undefined,
-                                telefone: dep.telefone || undefined,
-                                processoId: oldDep?.processo_id || undefined,
-                                tipo: 'dependente'
-                            })
-                        } catch (depErr) {
-                            console.error('[ComercialController] Erro ao salvar dependente na tabela:', depErr)
+                            await supabase
+                                .from('dependentes')
+                                .delete()
+                                .eq('cliente_id', contrato.cliente_id)
+                                .eq('tipo', 'dependente')
+                        } catch (delErr) {
+                            console.error('[ComercialController] Erro ao remover dependentes antigos:', delErr)
+                        }
+
+                        for (const dep of depsArray) {
+                            const oldDep = existingDeps.find(ed => ed.nome_completo?.trim().toLowerCase() === dep.nome?.trim().toLowerCase())
+                            try {
+                                await ClienteRepository.createDependent({
+                                    clienteId: contrato.cliente_id!,
+                                    nomeCompleto: dep.nome || '',
+                                    parentesco: (dep.grau || dep.parentesco || '').trim(),
+                                    documento: dep.documento || dep.cpf || undefined,
+                                    rg: dep.rg || undefined,
+                                    passaporte: dep.passaporte || undefined,
+                                    nacionalidade: dep.nacionalidade || undefined,
+                                    email: dep.email || undefined,
+                                    telefone: dep.telefone || undefined,
+                                    processoId: oldDep?.processo_id || undefined,
+                                    tipo: 'dependente'
+                                })
+                            } catch (depErr) {
+                                console.error('[ComercialController] Erro ao salvar dependente na tabela:', depErr)
+                            }
                         }
                     }
                 }

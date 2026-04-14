@@ -153,6 +153,10 @@ class ClienteRepository {
     }) {
         const rawParentesco = (params.parentesco || '').trim()
 
+        if (!rawParentesco && (params.tipo || 'dependente') !== 'titular_adicional') {
+            throw new Error(`parentesco obrigatorio para dependente (nomeCompleto="${params.nomeCompleto}")`)
+        }
+
         const record: Record<string, any> = {
             cliente_id: params.clienteId,
             nome_completo: params.nomeCompleto,
@@ -167,10 +171,8 @@ class ClienteRepository {
             status: 'ativo',
             processo_id: params.processoId || null,
             tipo: params.tipo || 'dependente',
-            criado_em: new Date().toISOString()
-        }
-        if (rawParentesco) {
-            record.parentesco = rawParentesco
+            criado_em: new Date().toISOString(),
+            parentesco: rawParentesco || null
         }
 
         const { data, error } = await supabase

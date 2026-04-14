@@ -439,6 +439,8 @@ export default function FormularioAssessoriaPage() {
       if (!formData.tipo_servico.trim()) errors.tipo_servico = 'Informe o tipo de serviço'
       if (!formData.valor_pavao.trim()) errors.valor_pavao = 'Informe o valor total'
       if (!formData.valor_desconto.trim()) errors.valor_desconto = 'Informe o valor com desconto'
+      const depSemGrau = dependentes.findIndex(d => (d.nome || '').trim() !== '' && (d.grau || '').trim() === '')
+      if (depSemGrau !== -1) errors[`dependente_grau_${depSemGrau}`] = 'Informe o grau de dependencia'
     }
     if (step === 3) {
       if (!formData.metodo_pagamento) {
@@ -499,6 +501,12 @@ export default function FormularioAssessoriaPage() {
 
   const handleGerarContrato = async () => {
     if (!id) return
+
+    const depSemGrau = dependentes.findIndex(d => (d.nome || '').trim() !== '' && (d.grau || '').trim() === '')
+    if (depSemGrau !== -1) {
+      toast.error(`Dependente "${dependentes[depSemGrau].nome || depSemGrau + 1}": informe o Grau de Dependencia antes de gerar o contrato.`)
+      return
+    }
 
     try {
       setSaving(true)
@@ -899,15 +907,23 @@ export default function FormularioAssessoriaPage() {
                         />
                       </div>
                       <div className="flex-1 w-full">
-                        <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Grau de Dependencia</label>
+                        <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                          Grau de Dependencia {(dep.nome || '').trim() !== '' && <span className="text-red-500">*</span>}
+                        </label>
                         <input
                           type="text"
                           placeholder="Ex: Filho(a)"
                           disabled={saving || isLockedByGeracaoErro}
                           value={dep.grau}
-                          onChange={(e) => setDependentes(prev => prev.map((x, idx) => idx === i ? { ...x, grau: e.target.value } : x))}
-                          className="w-full border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-neutral-900"
+                          onChange={(e) => {
+                            setDependentes(prev => prev.map((x, idx) => idx === i ? { ...x, grau: e.target.value } : x))
+                            if (e.target.value.trim()) setValidationErrors(prev => ({ ...prev, [`dependente_grau_${i}`]: '' }))
+                          }}
+                          className={`w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-neutral-900 ${validationErrors[`dependente_grau_${i}`] ? 'border-red-400' : 'border-gray-200 dark:border-neutral-700'}`}
                         />
+                        {validationErrors[`dependente_grau_${i}`] && (
+                          <p className="text-red-500 text-xs mt-1">{validationErrors[`dependente_grau_${i}`]}</p>
+                        )}
                       </div>
                       <div className="w-full sm:w-auto">
                         <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Data Nascimento</label>
