@@ -89,8 +89,11 @@ export function MemberDocumentsView({
                         onDrop={actions.handleDrop}
                         onDelete={onDelete}
                         onOpenQuoteModal={(doc) => {
+                            const status = doc.status?.toLowerCase()
                             const stage = actions.getDocStage(doc)
-                            if (stage === 'translation') {
+                            
+                            // Se já tem orçamento aguardando aprovação, abre o modal de pagamento/visualização
+                            if (status === 'waiting_quote_approval' || status === 'aguardando_pagamento' || stage === 'translation') {
                                 actions.setSelectedDocForClientQuote(doc)
                                 actions.setShowClientQuoteModal(true)
                             } else {

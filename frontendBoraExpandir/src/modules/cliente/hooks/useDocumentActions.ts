@@ -98,18 +98,26 @@ export function useDocumentActions({
 
     const isApostillePaid = (d: ClientDocument) => {
         if (!d.orcamentos || d.orcamentos.length === 0) return false;
-        return d.orcamentos.some((o: any) => 
-            ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status) &&
-            o.observacoes?.toLowerCase().includes('apostila')
-        );
+        return d.orcamentos.some((o: any) => {
+            const s = o.status?.toLowerCase();
+            const obs = o.observacoes?.toLowerCase() || '';
+            const type = o.tipo?.toLowerCase() || '';
+            const matchStatus = ['pendente_verificacao', 'aprovado', 'approved', 'pago'].includes(s);
+            const matchType = obs.includes('apostila') || type === 'apostilagem';
+            return matchStatus && matchType;
+        });
     }
 
     const isTranslationPaid = (d: ClientDocument) => {
         if (!d.orcamentos || d.orcamentos.length === 0) return false;
-        return d.orcamentos.some((o: any) => 
-            ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status) &&
-            (o.observacoes?.toLowerCase().includes('tradução') || o.observacoes?.toLowerCase().includes('traducao'))
-        );
+        return d.orcamentos.some((o: any) => {
+            const s = o.status?.toLowerCase();
+            const obs = o.observacoes?.toLowerCase() || '';
+            const type = o.tipo?.toLowerCase() || '';
+            const matchStatus = ['pendente_verificacao', 'aprovado', 'approved', 'pago'].includes(s);
+            const matchType = obs.includes('tradução') || obs.includes('traducao') || type === 'traducao';
+            return matchStatus && matchType;
+        });
     }
 
     // Determine the stage of a document
@@ -117,9 +125,13 @@ export function useDocumentActions({
         const status = doc.status?.toLowerCase()
 
         if (status === 'rejected') {
-            // Só não deve ir para rejeitado se o cliente pagou por AMBOS (Apostila e Tradução)
-            if (isApostillePaid(doc) && isTranslationPaid(doc)) {
+            // Se já foi pago a tradução, move para a etapa de tradução (prioridade para o estágio mais avançado)
+            if (isTranslationPaid(doc)) {
                 return 'translation';
+            }
+            // Se já foi pago a apostila, move para a etapa de apostila (oculta rejeição para o cliente)
+            if (isApostillePaid(doc)) {
+                return 'apostille';
             }
             return 'rejected'
         }
@@ -197,7 +209,7 @@ export function useDocumentActions({
                     const isWorkflowActive = statusLower.includes('waiting') || 
                                              statusLower.startsWith('analyzing') || 
                                              statusLower.startsWith('executing') ||
-                                             (statusLower === 'rejected' && isApostillePaid(doc) && isTranslationPaid(doc));
+                                             (statusLower === 'rejected' && (isApostillePaid(doc) || isTranslationPaid(doc)));
                     
                     return foiSolicitado || isWorkflowActive;
                 }

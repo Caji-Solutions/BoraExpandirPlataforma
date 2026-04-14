@@ -134,6 +134,42 @@ export function FamilyFolderCard({
   // Estado para armazenar IDs de formulários já enviados
   const [sentFormularioIds, setSentFormularioIds] = useState<Set<string>>(new Set())
 
+  // Utility to check if apostille is paid
+  const isApostillePaid = useCallback((d: ClientDocument) => {
+    if (!d.orcamentos || d.orcamentos.length === 0) return false;
+    const isPaid = d.orcamentos.some((o: any) => {
+      const s = o.status?.toLowerCase();
+      const obs = o.observacoes?.toLowerCase() || '';
+      const type = o.tipo?.toLowerCase() || '';
+      const matchStatus = ['pendente_verificacao', 'aprovado', 'approved', 'pago'].includes(s);
+      const matchType = obs.includes('apostila') || type === 'apostilagem';
+      return matchStatus && matchType;
+    });
+    // console.log(`[DEBUG] Documento ${d.id} (${d.type}) isApostillePaid: ${isPaid}`);
+    return isPaid;
+  }, []);
+
+  // Utility to check if translation is paid
+  const isTranslationPaid = useCallback((d: ClientDocument) => {
+    if (!d.orcamentos || d.orcamentos.length === 0) {
+       // if (d.status?.toLowerCase() === 'rejected') console.log(`[DEBUG_REJECTED] Documento ${d.id} Sem orçamentos.`);
+       return false;
+    }
+    const isPaid = d.orcamentos.some((o: any) => {
+      const s = o.status?.toLowerCase();
+      const obs = o.observacoes?.toLowerCase() || '';
+      const type = o.tipo?.toLowerCase() || '';
+      const matchStatus = ['pendente_verificacao', 'aprovado', 'approved', 'pago'].includes(s);
+      const matchType = obs.includes('tradução') || obs.includes('traducao') || type === 'traducao';
+      
+      if (d.status?.toLowerCase() === 'rejected') {
+          console.log(`[DEBUG_REJECTED_DETAIL] Doc: ${d.id}, Orc: ${o.id}, Status: ${o.status} (match: ${matchStatus}), Tipo: ${o.tipo} (match: ${type === 'traducao'}), MatchType: ${matchType}`);
+      }
+      return matchStatus && matchType;
+    });
+    return isPaid;
+  }, []);
+
   // Filter documents for this member
   const memberDocs = useMemo(() => documents.filter(d => d.memberId === member.id), [documents, member.id])
 
@@ -173,32 +209,14 @@ export function FamilyFolderCard({
   const getDocStage = (doc: ClientDocument) => {
     const status = doc.status?.toLowerCase();
 
-    const isDocumentPaid = (d: ClientDocument) => {
-      if (!d.orcamentos || d.orcamentos.length === 0) return false;
-      return d.orcamentos.some((o: any) => 
-          ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status)
-      );
-    }
-
     if (status === 'rejected') {
-        const isDocumentPaid = (d: ClientDocument) => {
-          if (!d.orcamentos || d.orcamentos.length === 0) return false;
-          return d.orcamentos.some((o: any) => 
-              ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status)
-          );
-        }
-
-        // Se o serviço já foi pago, para o cliente ele continua em análise
-        // pois o financeiro/administrativo é quem deve cuidar do reenvio.
-        if (isDocumentPaid(doc)) {
-            const hasApostilleOrc = doc.orcamentos?.some(o => o.observacoes?.toLowerCase().includes('apostila'));
-            const hasTranslationOrc = doc.orcamentos?.some(o => o.observacoes?.toLowerCase().includes('tradução') || o.observacoes?.toLowerCase().includes('traducao'));
-            
-            if (hasApostilleOrc) return 'apostille';
-            if (hasTranslationOrc) return 'translation';
-            
-            return 'analyzing'
-        }
+        const transPaid = isTranslationPaid(doc);
+        const apostPaid = isApostillePaid(doc);
+        console.log(`[DEBUG_STAGE] Doc: ${doc.id}, Status: ${status}, transPaid: ${transPaid}, apostPaid: ${apostPaid}`);
+        
+        if (transPaid) return 'translation';
+        if (apostPaid) return 'apostille';
+        
         return 'rejected'
     }
 
@@ -286,48 +304,29 @@ export function FamilyFolderCard({
     }
 
     memberDocs.forEach(doc => {
+      const stage = getDocStage(doc);
       const statusLower = doc.status?.toLowerCase() || '';
+      
+      const isApostilleWaitingAction = stage === 'apostille' && 
+        ['waiting_apostille', 'approved', 'waiting_quote_approval', 'aguardando_pagamento'].includes(statusLower);
+      
+      const isTranslationWaitingAction = stage === 'translation' && 
+        ['waiting_translation', 'approved', 'waiting_quote_approval', 'aguardando_pagamento'].includes(statusLower);
 
-      // Em Análise: Any "analyzing" status
-      if (statusLower === 'analyzing' || statusLower === 'analyzing_apostille' || statusLower === 'analyzing_translation') {
+      if (stage === 'rejected') {
+        s.rejected++;
+        s.waitingAction++;
+      } else if (stage === 'analyzing') {
         s.analyzing++;
-      }
-      // Concluídos: Fully approved AND apostilled AND translated
-      else if (statusLower === 'approved' && doc.isApostilled && doc.isTranslated) {
+      } else if (stage === 'apostille') {
+        s.apostille++;
+        if (isApostilleWaitingAction) s.waitingAction++;
+      } else if (stage === 'translation') {
+        s.translation++;
+        if (isTranslationWaitingAction) s.waitingAction++;
+      } else if (stage === 'completed') {
         s.completed++;
       }
-      // Aguardam Ação: Rejected or waiting for upload
-      else if (statusLower === 'rejected') {
-        const isDocumentPaid = (d: ClientDocument) => {
-          if (!d.orcamentos || d.orcamentos.length === 0) return false;
-          return d.orcamentos.some((o: any) => 
-              ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status)
-          );
-        }
-
-        if (isDocumentPaid(doc)) {
-          const hasApostilleOrc = doc.orcamentos?.some(o => o.observacoes?.toLowerCase().includes('apostila'));
-          const hasTranslationOrc = doc.orcamentos?.some(o => o.observacoes?.toLowerCase().includes('tradução') || o.observacoes?.toLowerCase().includes('traducao'));
-
-          if (hasApostilleOrc) {
-            s.apostille++;
-          } else if (hasTranslationOrc) {
-            s.translation++;
-          } else {
-            s.analyzing++;
-          }
-        } else {
-          s.rejected++;
-          s.waitingAction++;
-        }
-      }
-      else if (statusLower === 'waiting_apostille' || statusLower === 'waiting_translation') {
-        s.waitingAction++;
-      }
-      // Stages for internal tracking
-      const stage = getDocStage(doc);
-      if (stage === 'apostille') s.apostille++;
-      if (stage === 'translation') s.translation++;
     })
 
     // Add pending (missing) docs to waitingAction

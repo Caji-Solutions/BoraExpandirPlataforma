@@ -238,7 +238,7 @@ export function DocumentItemCard({
                                     <Clock className="h-4 w-4" />
                                     <span>Análise de Pagamento</span>
                                 </div>
-                            ) : (doc.status?.toLowerCase() === 'executing_apostille' || doc.status?.toLowerCase() === 'pronto_para_apostilagem') ? (
+                            ) : (doc.status?.toLowerCase() === 'executing_apostille' || doc.status?.toLowerCase() === 'pronto_para_apostilagem' || doc.status?.toLowerCase() === 'rejected') ? (
                                 <div className="flex items-center gap-1 text-amber-600 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full border border-amber-100">
                                     <Clock className="h-4 w-4" />
                                     <span>Em Apostilagem</span>
@@ -291,7 +291,7 @@ export function DocumentItemCard({
                                     <Button
                                         size="sm"
                                         className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white gap-1.5"
-                                        onClick={() => onOpenQuoteModal(doc)}
+                                        onClick={() => onOpenClientQuoteModal(doc)}
                                     >
                                         <DollarSign className="h-3 w-3" />
                                         Ver Orçamento / Pagar
@@ -312,7 +312,7 @@ export function DocumentItemCard({
                                     <Clock className="h-4 w-4" />
                                     <span>Análise de Pagamento</span>
                                 </div>
-                            ) : (doc.status?.toLowerCase() === 'executing_translation' || doc.status?.toLowerCase() === 'analyzing_translation') ? (
+                            ) : (doc.status?.toLowerCase() === 'executing_translation' || doc.status?.toLowerCase() === 'analyzing_translation' || doc.status?.toLowerCase() === 'rejected') ? (
                                 <div className="flex items-center gap-1 text-purple-600 text-xs font-medium px-2 py-1 bg-purple-50 rounded-full border border-purple-100">
                                     <Clock className="h-4 w-4" />
                                     <span>Em Tradução</span>
