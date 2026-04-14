@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Clock, CheckCircle2, AlertTriangle, ExternalLink } from 'lucide-react'
+import { Clock, CheckCircle2, AlertTriangle, ExternalLink, RotateCcw } from 'lucide-react'
 import DeliveryModal from '../components/DeliveryModal'
 import type { OrcamentoItem } from '../types'
 import { Badge } from '@/modules/shared/components/ui/badge'
@@ -102,11 +102,16 @@ export default function FilaDeTrabalho({ items, onSubmitTraducao }: FilaDeTrabal
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-neutral-700">
-                {filaPendente.map(item => (
-                  <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors">
+                {filaPendente.map(item => {
+                  const isRejected = item.rawStatus === 'REJECTED'
+                  return (
+                  <tr key={item.id} className={`hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition-colors ${isRejected ? 'bg-red-50/60 dark:bg-red-900/10' : ''}`}>
                     <td className="px-6 py-4">
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{item.documentoNome}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-gray-900 dark:text-white">{item.documentoNome}</p>
+                          {isRejected && <Badge variant="destructive" className="text-[9px] py-0 h-4">Rejeitado</Badge>}
+                        </div>
                         <p className="text-xs text-gray-500 dark:text-gray-400">{item.dependente?.nome_completo || item.clienteNome}</p>
                       </div>
                     </td>
@@ -134,15 +139,26 @@ export default function FilaDeTrabalho({ items, onSubmitTraducao }: FilaDeTrabal
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => setSelectedItem(item)}
-                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg transition-colors font-medium"
-                      >
-                        Traduzir
-                      </button>
+                      {isRejected ? (
+                        <button
+                          onClick={() => setSelectedItem(item)}
+                          className="flex items-center gap-1.5 px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors font-medium ml-auto"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          Reenviar
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setSelectedItem(item)}
+                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg transition-colors font-medium"
+                        >
+                          Traduzir
+                        </button>
+                      )}
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>

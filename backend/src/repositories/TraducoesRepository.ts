@@ -230,19 +230,26 @@ class TraducoesRepository {
   }
 
   async getFilaDeTrabalho() {
-    // Fetch documents that are approved for translation (translator needs to work on them)
-    const { data: documentos, error: docError } = await supabase
+    // Fetch documents the translator needs to work on:
+    // - EXECUTING_TRANSLATION: approved and waiting for translation delivery
+    // - REJECTED with traducao_url set: translation was submitted but rejected — needs resubmission
+    const { data: todosDocumentos, error: docError } = await supabase
       .from('documentos')
       .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id, traducao_url, traducao_storage_path, traducao_nome_original')
-      .in('status', [DocumentStatus.EXECUTING_TRANSLATION])
+      .in('status', [DocumentStatus.EXECUTING_TRANSLATION, DocumentStatus.REJECTED])
       .order('criado_em', { ascending: true })
+
+    // Guard: REJECTED documents only qualify if a translation was already submitted
+    const documentos = (todosDocumentos || []).filter(
+      doc => doc.status !== DocumentStatus.REJECTED || !!doc.traducao_url
+    )
 
     if (docError) {
       console.error('Erro ao buscar fila de trabalho:', docError)
       throw docError
     }
 
-    if (!documentos || documentos.length === 0) return []
+    if (documentos.length === 0) return []
 
     const clienteIds = [...new Set(documentos.map(d => d.cliente_id))]
     const documentoIds = documentos.map(d => d.id)
@@ -271,11 +278,11 @@ class TraducoesRepository {
   }
 
   async getEntregues() {
-    // Fetch documents that have been translated and delivered
-    const { data: documentos, error: docError } = await supabase
+    // Fetch documents that have been translated and delivered, are under analysis, or were rejected (need resubmission)
+    const { data: todosDocumentos, error: docError } = await supabase
       .from('documentos')
       .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id, traducao_url, traducao_storage_path, traducao_nome_original')
-      .in('status', [DocumentStatus.APPROVED, DocumentStatus.ANALYZING_TRANSLATION])
+      .in('status', [DocumentStatus.APPROVED, DocumentStatus.ANALYZING_TRANSLATION, DocumentStatus.REJECTED])
       .order('atualizado_em', { ascending: false })
 
     if (docError) {
@@ -283,7 +290,12 @@ class TraducoesRepository {
       throw docError
     }
 
-    if (!documentos || documentos.length === 0) return []
+    // Guard: REJECTED documents only qualify if a translation was already submitted
+    const documentos = (todosDocumentos || []).filter(
+      doc => doc.status !== DocumentStatus.REJECTED || !!doc.traducao_url
+    )
+
+    if (documentos.length === 0) return []
 
     const clienteIds = [...new Set(documentos.map(d => d.cliente_id))]
     const documentoIds = documentos.map(d => d.id)

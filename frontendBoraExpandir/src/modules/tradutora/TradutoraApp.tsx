@@ -96,11 +96,10 @@ export default function Tradutora() {
   const handleSubmitTraducao = async (documentoId: string, arquivo: File) => {
     try {
       await traducoesService.submitTraducao(documentoId, arquivo)
-      // Refresh fila and entregues after submission
       await Promise.all([fetchFila(), fetchEntregues()])
     } catch (error) {
       console.error('Erro ao enviar traducao:', error)
-      throw error // Re-throw so DeliveryModal can handle the error
+      throw error
     }
   }
 
@@ -171,7 +170,7 @@ export default function Tradutora() {
           <Route path="/" element={<Navigate to="/tradutor/orcamentos" replace />} />
           <Route path="/orcamentos" element={<OrcamentosPage orcamentos={orcamentos} onResponderOrcamento={handleResponderOrcamento} />} />
           <Route path="/fila" element={<FilaDeTrabalho items={filaItems} onSubmitTraducao={handleSubmitTraducao} />} />
-          <Route path="/entregues" element={<EntreguesPage items={entregueItems} />} />
+          <Route path="/entregues" element={<EntreguesPage items={entregueItems} onSubmitTraducao={handleSubmitTraducao} />} />
           <Route path="/pagamentos" element={<PagamentosPage items={[...entregueItems, ...filaItems]} />} />
           <Route path="/configuracoes" element={<Config />} />
           <Route path="*" element={<Navigate to="/tradutor/orcamentos" replace />} />
