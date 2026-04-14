@@ -259,7 +259,7 @@ export function AssessoriaDiretaDetail() {
         <AssessoriaFormModal
           clienteId={detail.cliente_id || detail.cliente?.id || ''}
           clienteNome={detail.cliente?.nome || detail.cliente_nome || 'Cliente'}
-          agendamentoId={id!}
+          agendamentoId={undefined}
           produtoId={detail.servico_id}
           onClose={() => setIsAssessoriaFormModalOpen(false)}
           onSuccess={() => {

@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react'
-import { CheckCircle2, ChevronDown, ChevronRight, Folder, FileText, ExternalLink } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronRight, Folder, FileText, ExternalLink, RotateCcw } from 'lucide-react'
 import type { OrcamentoItem } from '../types'
 import { Badge } from '@/modules/shared/components/ui/badge'
+import DeliveryModal from '../components/DeliveryModal'
 
 interface EntreguesPageProps {
   items: OrcamentoItem[]
+  onSubmitTraducao: (documentoId: string, arquivo: File) => Promise<void>
 }
 
 interface ClienteGroup {
@@ -12,8 +14,9 @@ interface ClienteGroup {
   items: OrcamentoItem[]
 }
 
-export default function EntreguesPage({ items }: EntreguesPageProps) {
+export default function EntreguesPage({ items, onSubmitTraducao }: EntreguesPageProps) {
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set())
+  const [selectedItem, setSelectedItem] = useState<OrcamentoItem | null>(null)
 
   const clientesAgrupados = useMemo(() => {
     const sorted = [...items].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
@@ -127,17 +130,22 @@ export default function EntreguesPage({ items }: EntreguesPageProps) {
                             <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">
                               Arquivos
                             </th>
+                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase">
+                              Ação
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 dark:divide-neutral-700">
-                          {grupo.items.map(item => (
+                          {grupo.items.map(item => {
+                            const isRejected = item.rawStatus === 'REJECTED'
+                            return (
                             <tr
                               key={item.id}
-                              className="hover:bg-gray-50 dark:hover:bg-neutral-700/30 transition-colors"
+                              className={`hover:bg-gray-50 dark:hover:bg-neutral-700/30 transition-colors ${isRejected ? 'bg-red-50/50 dark:bg-red-900/10' : ''}`}
                             >
                               <td className="px-6 py-4">
                                 <div className="flex items-center gap-2">
-                                  <FileText className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                                  <FileText className={`h-4 w-4 ${isRejected ? 'text-red-400' : 'text-gray-400 dark:text-gray-500'}`} />
                                   <div>
                                     <p className="font-medium text-gray-900 dark:text-white">
                                       {item.documentoNome}
@@ -149,7 +157,9 @@ export default function EntreguesPage({ items }: EntreguesPageProps) {
                                 </div>
                               </td>
                               <td className="px-6 py-4">
-                                {item.rawStatus === 'ANALYZING_TRANSLATION' ? (
+                                {isRejected ? (
+                                  <Badge variant="destructive">Rejeitado</Badge>
+                                ) : item.rawStatus === 'ANALYZING_TRANSLATION' ? (
                                   <Badge variant="warning">Em Análise</Badge>
                                 ) : (
                                   <Badge variant="success">Finalizado</Badge>
@@ -186,8 +196,22 @@ export default function EntreguesPage({ items }: EntreguesPageProps) {
                                   )}
                                 </div>
                               </td>
+                              <td className="px-6 py-4 text-center">
+                                {isRejected ? (
+                                  <button
+                                    onClick={() => setSelectedItem(item)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-colors"
+                                  >
+                                    <RotateCcw className="h-3 w-3" />
+                                    Reenviar
+                                  </button>
+                                ) : (
+                                  <span className="text-gray-300 dark:text-neutral-600 text-xs">—</span>
+                                )}
+                              </td>
                             </tr>
-                          ))}
+                            )
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -197,6 +221,14 @@ export default function EntreguesPage({ items }: EntreguesPageProps) {
             )
           })}
         </div>
+      )}
+
+      {selectedItem && (
+        <DeliveryModal
+          item={selectedItem}
+          onClose={() => setSelectedItem(null)}
+          onSubmit={onSubmitTraducao}
+        />
       )}
     </div>
   )

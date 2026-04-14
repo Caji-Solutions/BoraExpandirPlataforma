@@ -3,11 +3,11 @@ import { DocumentStatus } from '../constants/DocumentStatus'
 
 class TraducoesRepository {
   async getOrcamentos() {
-    // 1. Buscar os documentos com status WAITING_TRANSLATION_QUOTE ou WAITING_QUOTE_APPROVAL
+    // 1. Buscar apenas documentos aguardando orçamento de tradução
     const { data: documentos, error: docError } = await supabase
       .from('documentos')
       .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id')
-      .in('status', [DocumentStatus.PENDING, DocumentStatus.WAITING_TRANSLATION_QUOTE, DocumentStatus.ANALYZING, 'disponivel'])
+      .eq('status', DocumentStatus.WAITING_TRANSLATION_QUOTE)
       .order('criado_em', { ascending: false })
 
     if (docError) {
@@ -22,9 +22,7 @@ class TraducoesRepository {
     const documentoIds = documentos.map(d => d.id)
     const dependenteIds = [...new Set(documentos.map(d => d.dependente_id).filter(id => id !== null))]
 
-    // 3. Buscar dados dos clientes, orçamentos e dependentes em paralelo
-    // Busca TODOS os orçamentos (sem filtro de tipo) para identificar documentos
-    // que estão apenas no fluxo de apostilamento e devem ser excluídos da lista
+    // 3. Buscar dados dos clientes, orçamentos de tradução e dependentes em paralelo
     const [clientesRes, orcamentosRes, dependentesRes] = await Promise.all([
       supabase
         .from('clientes')
@@ -33,6 +31,7 @@ class TraducoesRepository {
       supabase
         .from('orcamentos')
         .select('*, porcentagem, preco_atualizado')
+        .eq('tipo', 'Traducao')
         .in('documento_id', documentoIds)
         .order('criado_em', { ascending: false }),
       supabase
@@ -54,31 +53,23 @@ class TraducoesRepository {
     }
 
     const clientes = clientesRes.data || []
-    const todosOrcamentos = orcamentosRes.data || []
+    const orcamentosTraducao = orcamentosRes.data || []
     const dependentes = dependentesRes.data || []
 
-    // 4. Mesclar os dados, excluindo documentos que NÃO estão aguardando tradução
-    //    e só possuem orçamentos de Apostilagem
-    return documentos
-      .map(doc => {
-        const orcamentosDoDoc = todosOrcamentos.filter(o => o.documento_id === doc.id)
-        const traducaoOrcamento = orcamentosDoDoc.find(o => o.tipo === 'Traducao')
-        const temApenasApostilagem = orcamentosDoDoc.length > 0 && orcamentosDoDoc.every(o => o.tipo === 'Apostilagem')
+    // 4. Mesclar os dados — todos os documentos com WAITING_TRANSLATION_QUOTE são incluídos.
+    //    Se já existe orçamento de Traducao, exibe como respondido.
+    //    Se não existe, exibe como pendente (tradutora pode criar).
+    return documentos.map(doc => {
+      const traducaoOrcamento = orcamentosTraducao.find(o => o.documento_id === doc.id) || null
+      const dependente = doc.dependente_id ? dependentes.find(dep => dep.id === doc.dependente_id) : null
 
-        // Documento com WAITING_TRANSLATION_QUOTE sempre aparece — o tradutor precisa criar o orçamento
-        // Para outros status, excluir se só tem orçamentos de apostilagem
-        if (temApenasApostilagem && doc.status !== DocumentStatus.WAITING_TRANSLATION_QUOTE) return null
-
-        const dependente = doc.dependente_id ? dependentes.find(dep => dep.id === doc.dependente_id) : null
-
-        return {
-          ...doc,
-          clientes: clientes.find(c => c.id === doc.cliente_id) || null,
-          orcamento: traducaoOrcamento || null,
-          dependente: dependente || null
-        }
-      })
-      .filter(doc => doc !== null)
+      return {
+        ...doc,
+        clientes: clientes.find(c => c.id === doc.cliente_id) || null,
+        orcamento: traducaoOrcamento,
+        dependente: dependente || null
+      }
+    })
   }
 
   async saveOrcamento(dados: {
@@ -239,19 +230,26 @@ class TraducoesRepository {
   }
 
   async getFilaDeTrabalho() {
-    // Fetch documents that are approved for translation (translator needs to work on them)
-    const { data: documentos, error: docError } = await supabase
+    // Fetch documents the translator needs to work on:
+    // - EXECUTING_TRANSLATION: approved and waiting for translation delivery
+    // - REJECTED with traducao_url set: translation was submitted but rejected — needs resubmission
+    const { data: todosDocumentos, error: docError } = await supabase
       .from('documentos')
       .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id, traducao_url, traducao_storage_path, traducao_nome_original')
-      .in('status', [DocumentStatus.EXECUTING_TRANSLATION])
+      .in('status', [DocumentStatus.EXECUTING_TRANSLATION, DocumentStatus.REJECTED])
       .order('criado_em', { ascending: true })
+
+    // Guard: REJECTED documents only qualify if a translation was already submitted
+    const documentos = (todosDocumentos || []).filter(
+      doc => doc.status !== DocumentStatus.REJECTED || !!doc.traducao_url
+    )
 
     if (docError) {
       console.error('Erro ao buscar fila de trabalho:', docError)
       throw docError
     }
 
-    if (!documentos || documentos.length === 0) return []
+    if (documentos.length === 0) return []
 
     const clienteIds = [...new Set(documentos.map(d => d.cliente_id))]
     const documentoIds = documentos.map(d => d.id)
@@ -280,11 +278,11 @@ class TraducoesRepository {
   }
 
   async getEntregues() {
-    // Fetch documents that have been translated and delivered
-    const { data: documentos, error: docError } = await supabase
+    // Fetch documents that have been translated and delivered, are under analysis, or were rejected (need resubmission)
+    const { data: todosDocumentos, error: docError } = await supabase
       .from('documentos')
       .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id, traducao_url, traducao_storage_path, traducao_nome_original')
-      .in('status', [DocumentStatus.APPROVED, DocumentStatus.ANALYZING_TRANSLATION])
+      .in('status', [DocumentStatus.APPROVED, DocumentStatus.ANALYZING_TRANSLATION, DocumentStatus.REJECTED])
       .order('atualizado_em', { ascending: false })
 
     if (docError) {
@@ -292,7 +290,12 @@ class TraducoesRepository {
       throw docError
     }
 
-    if (!documentos || documentos.length === 0) return []
+    // Guard: REJECTED documents only qualify if a translation was already submitted
+    const documentos = (todosDocumentos || []).filter(
+      doc => doc.status !== DocumentStatus.REJECTED || !!doc.traducao_url
+    )
+
+    if (documentos.length === 0) return []
 
     const clienteIds = [...new Set(documentos.map(d => d.cliente_id))]
     const documentoIds = documentos.map(d => d.id)

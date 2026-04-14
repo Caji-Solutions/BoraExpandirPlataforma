@@ -42,7 +42,7 @@ const initialFormData: CRMFormData = {
 interface AssessoriaFormModalProps {
   clienteId: string
   clienteNome: string
-  agendamentoId: string
+  agendamentoId?: string
   produtoId?: string
   onClose: () => void
   onSuccess: () => void

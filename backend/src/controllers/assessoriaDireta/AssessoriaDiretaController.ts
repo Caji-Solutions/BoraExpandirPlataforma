@@ -290,11 +290,13 @@ class AssessoriaDiretaController {
                 }
             }
 
-            // Get assessoria data if exists (from assessorias_juridico, linked by contrato id)
+            // Get assessoria data if exists — for assessoria direta there is no agendamento_id,
+            // so we query by cliente_id filtering only rows where agendamento_id is null.
             const { data: assessoria } = await supabase
                 .from('assessorias_juridico')
                 .select('id, criado_em, respostas, observacoes')
-                .eq('agendamento_id', id)
+                .eq('cliente_id', contrato.cliente_id)
+                .is('agendamento_id', null)
                 .order('criado_em', { ascending: false })
                 .limit(1)
                 .maybeSingle()
