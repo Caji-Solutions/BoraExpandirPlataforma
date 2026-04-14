@@ -102,14 +102,31 @@ export function DocumentTimeline({
                     {stageDocs.map((item: any, idx: number) => {
                       const doc = item._document
                       
-                      const isDocumentPaid = (d: ClientDocument) => {
+                      const isApostillePaid = (d: ClientDocument) => {
                         if (!d.orcamentos || d.orcamentos.length === 0) return false;
-                        return d.orcamentos.some((o: any) => 
-                            ['pendente_verificacao', 'aprovado', 'APPROVED'].includes(o.status)
-                        );
+                        return d.orcamentos.some((o: any) => {
+                          const s = o.status?.toLowerCase();
+                          const obs = o.observacoes?.toLowerCase() || '';
+                          const type = o.tipo?.toLowerCase() || '';
+                          const matchStatus = ['pendente_verificacao', 'aprovado', 'approved', 'pago'].includes(s);
+                          const matchType = obs.includes('apostila') || type === 'apostilagem';
+                          return matchStatus && matchType;
+                        });
                       }
 
-                      const isRejectedForClient = doc?.status?.toLowerCase() === 'rejected' && !isDocumentPaid(doc)
+                      const isTranslationPaid = (d: ClientDocument) => {
+                        if (!d.orcamentos || d.orcamentos.length === 0) return false;
+                        return d.orcamentos.some((o: any) => {
+                          const s = o.status?.toLowerCase();
+                          const obs = o.observacoes?.toLowerCase() || '';
+                          const type = o.tipo?.toLowerCase() || '';
+                          const matchStatus = ['pendente_verificacao', 'aprovado', 'approved', 'pago'].includes(s);
+                          const matchType = obs.includes('tradução') || obs.includes('traducao') || type === 'traducao';
+                          return matchStatus && matchType;
+                        });
+                      }
+
+                      const isRejectedForClient = doc?.status?.toLowerCase() === 'rejected' && !isApostillePaid(doc) && !isTranslationPaid(doc)
                       const isTrulyRejected = doc?.status?.toLowerCase() === 'rejected'
                       
                       const inputId = `file-${memberId}-${item.type}`
@@ -267,6 +284,11 @@ export function DocumentTimeline({
                                       <Clock className="h-4 w-4" />
                                       <span>Orçamento Solicitado</span>
                                     </div>
+                                  ) : (doc?.status?.toLowerCase() === 'executing_apostille' || doc?.status?.toLowerCase() === 'pronto_para_apostilagem' || doc?.status?.toLowerCase() === 'rejected') ? (
+                                    <div className="flex items-center gap-1 text-amber-600 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full border border-amber-100">
+                                      <Clock className="h-4 w-4" />
+                                      <span>Em Apostilagem</span>
+                                    </div>
                                   ) : (
                                     <div className="flex items-center gap-1 text-amber-600 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full">
                                       <Clock className="h-4 w-4" />
@@ -289,6 +311,11 @@ export function DocumentTimeline({
                                       <Upload className="h-3 w-3" />
                                       Upload Tradução
                                     </Button>
+                                  ) : (doc?.status?.toLowerCase() === 'executing_translation' || doc?.status?.toLowerCase() === 'analyzing_translation' || doc?.status?.toLowerCase() === 'rejected') ? (
+                                    <div className="flex items-center gap-1 text-purple-600 text-xs font-medium px-2 py-1 bg-purple-50 rounded-full border border-purple-100">
+                                      <Clock className="h-4 w-4" />
+                                      <span>Em Tradução</span>
+                                    </div>
                                   ) : (
                                     <div className="flex items-center gap-1 text-purple-600 text-xs font-medium px-2 py-1 bg-purple-50 rounded-full">
                                       <Clock className="h-4 w-4" />

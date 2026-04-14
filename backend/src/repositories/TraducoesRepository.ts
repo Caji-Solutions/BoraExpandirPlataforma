@@ -134,7 +134,7 @@ class TraducoesRepository {
       .select('*')
       .eq('documento_id', documentoId)
       .eq('tipo', 'Traducao')
-      .eq('status', 'disponivel') // Cliente só vê se estiver disponível
+      .in('status', ['disponivel', 'recusado', 'pendente_verificacao', 'aprovado', 'APPROVED']) 
       .order('criado_em', { ascending: false })
       .limit(1)
       .single()
