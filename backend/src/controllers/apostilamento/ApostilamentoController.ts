@@ -1,6 +1,13 @@
 import { Request, Response } from 'express';
 import ApostilamentoRepository from '../../repositories/ApostilamentoRepository';
 
+function sanitizeFileName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+}
+
 class ApostilamentoController {
   async solicitar(req: Request, res: Response) {
     try {
@@ -78,9 +85,10 @@ class ApostilamentoController {
         return res.status(400).json({ error: 'Nenhum arquivo enviado' })
       }
 
+      const safeFileName = sanitizeFileName(file.originalname)
       const result = await ApostilamentoRepository.uploadApostilado({
         apostilamentoId: id,
-        filePath: `apostilados/${id}/${file.originalname}`,
+        filePath: `apostilados/${id}/${safeFileName}`,
         fileBuffer: file.buffer,
         contentType: file.mimetype,
         nomeOriginal: file.originalname

@@ -172,7 +172,7 @@ class ClienteRepository {
             processo_id: params.processoId || null,
             tipo: params.tipo || 'dependente',
             criado_em: new Date().toISOString(),
-            parentesco: rawParentesco || null
+            parentesco: rawParentesco || ((params.tipo || 'dependente') === 'titular_adicional' ? 'Titular' : null)
         }
 
         const { data, error } = await supabase
