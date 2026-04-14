@@ -113,6 +113,11 @@ export default function FilaDeTrabalho({ items, onSubmitTraducao }: FilaDeTrabal
                           {isRejected && <Badge variant="destructive" className="text-[9px] py-0 h-4">Rejeitado</Badge>}
                         </div>
                         <p className="text-xs text-gray-500 dark:text-gray-400">{item.dependente?.nome_completo || item.clienteNome}</p>
+                        {isRejected && item.motivoRejeicao && (
+                          <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded px-2 py-1 max-w-xs">
+                            <span className="font-semibold">Motivo: </span>{item.motivoRejeicao}
+                          </p>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">

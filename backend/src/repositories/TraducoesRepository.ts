@@ -235,7 +235,7 @@ class TraducoesRepository {
     // - REJECTED with traducao_url set: translation was submitted but rejected — needs resubmission
     const { data: todosDocumentos, error: docError } = await supabase
       .from('documentos')
-      .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id, traducao_url, traducao_storage_path, traducao_nome_original')
+      .select('id, tipo, nome_original, storage_path, public_url, status, motivo_rejeicao, criado_em, atualizado_em, cliente_id, processo_id, dependente_id, traducao_url, traducao_storage_path, traducao_nome_original')
       .in('status', [DocumentStatus.EXECUTING_TRANSLATION, DocumentStatus.REJECTED])
       .order('criado_em', { ascending: true })
 
@@ -281,7 +281,7 @@ class TraducoesRepository {
     // Fetch documents that have been translated and delivered, are under analysis, or were rejected (need resubmission)
     const { data: todosDocumentos, error: docError } = await supabase
       .from('documentos')
-      .select('id, tipo, nome_original, storage_path, public_url, status, criado_em, atualizado_em, cliente_id, processo_id, dependente_id, traducao_url, traducao_storage_path, traducao_nome_original')
+      .select('id, tipo, nome_original, storage_path, public_url, status, motivo_rejeicao, criado_em, atualizado_em, cliente_id, processo_id, dependente_id, traducao_url, traducao_storage_path, traducao_nome_original')
       .in('status', [DocumentStatus.APPROVED, DocumentStatus.ANALYZING_TRANSLATION, DocumentStatus.REJECTED])
       .order('atualizado_em', { ascending: false })
 

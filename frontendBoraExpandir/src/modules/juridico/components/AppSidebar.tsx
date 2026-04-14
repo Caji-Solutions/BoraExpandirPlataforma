@@ -1,4 +1,4 @@
-import { Home, FolderOpen, FileSearch, CheckSquare, DollarSign, Settings, LogOut } from "lucide-react";
+import { Home, FileSearch, CheckSquare, DollarSign, Settings, LogOut } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -15,7 +15,6 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 
 const menuItems = [
   { title: "Início", icon: Home, id: "home" },
-  { title: "Meus Processos", icon: FolderOpen, id: "processes" },
   { title: "Fila de Análise", icon: FileSearch, id: "analysis" },
   { title: "Tarefas", icon: CheckSquare, id: "tasks" },
   { title: "Financeiro", icon: DollarSign, id: "finance" },

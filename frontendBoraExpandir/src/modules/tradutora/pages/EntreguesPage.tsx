@@ -145,13 +145,18 @@ export default function EntreguesPage({ items, onSubmitTraducao }: EntreguesPage
                             >
                               <td className="px-6 py-4">
                                 <div className="flex items-center gap-2">
-                                  <FileText className={`h-4 w-4 ${isRejected ? 'text-red-400' : 'text-gray-400 dark:text-gray-500'}`} />
+                                  <FileText className={`h-4 w-4 shrink-0 ${isRejected ? 'text-red-400' : 'text-gray-400 dark:text-gray-500'}`} />
                                   <div>
                                     <p className="font-medium text-gray-900 dark:text-white">
                                       {item.documentoNome}
                                     </p>
                                     {item.dependente?.nome_completo && (
                                       <p className="text-xs text-gray-500">{item.dependente.nome_completo}</p>
+                                    )}
+                                    {isRejected && item.motivoRejeicao && (
+                                      <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded px-2 py-1">
+                                        <span className="font-semibold">Motivo: </span>{item.motivoRejeicao}
+                                      </p>
                                     )}
                                   </div>
                                 </div>

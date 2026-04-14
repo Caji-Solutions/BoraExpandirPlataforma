@@ -411,7 +411,7 @@ export function Dashboard() {
                 <CardTitle className="text-sm font-bold">Processos Recentes</CardTitle>
               </div>
               <button
-                onClick={() => navigate('/juridico/processos')}
+                onClick={() => navigate('/juridico/analise')}
                 className="text-[10px] font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors"
               >
                 Ver todos <ChevronRight className="h-3 w-3" />
@@ -466,7 +466,7 @@ export function Dashboard() {
           <ArrowRight className="h-3 w-3 text-indigo-400 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
         </button>
         <button
-          onClick={() => navigate('/juridico/processos')}
+          onClick={() => navigate('/juridico/analise')}
           className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-950/20 hover:bg-slate-100 dark:hover:bg-slate-950/40 border border-slate-200 dark:border-slate-800/30 rounded-xl transition-all group"
         >
           <FileText className="h-4 w-4 text-slate-600" />

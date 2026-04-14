@@ -52,6 +52,7 @@ export interface OrcamentoItem {
   traducaoNomeOriginal?: string
   rawStatus?: string
   tipo?: 'Traducao' | 'Apostilagem'
+  motivoRejeicao?: string
 }
 
 export interface OrcamentoFormData {

@@ -64,6 +64,7 @@ export default function Tradutora() {
     traducaoNomeOriginal: item.traducao_nome_original,
     rawStatus: item.status,
     tipo: item.orcamento?.tipo,
+    motivoRejeicao: item.motivo_rejeicao || undefined,
   })
 
   const fetchOrcamentos = async () => {
