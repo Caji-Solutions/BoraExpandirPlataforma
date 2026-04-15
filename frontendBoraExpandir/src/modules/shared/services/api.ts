@@ -42,7 +42,7 @@ class ApiClient {
 
     // ✅ Adicionar token de autenticação automaticamente
     const token = this.getAuthToken();
-    console.log(`[ApiClient] Request to ${endpoint} - Token presente: ${!!token}`);
+    // console.log(`[ApiClient] Request to ${endpoint} - Token presente: ${!!token}`);
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',

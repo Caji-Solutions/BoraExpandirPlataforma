@@ -1,4 +1,4 @@
-import { Cliente } from '../../../types/comercial';
+import { Cliente } from '@/types/comercial';
 import { formatCpfDisplay, formatPhoneDisplay, normalizePhone } from '../../../utils/formatters';
 import { apiClient } from '@/modules/shared/services/api';
 

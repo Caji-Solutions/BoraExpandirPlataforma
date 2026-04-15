@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { AlertTriangle, Clock, FileSignature, ListChecks, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react'
-import type { Cliente, Agendamento, ContratoServico, Requerimento } from '../../../types/comercial'
+import type { Cliente, Agendamento, ContratoServico, Requerimento } from '@/types/comercial'
 
 const SETE_DIAS_MS = 7 * 24 * 60 * 60 * 1000
 const TRES_DIAS_MS = 3 * 24 * 60 * 60 * 1000

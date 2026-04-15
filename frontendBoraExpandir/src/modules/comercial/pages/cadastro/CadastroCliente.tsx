@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { X, Save, User, Mail, Phone, FileText, MapPin, CheckCircle2, Copy, ExternalLink, Key } from 'lucide-react'
-import type { ClienteFormData } from '../../../types/comercial'
+import type { ClienteFormData } from '@/types/comercial'
 
 interface CadastroClienteProps {
   onClose: () => void

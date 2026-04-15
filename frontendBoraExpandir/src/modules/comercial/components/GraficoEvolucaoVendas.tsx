@@ -8,7 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import type { ContratoServico } from '../../../types/comercial'
+import type { ContratoServico } from '@/types/comercial'
 
 interface GraficoEvolucaoVendasProps {
   contratos: ContratoServico[]

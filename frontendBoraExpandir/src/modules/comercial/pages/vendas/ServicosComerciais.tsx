@@ -5,7 +5,7 @@ import { catalogService, Service } from '../../../adm/services/catalogService'
 import comercialService from '../../services/comercialService'
 import { useAuth } from '../../../../contexts/AuthContext'
 import { useToast, ToastContainer } from '@/components/ui/Toast'
-import type { Cliente } from '../../../types/comercial'
+import type { Cliente } from '@/types/comercial'
 
 export default function ServicosComerciais() {
   const navigate = useNavigate()

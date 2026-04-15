@@ -765,7 +765,38 @@ class JuridicoController {
         }
     }
 
+
+    // PATCH /juridico/requerimentos/:requerimentoId/status
+    async updateRequerimentoStatus(req: any, res: any) {
+        try {
+            const { requerimentoId } = req.params
+            const { status, observacoes } = req.body
+
+            if (!requerimentoId) {
+                return res.status(400).json({ message: 'requerimentoId é obrigatório' })
+            }
+
+            if (!status) {
+                return res.status(400).json({ message: 'status é obrigatório' })
+            }
+
+            const requerimento = await JuridicoRepository.updateRequerimentoStatus(requerimentoId, status, observacoes)
+
+            return res.status(200).json({
+                message: 'Status do requerimento atualizado com sucesso',
+                data: requerimento
+            })
+        } catch (error: any) {
+            console.error('Erro ao atualizar status do requerimento:', error)
+            return res.status(500).json({
+                message: 'Erro ao atualizar status do requerimento',
+                error: error.message
+            })
+        }
+    }
+
     // PATCH /juridico/processo/:processoId/etapa - Atualizar etapa do processo
+
     async updateEtapaProcesso(req: any, res: any) {
         try {
             const { processoId } = req.params

@@ -1,7 +1,7 @@
 import React from 'react'
 import { Calendar, Clock, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import type { Agendamento } from '../../../types/comercial'
+import type { Agendamento } from '@/types/comercial'
 
 interface ProximosAgendamentosCardProps {
   agendamentos: Agendamento[]

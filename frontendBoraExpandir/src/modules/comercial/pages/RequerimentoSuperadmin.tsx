@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { X, Send, AlertCircle } from 'lucide-react'
-import type { RequerimentoFormData } from '../../../types/comercial'
+import type { RequerimentoFormData } from '@/types/comercial'
 
 interface RequerimentoSuperadminProps {
   onClose: () => void

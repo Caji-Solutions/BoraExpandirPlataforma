@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, FileText, Loader2, PencilLine, CheckCircle2, Clock, CreditCard, ChevronRight, Ban, ShieldAlert, XCircle, Receipt, Trash2 } from 'lucide-react'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import comercialService, { apagarContratoServico } from '../../services/comercialService'
-import type { ContratoServico } from '../../../types/comercial'
+import type { ContratoServico } from '@/types/comercial'
 import { useToast, ToastContainer } from '@/components/ui/Toast'
 
 const assinaturaVariant = (status: string) => {

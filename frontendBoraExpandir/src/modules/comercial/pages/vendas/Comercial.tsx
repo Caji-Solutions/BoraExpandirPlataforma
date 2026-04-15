@@ -42,7 +42,7 @@ import type {
   Agendamento,
   AgendamentoFormData
 
-} from '../../../types/comercial'
+} from '@/types/comercial'
 import Toast, { useToast, ToastContainer } from '@/components/ui/Toast'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import comercialService from '../../services/comercialService'
@@ -747,6 +747,9 @@ function RequerimentosPage({
 export default function Comercial() {
   const { activeProfile } = useAuth()
 
+  useEffect(() => {
+  }, []);
+
   // Modals
   const [showCadastroCliente, setShowCadastroCliente] = useState(false)
   const [showGeracaoContrato, setShowGeracaoContrato] = useState(false)
@@ -917,7 +920,6 @@ export default function Comercial() {
 
   const handleAssinarContrato = async (contratoId: string, assinadoPor: string, tipo: 'cliente' | 'empresa') => {
     // TODO: Integrar com backend para salvar assinatura digital
-    console.log('Assinando contrato:', { contratoId, assinadoPor, tipo })
 
     setContratos(prev => prev.map(c =>
       c.id === contratoId
@@ -981,8 +983,6 @@ export default function Comercial() {
   const toast = useToast()
 
   const handleShowGeracaoContrato = () => {
-    console.log('Iniciando criacao de contrato...')
-    console.log(toast.info('hahahah', 10))
     toast.info('Iniciando criação de contrato...', 10)
     setShowGeracaoContrato(true)
   }

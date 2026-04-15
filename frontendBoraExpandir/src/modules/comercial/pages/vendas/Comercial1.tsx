@@ -98,6 +98,11 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [loadingProdutos, setLoadingProdutos] = useState(false)
   const [usuariosSistema, setUsuariosSistema] = useState<any[]>([])
+  
+  useEffect(() => {
+    console.log('[Comercial1] Component mounted. NavigationState:', navigationState);
+    return () => console.log('[Comercial1] Component unmounted.');
+  }, []);
 
   useEffect(() => {
     async function fetchInitialData() {
@@ -141,8 +146,9 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
           }))
         setProdutos(mappedProdutos)
 
+        console.log('[Comercial1] Initial data loaded success:', { clients: mappedClientes.length, products: mappedProdutos.length });
       } catch (err) {
-        console.error("Erro ao carregar dados iniciais:", err)
+        console.error("[Comercial1] Erro ao carregar dados iniciais:", err)
         error("Erro ao carregar serviços ou clientes.")
       } finally {
         setLoadingProdutos(false)
@@ -191,6 +197,8 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
   // Guard: sem serviço pré-selecionado e sem edição, redirecionar
   useEffect(() => {
     if (!isClientView && !editId && !navigationState?.preSelectedProduto) {
+      console.warn('[Comercial1] Missing preSelectedProduto and not in edit mode. navigationState:', navigationState);
+      console.log('[Comercial1] isClientView:', isClientView, 'editId:', editId);
       error('Selecione um serviço antes de agendar.')
       navigate(-1)
     }
@@ -213,7 +221,11 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
     if (!navigationState?.preSelectedProduto || produtos.length === 0) return
 
     const preSelectedValue = String(navigationState.preSelectedProduto).trim()
-    const pEncontrado = produtos.find(p => p.id === preSelectedValue)
+    console.log('[Comercial1] Searching for product with value:', preSelectedValue, 'in', produtos.length, 'products');
+    const pEncontrado = produtos.find(p => 
+      p.id === preSelectedValue || 
+      p.nome.toLowerCase() === preSelectedValue.toLowerCase()
+    )
 
     if (pEncontrado) {
       if (pEncontrado.type === 'fixo' && !isClientView) {
@@ -233,10 +245,11 @@ export default function Comercial1({ preSelectedClient, isClientView = false }: 
       setProdutoSelecionado(pEncontrado)
       setDuracaoMinutos(pEncontrado.duracaoMinutos || 60)
     } else {
-      error('Servico nao encontrado no catalogo.')
+      console.error('[Comercial1] Service not found for value:', preSelectedValue, '. Products list:', produtos.map(p => p.nome));
+      error(`Serviço "${preSelectedValue}" não encontrado no catálogo.`);
       navigate(-1)
     }
-  }, [produtos]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [produtos, navigationState?.preSelectedProduto]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Carregar dados para edição se ID estiver presente
   useEffect(() => {

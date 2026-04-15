@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import path from 'path';
 
-dotenv.config({ path: path.resolve('C:/Users/natha/Documents/Caji/BoraExpandirPlataforma/.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE || '';
@@ -10,7 +10,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABAS
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function check() {
-    const { data, error } = await supabase.from('clientes').select('*').limit(1);
+    const { data, error } = await supabase.from('processos').select('*').limit(1);
     if (error) {
         console.error(error);
     } else {

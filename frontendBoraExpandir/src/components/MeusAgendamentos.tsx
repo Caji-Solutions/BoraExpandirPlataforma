@@ -108,9 +108,7 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
 
       if (activeTab === 'consultorias') {
         const data = await juridicoService.getAgendamentos();
-        console.log("DEBUG: Consultorias (API Response):", data);
         const dataArr = Array.isArray(data) ? data : (data ? [data] : []);
-        console.log("DEBUG: Consultorias (Array):", dataArr);
 
         // Mostrar apenas agendamentos aprovados de tipo 'agendavel' na aba de consultoria
         const catalogData = await catalogService.getCatalogServices();
@@ -124,14 +122,11 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
             return serviceType === 'agendavel' || !serviceType;
           })
           .map((item: any) => item);
-        console.log("DEBUG: Consultorias (Total):", filtered.length);
         setConsultorias(filtered);
       } else if (activeTab === 'assessorias' && effectiveUserId) {
         // Buscar agendamentos que foram delegados a este responsável
-        console.log(`DEBUG: Buscando agendamentos (${activeTab}) para user: ${effectiveUserId}`);
         const data: any = await juridicoService.getAgendamentosByResponsavel(effectiveUserId);
 
-        console.log(`DEBUG: Dados recebidos da API (${activeTab}):`, data);
 
         let dataArr: any[] = [];
         if (data && !Array.isArray(data) && data.status === 'success') {
@@ -150,7 +145,6 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
           return serviceType === 'fixo';
         });
 
-        console.log("DEBUG: Assessorias (Array):", filteredAssessorias);
         setAssessorias(filteredAssessorias);
       }
 
@@ -169,7 +163,6 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
   // Efeito para verificar segurança quando um item é selecionado
   useEffect(() => {
     if (selectedItem) {
-      console.log("DEBUG: Item Selecionado (Raw):", JSON.stringify(selectedItem, null, 2));
 
       const checkSecurity = async () => {
         try {
@@ -179,7 +172,6 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
           const clienteId = activeTab === 'consultorias' ? selectedItem.cliente_id : selectedItem.cliente_id;
 
           if (clienteId) {
-            console.log(`DEBUG: Verificando formularios para cliente: ${clienteId}`);
             if (activeTab === 'consultorias') {
               let preenchido = false;
               try {
@@ -199,7 +191,6 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
           // Verificar nome de quem agendou se não estiver no cache
           const creatorId = selectedItem.usuario_id || selectedItem.responsavel_id;
           if (creatorId && !usuariosSistema.find(u => u.id === creatorId) && !cachedProfiles[creatorId]) {
-            console.log(`DEBUG: Buscando nome do criador ID: ${creatorId}`);
             const profile = await juridicoService.getProfileById(creatorId);
             if (profile) {
               setCachedProfiles(prev => ({ ...prev, [creatorId]: profile.full_name }));
@@ -317,8 +308,6 @@ export function MeusAgendamentos({ userId, title = "Agendamentos", description =
     return dateStr === dataSelecionadaIso;
   });
 
-  console.log("DEBUG: Renderizando grade para:", dataSelecionadaIso);
-  console.log("DEBUG: Items filtrados para o dia:", JSON.stringify(itemsDoDia));
 
   const hhMmToMinutes = (hhMm: string) => {
     const [h, m] = hhMm.split(':').map(Number);

@@ -72,9 +72,6 @@ export function NotificationsDropdown() {
   const fetchNotificacoes = async () => {
     const profileId = activeProfile?.id
     const role = activeProfile?.role
-    console.log('🔔 [NotificationsDropdown] fetchNotificacoes iniciado')
-    console.log('👤 [NotificationsDropdown] activeProfile:', activeProfile)
-    console.log('👥 [NotificationsDropdown] Role:', role)
 
     if (!profileId || !role) {
       console.warn('⚠️ [NotificationsDropdown] userId ou role não encontrado, retornando')
@@ -87,20 +84,16 @@ export function NotificationsDropdown() {
 
       // Se for cliente, buscar notificações de cliente (precisa do ID da tabela clientes, não profiles)
       if (role === 'cliente') {
-        console.log('📱 [NotificationsDropdown] Usuário é cliente, buscando notificações de cliente')
         let targetId: string = profileId
 
         const impersonatedId = localStorage.getItem('impersonatedClientId')
         if (impersonatedId) {
           targetId = impersonatedId
-          console.log('📱 [NotificationsDropdown] Usando impersonatedClientId:', targetId)
         } else {
           try {
-            console.log('📱 [NotificationsDropdown] Buscando cliente pelo profileId:', profileId)
             const res = await clienteService.getClienteByUserId(profileId)
             if (res?.id) {
               targetId = res.id
-              console.log('📱 [NotificationsDropdown] Cliente encontrado - clienteId:', targetId)
             } else {
               console.warn('⚠️ [NotificationsDropdown] Nenhum cliente encontrado para profileId:', profileId)
             }
@@ -109,17 +102,12 @@ export function NotificationsDropdown() {
           }
         }
 
-        console.log('⏳ [NotificationsDropdown] Buscando notificações de cliente para clienteId:', targetId)
         data = await clienteService.getNotificacoes(targetId)
       } else if (['admin', 'juridico', 'super_admin', 'comercial'].includes(role)) {
         // Se for funcionário, buscar notificações de usuário (usa o profileId diretamente)
-        console.log('👨‍💼 [NotificationsDropdown] Usuário é funcionário, buscando notificações de usuário')
-        console.log('⏳ [NotificationsDropdown] Buscando notificações de usuário para usuarioId:', profileId)
         data = await clienteService.getNotificacoesUsuario(profileId)
       }
 
-      console.log('✅ [NotificationsDropdown] Dados brutos recebidos:', data)
-      console.log('📊 [NotificationsDropdown] Quantidade de notificações:', data.length)
 
       const mapped = (Array.isArray(data) ? data : []).map((n: any) => {
         const isRead = n.lida === true || String(n.lida) === 'true' || n.lida === 1;
@@ -140,9 +128,7 @@ export function NotificationsDropdown() {
         }
       })
 
-      console.log('🎯 [NotificationsDropdown] Notificações mapeadas:', mapped)
       setNotificacoes(mapped)
-      console.log('💾 [NotificationsDropdown] Estado de notificações atualizado')
     } catch (error) {
       console.error('❌ [NotificationsDropdown] Erro ao buscar notificacoes no dropdown:', error)
     } finally {
@@ -151,17 +137,13 @@ export function NotificationsDropdown() {
   }
 
   useEffect(() => {
-    console.log('🚀 [NotificationsDropdown] Componente montado, buscando notificações iniciais...')
     fetchNotificacoes()
   }, [activeProfile?.id, activeProfile?.role])
 
   useEffect(() => {
-    console.log('🔄 [NotificationsDropdown] isOpen mudou para:', isOpen)
     if (isOpen) {
-      console.log('📂 [NotificationsDropdown] Central aberta, refetchando notificações...')
       fetchNotificacoes()
     } else {
-      console.log('📁 [NotificationsDropdown] Central fechada')
     }
   }, [isOpen])
 
@@ -170,25 +152,11 @@ export function NotificationsDropdown() {
   const vencidos = notificacoes.filter(n => n.tipo === 'vencido').length
   const urgentes = notificacoes.filter(n => n.tipo === 'urgente').length
 
-  console.log('📊 [NotificationsDropdown] Estado atual:', {
-    totalNotificacoes: notificacoes.length,
-    naoLidas,
-    lidas: lidasCount,
-    vencidos,
-    urgentes,
-    isOpen,
-    isLoading,
-    filterAtivo: filter,
-  })
 
   const filteredNotificacoes = notificacoes
     .filter(n => filter === 'unread' ? !n.lida : n.lida)
     .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
 
-  console.log('🎬 [NotificationsDropdown] Notificações filtradas:', {
-    filtro: filter,
-    quantidade: filteredNotificacoes.length,
-  })
 
   const marcarTodasComoLidas = async () => {
     const profileId = activeProfile?.id

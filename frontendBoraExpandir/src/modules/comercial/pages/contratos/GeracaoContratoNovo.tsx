@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { X, Loader, Check, ArrowRight, Copy, Mail, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { CONTRATOS_PDF_MOCK } from '../../lib/pdfContratos'
-import type { Cliente, ContratoFormData } from '../../../../types/comercial'
+import type { Cliente, ContratoFormData } from '@/types/comercial'
 import Toast, { useToast, ToastContainer } from '@/components/ui/Toast'
 import { getConsultoriasCount } from '../../services/comercialService'
 import { maskCpfInput, onlyDigits } from '../../../../utils/formatters'
