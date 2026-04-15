@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { Calendar, Clock, Filter, Search, X, CreditCard, FileText } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import type { Agendamento } from '../../../types/comercial'
+import type { Agendamento } from '@/types/comercial'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import { GerenciamentoAgendamentoModal } from '../../components/GerenciamentoAgendamentoModal'
 import { getCatalogServices } from '@/modules/adm/services/catalogService'

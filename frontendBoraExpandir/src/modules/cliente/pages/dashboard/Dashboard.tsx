@@ -23,7 +23,7 @@ import { RequestedActionsModal } from '../../components/forms/RequestedActionsMo
 import { RequiredActionModal } from '../../components/forms/RequiredActionModal'
 import { clienteService } from '../../services/clienteService'
 import { useEffect, useState, useMemo } from 'react'
-import type { ContratoServico } from '../../../../types/comercial'
+import type { ContratoServico } from '@/types/comercial'
 
 interface DashboardProps {
   client: Client

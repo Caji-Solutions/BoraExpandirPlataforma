@@ -12,9 +12,7 @@ export const clienteService = {
 
   async getNotificacoes(clienteId: string) {
     const result = await apiClient.get<any>(`/cliente/${clienteId}/notificacoes`);
-    console.log('[clienteService] getNotificacoes result:', result);
     const notificacoes = result?.data || result || [];
-    console.log('[clienteService] notificacoes extraídas:', notificacoes);
     return notificacoes;
   },
 
@@ -116,9 +114,7 @@ export const clienteService = {
   // Notificações para usuários (funcionários/profiles)
   async getNotificacoesUsuario(usuarioId: string) {
     const result = await apiClient.get<any>(`/usuario/${usuarioId}/notificacoes`);
-    console.log('[clienteService] getNotificacoesUsuario result:', result);
     const notificacoes = result?.data || result || [];
-    console.log('[clienteService] notificacoes de usuário extraídas:', notificacoes);
     return notificacoes;
   },
 

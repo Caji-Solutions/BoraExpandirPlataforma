@@ -156,6 +156,8 @@ export function ProcessAnalysis({
 
   // Requirement modal
   const [isReqModalOpen, setIsReqModalOpen] = useState(false);
+  const [isApproveReqModalOpen, setApproveReqModalOpen] = useState(false);
+  const [isEditReqModalOpen, setEditReqModalOpen] = useState(false);
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
 
@@ -796,14 +798,14 @@ export function ProcessAnalysis({
 
                     <div className="pt-6 border-t flex gap-4">
                       <Button
-                        onClick={() => handleUpdateRequerimento('aprovado')}
+                        onClick={() => setApproveReqModalOpen(true)}
                         disabled={isUpdatingReqStatus || selectedReq.status === 'aprovado' || selectedReq.status === 'CONCLUIDO'}
                         className="flex-1 h-12 bg-green-600 hover:bg-green-700 text-white font-bold rounded-2xl shadow-lg shadow-green-600/20"
                       >
                         {isUpdatingReqStatus ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Aprovar Requerimento'}
                       </Button>
                       <Button
-                        onClick={() => handleUpdateRequerimento('rejeitado')}
+                        onClick={() => setEditReqModalOpen(true)}
                         disabled={isUpdatingReqStatus || selectedReq.status === 'aprovado' || selectedReq.status === 'CONCLUIDO'}
                         variant="outline"
                         className="flex-1 h-12 border-2 font-bold rounded-2xl"
@@ -1331,17 +1333,89 @@ export function ProcessAnalysis({
         </DialogContent>
       </Dialog>
 
+      <Dialog open={isApproveReqModalOpen} onOpenChange={setApproveReqModalOpen}>
+        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl rounded-3xl bg-background">
+          <DialogHeader className="p-8 bg-green-50 dark:bg-green-900/10 border-b border-green-100 dark:border-green-900/30">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-green-200">
+                <CheckCircle2 className="h-6 w-6 text-green-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-2xl font-black tracking-tight text-foreground">
+                  Confirmar Aprovação
+                </DialogTitle>
+                <DialogDescription className="text-muted-foreground font-medium">
+                  Revise os documentos vinculados antes de confirmar.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="p-8 space-y-4">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Documentos Vinculados</Label>
+            <div className="space-y-2">
+              {selectedReq?.documentos?.map((doc: any) => (
+                <div key={doc.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl border border-border/50">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold">{doc.tipo}</span>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-tight">Status Atual</span>
+                  </div>
+                  <Badge variant={doc.status === 'APPROVED' ? 'success' : 'outline'} className="font-black text-[10px]">
+                    {doc.status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+            
+            <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-2xl flex gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
+              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                Ao confirmar, o status deste requerimento será alterado para <span className="font-bold">APROVADO</span> e os documentos vinculados seguirão o fluxo.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="p-8 bg-muted/10 border-t border-border/50">
+            <div className="flex gap-4 w-full">
+              <Button
+                variant="outline"
+                onClick={() => setApproveReqModalOpen(false)}
+                className="flex-1 h-12 rounded-xl font-bold"
+              >
+                Voltar
+              </Button>
+              <Button
+                onClick={async () => {
+                  await handleUpdateRequerimento('aprovado');
+                  setApproveReqModalOpen(false);
+                }}
+                className="flex-1 h-12 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-600/20"
+              >
+                Confirmar Aprovação
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <RequirementRequestModal
-        isOpen={isReqModalOpen}
-        onOpenChange={setIsReqModalOpen}
+        isOpen={isReqModalOpen || isEditReqModalOpen}
+        onOpenChange={(open) => {
+          setIsReqModalOpen(open);
+          setEditReqModalOpen(open);
+        }}
         clienteId={clienteId}
         processoId={processoId || ''}
+        requirementId={isEditReqModalOpen ? selectedReq?.id : undefined}
+        isEdit={isEditReqModalOpen}
+        initialTitle={isEditReqModalOpen ? selectedReq?.tipo : ''}
+        initialDocuments={isEditReqModalOpen ? selectedReq?.documentos?.map((d: any) => ({
+          id: d.id,
+          type: d.tipo,
+          memberId: d.dependente_id || d.cliente_id || clienteId
+        })) : []}
         members={familyMembers}
         onSuccess={() => {
           // Refresh requirements
-          if (activeTab === 'requerimentos') {
-            getRequerimentosByCliente(clienteId, membroId).then(setRequerimentos);
-          }
+          getRequerimentosByCliente(clienteId, membroId).then(setRequerimentos);
         }}
       />
 

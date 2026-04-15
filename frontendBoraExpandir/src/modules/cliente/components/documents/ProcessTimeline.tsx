@@ -57,10 +57,12 @@ function mapStatusToStep(status?: string): number {
       return 0
     case 'analise_documentos':
       return 1
-    case 'processo_protocolado':
+    case 'processo_enviado_supervisor':
       return 2
-    case 'processo_finalizado':
+    case 'processo_protocolado':
       return 3
+    case 'processo_finalizado':
+      return 4
     default:
       return 0
   }
@@ -76,9 +78,10 @@ function calcularEtapaAtual(process?: Process | null, clientStage?: string): num
   switch (clientStage) {
     case 'assessoria_iniciada': return 0
     case 'analise_documentos': return 1
-    case 'processo_protocolado': return 2
-    case 'processo_finalizado': return 3
-    case 'assessoria_finalizada': return 3
+    case 'processo_enviado_supervisor': return 2
+    case 'processo_protocolado': return 3
+    case 'processo_finalizado': return 4
+    case 'assessoria_finalizada': return 4
     default: return 0
   }
 }
@@ -88,8 +91,9 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
   const defaultSteps: ProcessStep[] = [
     { id: 0, name: "Assessoria Iniciada", description: "O time jurídico deu início oficial ao seu processo de cidadania.", status: 'pending' as const },
     { id: 1, name: "Análise de Documentos", description: "Fase de conferência, apostilamentos e traduções necessárias.", status: 'pending' as const },
-    { id: 2, name: "Processo Protocolado", description: "Seu processo foi formalmente enviado aos órgãos competentes na Europa.", status: 'pending' as const },
-    { id: 3, name: "Processo Finalizado", description: "Tutto pronto! Processo concluído com êxito.", status: 'pending' as const }
+    { id: 2, name: "Revisão do Supervisor", description: "Sua documentação foi aprovada e enviada para revisão final do supervisor antes do protocolo.", status: 'pending' as const },
+    { id: 3, name: "Processo Protocolado", description: "Seu processo foi formalmente enviado aos órgãos competentes na Europa.", status: 'pending' as const },
+    { id: 4, name: "Processo Finalizado", description: "Tutto pronto! Processo concluído com êxito.", status: 'pending' as const }
   ];
 
   // Calcular a etapa atual prioritariamente pelo status do objeto process
@@ -481,6 +485,8 @@ export function ProcessTimeline({ process, requerimentos = [], familyMembers = [
                     ? 'O time jurídico está preparando os primeiros passos. Em breve iniciaremos a análise documental.'
                     : currentProcess.currentStep === 1
                     ? 'Estamos na fase de análise e preparação da sua documentação (apostilamentos e traduções).'
+                    : currentProcess.currentStep === 2
+                    ? 'Sua documentação foi enviada para o supervisor para revisão final antes do protocolo.'
                     : currentProcess.currentStep < totalSteps
                     ? `Prossiga com a etapa "${currentProcess.steps[currentProcess.currentStep]?.name}".`
                     : 'Seu processo foi concluído com sucesso!'

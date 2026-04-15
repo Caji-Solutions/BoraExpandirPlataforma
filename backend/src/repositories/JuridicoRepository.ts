@@ -1201,6 +1201,26 @@ class JuridicoRepository {
 
         return data || []
     }
+    // Atualizar status de um requerimento
+    async updateRequerimentoStatus(requerimentoId: string, status: string, observacoes?: string): Promise<any> {
+        const { data, error } = await supabase
+            .from('requerimentos')
+            .update({
+                status,
+                observacoes: observacoes || undefined,
+                atualizado_em: new Date().toISOString()
+            })
+            .eq('id', requerimentoId)
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro ao atualizar status do requerimento:', error)
+            throw error
+        }
+
+        return data
+    }
 
     // Criar um novo processo manualmente
     async createProcess(params: {

@@ -154,7 +154,7 @@ export function DNAClientDetailView({
                 // Fetch all documents for this client (for apostille modal)
                 const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
                 const token = localStorage.getItem('auth_token')
-                const docResp = await fetch(`${baseUrl}/cliente/documentos/${client.true_id || client.id}`, {
+                const docResp = await fetch(`${baseUrl}/cliente/${client.true_id || client.id}/documentos`, {
                     headers: token ? { Authorization: `Bearer ${token}` } : {}
                 })
                 const docData = await docResp.json()
@@ -1018,6 +1018,7 @@ export function DNAClientDetailView({
                                 responsavel={client.responsavel}
                                 areaFilter={areaFilter}
                                 onActionClick={(action) => {
+                                    console.log('[DNAClientDetailView] onActionClick triggered:', action);
                                     if (action === 'solicitar_documentos') {
                                         setIsDocModalOpen(true)
                                     } else if (action === 'solicitar_formulario') {
@@ -1027,6 +1028,9 @@ export function DNAClientDetailView({
                                     } else if (action === 'solicitar_traducao') {
                                         setIsTranslationModalOpen(true)
                                     } else if (action === 'comercial_agenda') {
+                                        console.log('[DNAClientDetailView] COMERCIAL_AGENDA action clicked.');
+                                        console.log('[DNAClientDetailView] Client object to pass in state:', client?.nome, client?.id);
+                                        console.log('[DNAClientDetailView] Calling navigate to /comercial/agendamento...');
                                         navigate('/comercial/agendamento', {
                                             state: {
                                                 preSelectedClient: client,

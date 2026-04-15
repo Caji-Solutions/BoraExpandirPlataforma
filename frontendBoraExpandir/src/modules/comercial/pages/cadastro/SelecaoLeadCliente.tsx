@@ -4,7 +4,7 @@ import { ArrowLeft, Loader2, Users, Check, ChevronLeft, ChevronRight } from 'luc
 import comercialService from '../../services/comercialService'
 import { useAuth } from '../../../../contexts/AuthContext'
 import Toast, { useToast, ToastContainer } from '@/components/ui/Toast'
-import type { Cliente } from '../../../../types/comercial'
+import type { Cliente } from '@/types/comercial'
 
 interface LocationState {
   servicoId: string;

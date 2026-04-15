@@ -28,7 +28,7 @@ import {
     Upload,
     X
 } from 'lucide-react';
-import { requestRequirement, requestDocument } from '../services/juridicoService';
+import { requestRequirement, requestDocument, updateRequerimentoStatus } from '../services/juridicoService';
 import { toast } from '@/modules/shared/components/ui/sonner';
 import { ScrollArea } from '@/modules/shared/components/ui/scroll-area';
 
@@ -41,6 +41,9 @@ interface RequirementRequestModalProps {
     initialMemberId?: string;
     onSuccess?: () => void;
     initialTitle?: string;
+    initialDocuments?: { id: string, type: string, memberId: string }[];
+    isEdit?: boolean;
+    requirementId?: string;
 }
 
 const REQUIREMENT_TYPES = [
@@ -68,7 +71,10 @@ export function RequirementRequestModal({
     members = [],
     initialMemberId,
     onSuccess,
-    initialTitle = ''
+    initialTitle = '',
+    initialDocuments = [],
+    isEdit = false,
+    requirementId
 }: RequirementRequestModalProps) {
     const [identificador, setIdentificador] = useState(initialTitle);
     const [prazo, setPrazo] = useState(15);
@@ -83,7 +89,7 @@ export function RequirementRequestModal({
     }, [isOpen, initialTitle]);
 
     // List of documents to request within this requirement
-    const [documentsToRequest, setDocumentsToRequest] = useState<{ id: string, type: string, memberId: string }[]>([]);
+    const [documentsToRequest, setDocumentsToRequest] = useState<{ id: string, type: string, memberId: string }[]>(initialDocuments);
     const [newDocType, setNewDocType] = useState('');
     const [customDocName, setCustomDocName] = useState('');
     const [newDocMemberId, setNewDocMemberId] = useState(initialMemberId || members.find(m => m.isTitular)?.id || clienteId);
@@ -163,10 +169,69 @@ export function RequirementRequestModal({
         }
     };
 
+    const handleUpdate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            setIsSubmitting(true);
+            const finalNome = identificador || (documentsToRequest.length > 0 ? `Requerimento: ${documentsToRequest[0].type}` : 'Novo Requerimento');
+            
+            const formData = new FormData();
+            formData.append('clienteId', clienteId);
+            formData.append('tipo', finalNome);
+            if (processoId) formData.append('processoId', processoId);
+            if (requirementId) formData.append('requirementId', requirementId);
+
+            if (documentsToRequest.length > 0) {
+                const coupledDocs = documentsToRequest.map(doc => ({
+                    type: doc.type,
+                    memberId: doc.memberId
+                }));
+                formData.append('documentosAcoplados', JSON.stringify(coupledDocs));
+            }
+
+            files.forEach(file => {
+                formData.append('files', file);
+            });
+
+            formData.append('prazo', prazo.toString());
+
+            await requestRequirement(formData);
+
+            toast.success(isEdit ? 'Requerimento atualizado com sucesso!' : 'Requerimento criado com sucesso!');
+            onOpenChange(false);
+            if (onSuccess) onSuccess();
+        } catch (error) {
+            console.error('Erro ao processar requerimento:', error);
+            toast.error('Falha ao processar requerimento');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleCancelRequirement = async () => {
+        if (!requirementId) {
+            onOpenChange(false);
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            await updateRequerimentoStatus(requirementId, 'cancelado', 'Cancelado pelo administrador jurídico durante edição.');
+            toast.success('Requerimento cancelado com sucesso');
+            onOpenChange(false);
+            if (onSuccess) onSuccess();
+        } catch (error) {
+            console.error('Erro ao cancelar requerimento:', error);
+            toast.error('Falha ao cancelar requerimento');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden border-none shadow-2xl rounded-3xl bg-background">
-                <form onSubmit={handleSubmit} className="flex flex-col max-h-[90vh]">
+            <DialogContent className="sm:max-w-[700px] w-[95vw] p-0 overflow-hidden border-none shadow-2xl rounded-3xl bg-background">
+                <form onSubmit={isEdit ? handleUpdate : handleSubmit} className="flex flex-col max-h-[90vh]">
                     <DialogHeader className="p-8 bg-gradient-to-br from-purple-600/10 to-blue-600/5 border-b border-border/50">
                         <div className="flex items-center gap-4">
                             <div className="p-3 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-border/50">
@@ -174,7 +239,7 @@ export function RequirementRequestModal({
                             </div>
                             <div>
                                 <DialogTitle className="text-2xl font-black tracking-tight text-foreground">
-                                    Solicitação de Requerimento
+                                    {isEdit ? 'Editar Requerimento' : 'Solicitação de Requerimento'}
                                 </DialogTitle>
                                 <DialogDescription className="text-muted-foreground font-medium">
                                     Adicione documentos à solicitação e faça o upload de arquivos necessários.
@@ -195,8 +260,8 @@ export function RequirementRequestModal({
                                 </div>
 
                                 <div className="bg-muted/30 border border-dashed border-border p-4 rounded-2xl">
-                                    <div className="flex gap-2">
-                                        <div className="w-[180px]">
+                                    <div className="flex flex-col sm:flex-row gap-3">
+                                        <div className="w-full sm:w-[150px]">
                                             <Select value={newDocMemberId} onValueChange={setNewDocMemberId}>
                                                 <SelectTrigger className="h-10 rounded-lg text-xs bg-white border-border/50">
                                                     <SelectValue placeholder="Membro..." />
@@ -228,9 +293,9 @@ export function RequirementRequestModal({
                                             type="button"
                                             size="sm"
                                             onClick={handleAddDocument}
-                                            className="h-10 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/10"
+                                            className="h-10 px-6 rounded-lg bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/10 w-full sm:w-auto font-bold"
                                         >
-                                            <Plus className="h-4 w-4 mr-1" /> Add
+                                            <Plus className="h-4 w-4 mr-1" /> Adicionar
                                         </Button>
                                     </div>
 
@@ -382,33 +447,44 @@ export function RequirementRequestModal({
                         </div>
                     </ScrollArea>
 
-                    <DialogFooter className="p-8 bg-muted/10 border-t border-border/50">
-                        <div className="flex items-center justify-between w-full">
+                    <DialogFooter className="p-6 sm:p-10 bg-muted/5 border-t border-border/50">
+                        <div className="flex flex-col gap-4 w-full">
+                            <div className="flex flex-col md:flex-row gap-3 w-full">
+                                <Button
+                                    type="submit"
+                                    disabled={isSubmitting || documentsToRequest.length === 0}
+                                    className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white rounded-2xl shadow-xl shadow-purple-500/20 py-8 font-black text-xs sm:text-sm uppercase tracking-widest transition-all active:scale-95 disabled:grayscale h-16 whitespace-normal text-center leading-tight"
+                                >
+                                    {isSubmitting ? (
+                                        <>
+                                            <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+                                            Processando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <ClipboardCheck className="mr-2 h-6 w-6" />
+                                            {isEdit ? 'Atualizar Requerimento' : 'Criar Requerimento'}
+                                        </>
+                                    )}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    onClick={handleCancelRequirement}
+                                    disabled={isSubmitting}
+                                    className="flex-1 h-16 font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl shadow-red-500/20 active:scale-95 rounded-2xl transition-all whitespace-normal text-center leading-tight"
+                                >
+                                    {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Cancelar Requerimento'}
+                                </Button>
+                            </div>
                             <Button
                                 type="button"
                                 variant="ghost"
                                 onClick={() => onOpenChange(false)}
                                 disabled={isSubmitting}
-                                className="rounded-xl px-6 font-bold text-muted-foreground hover:bg-muted"
+                                className="w-full rounded-xl px-6 font-bold text-muted-foreground hover:bg-muted py-4 h-12 uppercase text-[10px] tracking-widest"
                             >
-                                Cancelar
-                            </Button>
-                            <Button
-                                type="submit"
-                                disabled={isSubmitting || documentsToRequest.length === 0}
-                                className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl px-10 shadow-xl shadow-purple-500/20 py-6 transition-all active:scale-95 disabled:grayscale"
-                            >
-                                {isSubmitting ? (
-                                    <>
-                                        <Loader2 className="mr-3 h-5 w-5 animate-spin" />
-                                        Processando...
-                                    </>
-                                ) : (
-                                    <>
-                                        <ClipboardCheck className="mr-2 h-5 w-5" />
-                                        Criar Requerimento
-                                    </>
-                                )}
+                                Voltar para Análise
                             </Button>
                         </div>
                     </DialogFooter>

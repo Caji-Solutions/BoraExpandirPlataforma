@@ -55,14 +55,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return saved ? JSON.parse(saved) : null
     })
 
-    const setImpersonatedProfile = (profile: UserProfile | null) => {
+    const setImpersonatedProfile = useCallback((profile: UserProfile | null) => {
         setImpersonatedProfileState(profile)
         if (profile) {
             sessionStorage.setItem('impersonated_profile', JSON.stringify(profile))
         } else {
             sessionStorage.removeItem('impersonated_profile')
         }
-    }
+    }, [])
 
     // Verificar token salvo ao carregar
     const checkAuth = useCallback(async () => {
@@ -103,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         checkAuth()
     }, [checkAuth])
 
-    const login = async (email: string, password: string) => {
+    const login = useCallback(async (email: string, password: string) => {
         setState(prev => ({ ...prev, loading: true, error: null }))
 
         try {
@@ -136,30 +136,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setState(prev => ({ ...prev, loading: false, error: errorMsg }))
             return { success: false, error: errorMsg }
         }
-    }
+    }, [])
 
-    const logout = () => {
+    const logout = useCallback(() => {
         localStorage.clear()
         sessionStorage.clear()
         setImpersonatedProfile(null)
         setState({ user: null, profile: null, token: null, loading: false, error: null })
         window.location.href = '/login'
-    }
+    }, [setImpersonatedProfile])
 
     const activeProfile = impersonatedProfile || state.profile
 
+    const contextValue = React.useMemo(() => ({
+        ...state,
+        login,
+        logout,
+        isAuthenticated: !!state.token && !!state.profile,
+        impersonatedProfile,
+        setImpersonatedProfile,
+        activeProfile,
+    }), [state, login, logout, impersonatedProfile, setImpersonatedProfile, activeProfile])
+
     return (
-        <AuthContext.Provider
-            value={{
-                ...state,
-                login,
-                logout,
-                isAuthenticated: !!state.token && !!state.profile,
-                impersonatedProfile,
-                setImpersonatedProfile,
-                activeProfile,
-            }}
-        >
+        <AuthContext.Provider value={contextValue}>
             {children}
         </AuthContext.Provider>
     )

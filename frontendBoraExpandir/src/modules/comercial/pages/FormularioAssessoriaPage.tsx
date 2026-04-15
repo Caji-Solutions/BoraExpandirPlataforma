@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { AlertTriangle, ArrowLeft, CheckCircle2, FileText, Loader2 } from 'lucide-react'
 import comercialService, { getConsultoriasCount } from '../services/comercialService'
 import { useToast, ToastContainer } from '@/components/ui/Toast'
-import type { ContratoServico } from '../../../types/comercial'
+import type { ContratoServico } from '@/types/comercial'
 import {
   formatCpfDisplay,
   formatPhoneDisplay,

@@ -2,6 +2,7 @@ import { supabase } from '../config/SupabaseClient'
 import type { RegisterParceiroDTO, Parceiro } from '../types/parceiro'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
+import ParceiroTermoRepository from './ParceiroTermoRepository'
 
 // Implementação temporária em memória até existir o modelo Prisma `Parceiro`.
 const store: Map<string, Parceiro> = new Map()
@@ -16,8 +17,8 @@ class ParceiroRepository {
         return result;
     }
 
-    static async register(payload: RegisterParceiroDTO): Promise<any> {
-        const { nome, email, telefone, documento, senha } = payload;
+    static async register(payload: RegisterParceiroDTO & { ipAddress?: string }): Promise<any> {
+        const { nome, email, telefone, documento, senha, ipAddress } = payload;
         const clientId = this.generateClientId();
 
         // 1. Criar Senha Hash
@@ -53,6 +54,13 @@ class ParceiroRepository {
             .single();
 
         if (cliError) throw cliError;
+
+        // 4. Registrar aceite do termo versão 1.0 (Fluxo de cadastro)
+        try {
+            await ParceiroTermoRepository.aceitar(userId, ipAddress || '0.0.0.0');
+        } catch (error) {
+            console.error('[ParceiroRepository] Erro ao registrar aceite silencioso no cadastro:', error);
+        }
 
         return cliente;
     }

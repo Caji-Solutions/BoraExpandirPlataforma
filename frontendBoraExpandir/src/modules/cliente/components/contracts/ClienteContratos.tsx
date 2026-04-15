@@ -3,7 +3,7 @@ import { AlertTriangle, Check, Copy, FileCheck, FileText, Loader2, XCircle } fro
 import { Badge } from '@/modules/shared/components/ui/badge'
 import { useToast, ToastContainer } from '@/components/ui/Toast'
 import { clienteService } from '../../services/clienteService'
-import type { ContratoServico } from '../../../../types/comercial'
+import type { ContratoServico } from '@/types/comercial'
 
 const PIX_CNPJ = '55.218.947/0001-65'
 const WISE_TAG = 'https://wise.com/pay/me/fernandaj101'

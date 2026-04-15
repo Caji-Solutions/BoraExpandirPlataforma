@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { X, Save, Link as LinkIcon, Calendar, DollarSign } from 'lucide-react'
-import type { LinkPagamentoFormData, Contrato } from '../../../types/comercial'
+import type { LinkPagamentoFormData, Contrato } from '@/types/comercial'
 
 interface GeracaoLinkPagamentoProps {
   onClose: () => void

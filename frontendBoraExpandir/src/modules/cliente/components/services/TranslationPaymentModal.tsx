@@ -67,11 +67,13 @@ export function TranslationQuoteModal({
       
       const docIdToUse = documentoId || (candidates.length > 0 ? candidates[0].id : '')
       
-      const budget = (await traducoesService.getOrcamentoByDocumento(docIdToUse)) as any
-      if (budget) {
-        setAllBudgets({ [docIdToUse]: budget })
-        if (budget.status === 'pendente_verificacao') {
-          setStep('waiting_confirmation')
+      if (docIdToUse) {
+        const budget = (await traducoesService.getOrcamentoByDocumento(docIdToUse)) as any
+        if (budget) {
+          setAllBudgets({ [docIdToUse]: budget })
+          if (budget.status === 'pendente_verificacao') {
+            setStep('waiting_confirmation')
+          }
         }
       }
       

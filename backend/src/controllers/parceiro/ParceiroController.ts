@@ -9,8 +9,15 @@ class ParceiroController {
         try {
 
             const payload = req.body;
-            console.log('Payload recebido no ParceiroController:', payload);
-            const parceiro = await ParceiroRepository.register(payload);
+            // Extrair IP do cliente
+            const forwarded = req.headers['x-forwarded-for'];
+            const remoteAddr = req.socket.remoteAddress;
+            const ipAddress = (typeof forwarded === 'string' ? forwarded.split(',')[0] : forwarded?.[0]) || remoteAddr || '0.0.0.0';
+            
+            console.log(`[ParceiroController] Registro iniciado. IP: ${ipAddress} (Forwarded: ${forwarded}, Remote: ${remoteAddr})`);
+            console.log('Payload recebido:', payload.email);
+
+            const parceiro = await ParceiroRepository.register({ ...payload, ipAddress });
             return res.status(201).json(parceiro);
         } catch (error: any) {
             console.error('Erro ao cadastrar parceiro:', error);

@@ -100,7 +100,7 @@ juridico.post('/assessoria-direta/:id/finalizar', AssessoriaDiretaController.fin
 juridico.post('/documentos/solicitar', JuridicoController.solicitarDocumento.bind(JuridicoController))
 juridico.get('/requerimentos', JuridicoController.getRequerimentos.bind(JuridicoController))
 juridico.post('/requerimentos/solicitar', upload.array('files'), JuridicoController.solicitarRequerimento.bind(JuridicoController))
-juridico.delete('/requerimento/:id', JuridicoController.deleteRequerimento.bind(JuridicoController))
+juridico.patch('/requerimentos/:requerimentoId/status', JuridicoController.updateRequerimentoStatus.bind(JuridicoController))
 
 // =============================================
 // ROTAS DE FORMULÁRIOS DO JURÍDICO (enviados para clientes)

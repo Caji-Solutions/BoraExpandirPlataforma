@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { X, CheckCircle, PenTool } from 'lucide-react'
-import type { Contrato } from '../../../types/comercial'
+import type { Contrato } from '@/types/comercial'
 
 interface AssinaturaDigitalProps {
   contrato: Contrato

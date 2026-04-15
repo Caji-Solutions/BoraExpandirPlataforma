@@ -157,7 +157,7 @@ export function DNAClientDetailView({
                     }
                 } else {
                     // Tenta buscar por cliente se não houver processo
-                    const result = await apiClient.get<{ data: ClientDocument[] }>(`/cliente/documentos/${client.true_id || client.id}`)
+                    const result = await apiClient.get<{ data: ClientDocument[] }>(`/cliente/${client.true_id || client.id}/documentos`)
                     console.log(`[DNAClientDetailView] Loaded ${result.data?.length || 0} documents from client direct fetch`);
                     setClientDocuments(result.data || [])
                 }
