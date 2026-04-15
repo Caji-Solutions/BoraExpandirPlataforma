@@ -9,13 +9,17 @@ import {
     FilePlus,
     CheckCircle2,
     AlertCircle,
-    User
+    User,
+    Trash2
 } from 'lucide-react'
 import { Button } from '@/modules/shared/components/ui/button'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import { clienteService } from '../../cliente/services/clienteService'
 import { formatDate } from '../../cliente/lib/utils'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/contexts/AuthContext'
+import juridicoService from '../services/juridicoService'
+import { toast } from 'sonner'
 
 interface FamilyMember {
     id: string
@@ -38,9 +42,27 @@ export function RequirementsSection({
     onAddRequirement,
     onAddDocumentToRequirement
 }: RequirementsSectionProps) {
+    const { activeProfile } = useAuth()
+    const isSupervisor = activeProfile?.is_supervisor === true || activeProfile?.role === 'super_admin'
     const [isExpanded, setIsExpanded] = useState(true)
     const [requirements, setRequirements] = useState<any[]>([])
     const [isLoading, setIsLoading] = useState(false)
+    const [deletingId, setDeletingId] = useState<string | null>(null)
+
+    const handleDelete = async (reqId: string) => {
+        if (!window.confirm('Cancelar este requerimento? Ele será removido permanentemente.')) return
+        setDeletingId(reqId)
+        try {
+            await juridicoService.deleteRequerimento(reqId)
+            setRequirements(prev => prev.filter(r => r.id !== reqId))
+            toast.success('Requerimento cancelado.')
+        } catch (error: any) {
+            console.error('Erro ao cancelar requerimento:', error)
+            toast.error(error?.response?.data?.message || 'Erro ao cancelar requerimento.')
+        } finally {
+            setDeletingId(null)
+        }
+    }
 
     useEffect(() => {
         const fetchAllRequirements = async () => {
@@ -153,15 +175,32 @@ export function RequirementsSection({
                                                     </div>
                                                 </div>
                                             </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => onAddDocumentToRequirement?.(req.id)}
-                                                className="h-8 px-2 text-blue-600 hover:bg-blue-50 font-bold text-[10px] uppercase"
-                                            >
-                                                <FilePlus className="h-3.5 w-3.5 mr-1" />
-                                                Add Doc
-                                            </Button>
+                                            <div className="flex items-center gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => onAddDocumentToRequirement?.(req.id)}
+                                                    className="h-8 px-2 text-blue-600 hover:bg-blue-50 font-bold text-[10px] uppercase"
+                                                >
+                                                    <FilePlus className="h-3.5 w-3.5 mr-1" />
+                                                    Add Doc
+                                                </Button>
+                                                {(isSupervisor || req.criador_id === activeProfile?.id) && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        disabled={deletingId === req.id}
+                                                        onClick={() => handleDelete(req.id)}
+                                                        className="h-8 px-2 text-red-500 hover:bg-red-50 hover:text-red-600 font-bold text-[10px] uppercase"
+                                                    >
+                                                        {deletingId === req.id ? (
+                                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                        ) : (
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        )}
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* Linked Documents Mini List */}

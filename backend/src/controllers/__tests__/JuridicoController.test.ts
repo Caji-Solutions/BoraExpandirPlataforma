@@ -856,6 +856,54 @@ describe('JuridicoController - atualizarProtocolo', () => {
 });
 
 // =============================================
+// marcarProtocolado
+// =============================================
+
+describe('JuridicoController - marcarProtocolado', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('deve marcar processo como protocolado com sucesso', async () => {
+        const mockProcesso = { id: 'proc-1', status: 'processo_protocolado' };
+        (JuridicoRepository.marcarProcessoProtocolado as any).mockResolvedValue(mockProcesso);
+
+        const req: any = { params: { id: 'proc-1' } };
+        const res = makeRes();
+        await JuridicoController.marcarProtocolado(req, res);
+
+        expect(JuridicoRepository.marcarProcessoProtocolado).toHaveBeenCalledWith('proc-1');
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({
+            message: 'Processo marcado como protocolado com sucesso',
+            data: mockProcesso
+        });
+    });
+
+    it('deve retornar 400 quando id nao fornecido', async () => {
+        const req: any = { params: {} };
+        const res = makeRes();
+        await JuridicoController.marcarProtocolado(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({ message: 'id e obrigatorio' });
+    });
+
+    it('deve retornar 500 quando houver erro ao marcar como protocolado', async () => {
+        (JuridicoRepository.marcarProcessoProtocolado as any).mockRejectedValue(new Error('db error'));
+
+        const req: any = { params: { id: 'proc-1' } };
+        const res = makeRes();
+        await JuridicoController.marcarProtocolado(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(500);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            message: 'Erro ao marcar processo como protocolado'
+        }));
+    });
+});
+
+// =============================================
 // createAssessoria - stage update to assessoria_andamento
 // =============================================
 

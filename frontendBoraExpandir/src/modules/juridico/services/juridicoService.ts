@@ -505,6 +505,20 @@ export async function enviarParaProtocolacao(processoId: string, supervisorId: s
 }
 
 /**
+ * Supervisor confirma protocolo (move para processo_protocolado)
+ */
+export async function marcarProcessoProtocolado(processoId: string): Promise<any> {
+  return apiClient.put(`/juridico/processo/${processoId}/marcar-protocolado`, {});
+}
+
+/**
+ * Cancela/deleta um requerimento (apenas criador ou supervisor)
+ */
+export async function deleteRequerimento(requerimentoId: string): Promise<any> {
+  return apiClient.delete(`/juridico/requerimento/${requerimentoId}`);
+}
+
+/**
  * Envia arquivo administrativo de um documento (preserva o original do cliente)
  */
 export async function uploadAdminDocument(
@@ -593,5 +607,7 @@ export default {
     getProcessosProtocolados,
     getProcessoProtocoladoDetails,
     enviarParaProtocolacao,
+    marcarProcessoProtocolado,
+    deleteRequerimento,
     finalizarProcesso,
 };
