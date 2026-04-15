@@ -51,37 +51,24 @@ describe('ClienteRepository - createDependent (parentesco como texto)', () => {
         expect(insertedRecord.parentesco).toBe('Tutor Legal');
     });
 
-    it('deve omitir parentesco quando valor e string vazia', async () => {
-        const mockData = {
-            id: 'dep-2',
-            cliente_id: 'cli-1',
-            nome_completo: 'Joao Silva',
-            status: 'ativo'
-        };
-        mockSupabaseInsert({ data: mockData, error: null });
-
-        await ClienteRepository.createDependent({
-            clienteId: 'cli-1',
-            nomeCompleto: 'Joao Silva',
-            parentesco: ''
-        });
-
-        const insertedRecord = (supabase.from as any).mock.results[0].value.insert.mock.calls[0][0][0];
-        expect(insertedRecord).not.toHaveProperty('parentesco');
+    it('deve lancar erro quando parentesco e string vazia para tipo dependente', async () => {
+        await expect(
+            ClienteRepository.createDependent({
+                clienteId: 'cli-1',
+                nomeCompleto: 'Joao Silva',
+                parentesco: ''
+            })
+        ).rejects.toThrow('parentesco obrigatorio para dependente');
     });
 
-    it('deve omitir parentesco quando valor e apenas espacos', async () => {
-        const mockData = { id: 'dep-3', cliente_id: 'cli-1', nome_completo: 'Ana', status: 'ativo' };
-        mockSupabaseInsert({ data: mockData, error: null });
-
-        await ClienteRepository.createDependent({
-            clienteId: 'cli-1',
-            nomeCompleto: 'Ana',
-            parentesco: '   '
-        });
-
-        const insertedRecord = (supabase.from as any).mock.results[0].value.insert.mock.calls[0][0][0];
-        expect(insertedRecord).not.toHaveProperty('parentesco');
+    it('deve lancar erro quando parentesco e apenas espacos para tipo dependente', async () => {
+        await expect(
+            ClienteRepository.createDependent({
+                clienteId: 'cli-1',
+                nomeCompleto: 'Ana',
+                parentesco: '   '
+            })
+        ).rejects.toThrow('parentesco obrigatorio para dependente');
     });
 
     it('deve salvar parentesco padrao (ex: "filho") como texto simples', async () => {
@@ -130,22 +117,42 @@ describe('ClienteRepository - createDependent (parentesco como texto)', () => {
         await expect(
             ClienteRepository.createDependent({
                 clienteId: 'cli-1',
-                nomeCompleto: 'Erro Test'
+                nomeCompleto: 'Erro Test',
+                parentesco: 'Filho'
             })
         ).rejects.toEqual({ message: 'insert failed' });
     });
 
-    it('deve omitir parentesco quando undefined', async () => {
-        const mockData = { id: 'dep-6', cliente_id: 'cli-1', nome_completo: 'Sem Parentesco', status: 'ativo' };
-        mockSupabaseInsert({ data: mockData, error: null });
+    it('deve lancar erro quando parentesco e undefined para tipo dependente', async () => {
+        await expect(
+            ClienteRepository.createDependent({
+                clienteId: 'cli-1',
+                nomeCompleto: 'Sem Parentesco'
+            })
+        ).rejects.toThrow('parentesco obrigatorio para dependente');
+    });
+
+    it('deve permitir parentesco vazio para titular_adicional e usar "Titular" como padrao', async () => {
+        const mockData = {
+            id: 'dep-7',
+            cliente_id: 'cli-1',
+            nome_completo: 'Titular Sem Parentesco',
+            parentesco: 'Titular',
+            tipo: 'titular_adicional',
+            status: 'ativo'
+        };
+        const { mockInsert } = mockSupabaseInsert({ data: mockData, error: null });
 
         await ClienteRepository.createDependent({
             clienteId: 'cli-1',
-            nomeCompleto: 'Sem Parentesco'
+            nomeCompleto: 'Titular Sem Parentesco',
+            parentesco: '',
+            tipo: 'titular_adicional'
         });
 
-        const insertedRecord = (supabase.from as any).mock.results[0].value.insert.mock.calls[0][0][0];
-        expect(insertedRecord).not.toHaveProperty('parentesco');
+        const insertedRecord = mockInsert.mock.calls[0][0][0];
+        expect(insertedRecord.parentesco).toBe('Titular');
+        expect(insertedRecord.tipo).toBe('titular_adicional');
     });
 });
 
@@ -155,10 +162,10 @@ describe('ClienteRepository - tipo discriminador (dependente vs titular_adiciona
     });
 
     it('deve inserir tipo = "dependente" por padrao quando tipo nao e passado', async () => {
-        const mockData = { id: 'dep-10', cliente_id: 'cli-1', nome_completo: 'Padrao', tipo: 'dependente', status: 'ativo' };
+        const mockData = { id: 'dep-10', cliente_id: 'cli-1', nome_completo: 'Padrao', tipo: 'dependente', parentesco: 'Filho', status: 'ativo' };
         const { mockInsert } = mockSupabaseInsert({ data: mockData, error: null });
 
-        await ClienteRepository.createDependent({ clienteId: 'cli-1', nomeCompleto: 'Padrao' });
+        await ClienteRepository.createDependent({ clienteId: 'cli-1', nomeCompleto: 'Padrao', parentesco: 'Filho' });
 
         const record = mockInsert.mock.calls[0][0][0];
         expect(record.tipo).toBe('dependente');
@@ -179,12 +186,13 @@ describe('ClienteRepository - tipo discriminador (dependente vs titular_adiciona
     });
 
     it('deve inserir tipo = "dependente" quando passado explicitamente', async () => {
-        const mockData = { id: 'dep-12', cliente_id: 'cli-1', nome_completo: 'Dep Explicito', tipo: 'dependente', status: 'ativo' };
+        const mockData = { id: 'dep-12', cliente_id: 'cli-1', nome_completo: 'Dep Explicito', tipo: 'dependente', parentesco: 'Conjuge', status: 'ativo' };
         const { mockInsert } = mockSupabaseInsert({ data: mockData, error: null });
 
         await ClienteRepository.createDependent({
             clienteId: 'cli-1',
             nomeCompleto: 'Dep Explicito',
+            parentesco: 'Conjuge',
             tipo: 'dependente'
         });
 
