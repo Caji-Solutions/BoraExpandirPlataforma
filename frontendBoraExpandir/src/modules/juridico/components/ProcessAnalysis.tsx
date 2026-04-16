@@ -124,8 +124,6 @@ export function ProcessAnalysis({
   membroId,
   processoId,
   documents: initialDocs,
-  isProcessFullyApproved,
-  onSendProtocol,
   onBack,
   onUpdateDocument
 }: ProcessAnalysisProps) {
@@ -481,15 +479,6 @@ export function ProcessAnalysis({
                 VISUALIZANDO DOCUMENTOS DE: <span className="text-blue-500 uppercase">{memberName}</span>
               </p>
             </div>
-            {isProcessFullyApproved && onSendProtocol && (
-               <Button 
-                   onClick={onSendProtocol}
-                   className="ml-auto bg-green-600 hover:bg-green-700 text-white shadow-sm hover:shadow-green-200 transition-all font-bold text-xs h-9 px-4 rounded-xl shrink-0"
-               >
-                   <Send className="w-3.5 h-3.5 mr-1.5" />
-                   Enviar para Protocolar
-               </Button>
-            )}
           </div>
 
           {/* Row 2: Visual Pipeline */}

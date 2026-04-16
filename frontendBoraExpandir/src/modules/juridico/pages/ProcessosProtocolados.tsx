@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileCheck, Search, Folder, User, ClipboardList, AlertCircle } from 'lucide-react';
+import { FileCheck, Search, ClipboardList, Send, Loader2 } from 'lucide-react';
 import { Badge } from '@/modules/shared/components/ui/badge';
 import { Button } from '@/modules/shared/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/modules/shared/components/ui/tabs';
+import { toast } from 'sonner';
 import juridicoService, { Processo } from '../services/juridicoService';
 import { cn } from '@/lib/utils';
 
@@ -12,7 +13,8 @@ export function ProcessosProtocolados() {
   const [processos, setProcessos] = useState<Processo[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('protocolados');
+  const [activeTab, setActiveTab] = useState('nao_protocolados');
+  const [protocolandoId, setProtocolandoId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetch = async () => {
@@ -29,12 +31,12 @@ export function ProcessosProtocolados() {
     fetch();
   }, []);
 
-  const protocolados = useMemo(() => 
-    processos.filter(p => p.status === 'processo_protocolado'), 
+  const protocolados = useMemo(() =>
+    processos.filter(p => p.status === 'processo_protocolado'),
   [processos]);
 
-  const naoProtocolados = useMemo(() => 
-    processos.filter(p => p.status !== 'processo_protocolado'), 
+  const naoProtocolados = useMemo(() =>
+    processos.filter(p => p.status !== 'processo_protocolado'),
   [processos]);
 
   const getFilteredList = (list: Processo[]) => {
@@ -48,6 +50,24 @@ export function ProcessosProtocolados() {
 
   const filteredProtocolados = getFilteredList(protocolados);
   const filteredNaoProtocolados = getFilteredList(naoProtocolados);
+
+  const handleProtocolar = async (e: React.MouseEvent, processoId: string) => {
+    e.stopPropagation();
+    setProtocolandoId(processoId);
+    try {
+      await juridicoService.marcarProcessoProtocolado(processoId);
+      setProcessos(prev =>
+        prev.map(p => p.id === processoId ? { ...p, status: 'processo_protocolado' } : p)
+      );
+      setActiveTab('protocolados');
+      toast.success('Processo protocolado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao protocolar processo:', error);
+      toast.error('Erro ao protocolar processo. Tente novamente.');
+    } finally {
+      setProtocolandoId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -75,6 +95,7 @@ export function ProcessosProtocolados() {
             : '-';
 
           const isProtocolado = processo.status === 'processo_protocolado';
+          const isProtocolando = protocolandoId === processo.id;
 
           return (
             <div
@@ -112,14 +133,14 @@ export function ProcessosProtocolados() {
               </div>
 
               <div className="col-span-2 text-center">
-                <Badge 
-                  variant="outline" 
+                <Badge
+                  variant="outline"
                   className={cn(
                     "text-[10px] uppercase font-bold tracking-tight",
                     isProtocolado ? "border-green-200 bg-green-50 text-green-700" : "border-amber-200 bg-amber-50 text-amber-700"
                   )}
                 >
-                  {processo.status?.replace('_', ' ') || 'Pendente'}
+                  {processo.status?.replace(/_/g, ' ') || 'Pendente'}
                 </Badge>
               </div>
 
@@ -128,12 +149,30 @@ export function ProcessosProtocolados() {
               </div>
 
               <div className="col-span-2 flex justify-center">
-                <Button
-                  size="sm"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 text-[10px] font-bold h-8 px-4 rounded-xl shadow-sm group-hover:scale-105 transition-all"
-                >
-                  Ver Detalhes
-                </Button>
+                {type === 'nao_protocolados' ? (
+                  <Button
+                    size="sm"
+                    disabled={isProtocolando}
+                    className="bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold h-8 px-4 rounded-xl shadow-sm group-hover:scale-105 transition-all"
+                    onClick={(e) => handleProtocolar(e, processo.id)}
+                  >
+                    {isProtocolando ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <>
+                        <Send className="h-3 w-3 mr-1" />
+                        Protocolar
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 text-[10px] font-bold h-8 px-4 rounded-xl shadow-sm group-hover:scale-105 transition-all"
+                  >
+                    Ver Detalhes
+                  </Button>
+                )}
               </div>
             </div>
           );
@@ -185,8 +224,8 @@ export function ProcessosProtocolados() {
                 className="w-full pl-12 pr-4 py-3 bg-muted/50 border-2 border-transparent focus:border-primary/20 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/5 shadow-inner text-sm"
               />
             </div>
-            
-            <Tabs defaultValue="protocolados" className="w-full md:w-auto" onValueChange={setActiveTab}>
+
+            <Tabs defaultValue="nao_protocolados" className="w-full md:w-auto" onValueChange={setActiveTab} value={activeTab}>
               <TabsList className="grid grid-cols-2 w-full md:w-[400px] h-12 bg-muted/50 rounded-xl p-1">
                 <TabsTrigger value="protocolados" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md transition-all">
                   <FileCheck className="w-4 h-4 mr-2" />

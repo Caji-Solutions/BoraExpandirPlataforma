@@ -1147,6 +1147,46 @@ class JuridicoRepository {
         return data || []
     }
 
+    // Deletar um requerimento (apenas criador ou supervisor)
+    async deleteRequerimento(requerimentoId: string, userId: string): Promise<void> {
+        // Buscar o requerimento para verificar autorização
+        const { data: req, error: fetchError } = await supabase
+            .from('requerimentos')
+            .select('id, criador_id')
+            .eq('id', requerimentoId)
+            .single()
+
+        if (fetchError || !req) {
+            throw new Error('Requerimento não encontrado')
+        }
+
+        // Verificar se usuário é o criador
+        const isCriador = req.criador_id === userId
+
+        // Verificar se usuário é supervisor do jurídico
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('is_supervisor, role')
+            .eq('id', userId)
+            .single()
+
+        const isSupervisor = profile?.role === 'juridico' && profile?.is_supervisor === true
+
+        if (!isCriador && !isSupervisor) {
+            throw new Error('Sem permissão para cancelar este requerimento')
+        }
+
+        const { error } = await supabase
+            .from('requerimentos')
+            .delete()
+            .eq('id', requerimentoId)
+
+        if (error) {
+            console.error('Erro ao deletar requerimento:', error)
+            throw error
+        }
+    }
+
     // Buscar todos os requerimentos
     async getAllRequerimentos(): Promise<any[]> {
         const { data, error } = await supabase
@@ -1514,7 +1554,7 @@ class JuridicoRepository {
         const { data, error } = await supabase
             .from('processos')
             .update({
-                status: 'processo_protocolado', // Alterado conforme novos status do enum
+                status: 'processo_enviado_supervisor',
                 responsavel_id: supervisorId,
                 atualizado_em: new Date().toISOString()
             })
@@ -1524,6 +1564,26 @@ class JuridicoRepository {
 
         if (error) {
             console.error('Erro ao enviar processo para protocolacao:', error)
+            throw error
+        }
+
+        return data
+    }
+
+    // Marcar processo como protocolado (supervisor confirma protocolo)
+    async marcarProcessoProtocolado(processoId: string): Promise<any> {
+        const { data, error } = await supabase
+            .from('processos')
+            .update({
+                status: 'processo_protocolado',
+                atualizado_em: new Date().toISOString()
+            })
+            .eq('id', processoId)
+            .select()
+            .single()
+
+        if (error) {
+            console.error('Erro ao marcar processo como protocolado:', error)
             throw error
         }
 

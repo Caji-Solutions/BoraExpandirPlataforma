@@ -856,6 +856,54 @@ describe('JuridicoController - atualizarProtocolo', () => {
 });
 
 // =============================================
+// marcarProtocolado
+// =============================================
+
+describe('JuridicoController - marcarProtocolado', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('deve marcar processo como protocolado com sucesso', async () => {
+        const mockProcesso = { id: 'proc-1', status: 'processo_protocolado' };
+        (JuridicoRepository.marcarProcessoProtocolado as any).mockResolvedValue(mockProcesso);
+
+        const req: any = { params: { id: 'proc-1' } };
+        const res = makeRes();
+        await JuridicoController.marcarProtocolado(req, res);
+
+        expect(JuridicoRepository.marcarProcessoProtocolado).toHaveBeenCalledWith('proc-1');
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({
+            message: 'Processo marcado como protocolado com sucesso',
+            data: mockProcesso
+        });
+    });
+
+    it('deve retornar 400 quando id nao fornecido', async () => {
+        const req: any = { params: {} };
+        const res = makeRes();
+        await JuridicoController.marcarProtocolado(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({ message: 'id e obrigatorio' });
+    });
+
+    it('deve retornar 500 quando houver erro ao marcar como protocolado', async () => {
+        (JuridicoRepository.marcarProcessoProtocolado as any).mockRejectedValue(new Error('db error'));
+
+        const req: any = { params: { id: 'proc-1' } };
+        const res = makeRes();
+        await JuridicoController.marcarProtocolado(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(500);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            message: 'Erro ao marcar processo como protocolado'
+        }));
+    });
+});
+
+// =============================================
 // createAssessoria - stage update to assessoria_andamento
 // =============================================
 
@@ -969,5 +1017,68 @@ describe('JuridicoController - createAssessoria (stage update)', () => {
 
         // Should still succeed - stage update failure is non-blocking
         expect(res.status).toHaveBeenCalledWith(201);
+    });
+});
+
+// =============================================
+// deleteRequerimento
+// =============================================
+
+describe('JuridicoController - deleteRequerimento', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('deve retornar 400 se id nao fornecido', async () => {
+        const req: any = { params: {}, userId: 'user-1' };
+        const res = makeRes();
+        await JuridicoController.deleteRequerimento(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith({ message: 'id e obrigatorio' });
+    });
+
+    it('deve retornar 200 ao deletar requerimento com sucesso', async () => {
+        (JuridicoRepository.deleteRequerimento as any).mockResolvedValue(undefined);
+
+        const req: any = { params: { id: 'req-1' }, userId: 'user-1' };
+        const res = makeRes();
+        await JuridicoController.deleteRequerimento(req, res);
+
+        expect(JuridicoRepository.deleteRequerimento).toHaveBeenCalledWith('req-1', 'user-1');
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(res.json).toHaveBeenCalledWith({
+            message: 'Requerimento cancelado com sucesso'
+        });
+    });
+
+    it('deve retornar 403 quando usuario nao tem permissao', async () => {
+        (JuridicoRepository.deleteRequerimento as any).mockRejectedValue(
+            new Error('Sem permissão para cancelar este requerimento')
+        );
+
+        const req: any = { params: { id: 'req-1' }, userId: 'user-2' };
+        const res = makeRes();
+        await JuridicoController.deleteRequerimento(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(403);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            message: 'Sem permissão para cancelar este requerimento'
+        }));
+    });
+
+    it('deve retornar 500 quando houver erro generico ao deletar', async () => {
+        (JuridicoRepository.deleteRequerimento as any).mockRejectedValue(
+            new Error('db error')
+        );
+
+        const req: any = { params: { id: 'req-1' }, userId: 'user-1' };
+        const res = makeRes();
+        await JuridicoController.deleteRequerimento(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(500);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            message: 'db error'
+        }));
     });
 });

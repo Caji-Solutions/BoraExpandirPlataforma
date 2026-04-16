@@ -112,4 +112,51 @@ describe('ApostilamentoController - uploadApostilado', () => {
             })
         );
     });
+
+    it('deve sanitizar nome do arquivo removendo acentos e caracteres especiais', async () => {
+        (ApostilamentoRepository.uploadApostilado as any).mockResolvedValue({ id: 'apost-50' });
+
+        const req: any = {
+            params: { id: 'apost-50' },
+            file: {
+                originalname: 'certidão_número (1).pdf',
+                buffer: Buffer.from('content'),
+                mimetype: 'application/pdf'
+            }
+        };
+        const res = makeRes();
+
+        await ApostilamentoController.uploadApostilado(req, res);
+
+        expect(ApostilamentoRepository.uploadApostilado).toHaveBeenCalledWith(
+            expect.objectContaining({
+                filePath: 'apostilados/apost-50/certidao_numero__1_.pdf',
+                nomeOriginal: 'certidão_número (1).pdf'
+            })
+        );
+        expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('deve sanitizar nome com espacos e caracteres unicode', async () => {
+        (ApostilamentoRepository.uploadApostilado as any).mockResolvedValue({ id: 'apost-51' });
+
+        const req: any = {
+            params: { id: 'apost-51' },
+            file: {
+                originalname: 'contrato André & Maria.pdf',
+                buffer: Buffer.from('content'),
+                mimetype: 'application/pdf'
+            }
+        };
+        const res = makeRes();
+
+        await ApostilamentoController.uploadApostilado(req, res);
+
+        expect(ApostilamentoRepository.uploadApostilado).toHaveBeenCalledWith(
+            expect.objectContaining({
+                filePath: 'apostilados/apost-51/contrato_Andre___Maria.pdf',
+                nomeOriginal: 'contrato André & Maria.pdf'
+            })
+        );
+    });
 });

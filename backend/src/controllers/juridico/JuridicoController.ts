@@ -748,6 +748,31 @@ class JuridicoController {
         }
     }
 
+    // DELETE /juridico/requerimento/:id - Cancelar/deletar requerimento
+    async deleteRequerimento(req: any, res: any) {
+        try {
+            const { id } = req.params
+            const userId = req.userId
+
+            if (!id) {
+                return res.status(400).json({ message: 'id e obrigatorio' })
+            }
+
+            await JuridicoRepository.deleteRequerimento(id, userId)
+
+            return res.status(200).json({
+                message: 'Requerimento cancelado com sucesso'
+            })
+        } catch (error: any) {
+            console.error('Erro ao deletar requerimento:', error)
+            const isAuthError = error.message === 'Sem permissão para cancelar este requerimento'
+            return res.status(isAuthError ? 403 : 500).json({
+                message: error.message || 'Erro ao cancelar requerimento',
+                error: error.message
+            })
+        }
+    }
+
     // GET /juridico/requerimentos - Listar requerimentos
     async getRequerimentos(_req: any, res: any) {
         try {
@@ -1765,6 +1790,30 @@ class JuridicoController {
                 message: error.message || 'Erro ao enviar processo para protocolacao',
                 error: error.message,
                 details: error.details
+            })
+        }
+    }
+
+    // PUT /juridico/processo/:id/marcar-protocolado - Supervisor confirma protocolo
+    async marcarProtocolado(req: any, res: any) {
+        try {
+            const { id } = req.params
+
+            if (!id) {
+                return res.status(400).json({ message: 'id e obrigatorio' })
+            }
+
+            const processo = await JuridicoRepository.marcarProcessoProtocolado(id)
+
+            return res.status(200).json({
+                message: 'Processo marcado como protocolado com sucesso',
+                data: processo
+            })
+        } catch (error: any) {
+            console.error('Erro ao marcar processo como protocolado:', error)
+            return res.status(500).json({
+                message: 'Erro ao marcar processo como protocolado',
+                error: error.message
             })
         }
     }

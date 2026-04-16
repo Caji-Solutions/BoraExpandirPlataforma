@@ -155,6 +155,9 @@ juridico.get('/processo/:id/protocolado', JuridicoController.getProcessoProtocol
 // Enviar processo para protocolação
 juridico.post('/processo/:id/enviar-protocolacao', JuridicoController.enviarParaProtocolacao.bind(JuridicoController))
 
+// Supervisor confirma protocolo (move para processo_protocolado)
+juridico.put('/processo/:id/marcar-protocolado', JuridicoController.marcarProtocolado.bind(JuridicoController))
+
 // Atualizar detalhes da protocolação
 juridico.put('/processo/:id/atualizar-protocolo', JuridicoController.atualizarProtocolo.bind(JuridicoController))
 

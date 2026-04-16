@@ -27,6 +27,7 @@ export function ProcessoProtocoladoDetalhes() {
   const [loading, setLoading] = useState(true);
   const [isFinishing, setIsFinishing] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
+  const [hasOpenRequirements, setHasOpenRequirements] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -39,18 +40,23 @@ export function ProcessoProtocoladoDetalhes() {
         if (data?.cliente_id) {
           let deps: any[] = [];
           let dna: any = {};
+          let reqs: any[] = [];
           try {
             const results = await Promise.all([
               juridicoService.getDependentes(data.cliente_id),
-              juridicoService.getClienteDNA(data.cliente_id)
+              juridicoService.getClienteDNA(data.cliente_id),
+              juridicoService.getRequerimentosByCliente(data.cliente_id)
             ]);
             deps = results[0] || [];
             dna = results[1] || {};
+            reqs = results[2] || [];
           } catch(e) {
              console.warn('Erro parcial ao carregar complementares do protocolo', e);
           }
           setDependentes(deps);
           setClienteDna(dna);
+          const openStatuses = ['pendente', 'em_andamento', 'aguardando'];
+          setHasOpenRequirements(reqs.some((r: any) => openStatuses.includes(r.status?.toLowerCase())));
         }
       } catch (error) {
         console.error('Erro ao buscar detalhes do processo protocolado:', error);
@@ -292,18 +298,19 @@ export function ProcessoProtocoladoDetalhes() {
           <div className="flex items-center justify-between px-2">
             <h2 className="text-xl font-bold tracking-tight text-foreground">Dossiê do Processo</h2>
             
-            {processo.status !== 'processo_finalizado' && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button 
-                    variant="default" 
-                    disabled={isFinishing}
-                    className="bg-green-600 hover:bg-green-700 text-white font-bold gap-2 shadow-lg hover:shadow-xl transition-all"
-                  >
-                    <FileCheck className="h-4 w-4" />
-                    Finalizar Processo
-                  </Button>
-                </AlertDialogTrigger>
+            {processo.status === 'processo_protocolado' && (
+              <div className="flex flex-col items-end gap-1">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="default"
+                      disabled={isFinishing || hasOpenRequirements}
+                      className="bg-green-600 hover:bg-green-700 text-white font-bold gap-2 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <FileCheck className="h-4 w-4" />
+                      Finalizar Processo
+                    </Button>
+                  </AlertDialogTrigger>
                 <AlertDialogContent className="rounded-3xl border-2">
                   <AlertDialogHeader>
                     <div className="flex items-center gap-2 text-amber-600 mb-2">
@@ -325,6 +332,13 @@ export function ProcessoProtocoladoDetalhes() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+              {hasOpenRequirements && (
+                <p className="text-[10px] font-bold text-amber-600 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  Bloqueado por Requerimento
+                </p>
+              )}
+              </div>
             )}
           </div>
           
