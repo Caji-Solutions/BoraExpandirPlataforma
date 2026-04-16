@@ -124,5 +124,14 @@ export const clienteService = {
 
   async markAllNotificacoesAsReadUsuario(usuarioId: string) {
     return apiClient.post<any>(`/usuario/${usuarioId}/notificacoes/read-all`);
+  },
+  
+  async createNotificacao(clienteId: string, data: { titulo: string; mensagem: string; tipo?: string; data_prazo?: Date }) {
+    return apiClient.post<any>(`/cliente/${clienteId}/notificacoes`, data);
+  },
+
+  async getPagamentos(clienteId: string) {
+    const result = await apiClient.get<ApiResponse>(`/cliente/${clienteId}/pagamentos`);
+    return result.data || [];
   }
 };

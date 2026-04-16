@@ -21,6 +21,36 @@ const PIX_CNPJ = '55.218.947/0001-65'
 const WISE_TAG = 'https://wise.com/pay/me/fernandaj101'
 const VALOR_UNITARIO_APOSTILA = 180
 
+const getStatusBadge = (status: string) => {
+  const s = status?.toLowerCase() || 'pending';
+  switch (s) {
+    case 'approved':
+    case 'aprovado':
+      return <Badge className="bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/10 text-[10px] py-0 h-5">Aprovado</Badge>;
+    case 'waiting_apostille':
+    case 'pronto_para_apostilagem':
+      return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 hover:bg-blue-500/10 text-[10px] py-0 h-5">Pronto p/ Apostila</Badge>;
+    case 'waiting_apostille_quote':
+    case 'waiting_quote_approval':
+      return <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/10 text-[10px] py-0 h-5">Aguar. Orçamento</Badge>;
+    case 'waiting_translation':
+    case 'waiting_translation_quote':
+      return <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/20 hover:bg-purple-500/10 text-[10px] py-0 h-5">Aguar. Tradução</Badge>;
+    case 'analyzing':
+    case 'analyzing_apostille':
+    case 'analyzing_translation':
+    case 'em_analise':
+      return <Badge className="bg-gray-500/10 text-gray-600 border-gray-500/20 hover:bg-gray-500/10 text-[10px] py-0 h-5">Em Análise</Badge>;
+    case 'rejected':
+    case 'rejeitado':
+      return <Badge className="bg-red-500/10 text-red-600 border-red-500/20 hover:bg-red-500/10 text-[10px] py-0 h-5">Rejeitado</Badge>;
+    case 'sem_arquivo':
+      return <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20 hover:bg-orange-500/10 text-[10px] py-0 h-5">Sem Arquivo</Badge>;
+    default:
+      return <Badge variant="outline" className="text-[10px] py-0 h-5">{status || 'Documento'}</Badge>;
+  }
+};
+
 export function ApostilleQuoteModal({
   documentoId,
   documentoNome,
@@ -62,18 +92,17 @@ export function ApostilleQuoteModal({
       setIsLoading(true)
       setError(null)
       
-      const candidates = allDocuments.filter(d => {
-        const s = d.status?.toLowerCase()
-        return !documentoId || d.id === documentoId || s === 'waiting_apostille' || s === 'waiting_quote_approval'
-      })
+      const candidates = allDocuments
 
       setCandidateDocuments(candidates)
       
       const initialSelection = new Set<string>()
       if (documentoId) initialSelection.add(documentoId)
       
+      // Auto-selecionar documentos que já estão aguardando apostila
       candidates.forEach(d => {
-        if (d.status?.toLowerCase() === 'waiting_apostille') {
+        const s = d.status?.toLowerCase()
+        if (s === 'waiting_apostille' || s === 'waiting_apostille_quote') {
           initialSelection.add(d.id)
         }
       })
@@ -239,17 +268,17 @@ export function ApostilleQuoteModal({
               <CreditCard className="h-5 w-5 text-amber-600" />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900 dark:text-white">
+              <h4 className="font-bold text-foreground">
                 {step === 'selection' ? 'Solicitar Apostila' :
                  step === 'method' ? 'Método de Pagamento' :
                  step === 'pix' ? (paymentMethod === 'wise' ? 'Pagamento via Wise' : 'Pagamento via PIX') :
                  'Concluído'}
-              </h3>
-              <p className="text-xs text-gray-500 truncate max-w-[200px] font-medium">{documentoNome}</p>
+              </h4>
+              <p className="text-xs text-muted-foreground truncate max-w-[200px] font-medium">{documentoNome}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-full transition-colors">
-            <X className="h-5 w-5 text-gray-400" />
+            <X className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
 
@@ -265,20 +294,20 @@ export function ApostilleQuoteModal({
                 <Check className="h-8 w-8 text-emerald-600" />
               </div>
               <div className="space-y-2">
-                <h4 className="text-xl font-bold text-gray-900 dark:text-white">
+                <h4 className="text-xl font-bold text-foreground">
                     {alreadyPaidDocs.size === selectedDocIds.size 
                       ? 'Pagamento Confirmado!' 
                       : 'Solicitação Processada!'}
                 </h4>
                 <div className="p-3 bg-gray-50 dark:bg-neutral-800 rounded-xl border border-gray-100 dark:border-neutral-700 mx-auto w-full max-w-[320px]">
-                    <p className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-1">Documento(s)</p>
-                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold mb-1">Documento(s)</p>
+                    <p className="text-sm font-semibold text-foreground">
                         {selectedDocIds.size === 1 
                           ? documentoNome 
                           : `${selectedDocIds.size} documentos selecionados`}
                     </p>
                 </div>
-                <p className="text-sm text-gray-500 max-w-[300px] mx-auto">
+                <p className="text-sm text-muted-foreground max-w-[300px] mx-auto">
                     {alreadyPaidDocs.size === selectedDocIds.size
                       ? 'Identificamos que o pagamento para este(s) documento(s) já foi realizado. O processo de apostilamento continuará normalmente com a nova versão.'
                       : 'Seu comprovante foi enviado para análise. Em breve o processo de apostilamento será iniciado.'}
@@ -301,21 +330,30 @@ export function ApostilleQuoteModal({
                 <>
                   <div className="bg-gray-50 dark:bg-neutral-800/50 rounded-2xl p-6 border border-gray-100 dark:border-neutral-800">
                     <div className="flex flex-col items-center text-center space-y-1">
-                      <span className="text-xs text-gray-400 uppercase tracking-widest font-medium">Total do Apostilamento</span>
-                      <span className="text-4xl font-black text-gray-900 dark:text-white">
+                      <span className="text-xs text-muted-foreground uppercase tracking-widest font-medium">Total do Apostilamento</span>
+                      <span className="text-4xl font-black text-foreground">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorTotal)}
                       </span>
-                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">
                         {selectedDocIds.size} documento(s) x {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(VALOR_UNITARIO_APOSTILA)}
                       </span>
                     </div>
                   </div>
 
                   <div className="space-y-3">
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Documentos Selecionados</h4>
-                    <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
-                      {candidateDocuments.map((doc) => {
+                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Documentos Selecionados</h4>
+                    <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                      {candidateDocuments.length === 0 ? (
+                        <div className="text-center py-8 border-2 border-dashed border-muted rounded-xl">
+                          <FileText className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground">Nenhum documento encontrado.</p>
+                        </div>
+                      ) : candidateDocuments.map((doc) => {
                         const isSelected = selectedDocIds.has(doc.id)
+                        const d = doc as any
+                        const hasFile = !!(d.fileUrl || d.admin_upload_url || d.file_url || d.nome_arquivo || d.nome_original)
+                        const displayName = d.tipo || d.name || d.fileName || d.nome_original || d.nome_arquivo || 'Documento sem nome'
+                        
                         return (
                           <div 
                             key={doc.id}
@@ -324,21 +362,27 @@ export function ApostilleQuoteModal({
                               "flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer",
                               isSelected 
                                 ? "bg-amber-50/50 border-amber-200 dark:bg-amber-900/10 dark:border-amber-800"
-                                : "bg-white border-gray-100 dark:bg-neutral-800 dark:border-neutral-700 opacity-60"
+                                : "bg-white border-gray-100 dark:bg-neutral-800 dark:border-neutral-700"
                             )}
                           >
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 overflow-hidden">
                               <div className={cn(
-                                "h-5 w-5 rounded border flex items-center justify-center",
+                                "h-5 w-5 rounded border flex items-center justify-center shrink-0",
                                 isSelected ? "bg-amber-600 border-amber-600" : "bg-white border-gray-300"
                               )}>
                                 {isSelected && <Check className="h-3 w-3 text-white" />}
                               </div>
-                              <span className="text-sm font-semibold text-gray-900 dark:text-white truncate max-w-[180px]">
-                                {doc.fileName || doc.name}
-                              </span>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-sm font-semibold text-foreground truncate max-w-[240px]">
+                                  {displayName}
+                                </span>
+                                <div className="flex items-center gap-2 mt-1">
+                                  {getStatusBadge(hasFile ? doc.status : (doc.status || 'Pendente'))}
+                                  {!hasFile && <span className="text-[10px] text-red-500 font-bold uppercase">Atenção: Sem Arquivo</span>}
+                                </div>
+                              </div>
                             </div>
-                            <FileText className="h-4 w-4 text-gray-400" />
+                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                           </div>
                         )
                       })}
@@ -351,27 +395,27 @@ export function ApostilleQuoteModal({
                 <div className="space-y-4">
                   <div className="bg-amber-50 dark:bg-amber-900/10 rounded-xl p-5 border border-amber-100 dark:border-amber-900/20 text-center">
                     <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">Total a Pagar</p>
-                    <p className="text-3xl font-black text-gray-900 dark:text-white">
+                    <p className="text-3xl font-black text-foreground">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorTotal)}
                     </p>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Selecione como deseja realizar o pagamento:</p>
+                  <p className="text-sm text-muted-foreground">Selecione como deseja realizar o pagamento:</p>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => { setPaymentMethod('pix'); setStep('pix') }}
                       className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-100 dark:border-neutral-800 hover:border-emerald-500 dark:hover:border-emerald-500 bg-gray-50 dark:bg-neutral-800/50 hover:bg-emerald-50 dark:hover:bg-emerald-500/5 transition-all"
                     >
                       <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 text-lg font-bold">P</div>
-                      <span className="font-bold text-sm text-gray-900 dark:text-white">PIX</span>
-                      <span className="text-[10px] text-gray-500">Chave CNPJ</span>
+                      <span className="font-bold text-sm text-foreground">PIX</span>
+                      <span className="text-[10px] text-muted-foreground">Chave CNPJ</span>
                     </button>
                     <button
                       onClick={() => { setPaymentMethod('wise'); setStep('pix') }}
                       className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-100 dark:border-neutral-800 hover:border-purple-500 dark:hover:border-purple-500 bg-gray-50 dark:bg-neutral-800/50 hover:bg-purple-50 dark:hover:bg-purple-500/5 transition-all"
                     >
                       <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 text-lg font-bold">W</div>
-                      <span className="font-bold text-sm text-gray-900 dark:text-white">Wise</span>
-                      <span className="text-[10px] text-gray-500">Transferência internacional</span>
+                      <span className="font-bold text-sm text-foreground">Wise</span>
+                      <span className="text-[10px] text-muted-foreground">Transferência internacional</span>
                     </button>
                   </div>
                 </div>
@@ -381,7 +425,7 @@ export function ApostilleQuoteModal({
                 <>
                   <div className="bg-amber-50 dark:bg-amber-900/10 rounded-xl p-5 border border-amber-100 dark:border-amber-900/20 text-center">
                     <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">Total a Pagar</p>
-                    <p className="text-3xl font-black text-gray-900 dark:text-white">
+                    <p className="text-3xl font-black text-foreground">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorTotal)}
                     </p>
                   </div>
@@ -390,7 +434,7 @@ export function ApostilleQuoteModal({
                     <div className="bg-gray-50 dark:bg-neutral-800 rounded-xl p-5 border border-gray-100 dark:border-neutral-800">
                       <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-2">Chave PIX (CNPJ)</p>
                       <div className="flex items-center gap-3">
-                        <code className="text-xl font-bold text-gray-900 dark:text-white tracking-wider flex-1">{PIX_CNPJ}</code>
+                        <code className="text-xl font-bold text-foreground tracking-wider flex-1">{PIX_CNPJ}</code>
                         <button
                           onClick={handleCopyPix}
                           className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 transition-colors"

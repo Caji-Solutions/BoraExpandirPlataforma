@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../../contexts/AuthContext'
 import { Sidebar } from '@/components/ui/Sidebar'
@@ -746,11 +747,7 @@ function RequerimentosPage({
 
 export default function Comercial() {
   const { activeProfile } = useAuth()
-
-  useEffect(() => {
-  }, []);
-
-  // Modals
+  const queryClient = useQueryClient()
   const [showCadastroCliente, setShowCadastroCliente] = useState(false)
   const [showGeracaoContrato, setShowGeracaoContrato] = useState(false)
   const [showRequerimento, setShowRequerimento] = useState(false)
@@ -760,68 +757,60 @@ export default function Comercial() {
   const [clientCredentials, setClientCredentials] = useState<any | null>(null)
   const [isLoadingCredentials, setIsLoadingCredentials] = useState(false)
 
-  // Data states
-  const [clientes, setClientes] = useState<Cliente[]>([])
-  const [loading, setLoading] = useState(true)
+  // --- QUERIES ---
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true)
-        const [clientesData, processosData, requerimentosData] = await Promise.all([
-          comercialService.getAllClientes(),
-          comercialService.getAllProcessos(),
-          comercialService.getAllRequerimentos()
-        ])
+  const { data: allClientesRaw = [], isLoading: loadingAllClientes } = useQuery({
+    queryKey: ['all-clientes-raw'],
+    queryFn: () => comercialService.getAllClientes()
+  })
 
-        // Clientes filtrados (sem leads)
-        setClientes(clientesData.filter((c: any) => c.status === 'cliente'))
+  const clientes = useMemo(() => allClientesRaw.filter((c: any) => c.status === 'cliente'), [allClientesRaw])
+  const leads = useMemo(() => allClientesRaw.filter((c: any) => c.status === 'LEAD'), [allClientesRaw])
 
-        // Contratos vindos de processos
-        setContratos(processosData.map((p: any) => ({
-          id: p.id,
-          cliente_id: p.cliente_id,
-          titulo: p.tipo_servico,
-          descricao: '',
-          valor: 0,
-          status: p.status,
-          template_tipo: 'outro',
-          conteudo_html: '',
-          cliente: {
-            id: p.cliente_id,
-            nome: p.clientes?.nome || 'Cliente'
-          },
-          created_at: p.criado_em,
-          updated_at: p.atualizado_em
-        })))
-
-        // Requerimentos reais
-        setRequerimentos(requerimentosData.map((r: any) => ({
-          id: r.id,
-          comercial_usuario_id: r.criador_id || '',
-          titulo: r.tipo,
-          tipo: r.tipo,
-          descricao: r.observacoes || '',
-          status: r.status,
-          created_at: r.criado_em,
-          updated_at: r.atualizado_em
-        })))
-
-      } catch (err) {
-        console.error("Erro ao carregar dados do dashboard:", err);
-      } finally {
-        setLoading(false)
-      }
+  const { data: contratos = [], isLoading: loadingContratos } = useQuery({
+    queryKey: ['contratos-comercial'],
+    queryFn: async () => {
+      const pData = await comercialService.getAllProcessos()
+      return pData.map((p: any) => ({
+        id: p.id,
+        cliente_id: p.cliente_id,
+        titulo: p.tipo_servico,
+        descricao: '',
+        valor: 0,
+        status: p.status,
+        template_tipo: 'outro',
+        conteudo_html: '',
+        cliente: {
+          id: p.cliente_id,
+          nome: p.clientes?.nome || 'Cliente'
+        },
+        created_at: p.criado_em,
+        updated_at: p.atualizado_em
+      })) as Contrato[]
     }
-    fetchData()
-  }, [])
+  })
 
-  const [agendamentos, setAgendamentos] = useState<Agendamento[]>([])
+  const { data: requerimentos = [], isLoading: loadingRequerimentos } = useQuery({
+    queryKey: ['requerimentos-comercial'],
+    queryFn: async () => {
+      const rData = await comercialService.getAllRequerimentos()
+      return rData.map((r: any) => ({
+        id: r.id,
+        comercial_usuario_id: r.criador_id || '',
+        titulo: r.tipo,
+        tipo: r.tipo,
+        descricao: r.observacoes || '',
+        status: r.status,
+        created_at: r.criado_em,
+        updated_at: r.atualizado_em
+      })) as Requerimento[]
+    }
+  })
 
-  const fetchAgendamentos = async () => {
-    if (!activeProfile?.id) return
-
-    try {
+  const { data: agendamentos = [], isLoading: loadingAgendamentos } = useQuery({
+    queryKey: ['agendamentos-comercial', activeProfile?.id],
+    queryFn: async () => {
+      if (!activeProfile?.id) return []
       const [data, catalog] = await Promise.all([
         comercialService.getAgendamentosByUsuario(activeProfile.id),
         catalogService.getCatalogServices().catch(() => [])
@@ -829,10 +818,8 @@ export default function Comercial() {
 
       const catalogMap = new Map(catalog.map((s: any) => [s.id, s.nome || s.name]))
 
-      const mapped = data.map((b: any) => {
-        // Formatação universal isolada em utilitário coberto por teste para prevenir shifts de +3h
+      return data.map((b: any) => {
         const { dataStr, horaStr } = extractLocalTimeMapping(b.data_hora);
-
         return {
           id: b.id,
           cliente_id: b.cliente_id || '',
@@ -848,31 +835,18 @@ export default function Comercial() {
           },
           data: dataStr,
           hora: horaStr,
-          duracao_minutos: b.duracao_minutos || 60,
-          produto: catalogMap.get(b.produto_id) || b.produto_id || 'Serviço',
-          produto_id: b.produto_id || '',
-          status: b.status as any,
-          cliente_is_user: b.cliente_is_user,
-          pagamento_status: b.pagamento_status || null,
-          comprovante_url: b.comprovante_url || null,
-          conflito_horario: b.conflito_horario || false,
-          created_at: b.created_at,
-          updated_at: b.updated_at
+          produto_id: b.service_id,
+          produto: catalogMap.get(b.service_id) || b.product_name || 'Consultoria',
+          status: b.status || 'pendente',
+          pagamento_status: b.pagamento_status || 'pendente',
+          comprovante_url: b.comprovante_url
         }
-      })
-      setAgendamentos(mapped)
-    } catch (err) {
-      console.error("Erro ao carregar agendamentos reais:", err)
-    }
-  }
+      }) as Agendamento[]
+    },
+    enabled: !!activeProfile?.id
+  })
 
-  useEffect(() => {
-    fetchAgendamentos()
-  }, [activeProfile?.id])
-
-  const [contratos, setContratos] = useState<Contrato[]>([])
-  const [leads, setLeads] = useState<Lead[]>([])
-  const [requerimentos, setRequerimentos] = useState<Requerimento[]>([])
+  const loading = loadingAllClientes || loadingContratos || loadingRequerimentos || loadingAgendamentos
 
   // Handlers
   const handleSaveCliente = async (clienteData: ClienteFormData) => {
@@ -883,7 +857,7 @@ export default function Comercial() {
         created_at: response.criado_em || new Date().toISOString(),
         updated_at: response.atualizado_em || new Date().toISOString(),
       }
-      setClientes(prev => [novoCliente, ...prev])
+      queryClient.invalidateQueries({ queryKey: ['all-clientes-raw'] })
       return response // Retorna a resposta completa incluindo loginInfo
     } catch (err: any) {
       console.error('Erro ao salvar cliente:', err)
@@ -901,43 +875,27 @@ export default function Comercial() {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
-    setContratos(prev => [...prev, novoContrato])
+    queryClient.invalidateQueries({ queryKey: ['contratos-comercial'] })
   }
 
 
   const handleSaveRequerimento = async (reqData: RequerimentoFormData) => {
     // TODO: Integrar com backend
-    const novoRequerimento: Requerimento = {
-      id: Math.random().toString(36).substring(7),
-      ...reqData,
-      comercial_usuario_id: 'usuario-atual-id',
-      status: 'pendente',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }
-    setRequerimentos(prev => [...prev, novoRequerimento])
+    queryClient.invalidateQueries({ queryKey: ['requerimentos-comercial'] })
+  }
+
+  const handleStatusChange = async (leadId: string, newStatus: string) => {
+    queryClient.invalidateQueries({ queryKey: ['all-clientes-raw'] })
   }
 
   const handleAssinarContrato = async (contratoId: string, assinadoPor: string, tipo: 'cliente' | 'empresa') => {
     // TODO: Integrar com backend para salvar assinatura digital
-
-    setContratos(prev => prev.map(c =>
-      c.id === contratoId
-        ? { ...c, status: 'assinado' as const }
-        : c
-    ))
+    queryClient.invalidateQueries({ queryKey: ['contratos-comercial'] })
   }
 
   const handleSaveLead = async (leadData: LeadFormData) => {
     // TODO: Integrar com backend
-    const novoLead: Lead = {
-      id: Math.random().toString(36).substring(7),
-      ...leadData,
-      status: 'pendente',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }
-    setLeads(prev => [...prev, novoLead])
+    queryClient.invalidateQueries({ queryKey: ['all-clientes-raw'] })
     toast.success('Lead cadastrado com sucesso!', 3)
   }
 
@@ -1015,7 +973,7 @@ export default function Comercial() {
                 agendamentos={agendamentos}
                 onShowCadastroCliente={() => setShowCadastroCliente(true)}
                 onSaveLead={handleSaveLead}
-                leads={leads}
+                leads={leads as any}
               />
             }
           />
@@ -1029,7 +987,7 @@ export default function Comercial() {
           />
           <Route
             path="/meus-agendamentos"
-            element={<AgendamentosPage agendamentos={agendamentos} onRefresh={fetchAgendamentos} />}
+            element={<AgendamentosPage agendamentos={agendamentos} onRefresh={() => queryClient.invalidateQueries({ queryKey: ['agendamentos-comercial'] })} />}
           />
 
           <Route

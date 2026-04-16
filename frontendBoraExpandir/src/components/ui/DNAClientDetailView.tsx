@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
     User,
     FileText,
@@ -28,10 +29,12 @@ import { RequirementsSection } from '../../modules/juridico/components/Requireme
 import { FormUploadModal } from '../../modules/juridico/components/FormUploadModal'
 import { ApostilleQuoteModal } from '../../modules/cliente/components/services/ApostilleQuoteModal'
 import { TranslationQuoteModal } from '../../modules/cliente/components/services/TranslationPaymentModal'
+import { BillingNotificationModal } from '../../modules/juridico/components/BillingNotificationModal'
 import juridicoService from '../../modules/juridico/services/juridicoService'
 import comercialService from '../../modules/comercial/services/comercialService'
 import { useAuth } from '../../contexts/AuthContext'
 import { toast } from '@/modules/shared/components/ui/sonner'
+import { apiClient } from '@/modules/shared/services/api'
 
 export function DNAClientDetailView({
     client,
@@ -44,46 +47,43 @@ export function DNAClientDetailView({
     initialTab?: 'timeline' | 'formularios' | 'contrato_comprovantes'
     initialArea?: 'todos' | 'juridico' | 'comercial' | 'administrativo'
 }) {
+    const queryClient = useQueryClient()
     const { activeProfile } = useAuth()
     const navigate = useNavigate()
     const [copiedId, setCopiedId] = useState(false)
     const [noteStageId, setNoteStageId] = useState<string | null>(null)
     const [newNote, setNewNote] = useState('')
-    const [notes, setNotes] = useState<ClientNote[]>([])
-    const [loadingNotes, setLoadingNotes] = useState(false)
     const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set([client.categoria]))
     const [isDocModalOpen, setIsDocModalOpen] = useState(false)
     const [isReqModalOpen, setIsReqModalOpen] = useState(false)
     const [isFormModalOpen, setIsFormModalOpen] = useState(false)
-    const [members, setMembers] = useState<any[]>([])
-    const [loadingMembers, setLoadingMembers] = useState(false)
     const [selectedRequerimentoId, setSelectedRequerimentoId] = useState<string | undefined>(undefined)
     const [areaFilter, setAreaFilter] = useState<'todos' | 'juridico' | 'comercial' | 'administrativo'>(initialArea || 'todos')
+
+    console.log('[DNAClientDetailView] Mounted with:', { initialArea, initialTab, clientId: client.true_id || client.id, areaFilter: initialArea || 'todos' })
     const [activeTab, setActiveTab] = useState<'timeline' | 'formularios' | 'contrato_comprovantes' | 'notas'>(initialTab || 'timeline')
-    const [agendamentos, setAgendamentos] = useState<any[]>([])
-    const [loadingAgendamentos, setLoadingAgendamentos] = useState(true)
-    const [contratosServicos, setContratosServicos] = useState<any[]>([])
-    const [loadingContratos, setLoadingContratos] = useState(false)
-    const [leadNotesData, setLeadNotesData] = useState<any[]>([])
-    const [loadingLeadNotes, setLoadingLeadNotes] = useState(false)
     const [leadNotesExpanded, setLeadNotesExpanded] = useState(false)
     const [isApostilleModalOpen, setIsApostilleModalOpen] = useState(false)
     const [isTranslationModalOpen, setIsTranslationModalOpen] = useState(false)
-    const [allClientDocs, setAllClientDocs] = useState<any[]>([])
+    const [isBillingModalOpen, setIsBillingModalOpen] = useState(false)
     const [localProcessoId, setLocalProcessoId] = useState<string | undefined>(client.processo_id)
 
-    // Fetch process if missing
+    const clientId = client.true_id || client.id
+
+    // --- QUERIES ---
+
+    // 1. Processo (se faltar)
+    const { data: fetchedProcesso } = useQuery({
+        queryKey: ['processo', clientId],
+        queryFn: () => juridicoService.getProcessoByCliente(clientId),
+        enabled: !localProcessoId && !!clientId
+    })
+
     useEffect(() => {
-        if (!localProcessoId && client.true_id) {
-            juridicoService.getProcessoByCliente(client.true_id)
-                .then(processo => {
-                    if (processo?.id) {
-                        setLocalProcessoId(processo.id)
-                    }
-                })
-                .catch(err => console.error("Error fetching process for DNA:", err))
+        if (fetchedProcesso?.id && !localProcessoId) {
+            setLocalProcessoId(fetchedProcesso.id)
         }
-    }, [client.true_id, localProcessoId])
+    }, [fetchedProcesso, localProcessoId])
 
     // Handle adding document to a specific requirement
     const handleAddDocToReq = (reqId: string) => {
@@ -98,137 +98,142 @@ export function DNAClientDetailView({
         }
     }, [isDocModalOpen, selectedRequerimentoId])
 
-    const fetchNotes = useCallback(async () => {
-        try {
-            setLoadingNotes(true)
-            const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-            const token = localStorage.getItem('auth_token')
-            const response = await fetch(`${baseUrl}/juridico/notas/${client.true_id || client.id}`, {
-                headers: token ? { Authorization: `Bearer ${token}` } : {}
+    // 2. Notas do Processo
+    const { data: notesRaw, isLoading: loadingNotes } = useQuery({
+        queryKey: ['notes', clientId],
+        queryFn: async () => {
+            const res = await apiClient.get<{ data: any[] }>(`/juridico/notas/${clientId}`)
+            return res.data || []
+        },
+        enabled: !!clientId
+    })
+
+    const notes = useMemo(() => {
+        if (!notesRaw) return []
+        return notesRaw.map((n: any) => ({
+            id: n.id,
+            text: n.texto,
+            author: n.autor_nome || n.autor?.full_name || 'Usuário',
+            area: n.autor_setor || n.autor?.role || 'juridico',
+            createdAt: n.created_at,
+            stageId: n.etapa,
+            autorId: n.autor_id
+        })) as ClientNote[]
+    }, [notesRaw])
+
+    // 3. Notas do Lead
+    const { data: leadNotesData = [], isLoading: loadingLeadNotes } = useQuery({
+        queryKey: ['lead-notes', clientId],
+        queryFn: async () => {
+            const res = await apiClient.get<{ data: any[] }>(`/cliente/lead-notas/${clientId}`)
+            return res.data || []
+        },
+        enabled: !!clientId && (activeTab === 'notas' || activeTab === 'timeline')
+    })
+
+    // 4. Membros / Dependentes
+    const { data: members = [], isLoading: loadingMembers } = useQuery({
+        queryKey: ['members', clientId],
+        queryFn: async () => {
+            const depData = await juridicoService.getDependentes(clientId)
+            const titular = {
+                id: clientId,
+                name: client.nome,
+                type: 'Titular',
+                isTitular: true
+            }
+            const formattedDeps = depData.map((d: any) => ({
+                id: d.id,
+                name: d.nome_completo || d.name,
+                type: d.parentesco || 'Dependente',
+                isTitular: false
+            }))
+            return [titular, ...formattedDeps]
+        },
+        enabled: !!clientId
+    })
+
+    // 5. Todos os documentos do cliente (para o modal de apostilagem)
+    const { data: allClientDocs = [] } = useQuery({
+        queryKey: ['all-client-docs', clientId],
+        queryFn: async () => {
+            const res = await apiClient.get<{ data: any[] }>(`/cliente/${clientId}/documentos`)
+            return res.data || []
+        },
+        enabled: !!clientId
+    })
+
+    // 6. Agendamentos
+    const { data: agendamentos = [], isLoading: loadingAgendamentos } = useQuery({
+        queryKey: ['agendamentos', clientId],
+        queryFn: () => comercialService.getAgendamentosByCliente(clientId),
+        enabled: !!clientId
+    })
+
+    // 7. Contratos
+    const { data: contratosServicos = [], isLoading: loadingContratos } = useQuery({
+        queryKey: ['contratos', clientId],
+        queryFn: async () => {
+            const res = await apiClient.get<{ data: any[] }>(`/cliente/contratos?clienteId=${clientId}`)
+            return res.data || []
+        },
+        enabled: !!clientId && activeTab === 'contrato_comprovantes'
+    })
+
+    // --- MUTATIONS ---
+
+    const addNoteMutation = useMutation({
+        mutationFn: async ({ text, stageId }: { text: string, stageId?: string }) => {
+            return apiClient.post('/juridico/notas', {
+                clienteId: clientId,
+                processoId: localProcessoId || client.processo_id,
+                etapa: stageId || noteStageId || undefined,
+                texto: text,
+                autorId: activeProfile?.id,
+                autorNome: activeProfile?.full_name,
+                autorSetor: activeProfile?.role
             })
-            const result = await response.json()
-
-            if (result.data) {
-                const mappedNotes: ClientNote[] = result.data.map((n: any) => ({
-                    id: n.id,
-                    text: n.texto,
-                    author: n.autor_nome || n.autor?.full_name || 'Usuário',
-                    area: n.autor_setor || n.autor?.role || 'juridico',
-                    createdAt: n.created_at,
-                    stageId: n.etapa,
-                    autorId: n.autor_id
-                }))
-                setNotes(mappedNotes)
-            }
-        } catch (err) {
-            console.error('Erro ao buscar notas:', err)
-        } finally {
-            setLoadingNotes(false)
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['notes', clientId] })
+            setNewNote('')
+            setNoteStageId(null)
         }
-    }, [client.id, client.true_id])
+    })
 
-    useEffect(() => {
-        fetchNotes()
-    }, [fetchNotes])
-
-    useEffect(() => {
-        const fetchMembers = async () => {
-            if (!client.true_id && !client.id) return
-            setLoadingMembers(true)
-            try {
-                const depData = await juridicoService.getDependentes(client.true_id || client.id)
-                const titular = {
-                    id: client.true_id || client.id,
-                    name: client.nome,
-                    type: 'Titular',
-                    isTitular: true
-                }
-                const formattedDeps = depData.map((d: any) => ({
-                    id: d.id,
-                    name: d.nome_completo || d.name,
-                    type: d.parentesco || 'Dependente',
-                    isTitular: false
-                }))
-                setMembers([titular, ...formattedDeps])
-
-                // Fetch all documents for this client (for apostille modal)
-                const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-                const token = localStorage.getItem('auth_token')
-                const docResp = await fetch(`${baseUrl}/cliente/${client.true_id || client.id}/documentos`, {
-                    headers: token ? { Authorization: `Bearer ${token}` } : {}
-                })
-                const docData = await docResp.json()
-                setAllClientDocs(docData.data || [])
-            } catch (err) {
-                console.error('Erro ao buscar membros/documentos:', err)
-            } finally {
-                setLoadingMembers(false)
-            }
+    const deleteNoteMutation = useMutation({
+        mutationFn: (noteId: string) => 
+            apiClient.delete(`/juridico/notas/${noteId}?userId=${activeProfile?.id}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['notes', clientId] })
         }
-        fetchMembers()
-    }, [client.id, client.true_id, client.nome])
+    })
 
-    useEffect(() => {
-        const fetchAgendamentos = async () => {
-            try {
-                setLoadingAgendamentos(true)
-                const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-                // Reusing service function
-                const data = await comercialService.getAgendamentosByCliente(client.true_id || client.id)
-                setAgendamentos(data)
-            } catch (err) {
-                console.error('Erro ao buscar agendamentos:', err)
-            } finally {
-                setLoadingAgendamentos(false)
-            }
+    const deleteLeadNoteMutation = useMutation({
+        mutationFn: (noteId: string) => 
+            apiClient.delete(`/cliente/lead-notas/${noteId}?userId=${activeProfile?.id}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['lead-notes', clientId] })
         }
-        
-        if (activeTab === 'contrato_comprovantes') {
-            const fetchContratos = async () => {
-                try {
-                    setLoadingContratos(true)
-                    const clienteId = client.true_id || client.id
-                    // Usar /cliente/contratos em vez de /comercial/contratos para nao filtrar por usuario_id
-                    // Isso garante que todos os usuarios autorizados vejam os contratos do cliente
-                    const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-                    const token = localStorage.getItem('auth_token')
-                    const response = await fetch(`${baseUrl}/cliente/contratos?clienteId=${clienteId}`, {
-                        headers: token ? { Authorization: `Bearer ${token}` } : {}
-                    })
-                    const result = await response.json()
-                    setContratosServicos(result.data || [])
-                } catch (err) {
-                    console.error('Erro ao buscar contratos:', err)
-                } finally {
-                    setLoadingContratos(false)
-                }
-            }
-            fetchContratos()
-        }
-        
-        fetchAgendamentos()
+    })
 
-        if (activeTab === 'notas' || activeTab === 'timeline') {
-            const fetchLeadNotes = async () => {
-                try {
-                    setLoadingLeadNotes(true)
-                    const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-                    const leadToken = localStorage.getItem('auth_token')
-                    const response = await fetch(`${baseUrl}/cliente/lead-notas/${client.true_id || client.id}`, {
-                        headers: leadToken ? { Authorization: `Bearer ${leadToken}` } : {}
-                    })
-                    const result = await response.json()
-                    setLeadNotesData(result.data || [])
-                } catch (err) {
-                    console.error('Erro ao buscar notas do lead:', err)
-                } finally {
-                    setLoadingLeadNotes(false)
-                }
-            }
-            fetchLeadNotes()
-            fetchNotes()
+    const handleAddNote = async (e: React.FormEvent, stageId?: string) => {
+        e.preventDefault()
+        if (!newNote.trim()) return
+        addNoteMutation.mutate({ text: newNote, stageId })
+    }
+
+    const handleDeleteNote = async (noteId: string) => {
+        if (window.confirm('Tem certeza que deseja excluir esta nota?')) {
+            deleteNoteMutation.mutate(noteId)
         }
-    }, [activeTab, client.id, client.true_id, fetchNotes])
+    }
+
+    const handleDeleteLeadNote = async (noteId: string) => {
+        if (window.confirm('Tem certeza que deseja excluir esta nota do lead?')) {
+            deleteLeadNoteMutation.mutate(noteId)
+        }
+    }
 
     const toggleStage = (stageId: string) => {
         const next = new Set(expandedStages)
@@ -243,84 +248,6 @@ export function DNAClientDetailView({
         setTimeout(() => setCopiedId(false), 2000)
     }
 
-    const handleAddNote = async (e: React.FormEvent, stageId?: string) => {
-        e.preventDefault()
-        if (!newNote.trim()) return
-
-        try {
-            const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-            const token = localStorage.getItem('auth_token')
-            const response = await fetch(`${baseUrl}/juridico/notas`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {})
-                },
-                body: JSON.stringify({
-                    clienteId: client.true_id || client.id,
-                    processoId: client.processo_id,
-                    etapa: stageId || noteStageId || undefined,
-                    texto: newNote,
-                    autorId: activeProfile?.id,
-                    autorNome: activeProfile?.full_name,
-                    autorSetor: activeProfile?.role
-                })
-            })
-
-            if (response.ok) {
-                const result = await response.json()
-                const n = result.data
-                const note: ClientNote = {
-                    id: n.id,
-                    text: n.texto,
-                    author: n.autor_nome || n.autor?.full_name || 'Usuário',
-                    area: n.autor_setor || n.autor?.role || 'juridico',
-                    createdAt: n.created_at,
-                    stageId: n.etapa,
-                    autorId: n.autor_id
-                }
-                setNotes([note, ...notes])
-                setNewNote('')
-                setNoteStageId(null)
-            }
-        } catch (err) {
-            console.error('Erro ao salvar nota:', err)
-        }
-    }
-
-    const handleDeleteNote = async (noteId: string) => {
-        try {
-            const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-            const token = localStorage.getItem('auth_token')
-            const response = await fetch(`${baseUrl}/juridico/notas/${noteId}?userId=${activeProfile?.id}`, {
-                method: 'DELETE',
-                headers: token ? { Authorization: `Bearer ${token}` } : {}
-            })
-            if (response.ok) {
-                setNotes(notes.filter(n => n.id !== noteId))
-            } else {
-                const errorData = await response.json()
-                alert(errorData.message || 'Erro ao deletar nota da timeline')
-            }
-        } catch (err) {
-            console.error('Erro ao deletar nota da timeline:', err)
-        }
-    }
-
-    const handleDeleteLeadNote = async (noteId: string) => {
-        try {
-            const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-            const response = await fetch(`${baseUrl}/cliente/lead-notas/${noteId}?userId=${activeProfile?.id}`, { method: 'DELETE' })
-            if (response.ok) {
-                setLeadNotesData(prev => prev.filter(n => n.id !== noteId))
-            } else {
-                const errData = await response.json()
-                alert(errData.message || 'Erro ao deletar nota do lead')
-            }
-        } catch (err) {
-            console.error('Erro ao deletar nota do lead:', err)
-        }
-    }
 
     const currentStageIndex = CATEGORIAS_LIST.findIndex(cat => cat.id === client.categoria)
     const contratosAprovados = contratosServicos.filter((c: any) => c.assinatura_status === 'aprovado' && c.contrato_assinado_url)
@@ -345,6 +272,13 @@ export function DNAClientDetailView({
                 documentoId=""
                 documentoNome={client.nome}
                 allDocuments={allClientDocs}
+            />
+
+            <BillingNotificationModal
+                isOpen={isBillingModalOpen}
+                onClose={() => setIsBillingModalOpen(false)}
+                clienteId={clientId}
+                clienteNome={client.nome}
             />
 
             <div className="max-w-6xl mx-auto space-y-5">
@@ -1013,51 +947,22 @@ export function DNAClientDetailView({
                     <div className="lg:col-span-4 space-y-5">
                         <div className="bg-card border border-border rounded-2xl p-5">
                             <ProcessAction
+                                client={client}
                                 clienteId={client.true_id || client.id}
                                 processoId={client.processo_id}
                                 responsavel={client.responsavel}
                                 areaFilter={areaFilter}
+                                onSolicitarDocumentos={() => setIsDocModalOpen(true)}
+                                onSolicitarFormulario={() => setIsFormModalOpen(true)}
+                                onSolicitarApostilagem={() => setIsApostilleModalOpen(true)}
+                                onSolicitarTraducao={() => setIsTranslationModalOpen(true)}
+                                onGerarFatura={() => setIsBillingModalOpen(true)}
+                                onSetTab={(tab) => setActiveTab(tab as any)}
+                                localProcessoId={localProcessoId}
                                 onActionClick={(action) => {
-                                    console.log('[DNAClientDetailView] onActionClick triggered:', action);
+                                    console.log('[DNAClientDetailView] onActionClick fallback:', action);
                                     if (action === 'solicitar_documentos') {
-                                        setIsDocModalOpen(true)
-                                    } else if (action === 'solicitar_formulario') {
-                                        setIsFormModalOpen(true)
-                                    } else if (action === 'solicitar_apostilagem') {
-                                        setIsApostilleModalOpen(true)
-                                    } else if (action === 'solicitar_traducao') {
-                                        setIsTranslationModalOpen(true)
-                                    } else if (action === 'comercial_agenda') {
-                                        console.log('[DNAClientDetailView] COMERCIAL_AGENDA action clicked.');
-                                        console.log('[DNAClientDetailView] Client object to pass in state:', client?.nome, client?.id);
-                                        console.log('[DNAClientDetailView] Calling navigate to /comercial/agendamento...');
-                                        navigate('/comercial/agendamento', {
-                                            state: {
-                                                preSelectedClient: client,
-                                                preSelectedProduto: 'Consultoria',
-                                                step: 'data_hora'
-                                            }
-                                        })
-                                    } else if (action === 'ver_processo') {
-                                        if (client.processo_id) {
-                                            navigate(`/juridico/processos?expand=${client.processo_id}`);
-                                        } else {
-                                            toast.error('Este cliente ainda não possui um processo jurídico vinculado.');
-                                        }
-                                    } else if (action === 'ver_documentos') {
-                                        const pid = localProcessoId || client.processo_id;
-                                        if (pid) {
-                                            navigate(`/juridico/analise?processoId=${pid}`);
-                                        } else {
-                                            toast.error('Este cliente ainda não possui um processo jurídico aberto.');
-                                        }
-                                    } else if (action === 'admin_config') {
-                                        navigate('/juridico/configuracoes');
-                                    } else if (action === 'financeiro_fatura') {
-                                        setActiveTab('contrato_comprovantes');
-                                        toast.info('Redirecionado para aba de contratos. Selecione um contrato para gerenciar o financeiro.');
-                                    } else {
-                                        console.log('Action triggered:', action)
+                                        queryClient.invalidateQueries({ queryKey: ['notes', clientId] })
                                     }
                                 }}
                             />
@@ -1099,7 +1004,7 @@ export function DNAClientDetailView({
                 clienteId={client.true_id || client.id}
                 processoId={client.processo_id}
                 members={members}
-                onSuccess={() => fetchNotes()}
+                onSuccess={() => queryClient.invalidateQueries({ queryKey: ['notes', clientId] })}
             />
         </div>
     )

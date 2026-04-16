@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Calendar, FileText, Layers, Loader2, Search } from 'lucide-react'
 import { catalogService, Service } from '../../../adm/services/catalogService'
 import comercialService from '../../services/comercialService'
@@ -9,6 +9,8 @@ import type { Cliente } from '@/types/comercial'
 
 export default function ServicosComerciais() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const locationState = location.state as { preSelectedClient?: any } | undefined
   const { activeProfile } = useAuth()
   const toast = useToast()
   const nivel = activeProfile?.nivel || 'C1'
@@ -75,7 +77,8 @@ export default function ServicosComerciais() {
     navigate('/comercial/agendamento', {
       state: {
         preSelectedProduto: servico.id,
-        step: 'cliente'
+        preSelectedClient: locationState?.preSelectedClient,
+        step: locationState?.preSelectedClient ? 'data_hora' : 'cliente'
       }
     })
   }
@@ -85,7 +88,8 @@ export default function ServicosComerciais() {
     navigate('/comercial/selecao-lead-cliente', {
       state: {
         servicoId: servico.id,
-        servicoNome: servico.name
+        servicoNome: servico.name,
+        preSelectedClient: locationState?.preSelectedClient
       }
     })
   }

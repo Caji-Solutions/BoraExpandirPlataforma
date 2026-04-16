@@ -11,6 +11,12 @@ interface LocationState {
   servicoNome: string;
   subservicoId?: string;
   subservicoNome?: string;
+  preSelectedClient?: {
+    id: string;
+    nome: string;
+    email?: string;
+    telefone?: string;
+  }
 }
 
 const ITEMS_PER_PAGE = 10
@@ -47,6 +53,11 @@ export default function SelecaoLeadCliente() {
         setLoading(true)
         const clientesData = await comercialService.getAllClientes()
         setClientes(clientesData || [])
+        
+        // Pré-selecionar se vier do estado (ex: vindo do DNA do cliente)
+        if (state?.preSelectedClient?.id) {
+          setSelectedClienteId(state.preSelectedClient.id)
+        }
       } catch (err) {
         console.error('Erro ao carregar clientes:', err)
         toast.error('Erro ao carregar lista de clientes')
