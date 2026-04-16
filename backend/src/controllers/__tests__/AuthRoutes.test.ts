@@ -67,8 +67,15 @@ vi.mock('../../config/SupabaseClient', () => ({
                     chain.single = vi.fn().mockResolvedValue({ data: mockResponses.auth, error: null });
                 }
 
-                // Delegados: profiles.eq('supervisor_id', id).order(...)
+                // Delegados: profiles.eq('supervisor_id', id).or(...).order(...)
                 if (field === 'supervisor_id') {
+                    chain.or = vi.fn().mockImplementation(() => {
+                        chain.order = vi.fn().mockResolvedValue({
+                            data: mockResponses.delegados,
+                            error: null
+                        });
+                        return chain;
+                    });
                     chain.order = vi.fn().mockResolvedValue({
                         data: mockResponses.delegados,
                         error: null
