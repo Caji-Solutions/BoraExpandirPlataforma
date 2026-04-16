@@ -1,6 +1,7 @@
 import { TrendingUp, DollarSign, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { SupervisorBadge } from '@/modules/shared/components/SupervisorBadge';
 
 // TODO: dados mock - usar query real de KPIs e gráficos financeiros
 const kpiData = [];
@@ -10,8 +11,9 @@ export function FinancialDashboard() {
   return (
     <main className="flex-1 overflow-y-auto bg-background">
       <div className="container mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <h1 className="text-3xl font-bold text-foreground">Visão Geral - Financeiro</h1>
+          <SupervisorBadge />
         </div>
 
         {/* KPI Cards */}

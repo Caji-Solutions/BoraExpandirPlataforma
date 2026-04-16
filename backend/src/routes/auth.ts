@@ -284,13 +284,76 @@ router.post('/register', async (req: Request, res: Response) => {
 })
 
 // ============================================
-// GET /auth/team — Listar todos os colaboradores
+// POST /auth/team/draft — Criar rascunho de colaborador (sem supervisor ainda)
+// ============================================
+router.post('/team/draft', async (req: Request, res: Response) => {
+    try {
+        const adminProfile = await getUserByToken(req)
+
+        if (!adminProfile || adminProfile.role !== 'super_admin') {
+            return res.status(403).json({ error: 'Apenas Super Admin pode registrar colaboradores' })
+        }
+
+        const { name, email, password, role, nivel, is_supervisor, cpf, telefone, horario_trabalho } = req.body
+
+        const validation = validateInput(registerSchema, { name, email, password, role })
+        if (!validation.success) {
+            return res.status(400).json({ message: 'Validação falhou', errors: validation.errors })
+        }
+
+        const { name: validName, email: validEmail, password: validPassword, role: validRole } = validation.data as { name: string; email: string; password: string; role: string }
+
+        const isSupervisor = validRole === 'tradutor' ? false : (is_supervisor || false)
+        const cargo = determineCargo(validRole, nivel || null, isSupervisor)
+
+        const salt = await bcrypt.genSalt(10)
+        const password_hash = await bcrypt.hash(validPassword, salt)
+        const newId = crypto.randomUUID()
+
+        const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+                id: newId,
+                full_name: validName,
+                email: validEmail,
+                role: validRole,
+                cpf: cpf || null,
+                telefone: telefone || null,
+                horario_trabalho: horario_trabalho || null,
+                password_hash,
+                is_supervisor: isSupervisor,
+                nivel: nivel || null,
+                cargo,
+                supervisor_id: null,
+                registration_complete: false
+            })
+            .select()
+            .single()
+
+        if (profileError) {
+            console.error('Erro ao criar rascunho:', profileError.code, profileError.message)
+            if (profileError.code === '23505') {
+                return res.status(409).json({ error: 'Já existe um usuário com esse email' })
+            }
+            return res.status(500).json({ error: 'Erro ao criar rascunho', detail: profileError.message })
+        }
+
+        return res.status(201).json({ user: { id: profile.id, email: profile.email }, profile: buildFullProfile(profile) })
+    } catch (error: any) {
+        console.error('Erro inesperado ao criar rascunho:', error)
+        return res.status(500).json({ error: 'Erro interno do servidor' })
+    }
+})
+
+// ============================================
+// GET /auth/team — Listar todos os colaboradores (exceto rascunhos)
 // ============================================
 router.get('/team', authMiddleware, async (req: Request, res: Response) => {
     try {
         const { data: profiles, error } = await supabase
             .from('profiles')
             .select('id, full_name, email, role, cargo, nivel, is_supervisor, supervisor_id, horario_trabalho, cpf, telefone, created_at')
+            .or('registration_complete.is.null,registration_complete.eq.true')
             .order('role', { ascending: true })
             .order('full_name', { ascending: true })
 
@@ -316,6 +379,7 @@ router.get('/team/delegados/:supervisorId', authMiddleware, async (req: Request,
             .from('profiles')
             .select('id, full_name, email, role, nivel, cargo, is_supervisor, telefone, horario_trabalho, created_at')
             .eq('supervisor_id', supervisorId)
+            .or('registration_complete.is.null,registration_complete.eq.true')
             .order('full_name', { ascending: true })
 
         if (error) {
@@ -323,6 +387,28 @@ router.get('/team/delegados/:supervisorId', authMiddleware, async (req: Request,
         }
 
         return res.json(delegados || [])
+    } catch (error: any) {
+        return res.status(500).json({ error: 'Erro interno do servidor' })
+    }
+})
+
+// ============================================
+// GET /auth/team/draft — Retornar rascunho de colaborador pendente
+// ============================================
+router.get('/team/draft', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        const { data: drafts, error } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, role, cargo, nivel, is_supervisor, supervisor_id, horario_trabalho, cpf, telefone, created_at')
+            .eq('registration_complete', false)
+            .order('created_at', { ascending: false })
+            .limit(1)
+
+        if (error) {
+            return res.status(500).json({ error: 'Erro ao buscar rascunho' })
+        }
+
+        return res.json(drafts && drafts.length > 0 ? drafts[0] : null)
     } catch (error: any) {
         return res.status(500).json({ error: 'Erro interno do servidor' })
     }
@@ -344,6 +430,7 @@ router.get('/team/:role', authMiddleware, async (req: Request, res: Response) =>
             .from('profiles')
             .select('*')
             .eq('role', role)
+            .or('registration_complete.is.null,registration_complete.eq.true')
             .order('full_name', { ascending: true })
 
         if (error) {
@@ -494,6 +581,34 @@ router.put('/team/:id/delegados', async (req: Request, res: Response) => {
         }
 
         return res.json({ message: 'Delegados atualizados com sucesso' })
+    } catch (error: any) {
+        return res.status(500).json({ error: 'Erro interno do servidor' })
+    }
+})
+
+// ============================================
+// PATCH /auth/team/:id/complete — Concluir registro de rascunho
+// ============================================
+router.patch('/team/:id/complete', async (req: Request, res: Response) => {
+    try {
+        const adminProfile = await getUserByToken(req)
+
+        if (!adminProfile || adminProfile.role !== 'super_admin') {
+            return res.status(403).json({ error: 'Apenas Super Admin pode completar registros' })
+        }
+
+        const { id } = req.params
+
+        const { error } = await supabase
+            .from('profiles')
+            .update({ registration_complete: true })
+            .eq('id', id)
+
+        if (error) {
+            return res.status(500).json({ error: 'Erro ao completar registro' })
+        }
+
+        return res.json({ message: 'Registro completado com sucesso' })
     } catch (error: any) {
         return res.status(500).json({ error: 'Erro interno do servidor' })
     }

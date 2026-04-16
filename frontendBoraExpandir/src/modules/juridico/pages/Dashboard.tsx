@@ -24,6 +24,7 @@ import {
 import juridicoService, { Processo } from "../services/juridicoService";
 import { useAuth } from "../../../contexts/AuthContext";
 import { parseBackendDate, formatHoraOnly } from "../../../utils/dateUtils";
+import { SupervisorBadge } from "@/modules/shared/components/SupervisorBadge";
 
 // Helpers
 const getGreeting = () => {
@@ -184,11 +185,12 @@ export function Dashboard() {
             {getGreeting()}, {activeProfile?.full_name?.split(' ')[0]}
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col items-end gap-2">
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 rounded-lg">
             <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Sistema Operacional</span>
           </div>
+          <SupervisorBadge />
         </div>
       </div>
 

@@ -444,6 +444,7 @@ export class AdmRepository {
       .from('profiles')
       .select('*')
       .eq('role', 'tradutor')
+      .or('registration_complete.is.null,registration_complete.eq.true')
       .order('full_name', { ascending: true });
 
     if (error) {

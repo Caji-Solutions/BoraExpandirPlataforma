@@ -30,6 +30,17 @@ import { Badge } from '@/modules/shared/components/ui/badge';
 import { Avatar, AvatarFallback } from "@/modules/shared/components/ui/avatar";
 import { Plus, MoreVertical, Trash2, Eye, EyeOff, Pencil, Check, X } from "lucide-react";
 import { Checkbox } from "@/modules/shared/components/ui/checkbox";
+import { Switch } from "@/modules/shared/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/modules/shared/components/ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card';
 import { useAuth } from "../../../../contexts/AuthContext";
 
@@ -51,6 +62,7 @@ interface TeamMember {
   horario_trabalho?: string | null;
   created_at?: string;
   updated_at?: string;
+  registration_complete?: boolean;
 }
 
 const getRoleBadgeVariant = (role: UserRole): "default" | "secondary" | "success" | "warning" | "destructive" => {
@@ -122,6 +134,20 @@ export default function UserManagement() {
   const [pendingIsSupervisor, setPendingIsSupervisor] = useState(false);
   const [pendingRole, setPendingRole] = useState("");
   const [savingDelegates, setSavingDelegates] = useState(false);
+  const [pendingIsDraft, setPendingIsDraft] = useState(false);
+  const [draftData, setDraftData] = useState<TeamMember | null>(null);
+  const [pendingDraftId, setPendingDraftId] = useState<string | null>(null);
+
+  // Delete confirmation state
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+
+  // Orphan reassignment state (when deleting a supervisor with subordinates)
+  const [orphanReassignOpen, setOrphanReassignOpen] = useState(false);
+  const [orphanCollaborators, setOrphanCollaborators] = useState<TeamMember[]>([]);
+  const [deletingSupervisor, setDeletingSupervisor] = useState<{ id: string; name: string; role: string; nivel?: string | null } | null>(null);
+  const [selectedReplacementId, setSelectedReplacementId] = useState<string | null>(null);
+  const [savingReassignment, setSavingReassignment] = useState(false);
+  const [orphanIdsForNewSupervisor, setOrphanIdsForNewSupervisor] = useState<string[]>([]);
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -158,8 +184,28 @@ export default function UserManagement() {
     }
   };
 
+  const checkForPendingDraft = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/auth/team/draft`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const draft = await res.json();
+        if (draft) {
+          setDraftData(draft);
+          setPendingDraftId(draft.id);
+          toast({
+            title: "Cadastro incompleto",
+            description: "Existe um colaborador aguardando atribuição de supervisor.",
+          });
+        }
+      }
+    } catch {}
+  };
+
   useEffect(() => {
     fetchTeam();
+    checkForPendingDraft();
   }, []);
 
   const handleOpenChange = (isOpen: boolean) => {
@@ -168,6 +214,19 @@ export default function UserManagement() {
       resetForm();
       setIsEditing(false);
       setEditId(null);
+    } else if (!isEditing && draftData) {
+      setFormName(draftData.full_name || "");
+      setFormEmail(draftData.email || "");
+      setFormRole(draftData.role || "");
+      setFormNivel(draftData.nivel || null);
+      setFormIsSupervisor(draftData.is_supervisor || false);
+      setFormCpf(draftData.cpf || "");
+      setFormTelefone(draftData.telefone || "");
+      if (draftData.horario_trabalho && draftData.horario_trabalho.includes(" - ")) {
+        const [entrada, saida] = draftData.horario_trabalho.split(" - ");
+        setFormHorarioEntrada(entrada.trim());
+        setFormHorarioSaida(saida.trim());
+      }
     }
   };
 
@@ -177,7 +236,9 @@ export default function UserManagement() {
     setFormPassword("");
     setFormRole("");
     setFormNivel(null);
+    setFormIsSupervisor(false);
     setFormSupervisorId(null);
+    setFormCpf("");
     setFormTelefone("");
     setFormHorarioEntrada("");
     setFormHorarioSaida("");
@@ -189,6 +250,9 @@ export default function UserManagement() {
     if (value === "C1" || value === "C2") {
       setFormRole("comercial");
       setFormNivel(value);
+      if (value === "C1") {
+        setFormIsSupervisor(false);
+      }
     } else {
       setFormRole(value);
       setFormNivel(null);
@@ -228,8 +292,22 @@ export default function UserManagement() {
   };
 
   const handleCreate = async () => {
-    if (!formName || !formEmail || (!isEditing && !formPassword) || !formRole) {
+    if (!formName || !formEmail || (!isEditing && !formPassword && !pendingDraftId) || !formRole) {
       setError("Preencha todos os campos obrigatórios");
+      return;
+    }
+
+    // If a draft already exists, skip creation and go straight to supervisor assignment
+    if (!isEditing && pendingDraftId) {
+      setOpen(false);
+      resetForm();
+      setPendingUserId(pendingDraftId);
+      setPendingIsSupervisor(formIsSupervisor);
+      setPendingRole(formRole);
+      setPendingIsDraft(true);
+      setSelectedDelegates([]);
+      setSelectedSupervisorId(null);
+      setDelegateModalOpen(true);
       return;
     }
 
@@ -253,7 +331,7 @@ export default function UserManagement() {
     });
 
     try {
-      const url = isEditing ? `${BACKEND_URL}/auth/team/${editId}` : `${BACKEND_URL}/auth/register`;
+      const url = isEditing ? `${BACKEND_URL}/auth/team/${editId}` : `${BACKEND_URL}/auth/team/draft`;
       const method = isEditing ? "PATCH" : "POST";
 
       const res = await fetch(url, {
@@ -290,38 +368,77 @@ export default function UserManagement() {
         setIsEditing(false);
         setEditId(null);
         resetForm();
-        fetchTeam();
-        toast({
-          title: "Sucesso",
-          description: `Colaborador ${wasEditing ? 'atualizado' : 'criado'} com sucesso!`,
-        });
 
-        // Abrir segundo modal para atribuição de supervisor/delegados (exceto tradutor)
-        if (savedRole !== 'tradutor' && savedRole !== '' && savedUserId) {
-          setPendingUserId(savedUserId);
-          setPendingIsSupervisor(savedIsSupervisor);
-          setPendingRole(savedRole);
-
-          if (savedIsSupervisor) {
-            let currentDelegates: string[] = [];
-            if (wasEditing) {
-              try {
-                const delRes = await fetch(`${BACKEND_URL}/auth/team/delegados/${savedUserId}`, {
-                  headers: token ? { Authorization: `Bearer ${token}` } : {}
-                });
-                if (delRes.ok) {
-                  const dels = await delRes.json();
-                  currentDelegates = (dels as TeamMember[]).map((d: TeamMember) => d.id);
-                }
-              } catch {}
+        // Replacement supervisor flow: assign orphans, complete draft, delete old supervisor
+        if (orphanIdsForNewSupervisor.length > 0 && savedUserId) {
+          try {
+            await fetch(`${BACKEND_URL}/auth/team/${savedUserId}/delegados`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+              },
+              body: JSON.stringify({ delegateIds: orphanIdsForNewSupervisor })
+            });
+            await fetch(`${BACKEND_URL}/auth/team/${savedUserId}/complete`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+              }
+            });
+            if (deletingSupervisor) {
+              await fetch(`${BACKEND_URL}/auth/team/${deletingSupervisor.id}`, {
+                method: "DELETE",
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+              });
             }
-            setSelectedDelegates(currentDelegates);
-          } else {
-            const currentMember = members.find(m => m.id === savedUserId);
-            setSelectedSupervisorId(currentMember?.supervisor_id || null);
-          }
+          } catch {}
+          setOrphanIdsForNewSupervisor([]);
+          setDeletingSupervisor(null);
+          setOrphanCollaborators([]);
+          fetchTeam();
+          toast({
+            title: 'Sucesso',
+            description: 'Novo supervisor criado e colaboradores reatribuídos.',
+          });
+        } else {
+          fetchTeam();
+          toast({
+            title: "Sucesso",
+            description: `Colaborador ${wasEditing ? 'atualizado' : 'criado'} com sucesso!`,
+          });
 
-          setDelegateModalOpen(true);
+          // Abrir segundo modal para atribuição de supervisor/delegados (exceto tradutor)
+          if (savedRole !== 'tradutor' && savedRole !== '' && savedUserId) {
+            if (!wasEditing) {
+              setPendingIsDraft(true);
+            }
+            setPendingUserId(savedUserId);
+            setPendingIsSupervisor(savedIsSupervisor);
+            setPendingRole(savedRole);
+
+            if (savedIsSupervisor) {
+              let currentDelegates: string[] = [];
+              if (wasEditing) {
+                try {
+                  const delRes = await fetch(`${BACKEND_URL}/auth/team/delegados/${savedUserId}`, {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {}
+                  });
+                  if (delRes.ok) {
+                    const dels = await delRes.json();
+                    currentDelegates = (dels as TeamMember[]).map((d: TeamMember) => d.id);
+                  }
+                } catch {}
+              }
+              setSelectedDelegates(currentDelegates);
+            } else {
+              const currentMember = members.find(m => m.id === savedUserId);
+              setSelectedSupervisorId(currentMember?.supervisor_id || null);
+            }
+
+            setDelegateModalOpen(true);
+          }
         }
       }
     } catch (err) {
@@ -332,8 +449,28 @@ export default function UserManagement() {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Tem certeza que deseja remover ${name}?`)) return;
+    const member = members.find(m => m.id === id);
 
+    // If supervisor, check for orphaned subordinates first
+    if (member?.is_supervisor) {
+      try {
+        const res = await fetch(`${BACKEND_URL}/auth/team/delegados/${id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (res.ok) {
+          const delegados: TeamMember[] = await res.json();
+          if (delegados.length > 0) {
+            setDeletingSupervisor({ id, name, role: member.role, nivel: member.nivel });
+            setOrphanCollaborators(delegados);
+            setSelectedReplacementId(null);
+            setOrphanReassignOpen(true);
+            return;
+          }
+        }
+      } catch {}
+    }
+
+    // Not a supervisor or no subordinates — delete directly
     try {
       const res = await fetch(`${BACKEND_URL}/auth/team/${id}`, {
         method: "DELETE",
@@ -344,15 +481,83 @@ export default function UserManagement() {
         fetchTeam();
       } else {
         const data = await res.json();
-        alert(data.error || "Erro ao remover colaborador");
+        toast({
+          variant: 'destructive',
+          title: 'Erro',
+          description: data.error || "Erro ao remover colaborador",
+        });
       }
     } catch {
-      alert("Erro de conexão");
+      toast({
+        variant: 'destructive',
+        title: 'Erro',
+        description: "Erro de conexão",
+      });
     }
+  };
+
+  const handleReassignAndDelete = async () => {
+    if (!deletingSupervisor || !selectedReplacementId) return;
+    setSavingReassignment(true);
+    try {
+      for (const orphan of orphanCollaborators) {
+        await fetch(`${BACKEND_URL}/auth/team/${orphan.id}/supervisor`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ supervisor_id: selectedReplacementId })
+        });
+      }
+      const delRes = await fetch(`${BACKEND_URL}/auth/team/${deletingSupervisor.id}`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!delRes.ok) {
+        const data = await delRes.json();
+        toast({ variant: 'destructive', title: 'Erro', description: data.error || 'Erro ao remover supervisor' });
+        return;
+      }
+      setOrphanReassignOpen(false);
+      setDeletingSupervisor(null);
+      setOrphanCollaborators([]);
+      setSelectedReplacementId(null);
+      fetchTeam();
+      toast({ title: 'Sucesso', description: 'Supervisor removido e colaboradores reatribuídos.' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Erro ao reatribuir colaboradores.' });
+    } finally {
+      setSavingReassignment(false);
+    }
+  };
+
+  const handleCreateReplacementSupervisor = () => {
+    setOrphanIdsForNewSupervisor(orphanCollaborators.map(o => o.id));
+    setOrphanReassignOpen(false);
+    resetForm();
+    if (deletingSupervisor) {
+      setFormRole(deletingSupervisor.role);
+      if (deletingSupervisor.role === 'comercial') {
+        setFormNivel('C2');
+      }
+    }
+    setFormIsSupervisor(true);
+    setOpen(true);
   };
 
   const handleSaveDelegates = async () => {
     if (!pendingUserId) return;
+
+    if (!pendingIsSupervisor && !selectedSupervisorId) {
+      toast({
+        variant: 'destructive',
+        title: 'Supervisor obrigatório',
+        description: 'Selecione um supervisor antes de continuar',
+      });
+      return;
+    }
+
     setSavingDelegates(true);
 
     try {
@@ -389,6 +594,21 @@ export default function UserManagement() {
         return;
       }
 
+      if (pendingIsDraft) {
+        try {
+          await fetch(`${BACKEND_URL}/auth/team/${pendingUserId}/complete`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {})
+            }
+          });
+        } catch {}
+        setPendingIsDraft(false);
+        setDraftData(null);
+        setPendingDraftId(null);
+      }
+
       setDelegateModalOpen(false);
       fetchTeam();
       toast({
@@ -419,7 +639,11 @@ export default function UserManagement() {
     m => m.is_supervisor && m.id !== pendingUserId && m.role === pendingRole
   );
 
-  const showSupervisorCheckbox = formRole !== "tradutor" && formRole !== "";
+  const showSupervisorCheckbox = formRole !== "tradutor" && formRole !== "" && !(formRole === 'comercial' && formNivel === 'C1');
+
+  const availableReplacementSupervisors = members.filter(
+    m => m.is_supervisor && m.id !== deletingSupervisor?.id && m.role === deletingSupervisor?.role
+  );
 
   const openDetail = (member: TeamMember) => {
     setSelectedMember(member);
@@ -598,11 +822,11 @@ export default function UserManagement() {
               </div>
               {showSupervisorCheckbox && (
                 <div className="flex items-center space-x-2">
-                  <Checkbox
+                  <Switch
                     id="supervisor"
                     checked={formIsSupervisor}
                     onCheckedChange={(checked) => {
-                      setFormIsSupervisor(checked as boolean);
+                      setFormIsSupervisor(checked);
                       if (checked) setFormSupervisorId(null);
                     }}
                   />
@@ -853,16 +1077,6 @@ export default function UserManagement() {
               )
             ) : (
               <div className="space-y-1 max-h-64 overflow-y-auto">
-                <div className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer">
-                  <Checkbox
-                    id="sup-none"
-                    checked={!selectedSupervisorId}
-                    onCheckedChange={() => setSelectedSupervisorId(null)}
-                  />
-                  <Label htmlFor="sup-none" className="text-sm text-muted-foreground cursor-pointer">
-                    Nenhum supervisor
-                  </Label>
-                </div>
                 {availableSupervisorsForModal.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-2">
                     Nenhum supervisor disponível no mesmo setor
@@ -905,6 +1119,115 @@ export default function UserManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal: Reatribuição de colaboradores órfãos */}
+      <Dialog open={orphanReassignOpen} onOpenChange={(isOpen) => { if (!isOpen) { setOrphanReassignOpen(false); setDeletingSupervisor(null); } }}>
+        <DialogContent className="bg-card border-border sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Reatribuir Colaboradores</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              {deletingSupervisor?.name} é supervisor de {orphanCollaborators.length} colaborador{orphanCollaborators.length !== 1 ? 'es' : ''}. Escolha um novo supervisor antes de remover.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Colaboradores que serão reatribuídos
+            </span>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {orphanCollaborators.map(o => (
+                <div key={o.id} className="flex items-center gap-1.5 px-2.5 py-1 bg-muted/50 border border-border rounded-md">
+                  <span className="text-sm text-foreground">{o.full_name}</span>
+                  {o.nivel && (
+                    <span className="text-xs text-muted-foreground">({o.nivel})</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="py-2">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Selecionar novo supervisor
+            </span>
+            {availableReplacementSupervisors.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Nenhum outro supervisor encontrado no setor {deletingSupervisor ? getRoleLabel(deletingSupervisor.role as UserRole, deletingSupervisor.nivel) : ''}.
+              </p>
+            ) : (
+              <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
+                {availableReplacementSupervisors.map(sup => (
+                  <div
+                    key={sup.id}
+                    className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer"
+                  >
+                    <Checkbox
+                      id={`replace-${sup.id}`}
+                      checked={selectedReplacementId === sup.id}
+                      onCheckedChange={(checked) => setSelectedReplacementId(checked ? sup.id : null)}
+                    />
+                    <Label htmlFor={`replace-${sup.id}`} className="text-sm text-foreground cursor-pointer flex-1">
+                      {sup.full_name}
+                      <span className="text-xs text-amber-500 ml-2 font-medium">★ Supervisor</span>
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-between gap-3 pt-2">
+            <Button
+              variant="outline"
+              onClick={handleCreateReplacementSupervisor}
+              className="border-border text-foreground"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Criar Supervisor
+            </Button>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => { setOrphanReassignOpen(false); setDeletingSupervisor(null); }}
+                className="border-border text-foreground"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleReassignAndDelete}
+                disabled={!selectedReplacementId || savingReassignment}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {savingReassignment ? 'Reatribuindo...' : 'Reatribuir e Remover'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(isOpen) => { if (!isOpen) setDeleteTarget(null); }}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-foreground">Confirmar remoção</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              Tem certeza que deseja remover {deleteTarget?.name}? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-border text-foreground">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteTarget) {
+                  handleDelete(deleteTarget.id, deleteTarget.name);
+                }
+              }}
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Card className="bg-card border-border">
         <CardHeader>
@@ -966,7 +1289,7 @@ export default function UserManagement() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-destructive hover:text-destructive/80"
-                            onClick={() => handleDelete(member.id, member.full_name || "este colaborador")}
+                            onClick={() => setDeleteTarget({ id: member.id, name: member.full_name || "este colaborador" })}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

@@ -45,6 +45,7 @@ import type {
 } from '@/types/comercial'
 import Toast, { useToast, ToastContainer } from '@/components/ui/Toast'
 import { Badge } from '@/modules/shared/components/ui/badge'
+import { SupervisorBadge } from '@/modules/shared/components/SupervisorBadge'
 import comercialService from '../../services/comercialService'
 import { extractLocalTimeMapping } from '../../../../utils/dateUtils'
 
@@ -130,13 +131,14 @@ function DashboardPage({
             {isC2 ? 'Painel completo — Consultorias, Assessorias e Contratos' : 'Painel de Consultorias'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col items-end gap-2">
           <span className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg border ${
             isC2 ? 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/40'
                  : 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/40'
           }`}>
             Nivel {nivel}
           </span>
+          <SupervisorBadge />
         </div>
       </div>
 

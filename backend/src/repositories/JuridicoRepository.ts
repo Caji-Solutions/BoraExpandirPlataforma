@@ -60,6 +60,7 @@ class JuridicoRepository {
             .from('profiles')
             .select('id, full_name, email, telefone, horario_trabalho')
             .eq('role', 'juridico')
+            .or('registration_complete.is.null,registration_complete.eq.true')
             .order('full_name', { ascending: true })
 
         if (error) {
