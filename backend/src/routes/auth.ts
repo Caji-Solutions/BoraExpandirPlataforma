@@ -460,10 +460,21 @@ router.delete('/team/:id', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Você não pode remover seu próprio usuário' })
         }
 
+        // Demissao: colaborador sai, mas seus dados ficam.
+        // Nullificar todas as FK references — agendamentos, comissoes, contratos
+        // e clientes permanecem no sistema sem o vinculo ao colaborador.
+        // (Apos aplicar a migration fix_fk_cascade_on_profile_delete.sql o banco
+        //  faz ON DELETE SET NULL automaticamente, mas mantemos o cleanup manual
+        //  como fallback para funcionar antes da migration ser aplicada.)
+        await supabase.from('profiles').update({ supervisor_id: null }).eq('supervisor_id', id)
+        await supabase.from('agendamentos').update({ usuario_id: null }).eq('usuario_id', id)
+        await supabase.from('comissoes').delete().eq('usuario_id', id)
+
         const { error: profileError } = await supabase.from('profiles').delete().eq('id', id)
 
         if (profileError) {
-            return res.status(500).json({ error: 'Erro ao remover usuário' })
+            console.error('Erro ao remover perfil:', profileError.code, profileError.message, profileError.details)
+            return res.status(500).json({ error: 'Erro ao remover usuário', detail: profileError.message })
         }
 
         return res.json({ message: 'Colaborador removido com sucesso' })

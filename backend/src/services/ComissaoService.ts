@@ -189,9 +189,17 @@ class ComissaoService {
 
     const subordinadoIds = subordinados.map(s => s.id)
     const vendasEquipe = await ComissaoRepository.getVendasEquipe(subordinadoIds, mes, ano)
+    const contratosEquipe = await ComissaoRepository.getContratosEquipe(subordinadoIds, mes, ano)
 
-    const totalVendasEquipe = vendasEquipe.length
-    const totalFaturadoEur = vendasEquipe.reduce((acc, v) => acc + (parseFloat(v.valor) || 0), 0)
+    // Filtrar contratos nao agendaveis (Assessoria Direta) dos subordinados
+    const contratosNaoAgendaveis = contratosEquipe.filter((c: any) => c.servico?.nao_agendavel === true)
+
+    console.error(`[ComissaoFix] calcularComissaoHEAD - agendamentos equipe: ${vendasEquipe.length}, contratos nao_agendaveis equipe: ${contratosNaoAgendaveis.length}`)
+
+    const totalVendasEquipe = vendasEquipe.length + contratosNaoAgendaveis.length
+    const faturadoAgendamentos = vendasEquipe.reduce((acc, v) => acc + (parseFloat(v.valor) || 0), 0)
+    const faturadoContratos = contratosNaoAgendaveis.reduce((acc: number, c: any) => acc + (parseFloat(c.servico_valor) || 0), 0)
+    const totalFaturadoEur = faturadoAgendamentos + faturadoContratos
 
     // Comissao por vendas da equipe
     const metaVendas = this.findMetaAtingida(metas, totalVendasEquipe)

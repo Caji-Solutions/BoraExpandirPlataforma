@@ -211,6 +211,62 @@ class ComissaoRepository {
     return data || []
   }
 
+  async getContratosEquipe(subordinadoIds: string[], _mes: number, _ano: number) {
+    if (subordinadoIds.length === 0) return []
+
+    const { inicio, fim } = this.getRollingWindow()
+    const janelaPagamento = `and(pagamento_verificado_em.gte.${inicio},pagamento_verificado_em.lte.${fim})`
+    const janelaCriacaoLegado = `and(pagamento_verificado_em.is.null,criado_em.gte.${inicio},criado_em.lte.${fim})`
+
+    let contratos: any[] | null = null
+    let error: any = null
+
+    const queryPrincipal = await supabase
+      .from('contratos_servicos')
+      .select(`
+        id, usuario_id, cliente_id, servico_id, servico_valor, assinatura_status, pagamento_status,
+        status_contrato, membros_count, criado_em, pagamento_verificado_em,
+        servico:catalogo_servicos(id, nome, tipo, nao_agendavel)
+      `)
+      .in('usuario_id', subordinadoIds)
+      .eq('assinatura_status', 'aprovado')
+      .in('pagamento_status', ['aprovado', 'confirmado'])
+      .neq('status_contrato', 'INVALIDO')
+      .neq('status_contrato', 'CANCELADO')
+      .or(`${janelaPagamento},${janelaCriacaoLegado}`)
+
+    contratos = queryPrincipal.data
+    error = queryPrincipal.error
+
+    if (error && this.isMissingColumnError(error, 'pagamento_verificado_em')) {
+      const fallback = await supabase
+        .from('contratos_servicos')
+        .select(`
+          id, usuario_id, cliente_id, servico_id, servico_valor, assinatura_status, pagamento_status,
+          status_contrato, membros_count, criado_em,
+          servico:catalogo_servicos(id, nome, tipo, nao_agendavel)
+        `)
+        .in('usuario_id', subordinadoIds)
+        .eq('assinatura_status', 'aprovado')
+        .in('pagamento_status', ['aprovado', 'confirmado'])
+        .neq('status_contrato', 'INVALIDO')
+        .neq('status_contrato', 'CANCELADO')
+        .gte('criado_em', inicio)
+        .lte('criado_em', fim)
+
+      contratos = fallback.data
+      error = fallback.error
+    }
+
+    if (error) {
+      console.error('[ComissaoRepository] Erro ao buscar contratos da equipe:', error)
+      throw error
+    }
+
+    console.error(`[ComissaoFix] getContratosEquipe - contratos da equipe encontrados: ${(contratos || []).length}`)
+    return contratos || []
+  }
+
   async saveComissao(comissao: {
     usuario_id: string
     mes: number
