@@ -1,3 +1,4 @@
+
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -14,21 +15,38 @@ import {
     Languages,
     FileCheck
 } from 'lucide-react';
+import { toast } from '@/modules/shared/components/ui/sonner';
 
 interface ProcessActionProps {
     clienteId: string;
     processoId?: string;
-    responsavel?: { id: string, nome: string }; // Novo prop: Responsável pelo processo
-    areaFilter?: 'todos' | 'juridico' | 'comercial' | 'administrativo'; // Novo prop: Filtro de área
+    client?: any; // Objeto completo do cliente para ações complexas
+    responsavel?: { id: string, nome: string };
+    areaFilter?: 'todos' | 'juridico' | 'comercial' | 'administrativo';
     onActionClick?: (action: string, ids: { clienteId: string, processoId?: string }) => void;
+    onSolicitarDocumentos?: () => void;
+    onSolicitarFormulario?: () => void;
+    onSolicitarApostilagem?: () => void;
+    onSolicitarTraducao?: () => void;
+    onGerarFatura?: () => void;
+    onSetTab?: (tab: string) => void;
+    localProcessoId?: string;
 }
 
 export function ProcessAction({
     clienteId,
     processoId,
+    client,
     responsavel,
     areaFilter = 'todos',
-    onActionClick
+    onActionClick,
+    onSolicitarDocumentos,
+    onSolicitarFormulario,
+    onSolicitarApostilagem,
+    onSolicitarTraducao,
+    onGerarFatura,
+    onSetTab,
+    localProcessoId
 }: ProcessActionProps) {
     const navigate = useNavigate();
     const { activeProfile } = useAuth();
@@ -117,7 +135,76 @@ export function ProcessAction({
     ];
 
     const handleAction = (actionId: string) => {
-        console.log(`[ProcessAction] handleAction: ${actionId}`);
+        console.log(`[ProcessAction] handleAction: ${actionId}`, { client, clienteId, processoId });
+
+        switch (actionId) {
+            case 'solicitar_documentos':
+                onSolicitarDocumentos?.();
+                break;
+            case 'solicitar_formulario':
+                onSolicitarFormulario?.();
+                break;
+            case 'solicitar_apostilagem':
+                console.log('[ProcessAction] solicitar_apostilagem clicked', { onSolicitarApostilagem });
+                if (onSolicitarApostilagem) {
+                    onSolicitarApostilagem();
+                } else {
+                    console.warn('[ProcessAction] onSolicitarApostilagem callback not provided');
+                }
+                break;
+            case 'solicitar_traducao':
+                console.log('[ProcessAction] solicitar_traducao clicked', { onSolicitarTraducao });
+                if (onSolicitarTraducao) {
+                    onSolicitarTraducao();
+                } else {
+                    console.warn('[ProcessAction] onSolicitarTraducao callback not provided');
+                }
+                break;
+            case 'comercial_agenda':
+                console.log('[ProcessAction] comercial_agenda clicked', { client, clienteId });
+                if (client) {
+                    console.log('[ProcessAction] Navigating to /comercial/servicos with client:', client);
+                    navigate('/comercial/servicos', {
+                        state: {
+                            preSelectedClient: client
+                        }
+                    });
+                } else {
+                    toast.error('Cliente não encontrado. Não é possível agendar.');
+                    console.error('[ProcessAction] client is undefined or null');
+                }
+                break;
+            case 'ver_processo':
+                const pidProcesso = client?.processo_id || processoId;
+                if (pidProcesso) {
+                    navigate(`/juridico/processos?expand=${pidProcesso}`);
+                } else {
+                    toast.error('Este cliente ainda não possui um processo jurídico vinculado.');
+                }
+                break;
+            case 'ver_documentos':
+                const pidDocs = localProcessoId || client?.processo_id || processoId;
+                if (pidDocs) {
+                    navigate(`/juridico/analise?processoId=${pidDocs}`);
+                } else {
+                    toast.error('Este cliente ainda não possui um processo jurídico aberto.');
+                }
+                break;
+            case 'admin_config':
+                navigate('/juridico/configuracoes');
+                break;
+            case 'financeiro_fatura':
+                if (onGerarFatura) {
+                    onGerarFatura();
+                } else {
+                    onSetTab?.('contrato_comprovantes');
+                    toast.info('Redirecionado para aba de contratos. Selecione um contrato para gerenciar o financeiro.');
+                }
+                break;
+            default:
+                console.log('Action triggered:', actionId);
+        }
+
         if (onActionClick) {
             onActionClick(actionId, { clienteId, processoId });
         }
@@ -144,6 +231,7 @@ export function ProcessAction({
                         purple: 'bg-purple-100 text-purple-600 group-hover:bg-purple-600',
                         orange: 'bg-orange-100 text-orange-600 group-hover:bg-orange-600',
                         green: 'bg-green-100 text-green-600 group-hover:bg-green-600',
+                        indigo: 'bg-indigo-100 text-indigo-600 group-hover:bg-indigo-600',
                         slate: 'bg-slate-100 text-slate-600 group-hover:bg-slate-600'
                     };
 

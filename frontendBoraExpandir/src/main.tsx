@@ -1,6 +1,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { QueryClientProvider } from '@tanstack/react-query'
 import '@/index.css'
 
 import { ClienteApp } from '@/modules/cliente/ClienteApp'
@@ -21,11 +22,13 @@ import PaymentCancel from './modules/shared/pages/PaymentCancel'
 import FormularioConsultoria from './modules/shared/pages/FormularioConsultoriaPage'
 import RedefinirSenha from './modules/shared/pages/RedefinirSenha'
 import ForgotPasswordPage from './modules/shared/pages/ForgotPasswordPage'
+import { queryClient } from '@/config/queryClient'
 
 import { useParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 
 function TelaIndicadoWrapper() {
+// ... rest of the functions
   const { partnerId } = useParams<{ partnerId: string }>()
   const [partnerName, setPartnerName] = useState('Parceiro')
   const [realPartnerId, setRealPartnerId] = useState<string | null>(null)
@@ -146,8 +149,10 @@ function AppRouter() {
 
 const root = document.getElementById('root')
 if (root) createRoot(root).render(
-  <ThemeProvider>
-    <AppRouter />
-    <Toaster />
-  </ThemeProvider>
+  <QueryClientProvider client={queryClient}>
+    <ThemeProvider>
+      <AppRouter />
+      <Toaster />
+    </ThemeProvider>
+  </QueryClientProvider>
 )
