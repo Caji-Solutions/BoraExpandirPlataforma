@@ -137,8 +137,9 @@ export default function LoginPage() {
                             style={{
                                 background: 'none',
                                 border: 'none',
-                                color: 'rgba(255, 255, 255, 0.5)',
+                                color: '#3B52E5',
                                 fontSize: '0.8rem',
+                                fontWeight: 500,
                                 cursor: 'pointer',
                                 padding: '4px',
                             }}
@@ -198,6 +199,7 @@ export default function LoginPage() {
         input:focus {
           outline: none;
           border-color: #3B52E5 !important;
+          background: #FFFFFF !important;
           box-shadow: 0 0 0 3px rgba(59, 82, 229, 0.15) !important;
         }
       `}</style>
@@ -211,7 +213,7 @@ const styles: Record<string, React.CSSProperties> = {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #1a1f3a 0%, #0f1225 40%, #161b35 100%)',
+        background: 'linear-gradient(135deg, #F8FAFC 0%, #EEF2FF 50%, #F1F5F9 100%)',
         padding: '1rem',
         position: 'relative',
         overflow: 'hidden',
@@ -222,7 +224,7 @@ const styles: Record<string, React.CSSProperties> = {
         width: '500px',
         height: '500px',
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(59, 82, 229, 0.15) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(59, 82, 229, 0.12) 0%, transparent 70%)',
         top: '-150px',
         right: '-100px',
         animation: 'float1 8s ease-in-out infinite',
@@ -250,13 +252,13 @@ const styles: Record<string, React.CSSProperties> = {
     card: {
         width: '100%',
         maxWidth: '420px',
-        background: 'rgba(255, 255, 255, 0.03)',
-        backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
+        background: '#FFFFFF',
+        border: '1px solid #E5E7EB',
         borderRadius: '20px',
         padding: '2.5rem',
         position: 'relative',
         zIndex: 10,
+        boxShadow: '0 20px 40px -12px rgba(15, 23, 42, 0.08), 0 8px 16px -8px rgba(15, 23, 42, 0.04)',
         animation: 'fadeIn 0.6s ease-out',
     },
     logoContainer: {
@@ -271,13 +273,13 @@ const styles: Record<string, React.CSSProperties> = {
     title: {
         fontSize: '1.5rem',
         fontWeight: 700,
-        color: '#FFFFFF',
+        color: '#0F172A',
         textAlign: 'center' as const,
         marginBottom: '0.25rem',
     },
     subtitle: {
         fontSize: '0.875rem',
-        color: 'rgba(255, 255, 255, 0.5)',
+        color: '#64748B',
         textAlign: 'center' as const,
         marginBottom: '2rem',
     },
@@ -291,10 +293,10 @@ const styles: Record<string, React.CSSProperties> = {
         alignItems: 'center',
         gap: '0.5rem',
         padding: '0.75rem 1rem',
-        background: 'rgba(220, 38, 38, 0.1)',
-        border: '1px solid rgba(220, 38, 38, 0.2)',
+        background: '#FEF2F2',
+        border: '1px solid #FECACA',
         borderRadius: '10px',
-        color: '#FCA5A5',
+        color: '#B91C1C',
         fontSize: '0.85rem',
     },
     fieldGroup: {
@@ -305,7 +307,7 @@ const styles: Record<string, React.CSSProperties> = {
     label: {
         fontSize: '0.8rem',
         fontWeight: 500,
-        color: 'rgba(255, 255, 255, 0.7)',
+        color: '#374151',
         textTransform: 'uppercase' as const,
         letterSpacing: '0.5px',
     },
@@ -317,16 +319,16 @@ const styles: Record<string, React.CSSProperties> = {
     inputIcon: {
         position: 'absolute' as const,
         left: '14px',
-        color: 'rgba(255, 255, 255, 0.35)',
+        color: '#9CA3AF',
         pointerEvents: 'none' as const,
     },
     input: {
         width: '100%',
         padding: '0.8rem 2.8rem 0.8rem 2.8rem',
-        background: 'rgba(255, 255, 255, 0.05)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
+        background: '#F9FAFB',
+        border: '1px solid #E5E7EB',
         borderRadius: '10px',
-        color: '#FFFFFF',
+        color: '#111827',
         fontSize: '0.9rem',
         transition: 'all 0.2s ease',
     },
@@ -335,7 +337,7 @@ const styles: Record<string, React.CSSProperties> = {
         right: '10px',
         background: 'none',
         border: 'none',
-        color: 'rgba(255, 255, 255, 0.35)',
+        color: '#9CA3AF',
         cursor: 'pointer',
         padding: '4px',
         display: 'flex',
@@ -352,6 +354,7 @@ const styles: Record<string, React.CSSProperties> = {
         fontWeight: 600,
         transition: 'all 0.2s ease',
         marginTop: '0.5rem',
+        boxShadow: '0 4px 12px rgba(59, 82, 229, 0.25)',
     },
     spinnerWrapper: {
         display: 'flex',
@@ -370,7 +373,7 @@ const styles: Record<string, React.CSSProperties> = {
     footer: {
         textAlign: 'center' as const,
         fontSize: '0.7rem',
-        color: 'rgba(255, 255, 255, 0.25)',
+        color: '#94A3B8',
         marginTop: '2rem',
     },
 }
