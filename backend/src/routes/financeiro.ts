@@ -40,6 +40,7 @@ financeiro.post('/parcelas/comprovante/:id/recusar', FinanceiroController.recusa
 financeiro.get('/dashboard/metricas', FinanceiroController.getDashboardMetricas.bind(FinanceiroController))
 financeiro.get('/dashboard/vendedores', FinanceiroController.getDashboardVendedores.bind(FinanceiroController))
 financeiro.get('/dashboard/fluxo-caixa', FinanceiroController.getFluxoCaixa.bind(FinanceiroController))
+financeiro.get('/dashboard/servicos', FinanceiroController.getServicePerformance.bind(FinanceiroController))
 financeiro.get('/comissoes', FinanceiroController.getComissoes.bind(FinanceiroController))
 financeiro.get('/titularidades', FinanceiroController.getTitularidades.bind(FinanceiroController))
 

@@ -101,8 +101,8 @@ export default function Dashboard() {
     },
     {
       title: "Processos Ativos",
-      value: "142", // Ainda mockado até ter endpoint específico
-      change: "+12 esta semana",
+      value: (statsData?.processos_ativos || 0).toString(),
+      change: "Em andamento",
       icon: FileText,
       color: "text-status-info",
     },
@@ -121,6 +121,21 @@ export default function Dashboard() {
       color: "text-status-warning",
     },
   ];
+
+  const recentActivity = statsData?.recent_activity || [];
+
+  const formatActivityTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 60) return `${diffMins} min atrás`;
+    if (diffHours < 24) return `${diffHours} hora${diffHours > 1 ? 's' : ''} atrás`;
+    return `${diffDays} dia${diffDays > 1 ? 's' : ''} atrás`;
+  };
 
   return (
     <div className="space-y-6">
@@ -167,20 +182,29 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <Card key={stat.title} className="bg-card border-border">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-card-foreground">
-                {stat.title}
-              </CardTitle>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-              <p className="text-xs text-muted-foreground mt-1">{stat.change}</p>
-            </CardContent>
-          </Card>
-        ))}
+        {isLoadingStats ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="bg-card border-border animate-pulse">
+              <CardHeader className="h-12" />
+              <CardContent className="h-20" />
+            </Card>
+          ))
+        ) : (
+          stats.map((stat) => (
+            <Card key={stat.title} className="bg-card border-border">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-card-foreground">
+                  {stat.title}
+                </CardTitle>
+                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-foreground">{stat.value}</div>
+                <p className="text-xs text-muted-foreground mt-1">{stat.change}</p>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
       <Card className="bg-card border-border">
@@ -192,21 +216,21 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {[
-              { user: "Dra. Ana Silva", action: "atualizou documento", time: "2 min atrás" },
-              { user: "Carlos Santos", action: "criou novo cliente", time: "15 min atrás" },
-              { user: "Marina Costa", action: "finalizou processo", time: "1 hora atrás" },
-            ].map((activity, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <div className="h-2 w-2 rounded-full bg-primary" />
-                <div className="flex-1">
-                  <p className="text-sm text-foreground">
-                    <span className="font-medium">{activity.user}</span> {activity.action}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{activity.time}</p>
+            {recentActivity.length > 0 ? (
+              recentActivity.map((activity, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <div className="h-2 w-2 rounded-full bg-primary" />
+                  <div className="flex-1">
+                    <p className="text-sm text-foreground">
+                      <span className="font-medium">{activity.user}</span> {activity.action}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{formatActivityTime(activity.time)}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhuma atividade recente registrada.</p>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -1301,18 +1301,22 @@ class FinanceiroController {
             const mes = agora.getMonth() + 1
             const ano = agora.getFullYear()
 
-            const [faturamento, novosClientes, contasReceber, comissoes] = await Promise.all([
+            const [faturamento, novosClientes, contasReceber, comissoes, processosAtivos, recentActivity] = await Promise.all([
                 FinanceiroDashboardRepository.getFaturamento(mes, ano),
                 FinanceiroDashboardRepository.getNovosClientes(mes, ano),
                 FinanceiroDashboardRepository.getContasReceber(),
-                FinanceiroDashboardRepository.getComissoes(mes, ano)
+                FinanceiroDashboardRepository.getComissoes(mes, ano),
+                FinanceiroDashboardRepository.getProcessosAtivos(),
+                FinanceiroDashboardRepository.getRecentActivity()
             ])
 
             const resposta = {
                 faturamento,
                 novos_clientes: novosClientes,
                 contas_receber: contasReceber,
-                comissoes
+                comissoes,
+                processos_ativos: processosAtivos,
+                recent_activity: recentActivity
             }
 
             return res.status(200).json(resposta)
@@ -1397,6 +1401,16 @@ class FinanceiroController {
         } catch (error: any) {
             console.error('[FinanceiroController] Erro ao buscar fluxo de caixa:', error)
             return res.status(500).json({ message: 'Erro ao buscar fluxo de caixa', error: error.message })
+        }
+    }
+
+    async getServicePerformance(_req: any, res: any) {
+        try {
+            const data = await FinanceiroDashboardRepository.getServicePerformance()
+            return res.status(200).json({ data })
+        } catch (error: any) {
+            console.error('[FinanceiroController] Erro ao buscar performance de servicos:', error)
+            return res.status(500).json({ message: 'Erro ao buscar performance de servicos', error: error.message })
         }
     }
 }

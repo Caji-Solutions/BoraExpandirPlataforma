@@ -182,7 +182,7 @@ export function DocumentRequestModal({
                                     onChange={(e) => setNotificar(e.target.checked)}
                                     className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
                                 />
-                                <Label htmlFor="notificar" className="cursor-pointer font-bold text-sm">Notificar Cliente por E-mail?</Label>
+                                <Label htmlFor="notificar" className="cursor-pointer font-bold text-sm">Notificar</Label>
                             </div>
 
                             {notificar && (

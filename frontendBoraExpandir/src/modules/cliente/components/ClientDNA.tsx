@@ -61,6 +61,8 @@ export type ClientDNAData = {
         nome: string
     }
     perfil_unificado?: { data: Record<string, any>; metadata?: Record<string, any> }
+    criado_em?: string
+    hasActiveRequirement?: boolean
 }
 
 export type DNACategory = {
@@ -200,6 +202,8 @@ export function ClientDNAPage() {
                         documento: item.documento || '',
                         passaporte: item.passaporte || '',
                         status: item.status,
+                        criado_em: item.criado_em,
+                        hasActiveRequirement: (item.requerimentos || []).some((r: any) => r.status === 'pendente'),
                         criador: item.criado_por ? {
                             id: item.criado_por,
                             nome: item.criado_por_nome || 'Desconhecido'

@@ -103,16 +103,6 @@ export function ProcessAction({
             isJuridico: true
         },
         {
-            id: 'admin_config',
-            name: 'Gestão de Permissões',
-            icon: ShieldCheck,
-            color: 'purple',
-            description: 'Painel de controle administrativo',
-            roles: ['super_admin'],
-            area: 'administrativo',
-            isJuridico: false
-        },
-        {
             id: 'comercial_agenda',
             name: 'Agendamento',
             icon: Calendar,
@@ -189,9 +179,6 @@ export function ProcessAction({
                 } else {
                     toast.error('Este cliente ainda não possui um processo jurídico aberto.');
                 }
-                break;
-            case 'admin_config':
-                navigate('/juridico/configuracoes');
                 break;
             case 'financeiro_fatura':
                 if (onGerarFatura) {

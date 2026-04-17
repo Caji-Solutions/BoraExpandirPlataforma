@@ -15,6 +15,7 @@ const mainMenuItems = [
 
 const adminMenuItems = [
   { title: "Meus Contratos", url: "/adm/contratos", icon: FileText },
+  { title: "Finanças & Precificação", url: "/adm/financeiro/precos", icon: HandCoins },
   { title: "Configurar Serviços", url: "/adm/services", icon: Settings2 },
   { title: "Gestão de Equipe", url: "/adm/team", icon: Users },
   { title: "Metas Comerciais", url: "/adm/metas", icon: Target },

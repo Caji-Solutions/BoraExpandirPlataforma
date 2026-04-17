@@ -6,9 +6,8 @@ import OrcamentosPage from './pages/OrcamentosPage'
 import FilaDeTrabalho from './pages/FilaDeTrabalho'
 import EntreguesPage from './pages/EntreguesPage'
 import PagamentosPage from './pages/PagamentosPage'
-import { FileText, Clock, CheckCircle2, DollarSign, Settings, Loader2 } from 'lucide-react'
+import { FileText, Clock, CheckCircle2, DollarSign, Loader2 } from 'lucide-react'
 import type { OrcamentoItem, OrcamentoFormData } from './types'
-import { Config } from '@/components/ui/Config'
 import { traducoesService } from './services/traducoesService'
 import { useEffect } from 'react'
 
@@ -138,12 +137,6 @@ export default function Tradutora() {
         { label: 'Pagamentos', to: '/tradutor/pagamentos', icon: DollarSign },
       ],
     },
-    {
-      label: 'Sistema',
-      items: [
-        { label: 'Configurações', to: '/tradutor/configuracoes', icon: Settings },
-      ],
-    },
   ]
 
   return (
@@ -173,7 +166,7 @@ export default function Tradutora() {
           <Route path="/fila" element={<FilaDeTrabalho items={filaItems} onSubmitTraducao={handleSubmitTraducao} />} />
           <Route path="/entregues" element={<EntreguesPage items={entregueItems} onSubmitTraducao={handleSubmitTraducao} />} />
           <Route path="/pagamentos" element={<PagamentosPage items={[...entregueItems, ...filaItems]} />} />
-          <Route path="/configuracoes" element={<Config />} />
+
           <Route path="*" element={<Navigate to="/tradutor/orcamentos" replace />} />
         </Routes>
       </main>

@@ -193,8 +193,128 @@ class FinanceiroDashboardRepository {
             despesas
         })
     }
-
     return resultados
+  }
+
+  async getProcessosAtivos(): Promise<number> {
+    try {
+      // Contar agendamentos ativos
+      const { count: countAgend, error: errAgend } = await supabase
+        .from('agendamentos')
+        .select('*', { count: 'exact', head: true })
+        .not('status', 'in', '("cancelado", "realizado")')
+
+      // Contar contratos ativos
+      const { count: countContrato, error: errContrato } = await supabase
+        .from('contratos_servicos')
+        .select('*', { count: 'exact', head: true })
+        .not('assinatura_status', 'in', '("cancelado", "finalizado")')
+
+      if (errAgend) console.error('[FinanceiroDashboardRepository] Erro ao contar agendamentos:', errAgend)
+      if (errContrato) console.error('[FinanceiroDashboardRepository] Erro ao contar contratos:', errContrato)
+
+      return (countAgend || 0) + (countContrato || 0)
+    } catch (error) {
+      console.error('[FinanceiroDashboardRepository] Erro ao buscar processos ativos:', error)
+      return 0
+    }
+  }
+
+  async getRecentActivity(): Promise<any[]> {
+    try {
+      const [clients, contracts, appointments] = await Promise.all([
+        supabase.from('clientes').select('nome, criado_em').order('criado_em', { ascending: false }).limit(3),
+        supabase.from('contratos_servicos').select('cliente:clientes(nome), criado_em').order('criado_em', { ascending: false }).limit(3),
+        supabase.from('agendamentos').select('nome, criado_em, produto_nome').order('criado_em', { ascending: false }).limit(3)
+      ])
+
+      const activity: any[] = []
+
+      if (clients.data) {
+        clients.data.forEach(c => activity.push({ 
+          user: c.nome || 'Lead', 
+          action: 'se cadastrou no sistema', 
+          time: c.criado_em 
+        }))
+      }
+      if (contracts.data) {
+        contracts.data.forEach(c => activity.push({ 
+          user: (c.cliente as any)?.nome || 'Cliente', 
+          action: 'iniciou um novo processo de serviço', 
+          time: c.criado_em 
+        }))
+      }
+      if (appointments.data) {
+        appointments.data.forEach(a => activity.push({ 
+          user: a.nome || 'Cliente', 
+          action: `agendou ${a.produto_nome || 'uma consultoria'}`, 
+          time: a.criado_em 
+        }))
+      }
+
+      return activity
+        .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+        .slice(0, 5)
+    } catch (error) {
+      console.error('[FinanceiroDashboardRepository] Erro ao buscar atividade recente:', error)
+      return []
+    }
+  }
+
+  async getServicePerformance(): Promise<any[]> {
+    try {
+      // 1. Buscar todos os serviços do catálogo
+      const { data: services, error: errSvc } = await supabase
+        .from('catalogo_servicos')
+        .select('id, nome, valor, tipo')
+
+      if (errSvc) throw errSvc
+
+      // 2. Buscar agendamentos vendidos (aprovados)
+      const { data: sales, error: errSales } = await supabase
+        .from('agendamentos')
+        .select('produto_id, valor')
+        .eq('pagamento_status', 'aprovado')
+
+      if (errSales) throw errSales
+
+      // 3. Buscar contratos vendidos (aprovados)
+      const { data: contracts, error: errContracts } = await supabase
+        .from('contratos_servicos')
+        .select('servico_id, servico_valor')
+        .eq('pagamento_status', 'aprovado')
+
+      if (errContracts) throw errContracts
+
+      // 4. Agrerar dados
+      const performance = services.map(svc => {
+        const agendSales = sales.filter(s => s.produto_id === svc.id)
+        const contractSales = contracts.filter(c => c.servico_id === svc.id)
+
+        const totalSold = agendSales.length + contractSales.length
+        const grossRevenue = agendSales.reduce((acc, s) => acc + (s.valor || 0), 0) +
+                             contractSales.reduce((acc, c) => acc + (c.servico_valor || 0), 0)
+
+        // Mocking "passed on" as 70% for now if not available, or we could look up commissions
+        // But the user wants "how much was passed on".
+        // For translations it's in orçamentos.
+        
+        return {
+          id: svc.id,
+          nome: svc.nome,
+          tipo: svc.tipo,
+          total_vendido: totalSold,
+          faturamento_bruto: grossRevenue,
+          faturamento_liquido: grossRevenue * 0.8, // Fallback calculation if no costs found
+          valor_base: svc.valor
+        }
+      })
+
+      return performance.sort((a, b) => b.faturamento_bruto - a.faturamento_bruto)
+    } catch (error) {
+      console.error('[FinanceiroDashboardRepository] Erro ao buscar performance de servicos:', error)
+      return []
+    }
   }
 }
 

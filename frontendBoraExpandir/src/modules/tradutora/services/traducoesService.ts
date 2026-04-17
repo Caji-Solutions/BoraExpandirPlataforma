@@ -1,9 +1,9 @@
 import { apiClient } from '@/modules/shared/services/api';
 
 class TraducoesService {
-  async getOrcamentosPendentes() {
+  async getOrcamentosPendentes(): Promise<any[]> {
     try {
-      return await apiClient.get(`/traducoes/orcamentos/pendentes`)
+      return await apiClient.get<any[]>(`/traducoes/orcamentos/pendentes`)
     } catch (error) {
       console.error('TraducoesService.getOrcamentosPendentes error:', error)
       throw error
@@ -24,9 +24,9 @@ class TraducoesService {
     }
   }
 
-  async getOrcamentoByDocumento(documentoId: string) {
+  async getOrcamentoByDocumento(documentoId: string): Promise<any> {
     try {
-      return await apiClient.get(`/traducoes/orcamentos/documento/${documentoId}`)
+      return await apiClient.get<any>(`/traducoes/orcamentos/documento/${documentoId}`)
     } catch (error) {
       console.error('TraducoesService.getOrcamentoByDocumento error:', error)
       throw error
@@ -70,18 +70,18 @@ class TraducoesService {
     }
   }
 
-  async getFilaDeTrabalho() {
+  async getFilaDeTrabalho(): Promise<any[]> {
     try {
-      return await apiClient.get(`/traducoes/fila`)
+      return await apiClient.get<any[]>(`/traducoes/fila`)
     } catch (error) {
       console.error('TraducoesService.getFilaDeTrabalho error:', error)
       throw error
     }
   }
 
-  async getEntregues() {
+  async getEntregues(): Promise<any[]> {
     try {
-      return await apiClient.get(`/traducoes/entregues`)
+      return await apiClient.get<any[]>(`/traducoes/entregues`)
     } catch (error) {
       console.error('TraducoesService.getEntregues error:', error)
       throw error

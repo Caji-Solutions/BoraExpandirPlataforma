@@ -14,6 +14,12 @@ export interface DashboardStats {
     paga: number;
     aRealizar: number;
   };
+  processos_ativos: number;
+  recent_activity: Array<{
+    user: string;
+    action: string;
+    time: string;
+  }>;
 }
 
 export interface FluxoCaixaItem {
@@ -49,6 +55,11 @@ export const admService = {
 
   async getVendedoresRanking(): Promise<any[]> {
     const response = await apiClient.get<{ data: any[] }>('/financeiro/dashboard/vendedores');
+    return response.data;
+  },
+  
+  async getServicePerformance(): Promise<any[]> {
+    const response = await apiClient.get<{ data: any[] }>('/financeiro/dashboard/servicos');
     return response.data;
   }
 };
