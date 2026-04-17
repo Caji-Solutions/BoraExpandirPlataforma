@@ -916,6 +916,8 @@ export default function Comercial() {
     ...(!isSupervisor ? [
       { label: 'Servicos', to: '/comercial/servicos', icon: FileText },
       { label: 'Meus Agendamentos', to: '/comercial/meus-agendamentos', icon: Calendar },
+    ] : []),
+    ...(!isC1 && !isSupervisor ? [
       { label: 'Assessoria Direta', to: '/comercial/assessoria-direta', icon: ClipboardCheck },
     ] : []),
     { label: 'Minhas Comissoes', to: '/comercial/comissoes', icon: DollarSign },

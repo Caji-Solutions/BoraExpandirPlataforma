@@ -909,6 +909,94 @@ class JuridicoRepository {
         }
     }
 
+    // =============================================
+    // GESTAO DE NOTAS DO LEAD (lead_notes em clientes)
+    // =============================================
+
+    async createLeadNote(clienteId: string, note: {
+        texto: string
+        autorId: string
+        autorNome?: string
+        autorSetor?: string
+    }): Promise<any> {
+        const { data: cliente, error: fetchError } = await supabase
+            .from('clientes')
+            .select('lead_notes')
+            .eq('id', clienteId)
+            .single()
+
+        if (fetchError) {
+            console.error('[JuridicoRepository] Erro ao buscar lead_notes do cliente:', fetchError)
+            throw fetchError
+        }
+
+        const currentNotes = cliente.lead_notes || []
+        const newNote = {
+            id: crypto.randomUUID(),
+            texto: note.texto,
+            autor_id: note.autorId,
+            autor_nome: note.autorNome || null,
+            autor_setor: note.autorSetor || null,
+            created_at: new Date().toISOString()
+        }
+
+        const { error } = await supabase
+            .from('clientes')
+            .update({ lead_notes: [...currentNotes, newNote] })
+            .eq('id', clienteId)
+
+        if (error) {
+            console.error('[JuridicoRepository] Erro ao atualizar lead_notes:', error)
+            throw error
+        }
+
+        return newNote
+    }
+
+    async getLeadNotesByClienteId(clienteId: string): Promise<any[]> {
+        const { data, error } = await supabase
+            .from('clientes')
+            .select('lead_notes')
+            .eq('id', clienteId)
+            .single()
+
+        if (error) {
+            console.error('[JuridicoRepository] Erro ao buscar lead_notes:', error)
+            throw error
+        }
+
+        const notes = data?.lead_notes || []
+        return [...notes].sort((a: any, b: any) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+    }
+
+    async deleteLeadNote(clienteId: string, noteId: string): Promise<void> {
+        const { data: cliente, error: fetchError } = await supabase
+            .from('clientes')
+            .select('lead_notes')
+            .eq('id', clienteId)
+            .single()
+
+        if (fetchError) {
+            console.error('[JuridicoRepository] Erro ao buscar lead_notes para deletar:', fetchError)
+            throw fetchError
+        }
+
+        const currentNotes = cliente.lead_notes || []
+        const filteredNotes = currentNotes.filter((n: any) => n.id !== noteId)
+
+        const { error } = await supabase
+            .from('clientes')
+            .update({ lead_notes: filteredNotes })
+            .eq('id', clienteId)
+
+        if (error) {
+            console.error('[JuridicoRepository] Erro ao deletar lead note:', error)
+            throw error
+        }
+    }
+
     // Solicitar um documento (criar registro pendente)
     async solicitarDocumento(params: SolicitarDocumentoParams): Promise<any> {
         console.log('========== SOLICITAR DOCUMENTO REPO DEBUG ==========')

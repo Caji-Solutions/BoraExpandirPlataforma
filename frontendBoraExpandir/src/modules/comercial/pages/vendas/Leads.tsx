@@ -278,7 +278,7 @@ export default function LeadsPage() {
     const token = localStorage.getItem('auth_token')
     const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
     try {
-      const response = await fetch(`${backendUrl}/cliente/lead-notas/${noteId}?userId=${activeProfile?.id}`, { method: 'DELETE', headers: authHeader })
+      const response = await fetch(`${backendUrl}/cliente/lead-notas/${noteId}?userId=${activeProfile?.id}&leadId=${notesModalLead?.id}`, { method: 'DELETE', headers: authHeader })
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.message || 'Erro ao deletar nota')
