@@ -43,6 +43,7 @@ import {
 } from '@/modules/shared/components/ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/modules/shared/components/ui/card';
 import { useAuth } from "../../../../contexts/AuthContext";
+import { maskCpfInput, maskPhoneInput } from "@/utils/formatters";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
 
@@ -632,7 +633,7 @@ export default function UserManagement() {
 
   // Computed values for delegate modal
   const availableDelegates = members.filter(
-    m => !m.is_supervisor && m.id !== pendingUserId && m.role === pendingRole
+    m => !m.is_supervisor && m.id !== pendingUserId && m.role === pendingRole && !m.supervisor_id
   );
 
   const availableSupervisorsForModal = members.filter(
@@ -787,7 +788,7 @@ export default function UserManagement() {
                     id="cpf"
                     placeholder="000.000.000-00"
                     value={formCpf}
-                    onChange={(e) => setFormCpf(e.target.value)}
+                    onChange={(e) => setFormCpf(maskCpfInput(e.target.value))}
                     className="bg-input border-border text-foreground"
                   />
                 </div>
@@ -797,7 +798,7 @@ export default function UserManagement() {
                     id="telefone"
                     placeholder="(00) 00000-0000"
                     value={formTelefone}
-                    onChange={(e) => setFormTelefone(e.target.value)}
+                    onChange={(e) => setFormTelefone(maskPhoneInput(e.target.value))}
                     className="bg-input border-border text-foreground"
                   />
                 </div>
@@ -869,7 +870,7 @@ export default function UserManagement() {
                 disabled={saving}
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
-                {saving ? "Salvando..." : (isEditing ? "Salvar Alterações" : "Criar")}
+                {saving ? "Salvando..." : (isEditing ? "Salvar e Continuar" : "Criar")}
               </Button>
             </div>
           </DialogContent>
@@ -1048,7 +1049,7 @@ export default function UserManagement() {
             {pendingIsSupervisor ? (
               availableDelegates.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  Nenhum colaborador disponível no mesmo setor
+                  Nenhum colaborador sem supervisor encontrado
                 </p>
               ) : (
                 <div className="space-y-1 max-h-64 overflow-y-auto">

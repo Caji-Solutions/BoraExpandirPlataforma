@@ -59,8 +59,8 @@ export function AgendamentoEditPage() {
     const [uploadingComprovante, setUploadingComprovante] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    // PIX key state
-    const [pixChave, setPixChave] = useState<string | null>(null)
+    // PIX key state — fallback to same CNPJ used in AgendamentoConfirmacaoModal
+    const [pixChave, setPixChave] = useState<string>('55.218.947/0001-65')
 
     // Cancel states
     const [showCancelConfirm, setShowCancelConfirm] = useState(false)

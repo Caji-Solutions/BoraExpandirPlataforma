@@ -1740,13 +1740,11 @@ class ClienteController {
         return res.status(400).json({ message: 'leadId e texto são obrigatórios' })
       }
 
-      const nota = await JuridicoRepository.createNote({
-        clienteId: leadId,
-        etapa: 'lead_note',
+      const nota = await JuridicoRepository.createLeadNote(leadId, {
+        texto,
         autorId: autorId || 'system',
         autorNome,
-        autorSetor,
-        texto
+        autorSetor
       })
 
       return res.status(201).json({
@@ -1767,8 +1765,7 @@ class ClienteController {
         return res.status(400).json({ message: 'leadId é obrigatório' })
       }
 
-      const allNotes = await JuridicoRepository.getNotesByClienteId(leadId)
-      const leadNotes = allNotes.filter((n: any) => n.etapa === 'lead_note')
+      const leadNotes = await JuridicoRepository.getLeadNotesByClienteId(leadId)
 
       return res.status(200).json({
         message: 'Notas do lead recuperadas com sucesso',
@@ -1784,25 +1781,21 @@ class ClienteController {
     try {
       const { noteId } = req.params
       const userId = req.query.userId || req.body?.userId
+      const leadId = req.query.leadId || req.body?.leadId
 
       if (!noteId) {
         return res.status(400).json({ message: 'noteId é obrigatório' })
+      }
+
+      if (!leadId) {
+        return res.status(400).json({ message: 'leadId é obrigatório para deletar a nota' })
       }
 
       if (!userId) {
         return res.status(400).json({ message: 'userId é obrigatório para deletar a nota' })
       }
 
-      const nota = await JuridicoRepository.getNoteById(noteId)
-      if (!nota) {
-        return res.status(404).json({ message: 'Nota não encontrada' })
-      }
-
-      if (nota.autor_id !== userId && userId !== 'admin') {
-        return res.status(403).json({ message: 'Sem permissão para deletar esta nota' })
-      }
-
-      await JuridicoRepository.deleteNote(noteId)
+      await JuridicoRepository.deleteLeadNote(leadId, noteId)
 
       return res.status(200).json({ message: 'Nota do lead deletada com sucesso' })
     } catch (error: any) {

@@ -210,8 +210,8 @@ export function DNAClientDetailView({
     })
 
     const deleteLeadNoteMutation = useMutation({
-        mutationFn: (noteId: string) => 
-            apiClient.delete(`/cliente/lead-notas/${noteId}?userId=${activeProfile?.id}`),
+        mutationFn: (noteId: string) =>
+            apiClient.delete(`/cliente/lead-notas/${noteId}?userId=${activeProfile?.id}&leadId=${clientId}`),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['lead-notes', clientId] })
         }

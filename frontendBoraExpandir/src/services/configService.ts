@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
 
 class ConfigService {
   async get(chave: string) {

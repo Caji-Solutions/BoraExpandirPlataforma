@@ -592,8 +592,12 @@ class FormularioController {
             const expirado = horasRestantes < 1
 
             // 4. Detectar se foi bloqueado pelo CRON (cancelado automaticamente pelo sistema)
-            const bloqueadoCron = agendamento.status === 'cancelado' &&
-                agendamento.pagamento_nota_recusa?.includes('[SISTEMA]')
+            // Caso primário: marcador [SISTEMA] ainda presente em pagamento_nota_recusa
+            // Caso secundário: financeiro sobrescreveu pagamento_nota_recusa, perdendo o marcador,
+            //   mas o status ainda é 'cancelado' e o formulário nunca foi preenchido
+            const bloqueadoCron = (agendamento.status === 'cancelado' &&
+                agendamento.pagamento_nota_recusa?.includes('[SISTEMA]')) ||
+                (agendamento.status === 'cancelado' && !formularioPreenchido)
 
             // 5. Retornar dados
             return res.status(200).json({
