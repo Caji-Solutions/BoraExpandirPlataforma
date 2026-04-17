@@ -24,7 +24,21 @@ dotenv.config()
 
 const app = express()
 
-app.use(cors())
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3010')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean)
+
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true)
+      if (allowedOrigins.includes(origin)) return cb(null, true)
+      return cb(new Error(`CORS blocked: ${origin}`))
+    },
+    credentials: true,
+  })
+)
 app.use(morgan('dev')) // movido para o topo para logar até webhooks capturados antecipadamente
 
 const autentiqueWebhookHandler = (req: any, res: any) => {
