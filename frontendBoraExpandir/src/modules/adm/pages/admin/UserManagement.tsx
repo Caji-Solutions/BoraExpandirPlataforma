@@ -522,8 +522,6 @@ export default function UserManagement() {
     m => m.is_supervisor && m.role === formRole && m.id !== editId
   );
 
-  const showSupervisorCheckbox = formRole !== "tradutor" && formRole !== "" && !(formRole === 'comercial' && formNivel === 'C1') && !(formRole === 'comercial' && !formNivel);
-
   const availableReplacementSupervisors = members.filter(
     m => m.is_supervisor && m.id !== deletingSupervisor?.id && m.role === deletingSupervisor?.role
   );
@@ -663,6 +661,23 @@ export default function UserManagement() {
                   />
                 </div>
               )}
+              <div className="flex items-center space-x-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+                <Switch
+                  id="supervisor"
+                  checked={formIsSupervisor}
+                  onCheckedChange={(checked) => {
+                    setFormIsSupervisor(checked);
+                    if (checked) {
+                      setFormSupervisorId(null);
+                      if (formRole === 'tradutor') setFormRole('');
+                      if (formRole === 'comercial' && formNivel === 'C1') setFormNivel(null);
+                    }
+                  }}
+                />
+                <Label htmlFor="supervisor" className="text-foreground cursor-pointer">
+                  É supervisor?
+                </Label>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cpf" className="text-foreground">CPF</Label>
@@ -694,7 +709,6 @@ export default function UserManagement() {
                       setFormRole(v);
                       setFormNivel(null);
                       setFormSupervisorId(null);
-                      if (v === 'tradutor') setFormIsSupervisor(false);
                     }}
                   >
                     <SelectTrigger className="bg-input border-border text-foreground">
@@ -704,7 +718,9 @@ export default function UserManagement() {
                       <SelectItem value="comercial">Comercial</SelectItem>
                       <SelectItem value="juridico">Jurídico</SelectItem>
                       <SelectItem value="administrativo">Administrativo / Financeiro</SelectItem>
-                      <SelectItem value="tradutor">Tradutor</SelectItem>
+                      {!formIsSupervisor && (
+                        <SelectItem value="tradutor">Tradutor</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -713,37 +729,19 @@ export default function UserManagement() {
                     <Label htmlFor="nivel" className="text-foreground">Nível</Label>
                     <Select
                       value={formNivel || ''}
-                      onValueChange={(v) => {
-                        setFormNivel(v);
-                        if (v === 'C1') setFormIsSupervisor(false);
-                      }}
+                      onValueChange={(v) => setFormNivel(v)}
                     >
                       <SelectTrigger className="bg-input border-border text-foreground">
                         <SelectValue placeholder="Selecione o nível" />
                       </SelectTrigger>
                       <SelectContent className="bg-popover border-border">
-                        <SelectItem value="C1">C1</SelectItem>
+                        {!formIsSupervisor && <SelectItem value="C1">C1</SelectItem>}
                         <SelectItem value="C2">C2</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 )}
               </div>
-              {showSupervisorCheckbox && (
-                <div className="flex items-center space-x-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
-                  <Switch
-                    id="supervisor"
-                    checked={formIsSupervisor}
-                    onCheckedChange={(checked) => {
-                      setFormIsSupervisor(checked);
-                      if (checked) setFormSupervisorId(null);
-                    }}
-                  />
-                  <Label htmlFor="supervisor" className="text-foreground cursor-pointer">
-                    É supervisor deste setor?
-                  </Label>
-                </div>
-              )}
               {!formIsSupervisor && formRole && formRole !== 'tradutor' && !(formRole === 'comercial' && !formNivel) && (
                 <div className="space-y-2">
                   <Label htmlFor="supervisor-select" className="text-foreground">
