@@ -7,7 +7,7 @@
 ```
 Usuário final
      │
-     ├── https://ebe.boraexpandir.com.br        → Vercel (React + Vite)
+     ├── https://bei.boraexpandir.com.br        → Vercel (React + Vite)
      │
      └── https://ebe-api.boraexpandir.com.br    → AWS EC2 (Express + Prisma + cron)
                                                   │
@@ -63,7 +63,7 @@ gh --version
 ### Decisões já tomadas
 
 - **Subdomínios:**
-  - Frontend: `ebe.boraexpandir.com.br`
+  - Frontend: `bei.boraexpandir.com.br`
   - Backend: `ebe-api.boraexpandir.com.br`
 - **Região AWS:** `sa-east-1` (São Paulo — menor latência no Brasil)
 - **Instância EC2:** `t3.small` (2 vCPU, 2GB RAM — PDF + Chromium precisam disso)
@@ -195,7 +195,7 @@ ssh -i ~/.ssh/boraexpandir-key.pem ubuntu@$EIP
 
 | Nome (hostname) | Tipo | Valor | TTL |
 |---|---|---|---|
-| `ebe` | CNAME | `cname.vercel-dns.com` | 3600 |
+| `bei` | CNAME | `cname.vercel-dns.com` (ou target custom da Vercel) | 3600 |
 | `ebe-api` | A | `<EIP do passo 2.4>` | 3600 |
 
 > ⚠️ **Não remova** os registros que apontam para o WordPress atual (raiz `@` e `www`). Esses mantém o site institucional funcionando.
@@ -206,14 +206,14 @@ ssh -i ~/.ssh/boraexpandir-key.pem ubuntu@$EIP
 ```bash
 # Windows (PowerShell)
 nslookup ebe-api.boraexpandir.com.br
-nslookup ebe.boraexpandir.com.br
+nslookup bei.boraexpandir.com.br
 
 # Linux/Mac/WSL
 dig ebe-api.boraexpandir.com.br +short
-dig ebe.boraexpandir.com.br +short
+dig bei.boraexpandir.com.br +short
 ```
 
-Quando `ebe-api` resolver para o EIP e `ebe` resolver para algo `*.vercel-dns.com`, o DNS está OK.
+Quando `ebe-api` resolver para o EIP e `bei` resolver para algo `*.vercel-dns.com`, o DNS está OK.
 
 ---
 
@@ -258,8 +258,8 @@ nano .env   # colar os valores reais (secrets rotacionados!)
 NODE_ENV=production
 PORT=4000
 BACKEND_URL=https://ebe-api.boraexpandir.com.br
-FRONTEND_URL=https://ebe.boraexpandir.com.br
-CORS_ORIGINS=https://ebe.boraexpandir.com.br
+FRONTEND_URL=https://bei.boraexpandir.com.br
+CORS_ORIGINS=https://bei.boraexpandir.com.br,https://ebe.boraexpandir.com.br
 # ... demais secrets
 ```
 
@@ -373,11 +373,11 @@ vercel --prod
 
 ### 6.5. Adicionar domínio custom
 ```bash
-vercel domains add ebe.boraexpandir.com.br
+vercel domains add bei.boraexpandir.com.br
 # Ou via Dashboard: Project → Settings → Domains → Add
 ```
 
-A Vercel valida o DNS, emite SSL e ativa. Em ~2 min `https://ebe.boraexpandir.com.br` está no ar.
+A Vercel valida o DNS, emite SSL e ativa. Em ~2 min `https://bei.boraexpandir.com.br` está no ar.
 
 ---
 
@@ -385,9 +385,9 @@ A Vercel valida o DNS, emite SSL e ativa. Em ~2 min `https://ebe.boraexpandir.co
 
 1. Acesse https://supabase.com/dashboard → projeto `rtuxziaxeegbaaihpjni`
 2. **Authentication → URL Configuration**:
-   - **Site URL:** `https://ebe.boraexpandir.com.br`
+   - **Site URL:** `https://bei.boraexpandir.com.br`
    - **Redirect URLs (adicionar todas):**
-     - `https://ebe.boraexpandir.com.br/**`
+     - `https://bei.boraexpandir.com.br/**`
      - `https://ebe-api.boraexpandir.com.br/**`
      - `http://localhost:3010/**` (para dev)
 
@@ -410,7 +410,7 @@ Confirme cada um:
 
 - [ ] `curl https://ebe-api.boraexpandir.com.br/` → retorna JSON OK
 - [ ] `curl https://ebe-api.boraexpandir.com.br/api/ping` → retorna ping
-- [ ] Browser: `https://ebe.boraexpandir.com.br` carrega login
+- [ ] Browser: `https://bei.boraexpandir.com.br` carrega login
 - [ ] Login funciona → redireciona por role
 - [ ] Abrir uma tela que faz fetch → DevTools → sem erro de CORS
 - [ ] PM2 logs sem erro: `pm2 logs boraexpandir-api --lines 50`
