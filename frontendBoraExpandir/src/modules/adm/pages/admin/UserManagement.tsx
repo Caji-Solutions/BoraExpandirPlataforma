@@ -1136,11 +1136,6 @@ export default function UserManagement() {
                           {member.is_supervisor && (
                             <span className="ml-2 text-xs text-amber-500 font-medium">★ Supervisor</span>
                           )}
-                          {member.registration_complete === false && (
-                            <span className="ml-2 inline-flex items-center rounded-full bg-amber-500/15 text-amber-600 border border-amber-500/30 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide">
-                              Rascunho
-                            </span>
-                          )}
                         </div>
                       </div>
                     </TableCell>
