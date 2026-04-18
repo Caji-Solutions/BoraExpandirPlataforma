@@ -157,8 +157,6 @@ export default function UserManagement() {
   const [formSupervisorId, setFormSupervisorId] = useState<string | null>(null);
   const [formCpf, setFormCpf] = useState("");
   const [formTelefone, setFormTelefone] = useState("");
-  const [formHorarioEntrada, setFormHorarioEntrada] = useState("");
-  const [formHorarioSaida, setFormHorarioSaida] = useState("");
 
   const { toast } = useToast();
 
@@ -220,11 +218,6 @@ export default function UserManagement() {
       setFormIsSupervisor(draftData.is_supervisor || false);
       setFormCpf(draftData.cpf || "");
       setFormTelefone(draftData.telefone || "");
-      if (draftData.horario_trabalho && draftData.horario_trabalho.includes(" - ")) {
-        const [entrada, saida] = draftData.horario_trabalho.split(" - ");
-        setFormHorarioEntrada(entrada.trim());
-        setFormHorarioSaida(saida.trim());
-      }
     }
   };
 
@@ -238,8 +231,6 @@ export default function UserManagement() {
     setFormSupervisorId(null);
     setFormCpf("");
     setFormTelefone("");
-    setFormHorarioEntrada("");
-    setFormHorarioSaida("");
     setError("");
   };
 
@@ -255,16 +246,7 @@ export default function UserManagement() {
     setFormSupervisorId(member.supervisor_id || null);
     setFormCpf(member.cpf || "");
     setFormTelefone(member.telefone || "");
-    
-    if (member.horario_trabalho && member.horario_trabalho.includes(" - ")) {
-      const [entrada, saida] = member.horario_trabalho.split(" - ");
-      setFormHorarioEntrada(entrada.trim());
-      setFormHorarioSaida(saida.trim());
-    } else {
-      setFormHorarioEntrada("");
-      setFormHorarioSaida("");
-    }
-    
+
     setError("");
     setDetailOpen(false); // Close detail modal if open
     setOpen(true);
@@ -289,9 +271,6 @@ export default function UserManagement() {
 
     setSaving(true);
     setError("");
-    const horarioCombinado = formHorarioEntrada && formHorarioSaida
-      ? `${formHorarioEntrada} - ${formHorarioSaida}`
-      : formHorarioEntrada || formHorarioSaida || "";
 
     const asDraft = !isEditing && !pendingDraftId && needsSupervisor && availableInlineSupervisors.length === 0;
     const completingDraft = !isEditing && !!pendingDraftId && !asDraft;
@@ -331,7 +310,6 @@ export default function UserManagement() {
           supervisor_id: formSupervisorId,
           cpf: formCpf,
           telefone: formTelefone,
-          horario_trabalho: horarioCombinado,
         }),
       });
 
@@ -794,28 +772,6 @@ export default function UserManagement() {
                   )}
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="entrada" className="text-foreground">Horário de Entrada</Label>
-                  <Input
-                    id="entrada"
-                    type="time"
-                    value={formHorarioEntrada}
-                    onChange={(e) => setFormHorarioEntrada(e.target.value)}
-                    className="bg-input border-border text-foreground"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="saida" className="text-foreground">Horário de Saída</Label>
-                  <Input
-                    id="saida"
-                    type="time"
-                    value={formHorarioSaida}
-                    onChange={(e) => setFormHorarioSaida(e.target.value)}
-                    className="bg-input border-border text-foreground"
-                  />
-                </div>
-              </div>
             </div>
             <div className="flex justify-end gap-3">
               <Button
