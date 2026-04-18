@@ -1,6 +1,10 @@
 import { Cliente } from '@/types/comercial';
 import { formatCpfDisplay, formatPhoneDisplay, normalizePhone } from '../../../utils/formatters';
 import { apiClient } from '@/modules/shared/services/api';
+import type {
+    TeamMetricsResponse,
+    FuncionarioDetailsResponse,
+} from '../types/supervisorMetrics'
 
 function getAuthHeaders(extra: Record<string, string> = {}): Record<string, string> {
     const token = localStorage.getItem('auth_token')
@@ -137,10 +141,6 @@ export async function getConsultoriasCount(clienteId: string): Promise<{ total_c
 }
 
 // ---------- Supervisor — métricas do time ----------
-import type {
-    TeamMetricsResponse,
-    FuncionarioDetailsResponse,
-} from '../types/supervisorMetrics'
 
 export async function getSupervisorTeamMetrics(
     startDate: string,

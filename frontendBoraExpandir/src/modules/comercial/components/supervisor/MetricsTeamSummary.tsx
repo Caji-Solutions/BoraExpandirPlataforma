@@ -100,7 +100,7 @@ export function MetricsTeamSummary({ kpis, loading }: Props) {
                 icon={DollarSign}
                 label="Comissão time"
                 value={fmtBRL(kpis.comissaoTimeTotal)}
-                sublabel="Últimos 30d"
+                sublabel="Mês corrente"
             />
         </div>
     )

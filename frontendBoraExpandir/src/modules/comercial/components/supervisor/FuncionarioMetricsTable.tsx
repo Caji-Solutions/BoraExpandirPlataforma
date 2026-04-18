@@ -78,6 +78,7 @@ function NivelSection({
                                 }}
                                 tabIndex={0}
                                 role="button"
+                                aria-label={`Ver detalhes de ${f.nome}`}
                                 className="border-t hover:bg-muted/30 cursor-pointer focus:outline-none focus:bg-muted/40"
                             >
                                 <td className="px-3 py-2 font-semibold">{f.ranking}</td>

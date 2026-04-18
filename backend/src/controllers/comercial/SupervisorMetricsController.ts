@@ -42,7 +42,6 @@ class SupervisorMetricsController {
       console.error('[SupervisorMetricsController] getTeamMetrics:', error)
       return res.status(500).json({
         message: 'Erro ao calcular métricas do time',
-        error: error.message,
       })
     }
   }
@@ -81,9 +80,9 @@ class SupervisorMetricsController {
       const isNotFound = msg.includes('não encontrado') || msg.includes('nao encontrado')
       const status = isAuthz ? 403 : isNotFound ? 404 : 500
       console.error('[SupervisorMetricsController] getFuncionarioDetalhes:', error)
-      return res
-        .status(status)
-        .json({ message: error.message || 'Erro ao buscar detalhes do funcionário' })
+      const responseMessage =
+        status === 500 ? 'Erro ao buscar detalhes do funcionário' : msg
+      return res.status(status).json({ message: responseMessage })
     }
   }
 }

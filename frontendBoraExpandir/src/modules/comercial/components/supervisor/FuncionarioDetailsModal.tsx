@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
     Dialog,
     DialogContent,
@@ -134,6 +134,10 @@ export function FuncionarioDetailsModal({
         startDate,
         endDate
     )
+
+    useEffect(() => {
+        setTab('resumo')
+    }, [funcionarioId])
 
     const tabs: Tab[] =
         data?.funcionario.nivel === 'C2'

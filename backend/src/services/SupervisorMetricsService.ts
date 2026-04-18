@@ -284,9 +284,9 @@ class SupervisorMetricsService {
   }
 
   private isConsultoriaRealizada(a: any): boolean {
-    if (a.status === 'cancelado' || a.status === 'Conflito') return false
-    if (a.status === 'realizado') return true
-    return new Date(a.data_hora) < new Date()
+    // Só contabiliza "realizado" explícito — evita inflar comparecimento com
+    // agendamentos vencidos que ficaram sem atualização de status (no-show não marcado).
+    return a.status === 'realizado'
   }
 
   private isContratoFechado(c: any): boolean {
