@@ -529,13 +529,30 @@ class ComercialController {
 
             const agendamentos = await ComercialRepository.getAgendamentosByUsuario(usuarioId)
 
+            // Batch: descobrir quais agendamentos têm formulário preenchido (1 query só)
+            const agendamentoIds = agendamentos.map((a: any) => a.id).filter(Boolean)
+            const formulariosSet = new Set<string>()
+            if (agendamentoIds.length > 0) {
+                try {
+                    const { data: formularios } = await supabase
+                        .from('formularios_cliente')
+                        .select('agendamento_id')
+                        .in('agendamento_id', agendamentoIds)
+                    formularios?.forEach((f: any) => {
+                        if (f.agendamento_id) formulariosSet.add(f.agendamento_id)
+                    })
+                } catch (err) {
+                    console.warn('Erro ao verificar formularios preenchidos em lote:', err)
+                }
+            }
+
             // Buscar informações do catálogo para cada agendamento
             const enrichedAgendamentos = await Promise.all(agendamentos.map(async (agendamento: any) => {
-                const baseAgendamento = { ...agendamento };
+                const baseAgendamento: any = { ...agendamento, formulario_preenchido: formulariosSet.has(agendamento.id) };
                 if (baseAgendamento.data_hora) {
                     baseAgendamento.data_hora = toBrtFromUtc(baseAgendamento.data_hora);
                 }
-                
+
                 if (baseAgendamento.produto_id) {
                     try {
                         const serviceInfo = await AdmRepository.getServiceById(baseAgendamento.produto_id)

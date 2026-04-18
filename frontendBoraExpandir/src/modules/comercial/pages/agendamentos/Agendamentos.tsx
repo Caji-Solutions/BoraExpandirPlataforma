@@ -235,7 +235,7 @@ export default function AgendamentosPage({ agendamentos, onRefresh }: Agendament
 											<td className="px-6 py-4 align-middle text-center">
 												{agendamento.produto_id && serviceTypes[agendamento.produto_id] === 'fixo' ? (
 													<span className="text-gray-400">----</span>
-												) : agendamento.cliente_is_user ? (
+												) : (agendamento.formulario_preenchido || agendamento.cliente_is_user) ? (
 													<span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
 														<span className="w-2 h-2 rounded-full bg-emerald-500" /> Preenchido
 													</span>

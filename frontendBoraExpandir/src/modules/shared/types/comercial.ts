@@ -123,6 +123,7 @@ export interface Agendamento {
   duracao_minutos: number
   status: 'agendado' | 'confirmado' | 'realizado' | 'cancelado' | 'aguardando_verificacao' | 'Conflito' | 'reagendar'
   cliente_is_user?: boolean
+  formulario_preenchido?: boolean
   observacoes?: string
   comprovante_url?: string | null
   pagamento_status?: 'pendente' | 'em_analise' | 'aprovado' | 'recusado' | null
