@@ -24,7 +24,7 @@ export const authMiddleware = async (req: any, res: Response, next: NextFunction
         console.log('[authMiddleware] Buscando profile no banco com o token...')
         const { data: profiles, error } = await supabase
             .from('profiles')
-            .select('id, email, full_name, role, cargo, nivel, supervisor_id')
+            .select('id, email, full_name, role, cargo, nivel, supervisor_id, is_supervisor')
             .eq('auth_token', token)
 
         console.log('[authMiddleware] Resposta do Supabase:')

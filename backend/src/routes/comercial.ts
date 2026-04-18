@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import ComercialController from '../controllers/comercial/ComercialController'
 import ComissaoController from '../controllers/comercial/ComissaoController'
+import SupervisorMetricsController from '../controllers/comercial/SupervisorMetricsController'
 import AssessoriaDiretaController from '../controllers/assessoriaDireta/AssessoriaDiretaController'
 import { authMiddleware } from '../middlewares/auth'
 import upload from '../middlewares/upload'
@@ -57,5 +58,17 @@ comercial.get('/comissao/calcular', authMiddleware, ComissaoController.calcularM
 comercial.get('/comissao/historico', authMiddleware, ComissaoController.getHistoricoComissao.bind(ComissaoController))
 comercial.get('/comissao/cotacao', ComissaoController.getCotacao.bind(ComissaoController))
 comercial.get('/comissao/relatorio', authMiddleware, ComissaoController.getRelatorioComissoes.bind(ComissaoController))
+
+// Métricas do supervisor comercial
+comercial.get(
+    '/supervisor/metricas-time',
+    authMiddleware,
+    SupervisorMetricsController.getTeamMetrics.bind(SupervisorMetricsController)
+)
+comercial.get(
+    '/supervisor/funcionario/:id/detalhes',
+    authMiddleware,
+    SupervisorMetricsController.getFuncionarioDetalhes.bind(SupervisorMetricsController)
+)
 
 export default comercial

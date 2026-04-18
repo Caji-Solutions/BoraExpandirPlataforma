@@ -1,6 +1,10 @@
 import { Cliente } from '@/types/comercial';
 import { formatCpfDisplay, formatPhoneDisplay, normalizePhone } from '../../../utils/formatters';
 import { apiClient } from '@/modules/shared/services/api';
+import type {
+    TeamMetricsResponse,
+    FuncionarioDetailsResponse,
+} from '../types/supervisorMetrics'
 
 function getAuthHeaders(extra: Record<string, string> = {}): Record<string, string> {
     const token = localStorage.getItem('auth_token')
@@ -133,6 +137,29 @@ export async function getPosConsultoria(): Promise<any[]> {
 
 export async function getConsultoriasCount(clienteId: string): Promise<{ total_consultorias: number; valor_desconto: number; valor_por_consultoria: number }> {
     const result = await apiClient.get(`/comercial/consultorias-count/${clienteId}`)
+    return result.data
+}
+
+// ---------- Supervisor — métricas do time ----------
+
+export async function getSupervisorTeamMetrics(
+    startDate: string,
+    endDate: string
+): Promise<TeamMetricsResponse> {
+    const result = await apiClient.get<{ message: string; data: TeamMetricsResponse }>(
+        `/comercial/supervisor/metricas-time?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`
+    )
+    return result.data
+}
+
+export async function getSupervisorFuncionarioDetalhes(
+    funcionarioId: string,
+    startDate: string,
+    endDate: string
+): Promise<FuncionarioDetailsResponse> {
+    const result = await apiClient.get<{ message: string; data: FuncionarioDetailsResponse }>(
+        `/comercial/supervisor/funcionario/${funcionarioId}/detalhes?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`
+    )
     return result.data
 }
 
