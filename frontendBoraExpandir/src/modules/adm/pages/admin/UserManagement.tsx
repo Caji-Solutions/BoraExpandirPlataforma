@@ -258,10 +258,12 @@ export default function UserManagement() {
       return;
     }
 
-    if (formRole === 'comercial' && !formNivel) {
+    if (formRole === 'comercial' && !formIsSupervisor && !formNivel) {
       setError("Selecione o nível (C1 ou C2)");
       return;
     }
+
+    const effectiveNivel = formRole === 'comercial' && formIsSupervisor ? 'C2' : formNivel;
 
     const needsSupervisor = !formIsSupervisor && formRole !== 'tradutor' && !(formRole === 'comercial' && !formNivel);
     if (needsSupervisor && availableInlineSupervisors.length > 0 && !formSupervisorId) {
@@ -305,7 +307,7 @@ export default function UserManagement() {
           email: formEmail,
           ...(!isEditing && !completingDraft ? { password: formPassword } : {}),
           role: formRole,
-          nivel: formNivel,
+          nivel: effectiveNivel,
           is_supervisor: formIsSupervisor,
           supervisor_id: formSupervisorId,
           cpf: formCpf,
@@ -670,7 +672,7 @@ export default function UserManagement() {
                     if (checked) {
                       setFormSupervisorId(null);
                       if (formRole === 'tradutor') setFormRole('');
-                      if (formRole === 'comercial' && formNivel === 'C1') setFormNivel(null);
+                      if (formRole === 'comercial') setFormNivel(null);
                     }
                   }}
                 />
@@ -724,7 +726,7 @@ export default function UserManagement() {
                     </SelectContent>
                   </Select>
                 </div>
-                {formRole === 'comercial' && (
+                {formRole === 'comercial' && !formIsSupervisor && (
                   <div className="space-y-2">
                     <Label htmlFor="nivel" className="text-foreground">Nível</Label>
                     <Select
@@ -735,7 +737,7 @@ export default function UserManagement() {
                         <SelectValue placeholder="Selecione o nível" />
                       </SelectTrigger>
                       <SelectContent className="bg-popover border-border">
-                        {!formIsSupervisor && <SelectItem value="C1">C1</SelectItem>}
+                        <SelectItem value="C1">C1</SelectItem>
                         <SelectItem value="C2">C2</SelectItem>
                       </SelectContent>
                     </Select>
