@@ -73,7 +73,13 @@ class SupervisorMetricsController {
         .status(200)
         .json({ message: 'Detalhes do funcionário recuperados', data })
     } catch (error: any) {
-      const status = error?.status === 403 ? 403 : 500
+      const msg = String(error?.message || '')
+      const isAuthz =
+        error?.status === 403 ||
+        msg.includes('não pertence') ||
+        msg.includes('nao pertence')
+      const isNotFound = msg.includes('não encontrado') || msg.includes('nao encontrado')
+      const status = isAuthz ? 403 : isNotFound ? 404 : 500
       console.error('[SupervisorMetricsController] getFuncionarioDetalhes:', error)
       return res
         .status(status)
