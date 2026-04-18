@@ -16,7 +16,6 @@ import { ThemeProvider } from '@/components/ui/ThemeProvider'
 import { Toaster } from '@/modules/shared/components/ui/toaster'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ProtectedRoute, roleRouteMap } from '@/modules/shared/components/ProtectedRoute'
-import { ImpersonationBanner } from '@/modules/shared/components/ImpersonationBanner'
 import LoginPage from './modules/shared/pages/LoginPage'
 import PaymentSuccess from './modules/shared/pages/PaymentSuccess'
 import PaymentCancel from './modules/shared/pages/PaymentCancel'
@@ -81,7 +80,6 @@ function AppRouter() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <ImpersonationBanner />
         <Routes>
           {/* Rota principal redireciona baseado na auth */}
           <Route path="/" element={<AuthRedirect />} />
