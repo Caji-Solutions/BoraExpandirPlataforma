@@ -210,14 +210,6 @@ export default function UserManagement() {
       resetForm();
       setIsEditing(false);
       setEditId(null);
-    } else if (!isEditing && draftData) {
-      setFormName(draftData.full_name || "");
-      setFormEmail(draftData.email || "");
-      setFormRole(draftData.role || "");
-      setFormNivel(draftData.nivel || null);
-      setFormIsSupervisor(draftData.is_supervisor || false);
-      setFormCpf(draftData.cpf || "");
-      setFormTelefone(draftData.telefone || "");
     }
   };
 
@@ -274,8 +266,11 @@ export default function UserManagement() {
     setSaving(true);
     setError("");
 
-    const asDraft = !isEditing && !pendingDraftId && needsSupervisor && availableInlineSupervisors.length === 0;
-    const completingDraft = !isEditing && !!pendingDraftId && !asDraft;
+    const draftEmail = (draftData?.email || "").trim().toLowerCase();
+    const currentEmail = formEmail.trim().toLowerCase();
+    const isResumingDraft = !!pendingDraftId && !!draftEmail && draftEmail === currentEmail;
+    const asDraft = !isEditing && !isResumingDraft && needsSupervisor && availableInlineSupervisors.length === 0;
+    const completingDraft = !isEditing && isResumingDraft && !asDraft;
     const newSupervisorRole = formRole;
     const newIsSupervisor = formIsSupervisor;
 
