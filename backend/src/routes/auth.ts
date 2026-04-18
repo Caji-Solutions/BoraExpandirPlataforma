@@ -387,7 +387,6 @@ router.get('/team/delegados/:supervisorId', authMiddleware, async (req: Request,
             .from('profiles')
             .select('id, full_name, email, role, nivel, cargo, is_supervisor, telefone, horario_trabalho, created_at')
             .eq('supervisor_id', supervisorId)
-            .or('registration_complete.is.null,registration_complete.eq.true')
             .order('full_name', { ascending: true })
 
         if (error) {
@@ -438,7 +437,6 @@ router.get('/team/:role', authMiddleware, async (req: Request, res: Response) =>
             .from('profiles')
             .select('*')
             .eq('role', role)
-            .or('registration_complete.is.null,registration_complete.eq.true')
             .order('full_name', { ascending: true })
 
         if (error) {
