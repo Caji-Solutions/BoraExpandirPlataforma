@@ -92,9 +92,8 @@ vi.mock('../../config/SupabaseClient', () => ({
             });
 
             chain.or = vi.fn().mockImplementation(() => {
-                // Team listing with registration_complete filter
+                // Legacy path: delegados endpoint still uses .or()
                 chain.order = vi.fn().mockImplementation(() => {
-                    // Nested order for full team listing
                     return {
                         order: vi.fn().mockResolvedValue({
                             data: mockResponses.teamList,
@@ -106,7 +105,14 @@ vi.mock('../../config/SupabaseClient', () => ({
             });
 
             chain.order = vi.fn().mockImplementation(() => {
-                return chain;
+                // Team listing now chains .order().order() without .or()
+                // so the second .order() must resolve with teamList data
+                return {
+                    order: vi.fn().mockResolvedValue({
+                        data: mockResponses.teamList,
+                        error: null
+                    })
+                };
             });
 
             chain.limit = vi.fn().mockImplementation(() => {
@@ -390,13 +396,14 @@ describe('Auth Routes - Fluxo de Rascunho (Draft)', () => {
     });
 
     // ========================================
-    // GET /auth/team - Filtragem de rascunhos na listagem
+    // GET /auth/team - Listagem inclui rascunhos
     // ========================================
-    describe('GET /auth/team - Filtragem de rascunhos', () => {
-        it('Deve aplicar filtro registration_complete na listagem de equipe', async () => {
+    describe('GET /auth/team - Listagem inclui rascunhos', () => {
+        it('Deve retornar rascunhos junto com membros ativos (sem filtro registration_complete)', async () => {
             const teamMembers = [
                 { id: 'user-1', full_name: 'Ativo', role: 'comercial', registration_complete: true },
-                { id: 'user-2', full_name: 'Legado', role: 'juridico' }
+                { id: 'user-2', full_name: 'Rascunho', role: 'comercial', registration_complete: false },
+                { id: 'user-3', full_name: 'Legado', role: 'juridico' }
             ];
 
             mockResponses.teamList = teamMembers;
@@ -406,10 +413,20 @@ describe('Auth Routes - Fluxo de Rascunho (Draft)', () => {
                 .set('Authorization', `Bearer ${adminToken}`);
 
             expect(res.status).toBe(200);
+            expect(Array.isArray(res.body)).toBe(true);
+            expect(res.body).toHaveLength(3);
 
-            // Verificar que o filtro .or() foi chamado para excluir rascunhos
-            const selectCall = supabaseCallLog.find(c => c.action === 'select' && c.table === 'profiles');
-            expect(selectCall).toBeTruthy();
+            // Rascunho deve estar presente na resposta
+            const rascunho = res.body.find((m: any) => m.id === 'user-2');
+            expect(rascunho).toBeTruthy();
+            expect(rascunho.registration_complete).toBe(false);
+
+            // Verificar que o select da rota /auth/team inclui registration_complete nos campos
+            // (o primeiro select é do authMiddleware — precisamos do select da listagem de equipe)
+            const teamSelectCall = supabaseCallLog.find(
+                c => c.action === 'select' && c.table === 'profiles' && c.filters?.fields?.includes('registration_complete')
+            );
+            expect(teamSelectCall).toBeTruthy();
         });
     });
 });

@@ -375,10 +375,17 @@ export default function UserManagement() {
       }
 
       fetchTeam();
-      toast({
-        title: "Sucesso",
-        description: `Colaborador ${wasEditing ? 'atualizado' : 'criado'} com sucesso!`,
-      });
+      if (asDraft) {
+        toast({
+          title: "Colaborador salvo como rascunho",
+          description: "Nenhum supervisor deste setor existe ainda. Crie um supervisor para finalizar o cadastro.",
+        });
+      } else {
+        toast({
+          title: "Sucesso",
+          description: `Colaborador ${wasEditing ? 'atualizado' : 'criado'} com sucesso!`,
+        });
+      }
 
       if (!wasEditing && newIsSupervisor && savedUserId) {
         const orphans = members.filter(
@@ -1128,6 +1135,11 @@ export default function UserManagement() {
                           <span className="font-medium text-foreground">{member.full_name}</span>
                           {member.is_supervisor && (
                             <span className="ml-2 text-xs text-amber-500 font-medium">★ Supervisor</span>
+                          )}
+                          {member.registration_complete === false && (
+                            <span className="ml-2 inline-flex items-center rounded-full bg-amber-500/15 text-amber-600 border border-amber-500/30 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+                              Rascunho
+                            </span>
                           )}
                         </div>
                       </div>

@@ -355,14 +355,13 @@ router.post('/team/draft', async (req: Request, res: Response) => {
 })
 
 // ============================================
-// GET /auth/team — Listar todos os colaboradores (exceto rascunhos)
+// GET /auth/team — Listar todos os colaboradores (incluindo rascunhos)
 // ============================================
 router.get('/team', authMiddleware, async (req: Request, res: Response) => {
     try {
         const { data: profiles, error } = await supabase
             .from('profiles')
-            .select('id, full_name, email, role, cargo, nivel, is_supervisor, supervisor_id, horario_trabalho, cpf, telefone, created_at')
-            .or('registration_complete.is.null,registration_complete.eq.true')
+            .select('id, full_name, email, role, cargo, nivel, is_supervisor, supervisor_id, horario_trabalho, cpf, telefone, registration_complete, created_at')
             .order('role', { ascending: true })
             .order('full_name', { ascending: true })
 
