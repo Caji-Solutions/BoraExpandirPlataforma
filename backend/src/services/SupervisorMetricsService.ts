@@ -10,6 +10,17 @@ import type {
 // agendamentos.status enum observado no código: 'agendado' | 'confirmado' | 'cancelado' | 'realizado' | 'Conflito'
 // (validado em Task 0 do plano 2026-04-18-supervisor-comercial-metricas)
 
+const ISO_DATE_RE =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:?\d{2})$/
+
+// Defesa em profundidade: valida que o valor foi previamente sanitizado
+// antes de concatenar em filtros PostgREST (ver SupervisorMetricsController.parsePeriodo).
+function assertISO(label: string, value: string): void {
+  if (typeof value !== 'string' || !ISO_DATE_RE.test(value)) {
+    throw new Error(`${label} inválido: esperado ISO-8601, recebido "${value}"`)
+  }
+}
+
 export interface DelegadoBasico {
   id: string
   full_name: string
@@ -17,7 +28,37 @@ export interface DelegadoBasico {
   nivel: Nivel
 }
 
+interface ComissaoCacheEntry {
+  valor: number
+  expiresAt: number
+}
+const COMISSAO_TTL_MS = 60_000
+
 class SupervisorMetricsService {
+  private comissaoCache = new Map<string, ComissaoCacheEntry>()
+
+  private async getComissaoCached(
+    funcionarioId: string,
+    cargo: string,
+    mes: number,
+    ano: number
+  ): Promise<number> {
+    const key = `${funcionarioId}:${cargo}:${mes}:${ano}`
+    const now = Date.now()
+    const cached = this.comissaoCache.get(key)
+    if (cached && cached.expiresAt > now) return cached.valor
+
+    try {
+      const ComissaoService = (await import('./ComissaoService')).default
+      const r: any = await ComissaoService.calcularComissao(funcionarioId, cargo, mes, ano)
+      const valor = Number(r?.comissao_brl || r?.totalComissao || 0)
+      this.comissaoCache.set(key, { valor, expiresAt: now + COMISSAO_TTL_MS })
+      return valor
+    } catch {
+      return 0
+    }
+  }
+
   async getDelegados(supervisorId: string): Promise<DelegadoBasico[]> {
     const { data, error } = await supabase
       .from('profiles')
@@ -41,6 +82,9 @@ class SupervisorMetricsService {
     startDate: string,
     endDate: string
   ): Promise<TeamMetricsResponse> {
+    assertISO('startDate', startDate)
+    assertISO('endDate', endDate)
+
     const delegados = await this.getDelegados(supervisorId)
     const ids = delegados.map((d) => d.id)
 
@@ -65,6 +109,10 @@ class SupervisorMetricsService {
         .in('usuario_id', ids)
         .gte('data_hora', startDate)
         .lte('data_hora', endDate),
+      // Contratos: considera "dentro do período" se (a) foi pago nele OU (b)
+      // ainda não foi pago mas foi criado nele. Contratos sem pagamento são
+      // filtrados novamente depois por `isContratoFechado` quando vão para
+      // faturamento/assessoriasFechadas — só sobram na contagem de "iniciadas".
       supabase
         .from('contratos_servicos')
         .select(
@@ -85,21 +133,17 @@ class SupervisorMetricsService {
     const agendamentos = agendamentosRes.data || []
     const contratos = contratosRes.data || []
 
-    // Comissões em paralelo (uma por delegado).
-    // ComissaoService usa janela rolling 30d — divergência aceita por design.
-    const ComissaoService = (await import('./ComissaoService')).default
+    // Comissões: ComissaoService usa janela do mês corrente (divergência do
+    // período filtrado, aceita por design — UI exibe sublabel "Mês corrente").
+    // Cache em memória de 60s mitiga o N+1 quando o supervisor fica na tela.
     const now = new Date()
     const mes = now.getMonth() + 1
     const ano = now.getFullYear()
     const comissoes = await Promise.all(
       delegados.map(async (d) => {
-        try {
-          const cargo = d.nivel === 'HEAD' ? 'HEAD' : d.nivel
-          const r: any = await ComissaoService.calcularComissao(d.id, cargo, mes, ano)
-          return { id: d.id, valor: Number(r?.comissao_brl || r?.totalComissao || 0) }
-        } catch {
-          return { id: d.id, valor: 0 }
-        }
+        const cargo = d.nivel === 'HEAD' ? 'HEAD' : d.nivel
+        const valor = await this.getComissaoCached(d.id, cargo, mes, ano)
+        return { id: d.id, valor }
       })
     )
     const comissaoMap = new Map(comissoes.map((c) => [c.id, c.valor]))
@@ -119,7 +163,13 @@ class SupervisorMetricsService {
       const isC2 = d.nivel === 'C2'
       const myContratos = contratos.filter((c: any) => c.usuario_id === d.id)
       const myContratosFechados = myContratos.filter((c: any) => this.isContratoFechado(c))
-      const assessoriasIniciadas = isC2 ? myContratos.length : null
+      // "Iniciadas" = contratos que efetivamente entraram no fluxo no período
+      // (exclui cancelados/inválidos — são ruído, não assessoria iniciada).
+      const myContratosIniciados = myContratos.filter(
+        (c: any) =>
+          c.status_contrato !== 'CANCELADO' && c.status_contrato !== 'INVALIDO'
+      )
+      const assessoriasIniciadas = isC2 ? myContratosIniciados.length : null
       const assessoriasFechadas = isC2 ? myContratosFechados.length : null
       const faturamentoGerado = isC2
         ? myContratosFechados.reduce(
@@ -185,6 +235,9 @@ class SupervisorMetricsService {
     startDate: string,
     endDate: string
   ): Promise<FuncionarioDetailsResponse> {
+    assertISO('startDate', startDate)
+    assertISO('endDate', endDate)
+
     const delegados = await this.getDelegados(supervisorId)
     const funcionario = delegados.find((d) => d.id === funcionarioId)
     if (!funcionario) {
