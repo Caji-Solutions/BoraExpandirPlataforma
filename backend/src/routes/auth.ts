@@ -133,27 +133,32 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
         }
 
         const token = crypto.randomUUID()
-        
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+
         const { error: updateError } = await supabase
             .from('profiles')
-            .update({ auth_token: token })
+            .update({ reset_token: token, reset_token_expires_at: expiresAt })
             .eq('id', profile.id)
 
         if (updateError) {
             console.error('[Auth.forgotPassword] ❌ Erro ao salvar token de recuperação:', updateError)
-            return res.status(500).json({ error: 'Erro ao processar solicitação' })
+            return res.json({ message: 'Se o email existir em nossa base, você receberá um link de recuperação' })
         }
 
         const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3010').replace(/\/$/, '')
         const resetUrl = `${frontendUrl}/reset-password?token=${token}`
 
-        await EmailService.sendPasswordResetEmail({
-            to: profile.email,
-            name: profile.full_name,
-            resetUrl
-        })
+        try {
+            await EmailService.sendPasswordResetEmail({
+                to: profile.email,
+                name: profile.full_name,
+                resetUrl
+            })
+        } catch (mailErr) {
+            console.error('[Auth.forgotPassword] ❌ Erro ao enviar email:', mailErr)
+        }
 
-        return res.json({ message: 'Link de recuperação enviado com sucesso' })
+        return res.json({ message: 'Se o email existir em nossa base, você receberá um link de recuperação' })
     } catch (error: any) {
         console.error('Erro no forgot-password:', error)
         return res.status(500).json({ error: 'Erro interno do servidor' })
@@ -177,11 +182,15 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 
         const { data: profile } = await supabase
             .from('profiles')
-            .select('id')
-            .eq('auth_token', access_token)
+            .select('id, reset_token_expires_at')
+            .eq('reset_token', access_token)
             .single()
 
         if (!profile) {
+            return res.status(401).json({ error: 'Link de recuperação inválido ou expirado' })
+        }
+
+        if (!profile.reset_token_expires_at || new Date(profile.reset_token_expires_at) < new Date()) {
             return res.status(401).json({ error: 'Link de recuperação inválido ou expirado' })
         }
 
@@ -190,7 +199,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 
         const { error: updateError } = await supabase
             .from('profiles')
-            .update({ password_hash })
+            .update({ password_hash, reset_token: null, reset_token_expires_at: null })
             .eq('id', profile.id)
 
         if (updateError) {
