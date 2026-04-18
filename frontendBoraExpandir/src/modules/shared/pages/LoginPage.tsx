@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../contexts/AuthContext'
-import { roleRouteMap } from '../../../components/ProtectedRoute'
+import { roleRouteMap } from '../components/ProtectedRoute'
 
 export default function LoginPage() {
     const [email, setEmail] = useState('')
