@@ -19,7 +19,7 @@ git reset --hard origin/main
 
 echo ">>> [3/6] Instalando dependências do backend..."
 cd "$BACKEND_DIR"
-npm ci --omit=dev=false  # inclui dev deps porque precisa do tsc para build
+npm ci --legacy-peer-deps  # legacy-peer-deps: conflito entre @composio/openai-agents e @openai/agents
 
 echo ">>> [4/6] Gerando Prisma client..."
 npx prisma generate
