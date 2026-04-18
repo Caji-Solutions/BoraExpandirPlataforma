@@ -136,6 +136,33 @@ export async function getConsultoriasCount(clienteId: string): Promise<{ total_c
     return result.data
 }
 
+// ---------- Supervisor — métricas do time ----------
+import type {
+    TeamMetricsResponse,
+    FuncionarioDetailsResponse,
+} from '../types/supervisorMetrics'
+
+export async function getSupervisorTeamMetrics(
+    startDate: string,
+    endDate: string
+): Promise<TeamMetricsResponse> {
+    const result = await apiClient.get<{ message: string; data: TeamMetricsResponse }>(
+        `/comercial/supervisor/metricas-time?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`
+    )
+    return result.data
+}
+
+export async function getSupervisorFuncionarioDetalhes(
+    funcionarioId: string,
+    startDate: string,
+    endDate: string
+): Promise<FuncionarioDetailsResponse> {
+    const result = await apiClient.get<{ message: string; data: FuncionarioDetailsResponse }>(
+        `/comercial/supervisor/funcionario/${funcionarioId}/detalhes?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`
+    )
+    return result.data
+}
+
 export default {
     getAllClientes,
     getAgendamentosByUsuario,
