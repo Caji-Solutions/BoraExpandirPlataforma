@@ -130,6 +130,7 @@ export interface RequiredDocument {
   examples?: string[];
   processoId?: string;     // ID do processo ao qual este documento pertence
   processoTipo?: string;   // Tipo do processo (ex: "Visto de Trabalho - Canadá")
+  tipoDocumento?: 'titular' | 'dependente';
 }
 
 export interface ApprovedDocument {

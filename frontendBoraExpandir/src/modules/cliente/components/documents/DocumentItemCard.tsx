@@ -22,9 +22,19 @@ interface DocumentItemCardProps {
     uploadingType: string | null
     dragOver: string | null
     setDragOver: (type: string | null) => void
-    onFileSelect: (e: React.ChangeEvent<HTMLInputElement>, type: string) => void
+    onFileSelect: (
+        e: React.ChangeEvent<HTMLInputElement>,
+        type: string,
+        documentoId?: string,
+        isNewSlot?: boolean,
+    ) => void
     onUploadClick: (inputId: string) => void
-    onDrop: (e: React.DragEvent, type: string) => void
+    onDrop: (
+        e: React.DragEvent,
+        type: string,
+        documentoId?: string,
+        isNewSlot?: boolean,
+    ) => void
     onDelete: (documentId: string) => void
     onOpenQuoteModal: (doc: ClientDocument) => void
     onOpenClientQuoteModal: (doc: ClientDocument) => void
@@ -60,7 +70,7 @@ export function DocumentItemCard({
                 isRejected ? 'border-red-500 bg-red-50/30 dark:border-red-800 dark:bg-red-900/5' : 'border-gray-200 dark:border-gray-700',
                 isDraggedOver && 'ring-2 ring-blue-400 border-blue-400'
             )}
-            onDrop={(e) => onDrop(e, item.type)}
+            onDrop={(e) => onDrop(e, item.type, doc?.id, stageId === 'pending' && !doc)}
             onDragOver={(e) => { e.preventDefault(); setDragOver(item.type) }}
             onDragLeave={() => setDragOver(null)}
         >
@@ -156,7 +166,7 @@ export function DocumentItemCard({
                         id={inputId}
                         className="hidden"
                         accept=".pdf,application/pdf"
-                        onChange={(e) => onFileSelect(e, item.type)}
+                        onChange={(e) => onFileSelect(e, item.type, doc?.id, stageId === 'pending' && !doc)}
                         disabled={isCurrentUploading}
                     />
 

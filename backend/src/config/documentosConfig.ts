@@ -7,6 +7,7 @@ export interface DocumentoRequeridoConfig {
     description: string;    // Descrição do documento
     required: boolean;      // Se é obrigatório ou opcional
     examples?: string[];    // Exemplos aceitos
+    tipoDocumento?: 'titular' | 'dependente'; // A quem o requisito se aplica
 }
 
 export interface TipoServicoConfig {

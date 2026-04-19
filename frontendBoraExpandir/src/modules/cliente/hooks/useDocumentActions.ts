@@ -65,6 +65,14 @@ export function useDocumentActions({
     // Filter documents for this member
     const memberDocs = useMemo(() => documents.filter(d => d.memberId === member.id), [documents, member.id])
 
+    // Requisitos aplicáveis ao member atual:
+    // o catálogo permite o mesmo `type` (ex.: "RG") com tipos diferentes
+    // (titular vs dependente). Cada pasta só deve exibir os requisitos do seu tipo.
+    const memberRequiredDocuments = useMemo(() => {
+        const expected: 'titular' | 'dependente' = member.isTitular ? 'titular' : 'dependente'
+        return requiredDocuments.filter(r => (r.tipoDocumento ?? 'titular') === expected)
+    }, [requiredDocuments, member.isTitular])
+
     // Buscar formulários já enviados
     const fetchSentForms = useCallback(async () => {
         try {
@@ -217,7 +225,7 @@ export function useDocumentActions({
                 return true
             })
             .map(doc => {
-                const reqDoc = requiredDocuments.find(r => r.type === doc.type)
+                const reqDoc = memberRequiredDocuments.find(r => r.type === doc.type)
                 return {
                     type: doc.type,
                     name: reqDoc ? reqDoc.name : (doc.name || (doc as any).nome_original || doc.fileName || doc.type),
@@ -232,14 +240,23 @@ export function useDocumentActions({
 
     // Calculate pending documents (required but not uploaded + requested by juridico)
     const pendingDocs = useMemo(() => {
-        const uploadedTypes = new Set(
-            memberDocs
-                .filter(d => d.status?.toLowerCase() !== 'pending')
-                .map(d => d.type)
-        )
+        // Conta docs já enviados por tipo (suporta múltiplos requisitos com mesmo `type`,
+        // ex: RG titular + RG dependente). Set-based filter colapsava duplicatas e sumia
+        // com slots pendentes assim que o primeiro upload daquele tipo chegava.
+        const remainingByType = new Map<string, number>()
+        memberDocs
+            .filter(d => d.status?.toLowerCase() !== 'pending')
+            .forEach(d => remainingByType.set(d.type, (remainingByType.get(d.type) || 0) + 1))
 
-        const missing = requiredDocuments
-            .filter(req => !uploadedTypes.has(req.type))
+        const missing = memberRequiredDocuments
+            .filter(req => {
+                const remaining = remainingByType.get(req.type) || 0
+                if (remaining > 0) {
+                    remainingByType.set(req.type, remaining - 1)
+                    return false
+                }
+                return true
+            })
             .map(req => ({
                 ...req,
                 required: true,
@@ -264,7 +281,7 @@ export function useDocumentActions({
                 return false;
             })
             .map(doc => {
-                const reqDoc = requiredDocuments.find(r => r.type === doc.type)
+                const reqDoc = memberRequiredDocuments.find(r => r.type === doc.type)
                 return {
                     type: doc.type,
                     name: reqDoc ? reqDoc.name : (doc.name || (doc as any).nome_original || doc.type),
@@ -276,13 +293,22 @@ export function useDocumentActions({
                 }
             })
 
-        // 🔥 FILTRO PARA EVITAR DUPLICADOS
-        // Remove da lista de 'missing' qualquer tipo que já esteja na lista de 'requested'
-        const requestedTypes = new Set(requested.map(r => r.type));
-        const uniqueMissing = missing.filter(m => !requestedTypes.has(m.type));
+        // 🔥 FILTRO PARA EVITAR DUPLICADOS (por contagem, não Set —
+        // um requested consome um slot de missing do mesmo type, preservando
+        // demais slots quando há múltiplos requisitos com o mesmo type).
+        const requestedCountByType = new Map<string, number>()
+        requested.forEach(r => requestedCountByType.set(r.type, (requestedCountByType.get(r.type) || 0) + 1))
+        const uniqueMissing = missing.filter(m => {
+            const remaining = requestedCountByType.get(m.type) || 0
+            if (remaining > 0) {
+                requestedCountByType.set(m.type, remaining - 1)
+                return false
+            }
+            return true
+        })
 
         return [...uniqueMissing, ...requested]
-    }, [memberDocs, requiredDocuments])
+    }, [memberDocs, memberRequiredDocuments])
 
     // Count pending requirements
     const pendingRequirementsCount = useMemo(() => {
@@ -302,14 +328,19 @@ export function useDocumentActions({
             requirements: requerimentos.length,
         }
         return counts
-    }, [memberDocs, pendingDocs, requiredDocuments, formsCount, requerimentos])
+    }, [memberDocs, pendingDocs, memberRequiredDocuments, formsCount, requerimentos])
 
     const getDocumentName = (type: string) => {
-        const doc = requiredDocuments.find(r => r.type === type)
+        const doc = memberRequiredDocuments.find(r => r.type === type)
         return doc ? doc.name : type
     }
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
+    const handleFileSelect = (
+        e: React.ChangeEvent<HTMLInputElement>,
+        type: string,
+        explicitDocumentoId?: string,
+        isNewSlot?: boolean,
+    ) => {
         const file = e.target.files?.[0]
         if (!file) return
 
@@ -320,12 +351,19 @@ export function useDocumentActions({
             return
         }
 
+        // Quando o slot é explicitamente novo (missing requirement sem _document),
+        // nunca reaproveita um doc existente do mesmo type — evita sobrescrever o
+        // primeiro upload quando existem múltiplos requisitos do mesmo tipo.
+        const documentoId = isNewSlot
+            ? undefined
+            : (explicitDocumentoId ?? memberDocs.find(d => d.type === type)?.id)
+
         setPendingUpload({
             file,
             documentType: type,
             documentName: getDocumentName(type),
-            isReplacement: !!memberDocs.find(d => d.type === type),
-            documentoId: memberDocs.find(d => d.type === type)?.id,
+            isReplacement: !!documentoId,
+            documentoId,
         })
         setShowConfirmModal(true)
         setUploadError(null)
@@ -350,7 +388,12 @@ export function useDocumentActions({
         setPendingInputId(null)
     }
 
-    const handleDrop = (e: React.DragEvent, type: string) => {
+    const handleDrop = (
+        e: React.DragEvent,
+        type: string,
+        explicitDocumentoId?: string,
+        isNewSlot?: boolean,
+    ) => {
         e.preventDefault()
         setDragOver(null)
         const file = e.dataTransfer.files[0]
@@ -360,12 +403,15 @@ export function useDocumentActions({
             setShowConfirmModal(true)
             return
         }
+        const documentoId = isNewSlot
+            ? undefined
+            : (explicitDocumentoId ?? memberDocs.find(d => d.type === type)?.id)
         setPendingUpload({
             file,
             documentType: type,
             documentName: getDocumentName(type),
-            isReplacement: !!memberDocs.find(d => d.type === type),
-            documentoId: memberDocs.find(d => d.type === type)?.id,
+            isReplacement: !!documentoId,
+            documentoId,
         })
         setShowConfirmModal(true)
         setUploadError(null)

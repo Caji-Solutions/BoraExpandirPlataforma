@@ -170,7 +170,8 @@ class ClienteDocumentController {
                 name: r.nome,
                 description: `Documento para a etapa ${r.etapa}`,
                 required: r.obrigatorio,
-                examples: []
+                examples: [],
+                tipoDocumento: r.tipo_documento ?? 'titular'
               }))
             }
           } catch (admError) {
