@@ -7,6 +7,7 @@ import { traducoesService } from '../../../tradutora/services/traducoesService'
 import { clienteService } from '../../services/clienteService'
 import { cn, formatDateSimple } from '../../lib/utils'
 import { useToast } from '@/components/ui/Toast'
+import { EurBrlPrice } from '@/modules/shared/components/EurBrlPrice'
 
 interface TranslationQuoteModalProps {
   documentoId: string
@@ -388,11 +389,16 @@ export function TranslationQuoteModal({
                   <div className="bg-gray-50 dark:bg-neutral-800/50 rounded-2xl p-6 border border-gray-100 dark:border-neutral-800">
                     <div className="flex flex-col items-center text-center space-y-1">
                       <span className="text-xs text-muted-foreground uppercase tracking-widest font-medium">Valor Total da Tradução</span>
-                      <span className="text-4xl font-black text-foreground">
-                        {hasAnyPendingQuote 
-                          ? 'Sob consulta'
-                          : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorTotal)}
-                      </span>
+                      {hasAnyPendingQuote ? (
+                        <span className="text-4xl font-black text-foreground">Sob consulta</span>
+                      ) : (
+                        <EurBrlPrice
+                          valorEur={valorTotal}
+                          size="xl"
+                          align="center"
+                          className="text-foreground !text-4xl !font-black"
+                        />
+                      )}
                       {selectedDocIds.size > 1 && (
                         <span className="text-[10px] text-muted-foreground font-bold uppercase">
                           Referente a {selectedDocIds.size} documento(s)

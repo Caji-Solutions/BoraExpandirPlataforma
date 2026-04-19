@@ -6,6 +6,7 @@ import { Badge } from '@/modules/shared/components/ui/badge'
 import { traducoesService } from '../../../tradutora/services/traducoesService'
 import { clienteService } from '../../services/clienteService'
 import { cn, formatDate, formatDateSimple } from '../../lib/utils'
+import { EurBrlPrice } from '@/modules/shared/components/EurBrlPrice'
 
 interface ClientOrcamentoModalProps {
   documentoId: string
@@ -228,9 +229,18 @@ export function ClientOrcamentoModal({
                   <span className="text-xs text-gray-400 uppercase tracking-widest font-medium">
                     {tipo === 'apostila' ? 'Valor Total Estimado' : 'Valor Total'}
                   </span>
-                  <span className="text-4xl font-black text-gray-900 dark:text-white">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(calculateTotal())}
-                  </span>
+                  {tipo === 'traducao' ? (
+                    <EurBrlPrice
+                      valorEur={calculateTotal()}
+                      size="xl"
+                      align="center"
+                      className="text-gray-900 dark:text-white !text-4xl !font-black"
+                    />
+                  ) : (
+                    <span className="text-4xl font-black text-gray-900 dark:text-white">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(calculateTotal())}
+                    </span>
+                  )}
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-600 grid grid-cols-2 gap-4">
@@ -305,14 +315,27 @@ export function ClientOrcamentoModal({
                         </div>
                         <div className="text-right">
                           {budget ? (
-                            <span className="text-sm font-bold text-gray-900 dark:text-white">
-                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(budget.preco_atualizado || budget.valor_orcamento)}
-                            </span>
+                            tipo === 'traducao' ? (
+                              <EurBrlPrice
+                                valorEur={budget.preco_atualizado || budget.valor_orcamento}
+                                align="right"
+                                size="sm"
+                                className="text-gray-900 dark:text-white"
+                              />
+                            ) : (
+                              <span className="text-sm font-bold text-gray-900 dark:text-white">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(budget.preco_atualizado || budget.valor_orcamento)}
+                              </span>
+                            )
                           ) : (
                             <div className="flex flex-col items-end">
-                                <span className="text-sm font-bold text-gray-400">
-                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(tipo === 'apostila' ? 180 : 250)}
-                                </span>
+                                {tipo === 'traducao' ? (
+                                  <EurBrlPrice valorEur={250} align="right" size="sm" className="text-gray-400" />
+                                ) : (
+                                  <span className="text-sm font-bold text-gray-400">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(180)}
+                                  </span>
+                                )}
                                 <span className="text-[9px] text-gray-400 uppercase font-bold tracking-tighter">(Est.)</span>
                               </div>
                           )}

@@ -3,6 +3,7 @@ import { CheckCircle2, ChevronDown, ChevronRight, Folder, FileText, ExternalLink
 import type { OrcamentoItem } from '../types'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import DeliveryModal from '../components/DeliveryModal'
+import { EurBrlPrice } from '@/modules/shared/components/EurBrlPrice'
 
 interface EntreguesPageProps {
   items: OrcamentoItem[]
@@ -178,7 +179,7 @@ export default function EntreguesPage({ items, onSubmitTraducao }: EntreguesPage
                               </td>
                               <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
                                 {item.valorOrcamento ? (
-                                  `R$ ${item.valorOrcamento.toFixed(2).replace('.', ',')}`
+                                  <EurBrlPrice valorEur={item.valorOrcamento} size="sm" />
                                 ) : '—'}
                               </td>
                               <td className="px-6 py-4">

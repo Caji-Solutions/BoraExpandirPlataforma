@@ -4,6 +4,7 @@ import OrcamentoModal from '../components/OrcamentoModal'
 import type { OrcamentoItem, OrcamentoFormData } from '../types'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import { Button } from '@/components/ui/Button'
+import { EurBrlPrice } from '@/modules/shared/components/EurBrlPrice'
 
 interface OrcamentosPageProps {
   orcamentos: OrcamentoItem[]
@@ -375,11 +376,14 @@ export default function OrcamentosPage({ orcamentos, onResponderOrcamento }: Orc
 
               {orcamento.valorOrcamento && (
                 <div className="bg-emerald-50/50 dark:bg-emerald-500/5 border border-emerald-100 dark:border-emerald-500/10 p-4 rounded-2xl mb-6">
-                  <div className="flex justify-between items-center mb-1">
+                  <div className="flex justify-between items-start mb-1">
                      <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Orçamento Enviado</span>
-                     <span className="text-xl font-bold text-emerald-700 dark:text-emerald-400">
-                       R$ {orcamento.valorOrcamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                     </span>
+                     <EurBrlPrice
+                       valorEur={orcamento.valorOrcamento}
+                       align="right"
+                       size="lg"
+                       className="text-emerald-700 dark:text-emerald-400"
+                     />
                   </div>
                   {orcamento.prazoEntrega && (
                     <div className="flex justify-between items-center text-xs">

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { DollarSign, CheckCircle, TrendingUp, FileCheck, Download, Eye, X, FileText } from 'lucide-react'
 import type { OrcamentoItem } from '../types'
 import { Badge } from '@/modules/shared/components/ui/badge'
+import { EurBrlPrice } from '@/modules/shared/components/EurBrlPrice'
 
 interface PagamentosPageProps {
   items: OrcamentoItem[]
@@ -69,9 +70,11 @@ export default function PagamentosPage({ items }: PagamentosPageProps) {
               <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">
-            R$ 0,00
-          </p>
+          <EurBrlPrice
+            valorEur={0}
+            size="xl"
+            className="text-blue-900 dark:text-blue-100"
+          />
           <p className="text-xs text-blue-700 dark:text-blue-400 mt-2">
             Total já pago pelo administrativo
           </p>
@@ -101,9 +104,11 @@ export default function PagamentosPage({ items }: PagamentosPageProps) {
               <DollarSign className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900 dark:text-white">
-            R$ {totalPendente.toFixed(2).replace('.', ',')}
-          </p>
+          <EurBrlPrice
+            valorEur={totalPendente}
+            size="xl"
+            className="text-gray-900 dark:text-white"
+          />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
             Aguardando pagamento
           </p>
@@ -143,8 +148,12 @@ export default function PagamentosPage({ items }: PagamentosPageProps) {
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                       {pagamento.clienteNome}
                     </td>
-                    <td className="px-6 py-4 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                      R$ {pagamento.valorComissao.toFixed(2).replace('.', ',')}
+                    <td className="px-6 py-4">
+                      <EurBrlPrice
+                        valorEur={pagamento.valorComissao}
+                        size="sm"
+                        className="text-emerald-600 dark:text-emerald-400"
+                      />
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                       {pagamento.data ? new Date(pagamento.data).toLocaleDateString('pt-BR') : '—'}
@@ -205,9 +214,11 @@ export default function PagamentosPage({ items }: PagamentosPageProps) {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">Valor</p>
-                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                    R$ {comprovanteModal.pagamento.valorComissao.toFixed(2).replace('.', ',')}
-                  </p>
+                  <EurBrlPrice
+                    valorEur={comprovanteModal.pagamento.valorComissao}
+                    size="sm"
+                    className="text-emerald-600 dark:text-emerald-400"
+                  />
                 </div>
               </div>
             </div>

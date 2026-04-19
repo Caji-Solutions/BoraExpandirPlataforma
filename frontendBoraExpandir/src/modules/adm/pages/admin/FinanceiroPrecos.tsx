@@ -29,6 +29,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/modules/shared/compo
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/modules/shared/components/ui/table'
 import { cn } from '../../../../lib/utils'
 import { toast } from 'sonner'
+import { EurBrlPrice } from '@/modules/shared/components/EurBrlPrice'
+import { formatEur } from '@/modules/shared/hooks/useCotacaoEurBrl'
 
 export default function FinanceiroPrecos() {
   const [loading, setLoading] = useState(true)
@@ -241,7 +243,11 @@ export default function FinanceiroPrecos() {
                       Receita Prevista
                   </div>
                   <div>
-                    <h3 className="text-3xl font-black text-gray-900">{formatCurrency(totals.receita)}</h3>
+                    <EurBrlPrice
+                      valorEur={totals.receita}
+                      size="xl"
+                      className="text-gray-900"
+                    />
                     <p className="text-xs text-gray-400 font-medium mt-1">Soma de todos os valores finais</p>
                   </div>
               </div>
@@ -257,7 +263,11 @@ export default function FinanceiroPrecos() {
                       Custo Operacional
                   </div>
                   <div>
-                    <h3 className="text-3xl font-black text-gray-900">{formatCurrency(totals.custo)}</h3>
+                    <EurBrlPrice
+                      valorEur={totals.custo}
+                      size="xl"
+                      className="text-gray-900"
+                    />
                     <p className="text-xs text-gray-400 font-medium mt-1">Pagamentos devidos a tradutores</p>
                   </div>
               </div>
@@ -273,7 +283,11 @@ export default function FinanceiroPrecos() {
                       Lucro Bruto (Markup)
                   </div>
                   <div>
-                    <h3 className="text-3xl font-black">{formatCurrency(totals.lucro)}</h3>
+                    <EurBrlPrice
+                      valorEur={totals.lucro}
+                      size="xl"
+                      brlClassName="text-emerald-100/70"
+                    />
                     <p className="text-xs text-emerald-100/70 font-medium mt-1">Margem de lucro sobre custo base</p>
                   </div>
               </div>
@@ -357,7 +371,7 @@ export default function FinanceiroPrecos() {
                           </div>
                         </td>
                         <td className="px-6 py-6 font-black text-gray-500">
-                          {hasOrcamento ? formatCurrency(basePrice) : <span className="text-gray-200">A DEFINIR</span>}
+                          {hasOrcamento ? <EurBrlPrice valorEur={basePrice} size="sm" /> : <span className="text-gray-200">A DEFINIR</span>}
                         </td>
                         <td className="px-6 py-6">
                            <div className="flex items-center justify-center gap-1.5">
@@ -374,12 +388,10 @@ export default function FinanceiroPrecos() {
                         <td className="px-6 py-6">
                            {hasOrcamento ? (
                              <div className="flex flex-col">
-                                <span className="text-lg font-black text-gray-900 leading-none">
-                                  {formatCurrency(finalPrice)}
-                                </span>
+                                <EurBrlPrice valorEur={finalPrice} size="lg" className="text-gray-900" />
                                 <div className="flex items-center gap-1 mt-1">
                                     <span className="text-[9px] text-emerald-600 font-black uppercase tracking-tighter bg-emerald-50 px-1.5 py-0.5 rounded">
-                                        LUCRO: {formatCurrency(finalPrice - basePrice)}
+                                        LUCRO: {formatEur(finalPrice - basePrice)}
                                     </span>
                                 </div>
                              </div>

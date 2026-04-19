@@ -197,7 +197,7 @@ export default function OrcamentoModal({ orcamento, onClose, onSubmit }: Orcamen
             <div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <DollarSign className="h-4 w-4" />
-                Seu Valor (R$)
+                Seu Valor (€)
               </label>
               <input
                 type="number"
