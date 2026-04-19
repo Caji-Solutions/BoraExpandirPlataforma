@@ -16,8 +16,7 @@ import {
     ChevronDown,
     StickyNote,
     Trash2,
-    ClipboardList,
-    XCircle
+    ClipboardList
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ClientDNAData, ClientNote, CATEGORIAS_LIST, formatDate } from './ClientDNA'
@@ -500,14 +499,6 @@ export function DNAClientDetailView({
                                             const isEmConsultoria = stage.id === 'em_consultoria'
                                             const isCancelado = stage.id === 'cancelado'
 
-                                            // Verificar Consultorias Puladas (só após agendamentos carregarem)
-                                            const hasConsultoriaRealizada = agendamentos.some((a: any) =>
-                                                a.status === 'realizado' &&
-                                                /consultoria/i.test(String(a.produto_nome || ''))
-                                            )
-                                            const skippedConsultoria = !loadingAgendamentos && currentStageIndex >= 3 && !hasConsultoriaRealizada
-                                            const isSkippedNode = skippedConsultoria && (index === 0 || index === 1 || index === 2)
-
                                             const stageNotes = notes.filter(n => {
                                                 const matchesStage = n.stageId === stage.id
                                                 const matchesArea = areaFilter === 'todos' || n.area === areaFilter
@@ -543,8 +534,6 @@ export function DNAClientDetailView({
                                                                     ? "w-10 h-10 bg-gradient-to-br from-amber-400 to-yellow-500 shadow-[0_0_20px_rgba(245,158,11,0.4)]"
                                                                     : isCurrent
                                                                     ? "w-10 h-10 bg-gradient-to-br from-primary to-blue-600 shadow-[0_0_20px_rgba(59,130,246,0.35)]"
-                                                                    : isSkippedNode
-                                                                    ? "w-8 h-8 bg-red-500/80"
                                                                     : isCompleted
                                                                     ? "w-8 h-8 bg-gradient-to-br from-emerald-500 to-green-600"
                                                                     : "w-7 h-7 bg-muted border-2 border-border"
@@ -552,8 +541,7 @@ export function DNAClientDetailView({
                                                                 {isCurrent && (
                                                                     <div className="absolute inset-0 rounded-full bg-inherit animate-ping opacity-20" />
                                                                 )}
-                                                                {isSkippedNode ? <XCircle className="h-4 w-4 text-white" /> :
-                                                                 isCompleted ? <Check className="h-4 w-4 text-white" /> :
+                                                                {isCompleted ? <Check className="h-4 w-4 text-white" /> :
                                                                  isCurrent ? <Clock className="h-4.5 w-4.5 text-white" /> :
                                                                  <div className="w-2 h-2 rounded-full bg-muted-foreground/20" />}
                                                             </div>
@@ -579,7 +567,6 @@ export function DNAClientDetailView({
                                                                             "font-bold transition-all duration-300",
                                                                             isCurrent && isEmConsultoria ? "text-amber-600 dark:text-amber-400 text-[15px]" :
                                                                             isCurrent ? "text-primary text-[15px]" :
-                                                                            isSkippedNode ? "text-red-400 line-through text-sm" :
                                                                             isCompleted ? "text-foreground text-sm" :
                                                                             "text-muted-foreground/50 text-sm"
                                                                         )}>
@@ -593,11 +580,6 @@ export function DNAClientDetailView({
                                                                                     : "bg-primary/10 text-primary"
                                                                             )}>
                                                                                 Atual
-                                                                            </span>
-                                                                        )}
-                                                                        {isSkippedNode && (
-                                                                            <span className="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-red-100 dark:bg-red-900/20 text-red-500">
-                                                                                Pulado
                                                                             </span>
                                                                         )}
                                                                     </div>
