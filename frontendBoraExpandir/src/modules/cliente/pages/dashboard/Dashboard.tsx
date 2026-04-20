@@ -24,6 +24,8 @@ import { RequiredActionModal } from '../../components/forms/RequiredActionModal'
 import { clienteService } from '../../services/clienteService'
 import { useEffect, useState, useMemo } from 'react'
 import type { ContratoServico } from '@/types/comercial'
+import { EurBrlPrice } from '@/modules/shared/components/EurBrlPrice'
+import { useCotacaoEurBrl } from '@/modules/shared/hooks/useCotacaoEurBrl'
 
 interface DashboardProps {
   client: Client
@@ -64,6 +66,9 @@ export function Dashboard({
   const [isLoadingData, setIsLoadingData] = useState(false)
   const [showRequestedActionsModal, setShowRequestedActionsModal] = useState(false)
   const [uploadingParcelaId, setUploadingParcelaId] = useState<string | null>(null)
+  const cotacao = useCotacaoEurBrl();
+
+  const toEur = (valorBrl: number) => cotacao ? valorBrl / cotacao : 0;
 
   const totalDocuments = documents.length
   const allRequerimentos = [...(requerimentos || []), ...realRequerimentos]
@@ -534,9 +539,11 @@ export function Dashboard({
                       <p className="text-sm text-gray-600 dark:text-gray-300">
                         Parcela {parcela.numero_parcela}/{parcela.quantidade_parcelas} • Vencimento {formatDateSimple(parcela.data_vencimento)}
                       </p>
-                      <p className="text-sm font-medium text-red-700 dark:text-red-400">
-                        Valor: R$ {Number(parcela.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </p>
+                      <EurBrlPrice
+                        valorEur={toEur(parcela.valor)}
+                        size="sm"
+                        className="text-red-700 dark:text-red-400"
+                      />
                       {parcela.nota_recusa && (
                         <p className="text-xs text-red-600 mt-1">{parcela.nota_recusa}</p>
                       )}

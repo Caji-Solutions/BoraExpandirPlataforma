@@ -2,9 +2,11 @@ import React, { useState, useRef } from 'react';
 import { X, CreditCard, Copy, Check, Upload, Trash2, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/modules/shared/components/ui/button';
 import { cn } from '../../lib/utils';
-import { useToast } from '@/components/ui/Toast';
+import { useToast } from '@/modules/shared/components/ui/use-toast';
 import { pagamentoService } from '../../services/pagamentoService';
 import { Payment } from '../../types';
+import { EurBrlPrice } from '@/modules/shared/components/EurBrlPrice';
+import { useCotacaoEurBrl } from '@/modules/shared/hooks/useCotacaoEurBrl';
 
 interface DirectPaymentModalProps {
   payment: Payment;
@@ -32,6 +34,9 @@ export function DirectPaymentModal({
   const [error, setError] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cotacao = useCotacaoEurBrl();
+
+  const toEur = (valorBrl: number) => cotacao ? valorBrl / cotacao : 0;
 
   const handleCopyKey = async (value: string) => {
     try {
@@ -48,7 +53,11 @@ export function DirectPaymentModal({
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        toast.error('O arquivo deve ter no máximo 10MB');
+        toast.toast({
+          title: "Arquivo muito grande",
+          description: "O arquivo deve ter no máximo 10MB",
+          variant: "destructive"
+        });
         return;
       }
       setComprovanteFile(file);
@@ -129,9 +138,12 @@ export function DirectPaymentModal({
                   <div className="bg-gray-50 dark:bg-neutral-800/50 rounded-2xl p-6 border border-gray-100 dark:border-neutral-800">
                     <div className="flex flex-col items-center text-center space-y-1">
                       <span className="text-xs text-gray-400 uppercase tracking-widest font-medium">Valor a Pagar</span>
-                      <span className="text-4xl font-black text-gray-900 dark:text-white">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(payment.valor)}
-                      </span>
+                      <EurBrlPrice
+                        valorEur={toEur(payment.valor)}
+                        size="xl"
+                        align="center"
+                        className="text-gray-900 dark:text-white !text-4xl !font-black"
+                      />
                     </div>
                   </div>
 
@@ -161,9 +173,12 @@ export function DirectPaymentModal({
                 <>
                   <div className="bg-emerald-50 dark:bg-emerald-900/10 rounded-xl p-4 border border-emerald-100 dark:border-emerald-900/20 text-center">
                     <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Valor</p>
-                    <p className="text-2xl font-black text-gray-900 dark:text-white">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(payment.valor)}
-                    </p>
+                    <EurBrlPrice
+                      valorEur={toEur(payment.valor)}
+                      size="lg"
+                      align="center"
+                      className="text-gray-900 dark:text-white"
+                    />
                   </div>
 
                   {paymentMethod === 'pix' ? (
@@ -191,12 +206,12 @@ export function DirectPaymentModal({
                         >
                           wise.com/pay/me/fernandaj101
                         </a>
-                        <button
-                          onClick={() => handleCopyKey(WISE_TAG)}
-                          className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 hover:bg-purple-200 transition-colors"
-                        >
-                          {copiedKey ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
-                        </button>
+                         <button
+                           onClick={() => handleCopyKey(WISE_TAG)}
+                           className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 hover:bg-purple-200 transition-colors"
+                         >
+                           {copiedKey ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
+                         </button>
                       </div>
                     </div>
                   )}

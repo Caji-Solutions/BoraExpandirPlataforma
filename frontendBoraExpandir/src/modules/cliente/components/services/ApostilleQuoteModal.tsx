@@ -5,7 +5,8 @@ import { Button } from '@/modules/shared/components/ui/button'
 import { Badge } from '@/modules/shared/components/ui/badge'
 import { clienteService } from '../../services/clienteService'
 import { cn } from '../../lib/utils'
-import { useToast } from '@/components/ui/Toast'
+import { useToast } from '@/modules/shared/hooks/use-toast'
+import { EurBrlPrice } from '@/modules/shared/components/EurBrlPrice'
 
 interface ApostilleQuoteModalProps {
   documentoId: string
@@ -19,7 +20,7 @@ interface ApostilleQuoteModalProps {
 
 const PIX_CNPJ = '55.218.947/0001-65'
 const WISE_TAG = 'https://wise.com/pay/me/fernandaj101'
-const VALOR_UNITARIO_APOSTILA = 180
+const VALOR_UNITARIO_APOSTILA_EUR = 30
 
 const getStatusBadge = (status: string) => {
   const s = status?.toLowerCase() || 'pending';
@@ -166,7 +167,11 @@ export function ApostilleQuoteModal({
     const file = e.target.files?.[0]
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        toast.error('O arquivo deve ter no máximo 10MB')
+        toast.toast({
+          variant: 'destructive',
+          title: 'Arquivo muito grande',
+          description: 'O arquivo deve ter no máximo 10MB'
+        })
         return
       }
       setComprovanteFile(file)
@@ -255,7 +260,7 @@ export function ApostilleQuoteModal({
     }
   }
 
-  const valorTotal = selectedDocIds.size * VALOR_UNITARIO_APOSTILA
+  const valorTotalEur = selectedDocIds.size * VALOR_UNITARIO_APOSTILA_EUR
 
   if (!isOpen) return null
 
@@ -331,11 +336,14 @@ export function ApostilleQuoteModal({
                   <div className="bg-gray-50 dark:bg-neutral-800/50 rounded-2xl p-6 border border-gray-100 dark:border-neutral-800">
                     <div className="flex flex-col items-center text-center space-y-1">
                       <span className="text-xs text-muted-foreground uppercase tracking-widest font-medium">Total do Apostilamento</span>
-                      <span className="text-4xl font-black text-foreground">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorTotal)}
-                      </span>
+                      <EurBrlPrice
+                        valorEur={valorTotalEur}
+                        size="xl"
+                        align="center"
+                        className="text-foreground !text-4xl !font-black"
+                      />
                       <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">
-                        {selectedDocIds.size} documento(s) x {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(VALOR_UNITARIO_APOSTILA)}
+                        {selectedDocIds.size} documento(s) x {VALOR_UNITARIO_APOSTILA_EUR}€
                       </span>
                     </div>
                   </div>
@@ -395,9 +403,12 @@ export function ApostilleQuoteModal({
                 <div className="space-y-4">
                   <div className="bg-amber-50 dark:bg-amber-900/10 rounded-xl p-5 border border-amber-100 dark:border-amber-900/20 text-center">
                     <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">Total a Pagar</p>
-                    <p className="text-3xl font-black text-foreground">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorTotal)}
-                    </p>
+                    <EurBrlPrice
+                      valorEur={valorTotalEur}
+                      size="xl"
+                      align="center"
+                      className="text-foreground !text-3xl !font-black"
+                    />
                   </div>
                   <p className="text-sm text-muted-foreground">Selecione como deseja realizar o pagamento:</p>
                   <div className="grid grid-cols-2 gap-3">
@@ -425,9 +436,12 @@ export function ApostilleQuoteModal({
                 <>
                   <div className="bg-amber-50 dark:bg-amber-900/10 rounded-xl p-5 border border-amber-100 dark:border-amber-900/20 text-center">
                     <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">Total a Pagar</p>
-                    <p className="text-3xl font-black text-foreground">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valorTotal)}
-                    </p>
+                    <EurBrlPrice
+                      valorEur={valorTotalEur}
+                      size="xl"
+                      align="center"
+                      className="text-foreground !text-3xl !font-black"
+                    />
                   </div>
 
                   {paymentMethod === 'pix' ? (

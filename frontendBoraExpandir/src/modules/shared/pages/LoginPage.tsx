@@ -168,6 +168,27 @@ export default function LoginPage() {
                     </button>
                 </form>
 
+                <div style={styles.divider}>
+                    <div style={styles.dividerLine} />
+                    <span style={styles.dividerText}>ou</span>
+                    <div style={styles.dividerLine} />
+                </div>
+
+                <button
+                    type="button"
+                    onClick={() => navigate('/parceiro/cadastro')}
+                    style={styles.partnerButton}
+                    className="partner-button"
+                >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '8px' }}>
+                        <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                        <circle cx="8.5" cy="7" r="4" />
+                        <line x1="20" y1="8" x2="20" y2="14" />
+                        <line x1="17" y1="11" x2="23" y2="11" />
+                    </svg>
+                    Quero ser um parceiro
+                </button>
+
                 <p style={styles.footer}>
                     © 2026 BoraExpandir — Plataforma Interna
                 </p>
@@ -201,6 +222,14 @@ export default function LoginPage() {
           border-color: #3B52E5 !important;
           background: #FFFFFF !important;
           box-shadow: 0 0 0 3px rgba(59, 82, 229, 0.15) !important;
+        }
+        button:hover {
+          filter: brightness(0.95);
+          transform: translateY(-1px);
+        }
+        .partner-button:hover {
+          background-color: #F9FAFB !important;
+          border-color: #D1D5DB !important;
         }
       `}</style>
         </div>
@@ -375,5 +404,38 @@ const styles: Record<string, React.CSSProperties> = {
         fontSize: '0.7rem',
         color: '#94A3B8',
         marginTop: '2rem',
+    },
+    divider: {
+        display: 'flex',
+        alignItems: 'center',
+        margin: '1.5rem 0',
+        gap: '1rem',
+    },
+    dividerLine: {
+        flex: 1,
+        height: '1px',
+        background: '#E5E7EB',
+    },
+    dividerText: {
+        fontSize: '0.75rem',
+        color: '#94A3B8',
+        fontWeight: 500,
+        textTransform: 'uppercase',
+    },
+    partnerButton: {
+        width: '100%',
+        padding: '0.85rem',
+        background: '#FFFFFF',
+        border: '1px solid #E5E7EB',
+        borderRadius: '10px',
+        color: '#374151',
+        fontSize: '0.9rem',
+        fontWeight: 600,
+        transition: 'all 0.2s ease',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
     },
 }

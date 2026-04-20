@@ -43,12 +43,30 @@ export function GerenciamentoAgendamentoModal({ agendamento, onClose, onAtualiza
         const file = e.target.files?.[0]
         if (!file) return
 
-        // TODO: Chamar rota de upload do backend
-        info('Fazendo upload do comprovante...')
-        setTimeout(() => {
+        setLoadingConvert(true)
+        try {
+            const formData = new FormData()
+            formData.append('file', file)
+            formData.append('agendamentoId', agendamento.id)
+
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/comercial/agendamento/${agendamento.id}/comprovante`, {
+                method: 'POST',
+                body: formData
+            })
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}))
+                throw new Error(errData.message || 'Erro ao fazer upload do comprovante.')
+            }
+
             setComprovanteUrl(URL.createObjectURL(file))
             success('Comprovante enviado com sucesso!')
-        }, 1500)
+            onAtualizado()
+        } catch (err: any) {
+            toastError(err.message)
+        } finally {
+            setLoadingConvert(false)
+        }
     }
 
     const handleConverterCliente = async () => {

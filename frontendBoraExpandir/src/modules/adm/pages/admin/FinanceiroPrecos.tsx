@@ -182,15 +182,15 @@ export default function FinanceiroPrecos() {
                 <Settings className="h-3 w-3" /> Preço Apostila
               </span>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-sm font-bold text-gray-400">R$</span>
+                <span className="text-sm font-bold text-gray-400">€</span>
                 <input 
-                  type="number"
-                  value={apostilaPrice}
-                  onChange={(e) => setApostilaPrice(Number(e.target.value))}
-                  className="w-16 bg-transparent border-none p-0 focus:ring-0 font-black text-gray-900"
-                />
-              </div>
-            </div>
+                   type="number"
+                   value={apostilaPrice}
+                   onChange={(e) => setApostilaPrice(Number(e.target.value))}
+                   className="w-16 bg-transparent border-none p-0 focus:ring-0 font-black text-gray-900"
+                 />
+               </div>
+             </div>
 
             <div className="px-4 py-2 border-r border-gray-100 flex flex-col">
               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
@@ -496,7 +496,7 @@ export default function FinanceiroPrecos() {
                   Insight Operacional
                 </h3>
                 <p className="text-gray-400 font-medium leading-relaxed">
-                  Os serviços de <span className="text-white font-bold">Assessoria</span> representam atualmente 80% do ticket médio. 
+                  Os serviços de Assessoria representam atualmente 80% do ticket médio. 
                   Considere aumentar o markup de traduções técnicas em períodos de alta demanda.
                 </p>
                 <div className="mt-8 pt-8 border-t border-white/10 flex flex-col gap-4">
@@ -522,7 +522,7 @@ export default function FinanceiroPrecos() {
         <div className="space-y-1">
             <h4 className="font-black text-gray-900 uppercase text-xs tracking-widest">Informação de Checkout</h4>
             <p className="text-sm text-gray-500 leading-relaxed font-medium">
-                Os valores exibidos aqui são os que o cliente verá em seu painel. A precificação padrão de apostilamento atual é de <b>{formatCurrency(apostilaPrice)}</b> por documento selecionado.
+                Os valores exibidos aqui são os que o cliente verá em seu painel. A precificação padrão de apostilamento atual é de <b>{formatEur(apostilaPrice)}</b> por documento selecionado.
             </p>
         </div>
       </div>
