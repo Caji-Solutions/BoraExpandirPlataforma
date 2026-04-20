@@ -630,18 +630,18 @@ export default function ServiceCatalog() {
               </div>
               )}
 
-              {/* Toggle: Não Agendável? — apenas para Assessoria */}
+              {/* Toggle: É Agendável? — apenas para Assessoria */}
               {categoria === "assessoria" && (
               <div className="flex items-center justify-between p-4 bg-muted/30 border border-border rounded-xl md:col-span-2">
                 <div className="space-y-0.5">
-                  <Label className="text-sm font-bold">Não Agendável?</Label>
+                  <Label className="text-sm font-bold">É Agendável?</Label>
                   <p className="text-xs text-muted-foreground">
-                    Se ativo, o serviço não requer agendamento e aparece em "Assessoria Direta"
+                    Se inativo, o serviço não requer agendamento e aparece em "Assessoria Direta"
                   </p>
                 </div>
                 <Switch
-                  checked={formData.naoAgendavel}
-                  onCheckedChange={(val) => setFormData({ ...formData, naoAgendavel: val })}
+                  checked={!formData.naoAgendavel}
+                  onCheckedChange={(val) => setFormData({ ...formData, naoAgendavel: !val })}
                 />
               </div>
               )}

@@ -1053,6 +1053,14 @@ class ComercialController {
             const userId = this.getAuthenticatedUserId(req, res)
             if (!userId) return
 
+            const userRole: string | undefined = req.user?.role
+            const ROLES_COM_BYPASS = ['super_admin', 'admin', 'juridico']
+            const ROLES_PERMITIDAS = [...ROLES_COM_BYPASS, 'comercial']
+
+            if (!userRole || !ROLES_PERMITIDAS.includes(userRole)) {
+                return res.status(403).json({ message: 'Sem permissao para acessar contratos' })
+            }
+
             const clienteId = (req.query?.cliente_id || req.query?.clienteId) as string | undefined
             const isDraftRaw = req.query?.isDraft
             const isDraft =
@@ -1060,9 +1068,17 @@ class ComercialController {
                     : isDraftRaw === 'false' ? false
                         : undefined
 
-            // Sempre filtrar pelo usuario autenticado, independente de clienteId.
-            // Nunca usar usuarioId de query params (previne enumeracao de contratos de outros usuarios).
-            const contratos = await ContratoServicoRepository.getContratos({ clienteId, isDraft, usuarioId: userId })
+            // Roles com bypass (super_admin/admin/juridico) + clienteId -> retornar todos os contratos
+            // do cliente (o juridico precisa visualizar contratos que nao criou).
+            // Comercial sempre filtra pelo proprio usuarioId, mesmo com clienteId (ve apenas os proprios).
+            // Nunca aceitar usuarioId via query params (previne enumeracao de contratos alheios).
+            const podeBypassar = ROLES_COM_BYPASS.includes(userRole)
+            const shouldFilterByUser = !clienteId || !podeBypassar
+            const contratos = await ContratoServicoRepository.getContratos({
+                clienteId,
+                isDraft,
+                usuarioId: shouldFilterByUser ? userId : undefined,
+            })
             return res.status(200).json({ data: contratos })
         } catch (error: any) {
             console.error('[ComercialController] Erro ao listar contratos:', error)

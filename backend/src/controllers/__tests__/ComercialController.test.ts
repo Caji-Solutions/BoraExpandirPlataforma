@@ -377,11 +377,57 @@ describe('ComercialController - Isolamento de contratos por dono', () => {
         expect(ContratoServicoRepository.getContratos).not.toHaveBeenCalled();
     });
 
-    it('Deve ignorar usuarioId da query e forcar filtro pelo userId autenticado', async () => {
+    it('Juridico com clienteId deve bypassar filtro por usuarioId e ignorar usuarioId da query', async () => {
         const req: any = {
-            userId: 'owner-123',
+            userId: 'juridico-123',
+            user: { id: 'juridico-123', role: 'juridico' },
             query: {
                 usuarioId: 'outro-usuario',
+                clienteId: 'cliente-123',
+                isDraft: 'false'
+            }
+        };
+        const res = makeRes();
+
+        (ContratoServicoRepository.getContratos as any).mockResolvedValue([
+            { id: 'contrato-1', usuario_id: 'comercial-999' }
+        ]);
+
+        await ComercialController.getContratosServicos(req, res);
+
+        expect(ContratoServicoRepository.getContratos).toHaveBeenCalledWith({
+            clienteId: 'cliente-123',
+            isDraft: false,
+            usuarioId: undefined,
+        });
+        expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('super_admin com clienteId deve bypassar filtro por usuarioId', async () => {
+        const req: any = {
+            userId: 'admin-1',
+            user: { id: 'admin-1', role: 'super_admin' },
+            query: { clienteId: 'cliente-123' }
+        };
+        const res = makeRes();
+
+        (ContratoServicoRepository.getContratos as any).mockResolvedValue([]);
+
+        await ComercialController.getContratosServicos(req, res);
+
+        expect(ContratoServicoRepository.getContratos).toHaveBeenCalledWith({
+            clienteId: 'cliente-123',
+            isDraft: undefined,
+            usuarioId: undefined,
+        });
+        expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('Comercial com clienteId deve continuar filtrando pelos proprios contratos', async () => {
+        const req: any = {
+            userId: 'owner-123',
+            user: { id: 'owner-123', role: 'comercial' },
+            query: {
                 clienteId: 'cliente-123',
                 isDraft: 'false'
             }
@@ -397,9 +443,74 @@ describe('ComercialController - Isolamento de contratos por dono', () => {
         expect(ContratoServicoRepository.getContratos).toHaveBeenCalledWith({
             clienteId: 'cliente-123',
             isDraft: false,
-            usuarioId: 'owner-123'
+            usuarioId: 'owner-123',
         });
         expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('Comercial sem clienteId deve filtrar por usuario autenticado', async () => {
+        const req: any = {
+            userId: 'owner-123',
+            user: { id: 'owner-123', role: 'comercial' },
+            query: {
+                isDraft: 'false'
+            }
+        };
+        const res = makeRes();
+
+        (ContratoServicoRepository.getContratos as any).mockResolvedValue([
+            { id: 'contrato-1', usuario_id: 'owner-123' }
+        ]);
+
+        await ComercialController.getContratosServicos(req, res);
+
+        expect(ContratoServicoRepository.getContratos).toHaveBeenCalledWith({
+            clienteId: undefined,
+            isDraft: false,
+            usuarioId: 'owner-123',
+        });
+        expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('Role sem permissao (administrativo) deve receber 403', async () => {
+        const req: any = {
+            userId: 'adm-1',
+            user: { id: 'adm-1', role: 'administrativo' },
+            query: { clienteId: 'cliente-123' }
+        };
+        const res = makeRes();
+
+        await ComercialController.getContratosServicos(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(403);
+        expect(ContratoServicoRepository.getContratos).not.toHaveBeenCalled();
+    });
+
+    it('Role cliente deve receber 403 ao tentar listar contratos', async () => {
+        const req: any = {
+            userId: 'cli-1',
+            user: { id: 'cli-1', role: 'cliente' },
+            query: { clienteId: 'cliente-123' }
+        };
+        const res = makeRes();
+
+        await ComercialController.getContratosServicos(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(403);
+        expect(ContratoServicoRepository.getContratos).not.toHaveBeenCalled();
+    });
+
+    it('Requisicao sem role (req.user ausente) deve receber 403', async () => {
+        const req: any = {
+            userId: 'x-1',
+            query: { clienteId: 'cliente-123' }
+        };
+        const res = makeRes();
+
+        await ComercialController.getContratosServicos(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(403);
+        expect(ContratoServicoRepository.getContratos).not.toHaveBeenCalled();
     });
 
     it('Deve retornar 403 ao buscar contrato que pertence a outro usuario', async () => {

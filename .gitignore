@@ -20,6 +20,7 @@ BoraExpandirPlataforma_Context.md
 CLAUDE.md
 .claude/
 .gemini/
+docs/superpowers/
 
 # Environment & Secrets
 .env
