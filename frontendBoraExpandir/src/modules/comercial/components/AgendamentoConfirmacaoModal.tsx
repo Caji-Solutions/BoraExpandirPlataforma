@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { X, CheckCircle2, Copy, Loader2, AlertCircle, Check } from 'lucide-react'
+import { X, CheckCircle2, Copy, Loader2, AlertCircle, Check, Upload } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface AgendamentoConfirmacaoModalProps {
   isOpen: boolean
@@ -55,6 +56,11 @@ export const AgendamentoConfirmacaoModal: React.FC<AgendamentoConfirmacaoModalPr
   const [metodoConfirmado, setMetodoConfirmado] = useState<'pix' | 'cartao' | 'wise' | null>(null)
   const [cartaoTipo, setCartaoTipo] = useState<'debito' | 'credito' | ''>('')
   const [cartaoParcelas, setCartaoParcelas] = useState('1')
+  
+  // New state for upload
+  const [comprovanteFile, setComprovanteFile] = useState<File | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   if (!isOpen) return null
 
@@ -187,7 +193,7 @@ Obrigado! 🚀
       setAgendamentoCriado(responseData)
       setMetodoConfirmado(metodo)
       if (responseData.aviso_formulario_preenchido) setAvisoFormPreenchido(true)
-      onSuccess(responseData)
+      // Removed premature onSuccess(responseData) to allow viewing PIX details
       setIsLoading(false)
     } catch {
       setLocalError('Erro de conexão com o servidor.')
@@ -262,7 +268,59 @@ Obrigado! 🚀
     }
   }
 
-  const handleFinalizar = () => onNavigateToAgendamentos()
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        setLocalError('O arquivo deve ter no máximo 10MB')
+        return
+      }
+      setComprovanteFile(file)
+      setLocalError(null)
+    }
+  }
+
+  const handleUploadComprovante = async () => {
+    if (!comprovanteFile || !agendamentoCriado) return
+    
+    setIsUploading(true)
+    setLocalError(null)
+    
+    const backendUrl = import.meta.env.VITE_BACKEND_URL?.trim() || ''
+    
+    try {
+      const formData = new FormData()
+      formData.append('file', comprovanteFile)
+      formData.append('agendamentoId', agendamentoCriado.id)
+      
+      const response = await fetch(`${backendUrl}/comercial/agendamento/${agendamentoCriado.id}/comprovante`, {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        throw new Error(body?.message || 'Erro ao enviar comprovante.')
+      }
+      
+      setStep('method') // Reset or stay as needed
+      onSuccess(agendamentoCriado)
+      onNavigateToAgendamentos()
+    } catch (err: any) {
+      setLocalError(err.message)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleFinalizar = () => {
+    if (comprovanteFile) {
+      handleUploadComprovante()
+    } else {
+      onSuccess(agendamentoCriado)
+      onNavigateToAgendamentos()
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
@@ -351,9 +409,35 @@ Obrigado! 🚀
           {(step === 'pix' || step === 'wise' || (step === 'cartao' && agendamentoCriado)) && (
             <div className="space-y-5">
               {isLoading && (
-                <div className="flex flex-col items-center justify-center py-10 gap-3">
-                  <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
-                  <p className="text-sm text-gray-500">Criando agendamento...</p>
+                <div className="flex flex-col items-center justify-center py-20 gap-4">
+                  <div className="relative">
+                    <Loader2 className="h-12 w-12 text-emerald-500 animate-spin" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                       <p className="text-[10px] font-black text-emerald-600">BE</p>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <p className="font-bold text-gray-900 dark:text-white">Criando Agendamento</p>
+                    <p className="text-xs text-gray-500">Aguarde um momento...</p>
+                  </div>
+                </div>
+              )}
+
+              {!isLoading && !agendamentoCriado && localError && (
+                <div className="flex flex-col items-center justify-center py-10 gap-6">
+                  <div className="h-16 w-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center text-red-600">
+                    <AlertCircle className="h-8 w-8" />
+                  </div>
+                  <div className="text-center space-y-2">
+                    <h4 className="font-bold text-gray-900 dark:text-white">Falha na Criação</h4>
+                    <p className="text-sm text-gray-500 px-4">{localError}</p>
+                  </div>
+                  <button
+                    onClick={() => setStep('method')}
+                    className="px-6 py-2 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 transition-all shadow-sm"
+                  >
+                    Tentar Novamente
+                  </button>
                 </div>
               )}
 
@@ -414,32 +498,79 @@ Obrigado! 🚀
                     </div>
                   )}
 
-                  <button
-                    onClick={handleCopyMessage}
-                    className="w-full p-4 rounded-xl border-2 border-dashed border-gray-300 dark:border-neutral-700 hover:border-emerald-400 dark:hover:border-emerald-600 bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-300 transition-all flex items-center justify-center gap-2 font-semibold"
-                  >
-                    {copied ? (
-                      <><Check className="h-5 w-5 text-emerald-600" /> Mensagem copiada!</>
-                    ) : (
-                      <><Copy className="h-5 w-5" /> Copiar mensagem</>
-                    )}
-                  </button>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                      <Upload className="h-4 w-4" />
+                      Anexar Comprovante (Opcional)
+                    </div>
+                    
+                    <div 
+                      onClick={() => !comprovanteFile && !isUploading && fileInputRef.current?.click()}
+                      className={cn(
+                        "relative border-2 border-dashed rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer",
+                        comprovanteFile 
+                          ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10" 
+                          : "border-gray-200 dark:border-neutral-800 hover:border-emerald-400 dark:hover:border-emerald-500/40 group"
+                      )}
+                    >
+                      <input 
+                        type="file" 
+                        ref={fileInputRef}
+                        className="hidden" 
+                        onChange={handleFileChange}
+                        accept="image/*,.pdf"
+                      />
+                      
+                      {comprovanteFile ? (
+                        <div className="flex flex-col items-center gap-2 w-full text-center">
+                           <div className="p-3 bg-emerald-100 dark:bg-emerald-900/40 rounded-full text-emerald-600 dark:text-emerald-400">
+                             <Check className="h-6 w-6" />
+                           </div>
+                           <p className="text-sm font-bold text-gray-900 dark:text-white truncate max-w-full">
+                             {comprovanteFile.name}
+                           </p>
+                           <button 
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               setComprovanteFile(null);
+                             }}
+                             className="text-xs text-red-500 hover:underline font-bold mt-1"
+                           >
+                             Remover arquivo
+                           </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="p-3 bg-gray-50 dark:bg-neutral-800 rounded-full text-gray-400 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-500/10 transition-colors">
+                            <Upload className="h-6 w-6" />
+                          </div>
+                          <p className="text-sm font-bold text-gray-600 dark:text-gray-400 text-center">Clique para anexar o comprovante agora</p>
+                          <p className="text-[10px] text-gray-400 font-medium">Você também pode enviar depois na gestão</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
 
-                  <details className="group" open>
-                    <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600 transition-colors">
+                  <details className="group">
+                    <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600 transition-colors font-medium">
                       Ver pré-visualização da mensagem
                     </summary>
-                    <div className="mt-2 p-3 bg-gray-50 dark:bg-neutral-800/50 rounded-lg border text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap font-mono max-h-48 overflow-y-auto">
+                    <div className="mt-2 p-3 bg-gray-50 dark:bg-neutral-800/50 rounded-lg border text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap font-mono max-h-32 overflow-y-auto">
                       {metodoConfirmado === 'cartao' ? buildMensagemCartao() : metodoConfirmado === 'wise' ? buildMensagemWise() : buildMensagemPix()}
                     </div>
                   </details>
 
                   <button
                     onClick={handleFinalizar}
-                    className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all text-sm shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
+                    disabled={isUploading}
+                    className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-xs tracking-widest transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
                   >
-                    <CheckCircle2 className="h-5 w-5" />
-                    Finalizar Agendamento
+                    {isUploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    {comprovanteFile ? 'Enviar e Finalizar' : 'Finalizar Sem Comprovante'}
                   </button>
                 </>
               )}

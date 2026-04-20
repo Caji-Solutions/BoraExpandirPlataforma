@@ -6,7 +6,7 @@ import { Badge } from '@/modules/shared/components/ui/badge'
 import { traducoesService } from '../../../tradutora/services/traducoesService'
 import { clienteService } from '../../services/clienteService'
 import { cn, formatDateSimple } from '../../lib/utils'
-import { useToast } from '@/components/ui/Toast'
+import { useToast } from '@/modules/shared/hooks/use-toast'
 import { EurBrlPrice } from '@/modules/shared/components/EurBrlPrice'
 
 interface TranslationQuoteModalProps {
@@ -176,7 +176,11 @@ export function TranslationQuoteModal({
     const file = e.target.files?.[0]
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        toast.error('O arquivo deve ter no máximo 10MB')
+        toast.toast({
+          variant: 'destructive',
+          title: 'Arquivo muito grande',
+          description: 'O arquivo deve ter no máximo 10MB'
+        })
         return
       }
       setComprovanteFile(file)

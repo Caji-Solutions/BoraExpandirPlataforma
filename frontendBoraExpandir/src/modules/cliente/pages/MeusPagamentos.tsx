@@ -18,9 +18,11 @@ import {
 import { Card } from '@/modules/shared/components/ui/card';
 import { Button } from '@/modules/shared/components/ui/button';
 import { Badge } from '@/modules/shared/components/ui/badge';
-import { pagamentoService } from '../services/pagamentoService';
 import { Payment } from '../types';
 import { DirectPaymentModal } from '../components/services/DirectPaymentModal';
+import { EurBrlPrice } from '@/modules/shared/components/EurBrlPrice';
+import { useCotacaoEurBrl } from '@/modules/shared/hooks/useCotacaoEurBrl';
+import { pagamentoService } from '../services/pagamentoService';
 
 interface MeusPagamentosProps {
     clienteId: string;
@@ -32,6 +34,9 @@ export default function MeusPagamentos({ clienteId }: MeusPagamentosProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const cotacao = useCotacaoEurBrl();
+
+    const toEur = (valorBrl: number) => cotacao ? valorBrl / cotacao : 0;
 
     useEffect(() => {
         loadPagamentos();
@@ -106,9 +111,11 @@ export default function MeusPagamentos({ clienteId }: MeusPagamentosProps) {
                                 <ArrowUpRight className="h-4 w-4" />
                             </div>
                         </div>
-                        <span className="text-3xl font-black text-gray-900 dark:text-white">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.totalPago)}
-                        </span>
+                        <EurBrlPrice
+                            valorEur={toEur(stats.totalPago)}
+                            size="xl"
+                            className="text-gray-900 dark:text-white !text-3xl !font-black"
+                        />
                         <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-tighter">Financeiro atualizado hoje</p>
                     </div>
                 </Card>
@@ -122,9 +129,11 @@ export default function MeusPagamentos({ clienteId }: MeusPagamentosProps) {
                                 <Clock className="h-4 w-4" />
                             </div>
                         </div>
-                        <span className="text-3xl font-black text-gray-900 dark:text-white">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.totalPendente)}
-                        </span>
+                        <EurBrlPrice
+                            valorEur={toEur(stats.totalPendente)}
+                            size="xl"
+                            className="text-gray-900 dark:text-white !text-3xl !font-black"
+                        />
                         <p className="text-[10px] text-amber-600 font-bold uppercase tracking-tighter">
                             {stats.proximoVencimento ? `Próximo: ${new Date(stats.proximoVencimento).toLocaleDateString()}` : 'Sem parcelas pendentes'}
                         </p>
@@ -216,7 +225,11 @@ export default function MeusPagamentos({ clienteId }: MeusPagamentosProps) {
                                             </span>
                                         </td>
                                         <td className="px-6 py-5 text-center text-sm font-bold text-gray-900 dark:text-white">
-                                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(pagamento.valor)}
+                                            <EurBrlPrice
+                                                valorEur={toEur(pagamento.valor)}
+                                                size="sm"
+                                                align="center"
+                                            />
                                         </td>
                                         <td className="px-6 py-5 text-center">
                                             {getStatusBadge(pagamento.status)}
